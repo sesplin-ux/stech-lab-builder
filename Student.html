@@ -607,6 +607,11 @@ function submitJob(){
    manages ONE file: save it to Drive, open it next session on any Chromebook and
    the pack + progress come back together. (packCourse kept for older readers.) */
 function backupWork(){
+  if(!(WORK.studentName||"").trim()){
+    flash("Enter your name up top before saving — your instructor needs it to tell whose work this is.", true);
+    const nm=document.getElementById("stuName"); if(nm){ nm.scrollIntoView({behavior:"smooth",block:"center"}); nm.focus(); }
+    return;
+  }
   const who=(WORK.studentName||"").trim().replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").toLowerCase()||"student";
   download({ type:"stech-student-work", schema:1, generatedAt:new Date().toISOString(),
     student:{name:WORK.studentName}, work:WORK, packCourse:PACK?PACK.course:null,
