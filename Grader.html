@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STECH — Job Sheet (Grader)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   STECH Job Sheet — GRADE MODE (instructor) · prototype
+   Standalone. Load the lab pack (the rules) + a stack of student
+   submission files (the answers). RE-CHECKS each submission's raw
+   responses against the current lab definition — never trusts the
+   file's own selfCheck — and shows Complete / Not-yet per student
+   with the exact unmet items, for fast Canvas entry.
+
+   evaluate*() here mirrors Fill mode's engine exactly (same rules);
+   the intent is to extract a shared engine module later.
+   Palette / type = STECH design system (matches Builder + Student).
+   ============================================================ */
+:root{
+  --stech-blue:#047BC1; --blue-700:#024a76; --blue-600:#036098; --blue-400:#3d9bd2;
+  --blue-200:#cde6f5; --blue-100:#e6f2fa; --blue-50:#f2f8fd;
+  --gray-800:#424242; --gray-700:#545b64; --gray-600:#656e7b; --gray-500:#8a919b;
+  --gray-400:#b4b9c0; --gray-300:#dddddd; --gray-200:#e8eaed; --gray-100:#f2f3f5; --gray-50:#f8f9fa;
+  --white:#fff; --green-600:#2e7d46; --green-100:#e6f4ea; --amber-600:#b26a00; --amber-100:#fbf0dc;
+  --red-600:#c62828; --red-100:#fdecea;
+  --ink:#21262e; --body:#49525d; --muted:#6c7580; --subtle:#8a919b;
+  --line:#d9dfe6; --line-soft:#e8ebef;
+  --radius:6px; --radius-lg:10px; --pill:999px;
+  --focus:0 0 0 3px rgba(4,123,193,.35);
+  --shadow-xs:0 1px 2px rgba(31,42,56,.06); --shadow-sm:0 1px 3px rgba(31,42,56,.1);
+  --shadow-md:0 4px 12px rgba(31,42,56,.1);
+  --display:"Oswald","Roboto Condensed",sans-serif; --sans:"Roboto",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --cond:"Oswald","Roboto Condensed",Arial,sans-serif; --mono:"Roboto Mono",ui-monospace,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--gray-50);color:var(--body);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+header{background:var(--stech-blue);color:#fff;border-bottom:3px solid var(--blue-700)}
+.bar{max-width:1240px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.badge{background:#fff;color:var(--stech-blue);font-family:var(--cond);font-weight:700;padding:5px 10px;font-size:12px;
+  letter-spacing:.08em;border-radius:var(--radius);text-transform:uppercase}
+.hbar h1{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:.01em;text-transform:uppercase;line-height:1;color:#fff}
+.hbar .sub{font-family:var(--cond);opacity:.85;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
+.hstat{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hstat .chipw{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:var(--pill);
+  padding:5px 12px;font-family:var(--cond);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 90px}
+.btn{font-family:var(--cond);background:var(--stech-blue);color:#fff;border:1px solid transparent;padding:10px 18px;
+  font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:12px;cursor:pointer;border-radius:var(--radius);transition:background .15s,transform .05s}
+.btn:hover{background:var(--blue-600)} .btn:active{transform:translateY(1px)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--gray-400)} .btn.ghost:hover{background:var(--gray-100)}
+.btn.sm{padding:6px 12px;font-size:11px}
+.btn.ok{background:var(--green-600)} .btn.ok:hover{background:#276b3c}
+.btn.warn{background:#fff;color:var(--amber-600);border:1px solid var(--amber-600)} .btn.warn:hover{background:var(--amber-100)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.dropzone{border:2px dashed var(--gray-400);border-radius:var(--radius-lg);background:#fff;padding:40px 24px;text-align:center;box-shadow:var(--shadow-xs);transition:border-color .12s,background .12s}
+.dropzone.drag-over{border-color:var(--stech-blue);background:var(--blue-50)}
+.dropzone .dz-ic{font-size:34px;color:var(--subtle);margin-bottom:10px}
+.dropzone h2{font-family:var(--display);text-transform:uppercase;font-size:22px;color:var(--ink);font-weight:600;margin-bottom:6px}
+.dropzone p{color:var(--muted);font-size:14px;margin-bottom:16px;max-width:520px;margin-left:auto;margin-right:auto}
+.dz-steps{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;text-align:left}
+.dz-step{border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;min-width:180px;background:var(--gray-50)}
+.dz-step .n{font-family:var(--cond);font-weight:700;color:var(--stech-blue);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.dz-step .d{font-size:13px;color:var(--body);margin-top:2px}
+.dz-step.done{border-color:var(--green-600);background:var(--green-100)}
+
+.grid{display:grid;gap:20px}
+@media(min-width:960px){.grid{grid-template-columns:320px 1fr;align-items:start}}
+.side{position:sticky;top:14px;max-height:calc(100vh - 28px);display:flex;flex-direction:column;gap:12px}
+.filterbar{display:flex;gap:6px;flex-wrap:wrap}
+.filt{font-family:var(--cond);font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;
+  border:1px solid var(--line);background:#fff;color:var(--muted);padding:6px 11px;border-radius:var(--pill);cursor:pointer}
+.filt[aria-pressed="true"]{background:var(--blue-50);border-color:var(--stech-blue);color:var(--blue-700)}
+.roster{border:1px solid var(--line);border-radius:var(--radius-lg);overflow:auto;background:#fff;box-shadow:var(--shadow-xs);flex:1}
+.rmod{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);
+  background:var(--gray-100);padding:7px 12px;border-bottom:1px solid var(--line-soft);position:sticky;top:0}
+.ritem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:none;
+  border-bottom:1px solid var(--line-soft);padding:10px 12px;font:inherit;cursor:pointer;transition:background .12s}
+.ritem:hover{background:var(--gray-100)}
+.ritem[aria-current="true"]{background:var(--blue-50);border-left:3px solid var(--stech-blue);padding-left:9px}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot.ok{background:var(--green-600)} .dot.no{background:var(--amber-600)}
+.ritem .rn{flex:1;min-width:0}
+.ritem .rn b{display:block;font-size:13.5px;color:var(--ink);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ritem .rn span{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.rbadge{font-family:var(--cond);font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:var(--pill);flex-shrink:0}
+.rb-grade{background:var(--green-100);color:var(--green-600)} .rb-return{background:var(--amber-100);color:var(--amber-600)}
+.rb-drift{background:var(--red-100);color:var(--red-600)}
+
+/* detail */
+.detail{border:1px solid var(--line);border-radius:var(--radius-lg);background:#fff;box-shadow:var(--shadow-sm);overflow:hidden}
+.d-top{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--gray-50);display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.d-top .who b{font-size:18px;color:var(--ink);font-weight:600}
+.d-top .who .meta{font-size:12.5px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.d-top .jobtag{font-family:var(--cond);font-weight:700;color:var(--stech-blue);font-size:13px;letter-spacing:.03em}
+.d-nav{margin-left:auto;display:flex;gap:6px}
+.veh-line{margin-top:8px;font-size:13px;color:var(--body)}
+.veh-line b{font-family:var(--cond);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.drift{margin:0 20px;margin-top:14px;border:1px solid var(--red-600);background:var(--red-100);color:var(--red-600);
+  border-radius:var(--radius);padding:9px 12px;font-size:12.5px}
+.d-body{padding:18px 20px}
+
+.verdict{border-radius:var(--radius-lg);border:1px solid var(--line);overflow:hidden;margin-bottom:18px}
+.verdict-h{display:flex;align-items:center;gap:12px;padding:13px 16px}
+.verdict-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px;color:#fff;font-weight:700;flex-shrink:0}
+.verdict-h b{font-family:var(--cond);font-size:16px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink)}
+.verdict-h .cnt{margin-left:auto;font-family:var(--mono);font-size:13px;font-weight:600}
+.verdict.ok{background:var(--green-100);border-color:var(--green-600)} .verdict.ok .verdict-ic{background:var(--green-600)}
+.verdict.no{background:var(--amber-100);border-color:var(--amber-600)} .verdict.no .verdict-ic{background:var(--amber-600)}
+.verdict-list{padding:0 16px 12px;display:grid;gap:6px}
+.vrow{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:7px 11px}
+.vrow .rz{margin-left:auto;font-family:var(--cond);font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;padding:1px 7px;border-radius:var(--pill)}
+.rz.required{background:var(--amber-100);color:var(--amber-600)} .rz.incorrect{background:var(--red-100);color:var(--red-600)}
+.rz.vehicle{background:var(--amber-100);color:var(--amber-600)} .rz.checkoff{background:var(--blue-100);color:var(--blue-700)}
+.mismatch{font-size:12px;color:var(--amber-600);margin-bottom:14px;background:var(--amber-100);border-radius:var(--radius);padding:8px 11px;border:1px solid var(--amber-600)}
+
+h4.block{font-family:var(--cond);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;
+  margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line-soft)}
+.ans{border:1px solid var(--line-soft);border-left:3px solid var(--gray-400);border-radius:var(--radius);padding:11px 13px;margin-bottom:9px;background:#fff}
+.ans.miss{border-left-color:var(--amber-600);background:var(--amber-100)}
+.ans.bad{border-left-color:var(--red-600);background:var(--red-100)}
+.ans.good{border-left-color:var(--green-600)}
+.ans.review{border-left-color:var(--stech-blue)}
+.ans .al{font-family:var(--cond);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:8px}
+.ans .al .st{margin-left:auto;font-size:10px;padding:1px 7px;border-radius:var(--pill)}
+.st.good{background:var(--green-100);color:var(--green-600)} .st.miss{background:var(--amber-100);color:var(--amber-600)}
+.st.bad{background:var(--red-100);color:var(--red-600)} .st.review{background:var(--blue-100);color:var(--blue-700)}
+.ans .av{font-family:var(--mono);font-size:15px;color:var(--ink);margin-top:5px;word-break:break-word;white-space:pre-wrap}
+.ans .av.empty{color:var(--subtle);font-style:italic;font-family:var(--sans)}
+.ans .av ul{margin:0;padding-left:18px} .ans .av li{font-family:var(--mono);font-size:14px}
+.ans .expect{font-size:11.5px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+.spot{display:flex;gap:6px;margin-top:8px}
+.spot .sb{font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);
+  background:#fff;color:var(--muted);padding:4px 10px;border-radius:var(--pill);cursor:pointer}
+.spot .sb.on-ok{background:var(--green-600);color:#fff;border-color:var(--green-600)}
+.spot .sb.on-flag{background:var(--red-600);color:#fff;border-color:var(--red-600)}
+.stepline{display:flex;gap:9px;align-items:center;padding:7px 10px;border:1px solid var(--line-soft);border-radius:var(--radius);margin-bottom:5px;font-size:13.5px;color:var(--ink)}
+.stepline .box{width:17px;height:17px;border-radius:3px;border:1.5px solid var(--gray-400);display:grid;place-items:center;font-size:12px;color:#fff;flex-shrink:0}
+.stepline.on .box{background:var(--green-600);border-color:var(--green-600)}
+
+.decision{border-top:2px solid var(--line);margin-top:18px;padding-top:16px}
+.decision .dh{font-family:var(--cond);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
+.decision .drow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.decision textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:var(--radius);padding:10px;font:inherit;font-size:13.5px;resize:vertical}
+.decision textarea:focus-visible{outline:none;border-color:var(--stech-blue);box-shadow:var(--focus)}
+.chip{display:inline-block;font-family:var(--cond);font-size:11px;font-weight:700;border:1.5px solid var(--blue-700);color:var(--blue-700);padding:2px 9px;letter-spacing:.04em;border-radius:var(--pill)}
+
+.summary{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--line);box-shadow:0 -4px 16px rgba(31,42,56,.08);z-index:20}
+.summary-in{max-width:1240px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:8px;font-family:var(--cond);font-size:12px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;color:var(--ink)}
+.stat .pip{width:11px;height:11px;border-radius:50%}
+.summary .spacer{margin-left:auto}
+.hidden{display:none}
+.banner{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;max-width:560px;width:92%}
+.banner .msg{padding:12px 16px;border-radius:var(--radius);font-size:14px;box-shadow:var(--shadow-md);border:1px solid var(--green-600);background:var(--green-100);color:var(--green-600);font-weight:500}
+.banner .msg.err{border-color:var(--red-600);background:var(--red-100);color:var(--red-600)}
+footer{max-width:1240px;margin:16px auto 0;padding:0 20px;font-size:11px;color:var(--subtle)}
+</style>
+</head><body>
+
+<header><div class="bar hbar">
+  <span class="badge">STECH</span>
+  <div><h1>Job Sheet Grader</h1><div class="sub">Automotive · Competency Review</div></div>
+  <div class="hstat" id="hstat"></div>
+</div></header>
+
+<div id="banner" class="banner hidden"><div class="msg" id="bannerMsg"></div></div>
+<input type="file" id="fileInput" accept="application/json,.json" multiple class="hidden">
+
+<div class="wrap">
+  <!-- EMPTY -->
+  <div id="empty">
+    <div id="dropzone" class="dropzone">
+      <div class="dz-ic">⬇</div>
+      <h2>Load the pack and the submissions</h2>
+      <p>Drop your lab pack <em>and</em> the students' submitted files here together — the grader sorts them out. Everything stays on this computer.</p>
+      <div class="dz-steps">
+        <div class="dz-step" id="stepPack"><div class="n">1 · Lab pack</div><div class="d">The labs <span class="mono">.json</span> you published</div></div>
+        <div class="dz-step" id="stepSubs"><div class="n">2 · Submissions</div><div class="d">Students' <span class="mono">job-*.json</span> files</div></div>
+      </div>
+      <button class="btn" id="btnBrowse">Browse for files</button>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <div class="grid">
+      <div class="side">
+        <div class="filterbar" id="filterbar">
+          <button class="filt" data-filt="all" aria-pressed="true">All</button>
+          <button class="filt" data-filt="no" aria-pressed="false">Needs work</button>
+          <button class="filt" data-filt="ok" aria-pressed="false">Complete</button>
+          <button class="filt" data-filt="ungraded" aria-pressed="false">Ungraded</button>
+        </div>
+        <div class="roster" id="roster"></div>
+      </div>
+      <div id="detailHost"></div>
+    </div>
+  </div>
+</div>
+
+<div id="summary" class="summary hidden"><div class="summary-in" id="summaryIn"></div></div>
+<footer id="footer" class="hidden">Prototype · Grade mode. Re-checks each submission against the current lab pack — the file's own self-check is never trusted. Add the pack and drop as many submissions as you like.</footer>
+
+<!-- Shared competency engine — must sit next to this file. Classic script (not a module) so it loads over file://. -->
+<script src="engine.js"></script>
+<script>
+/* ================= state ================= */
+const LS_KEY="swtc_grader_v1";
+let PACK=null;
+let SUBS=[];            // each: submission obj + _id + _inst{decision,comment,flags{}}
+let curId=null;
+let filter="all";
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+/* ================= persistence ================= */
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({pack:PACK, subs:SUBS})); }catch(e){} }
+function restore(){ try{ const r=localStorage.getItem(LS_KEY); if(r){ const o=JSON.parse(r); PACK=o.pack||null; SUBS=o.subs||[]; } }catch(e){} }
+
+/* ================= competency gate — delegates to the shared engine =================
+   The RULES live in engine.js (window.LabEngine) — the SAME code Fill mode
+   grades against, so the grader can't disagree with what the student saw.
+   These wrappers adapt a submission to the engine's context shape. */
+function vehicleRecorded(veh){ return LabEngine.vehicleRecorded(veh); }
+function gradeSubmission(lab, sub){
+  return LabEngine.evaluate(lab, { responses:sub.responses, checkoffs:sub.checkoffs, vehicle:sub.vehicle });
+}
+
+/* ================= model ================= */
+function matchLab(sub){
+  const job=sub.labPack?sub.labPack.job:null;
+  for(const m of (PACK.modules||[])){
+    const l=(m.labs||[]).find(x=>String(x.job)===String(job));
+    if(l) return { lab:l, moduleId:m.id, moduleTitle:m.title||m.id,
+      drift: sub.labPack && sub.labPack.version!=null && l.version!=null && String(sub.labPack.version)!==String(l.version) };
+  }
+  return null;
+}
+function curSub(){ return SUBS.find(s=>s._id===curId)||null; }
+
+/* ================= loading ================= */
+function routeFile(obj, name){
+  if(obj && Array.isArray(obj.modules)){
+    PACK=obj; (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab)); return "pack";
+  }
+  if(obj && obj.type==="stech-job-submission"){
+    const id=(obj.student&&obj.student.name||"?")+"|"+(obj.labPack&&obj.labPack.job)+"|"+(obj.generatedAt||name||Math.random());
+    if(!SUBS.some(s=>s._id===id)){
+      obj._id=id; obj._inst={decision:null,comment:"",flags:{}}; SUBS.push(obj);
+    }
+    return "sub";
+  }
+  if(obj && obj.type==="stech-student-work"){ // a full work backup — pull each lab as a submission-ish? skip for now
+    return "work";
+  }
+  return null;
+}
+function normalizeLab(l){
+  l.fields=l.fields||[]; l.steps=(l.steps||[]).map(s=>typeof s==="string"?{text:s,checkbox:true}:s);
+  l.instructions=l.instructions||[]; l.competency=l.competency||{requireAllFields:true,requireAllCorrect:true,countCheckoffs:false};
+  if(l.requiresVehicle===undefined) l.requiresVehicle=true;
+}
+function readFiles(fileList){
+  const files=[...fileList]; let pack=0, subs=0, bad=0, pending=files.length;
+  if(!pending) return;
+  files.forEach(file=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      let o; try{ o=JSON.parse(r.result); }catch(e){ bad++; done(); return; }
+      const kind=routeFile(o, file.name);
+      if(kind==="pack") pack++; else if(kind==="sub") subs++; else bad++;
+      done();
+    };
+    r.onerror=()=>{ bad++; done(); };
+    r.readAsText(file);
+  });
+  function done(){
+    if(--pending>0) return;
+    save();
+    if(PACK) showApp();
+    let msg=[]; if(pack)msg.push(pack+" pack"); if(subs)msg.push(subs+" submission"+(subs===1?"":"s"));
+    if(bad)msg.push(bad+" skipped");
+    if(!PACK && subs){ flash("Loaded "+subs+" submission(s) — now drop the lab pack to grade them.",true); }
+    else if(msg.length){ flash("Loaded "+msg.join(", ")+"."); }
+    if(PACK){ if(!curId && SUBS.length) selectFirstVisible(); renderAll(); }
+  }
+}
+
+/* ================= render ================= */
+function showApp(){ document.getElementById("empty").classList.add("hidden"); document.getElementById("app").classList.remove("hidden");
+  document.getElementById("summary").classList.remove("hidden"); document.getElementById("footer").classList.remove("hidden"); }
+function verdictOf(sub){ const m=matchLab(sub); if(!m) return {complete:false,unmet:[],fields:[],nomatch:true}; return Object.assign(gradeSubmission(m.lab,sub),{m}); }
+function visible(sub){
+  const v=verdictOf(sub);
+  if(filter==="ok") return v.complete;
+  if(filter==="no") return !v.complete;
+  if(filter==="ungraded") return !sub._inst.decision;
+  return true;
+}
+function selectFirstVisible(){ const s=SUBS.find(visible)||SUBS[0]; curId=s?s._id:null; }
+
+function renderHeaderStat(){
+  const h=document.getElementById("hstat");
+  if(!PACK){ h.innerHTML=""; return; }
+  h.innerHTML=`<span class="chipw">${esc(PACK.course||"Pack")}</span><span class="chipw">${SUBS.length} submission${SUBS.length===1?"":"s"}</span>
+    <button class="btn ghost sm" id="btnAdd">Add files</button>`;
+  document.getElementById("btnAdd").onclick=()=>document.getElementById("fileInput").click();
+}
+function renderRoster(){
+  const host=document.getElementById("roster");
+  const rows=SUBS.filter(visible);
+  if(!rows.length){ host.innerHTML=`<div style="padding:16px;color:var(--subtle);font-size:13px">No submissions in this view.</div>`; return; }
+  // group by job
+  const byJob={};
+  rows.forEach(s=>{ const j=s.labPack?s.labPack.job:"?"; (byJob[j]=byJob[j]||[]).push(s); });
+  host.innerHTML=Object.keys(byJob).sort((a,b)=>Number(a)-Number(b)).map(j=>{
+    const first=byJob[j][0];
+    const title=first.labPack?first.labPack.title:"";
+    return `<div class="rmod">Job ${esc(j)} — ${esc(title)}</div>`+byJob[j].map(s=>{
+      const v=verdictOf(s);
+      const dec=s._inst.decision;
+      return `<button class="ritem" data-id="${esc(s._id)}" aria-current="${s._id===curId}">
+        <span class="dot ${v.complete?"ok":"no"}"></span>
+        <span class="rn"><b>${esc(s.student&&s.student.name||"(no name)")}</b>
+          <span>${v.nomatch?"no matching lab":(v.complete?"complete":v.unmet.length+" to fix")}</span></span>
+        ${v.m&&v.m.drift?`<span class="rbadge rb-drift">drift</span>`:""}
+        ${dec==="complete"?`<span class="rbadge rb-grade">graded</span>`:dec==="return"?`<span class="rbadge rb-return">returned</span>`:""}
+      </button>`;
+    }).join("");
+  }).join("");
+  host.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>{ curId=b.dataset.id; renderAll(); });
+}
+function renderDetail(){
+  const host=document.getElementById("detailHost");
+  const sub=curSub();
+  if(!sub){ host.innerHTML=`<div class="detail"><div class="d-body">Select a student on the left.</div></div>`; return; }
+  const m=matchLab(sub);
+  if(!m){ host.innerHTML=`<div class="detail"><div class="d-body"><div class="drift" style="margin:0">No lab in the current pack matches job ${esc(sub.labPack&&sub.labPack.job)}. Load the pack this was assigned from.</div></div></div>`; return; }
+  const lab=m.lab, g=gradeSubmission(lab, sub);
+  const selfSaid = sub.selfCheck && sub.selfCheck.complete;
+  const mismatch = selfSaid!==undefined && selfSaid!==g.complete;
+  const veh=sub.vehicle;
+  host.innerHTML=`<div class="detail">
+    <div class="d-top">
+      <div class="who"><b>${esc(sub.student&&sub.student.name||"(no name)")}</b>
+        <div class="meta">Job ${esc(lab.job)} · v${esc(sub.labPack&&sub.labPack.version)} · ${esc((sub.generatedAt||"").slice(0,10))}</div>
+        ${lab.requiresVehicle?`<div class="veh-line"><b>Vehicle</b> — ${vehicleRecorded(veh)?esc(vehLabel(veh)):'<span style="color:var(--amber-600)">not recorded</span>'}</div>`:""}
+      </div>
+      <div class="jobtag">JOB ${esc(lab.job)}</div>
+      <div class="d-nav">
+        <button class="btn ghost sm" id="prevBtn">‹ Prev</button>
+        <button class="btn ghost sm" id="nextBtn">Next ›</button>
+      </div>
+    </div>
+    ${m.drift?`<div class="drift"><b>Version drift.</b> Submitted against v${esc(sub.labPack.version)}; the current lab is v${esc(lab.version)}. Re-checked against the current version — a requirement added since may show as unmet.</div>`:""}
+    <div class="d-body">
+      ${mismatch?`<div class="mismatch">Student's app showed “${selfSaid?"Complete":"Not yet"}”, but re-check finds “${g.complete?"Complete":"Not yet"}”. Grading uses this re-check.</div>`:""}
+      <div class="verdict ${g.complete?"ok":"no"}">
+        <div class="verdict-h"><div class="verdict-ic">${g.complete?"✓":"!"}</div>
+          <b>${g.complete?"Meets competency":"Not yet — incomplete"}</b>
+          <span class="cnt">${g.complete?"all requirements met":g.unmet.length+" item"+(g.unmet.length===1?"":"s")}</span></div>
+        ${g.unmet.length?`<div class="verdict-list">${g.unmet.map(u=>`<div class="vrow">
+          <span>${u.reason==="vehicle"?"Vehicle not recorded":u.reason==="checkoff"?"Step not checked: "+esc(u.label):u.reason==="incorrect"?"Incorrect: "+esc(u.label):(u.need&&u.need>1?esc(u.label)+" — "+(u.have||0)+" of "+u.need:esc(u.label))}</span>
+          <span class="rz ${u.reason}">${u.reason==="incorrect"?"wrong":u.reason==="vehicle"?"missing":u.reason==="checkoff"?"step":"missing"}</span></div>`).join("")}</div>`:""}
+      </div>
+
+      ${(lab.steps||[]).length?`<h4 class="block">Steps</h4>${lab.steps.map((s,i)=>`
+        <div class="stepline ${(sub.checkoffs||[]).includes(i)?"on":""}">
+          <span class="box">${(sub.checkoffs||[]).includes(i)?"✓":""}</span>
+          <span>${esc(s.text)}</span>${s.checkbox?"":'<span class="chip" style="margin-left:auto">read only</span>'}</div>`).join("")}`:""}
+
+      <h4 class="block">Recorded answers</h4>
+      ${g.fields.map(fr=>answerHTML(fr.f, fr.res, sub)).join("")||'<div style="color:var(--subtle)">No fields on this job.</div>'}
+
+      <div class="decision">
+        <div class="dh">Your decision</div>
+        <div class="drow">
+          <button class="btn ok" id="markComplete">Mark complete</button>
+          <button class="btn warn" id="markReturn">Return for fixes</button>
+          <button class="btn ghost sm" id="clearDec">Clear</button>
+          <span id="decState" style="font-family:var(--cond);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)"></span>
+        </div>
+        <textarea id="comment" placeholder="Feedback for the student (optional) — included if you export a return note">${esc(sub._inst.comment||"")}</textarea>
+      </div>
+    </div>
+  </div>`;
+  wireDetail(sub, g);
+}
+function vehLabel(v){ if(!v) return ""; if(v.mode==="vin"&&v.vin) return "VIN "+v.vin; return [v.year,v.make,v.model,v.engine].filter(Boolean).join(" "); }
+function answerHTML(f, res, sub){
+  const v=(sub.responses||{})[f.id];
+  const map={good:["good","ok","✓ recorded"],missing:["miss","miss","missing"],correct:["good","good","✓ correct"],
+    incorrect:["bad","bad","✗ incorrect"],review:["review","review","spot-check"],"empty-optional":["","", "optional — blank"]};
+  const [cls,stcls,stlabel]=map[res.state]||["","",""];
+  let val;
+  if(f.type==="list"){ const arr=Array.isArray(v)?v.filter(x=>String(x||"").trim()):[]; val=arr.length?`<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<span class="av empty">— blank —</span>`; }
+  else if(v==null||String(v).trim()===""){ val=`<span class="empty">— blank —</span>`; }
+  else if(f.type==="number"){ val=esc(v)+(f.unit?" "+esc(f.unit):""); }
+  else val=esc(v);
+  const flag=sub._inst.flags[f.id];
+  const showSpot = res.state==="review"; // subjective required -> let instructor confirm
+  return `<div class="ans ${cls} ${flag==="flag"?"bad":flag==="ok"?"good":""}" data-fid="${esc(f.id)}">
+    <div class="al">${esc(f.label||f.id)} ${f.required?'<span style="color:var(--stech-blue)">*</span>':""}
+      <span class="st ${stcls}">${stlabel}</span></div>
+    <div class="av">${val}</div>
+    ${res.state==="incorrect"?`<div class="expect">answer key: ${esc(res.expected)} ± ${esc(res.tol)}</div>`:""}
+    ${showSpot?`<div class="spot">
+      <button class="sb ${flag==="ok"?"on-ok":""}" data-spot="ok">Looks good</button>
+      <button class="sb ${flag==="flag"?"on-flag":""}" data-spot="flag">Flag</button></div>`:""}
+  </div>`;
+}
+function wireDetail(sub, g){
+  const idx=SUBS.filter(visible).findIndex(s=>s._id===curId);
+  const vis=SUBS.filter(visible);
+  document.getElementById("prevBtn").onclick=()=>{ if(idx>0){ curId=vis[idx-1]._id; renderAll(); } };
+  document.getElementById("nextBtn").onclick=()=>{ if(idx<vis.length-1){ curId=vis[idx+1]._id; renderAll(); } };
+  document.querySelectorAll("[data-spot]").forEach(b=>b.onclick=()=>{
+    const wrap=b.closest("[data-fid]"); const fid=wrap.dataset.fid; const val=b.dataset.spot;
+    sub._inst.flags[fid]= sub._inst.flags[fid]===val?null:val; save(); renderDetail();
+  });
+  const setDec=(d)=>{ sub._inst.decision=d; save(); renderAll(); };
+  document.getElementById("markComplete").onclick=()=>setDec("complete");
+  document.getElementById("markReturn").onclick=()=>setDec("return");
+  document.getElementById("clearDec").onclick=()=>setDec(null);
+  document.getElementById("comment").oninput=e=>{ sub._inst.comment=e.target.value; save(); };
+  const ds=document.getElementById("decState");
+  ds.textContent = sub._inst.decision==="complete"?"● Marked complete":sub._inst.decision==="return"?"● Returned":(g.complete?"auto: meets competency":"auto: incomplete");
+}
+function renderSummary(){
+  const total=SUBS.length;
+  let comp=0, dec=0, ret=0;
+  SUBS.forEach(s=>{ if(verdictOf(s).complete) comp++; if(s._inst.decision==="complete")dec++; if(s._inst.decision==="return")ret++; });
+  const el=document.getElementById("summaryIn");
+  el.innerHTML=`
+    <span class="stat"><span class="pip" style="background:var(--green-600)"></span>${comp} meet competency</span>
+    <span class="stat"><span class="pip" style="background:var(--amber-600)"></span>${total-comp} need work</span>
+    <span class="stat"><span class="pip" style="background:var(--stech-blue)"></span>${dec} graded · ${ret} returned</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" id="btnReset">Clear all</button>
+    <button class="btn" id="btnCsv">Export results (CSV)</button>`;
+  document.getElementById("btnCsv").onclick=exportCsv;
+  document.getElementById("btnReset").onclick=()=>{ if(confirm("Clear the pack and all loaded submissions from this browser?")){ PACK=null;SUBS=[];curId=null;save();location.reload(); } };
+}
+function renderAll(){ renderHeaderStat(); renderRoster(); renderDetail(); renderSummary(); }
+
+/* ================= export ================= */
+function exportCsv(){
+  const rows=[["student","job","title","auto_result","decision","unmet","comment"]];
+  SUBS.forEach(s=>{
+    const v=verdictOf(s);
+    const unmet=(v.unmet||[]).map(u=>u.label+(u.reason==="incorrect"?"(wrong)":u.reason==="vehicle"?"(vehicle)":"")).join("; ");
+    rows.push([ s.student&&s.student.name||"", s.labPack&&s.labPack.job||"", s.labPack&&s.labPack.title||"",
+      v.nomatch?"no-match":(v.complete?"complete":"incomplete"),
+      s._inst.decision||"", unmet, (s._inst.comment||"").replace(/\n/g," ") ]);
+  });
+  const csv=rows.map(r=>r.map(c=>{ c=String(c==null?"":c); return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download="grade-results-"+new Date().toISOString().slice(0,10)+".csv"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  flash("Exported results CSV for "+SUBS.length+" submission(s).");
+}
+
+/* ================= misc ================= */
+let flashTimer=null;
+function flash(msg,isErr){ const b=document.getElementById("banner"),m=document.getElementById("bannerMsg");
+  m.textContent=msg; m.className="msg"+(isErr?" err":""); b.classList.remove("hidden");
+  if(flashTimer)clearTimeout(flashTimer); flashTimer=setTimeout(()=>b.classList.add("hidden"), isErr?6000:4000); }
+
+/* ================= boot / events ================= */
+document.getElementById("btnBrowse").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=e=>{ if(e.target.files.length) readFiles(e.target.files); e.target.value=""; };
+document.getElementById("filterbar").querySelectorAll("[data-filt]").forEach(b=>b.onclick=()=>{
+  filter=b.dataset.filt;
+  document.querySelectorAll("#filterbar .filt").forEach(x=>x.setAttribute("aria-pressed", x===b));
+  if(!SUBS.filter(visible).some(s=>s._id===curId)) selectFirstVisible();
+  renderAll();
+});
+const dz=document.getElementById("dropzone");
+["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("drag-over");}));
+["dragleave","dragend","drop"].forEach(ev=>dz.addEventListener(ev,()=>dz.classList.remove("drag-over")));
+dz.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+// allow dropping anywhere once app is up
+["dragover","drop"].forEach(ev=>window.addEventListener(ev,e=>{ e.preventDefault(); }));
+window.addEventListener("drop",e=>{ if(!document.getElementById("app").classList.contains("hidden") && e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+
+restore();
+if(PACK){ (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab)); showApp(); if(SUBS.length) selectFirstVisible(); renderAll(); }
+</script>
+</body></html>

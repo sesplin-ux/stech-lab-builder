@@ -1,0 +1,2478 @@
+{
+  "course": "Automatic Transmissions and Transaxles",
+  "schema": 1,
+  "draft": true,
+  "correlationStandard": "ASE Education Foundation MAST (Feb 2024)",
+  "correlationNote": "Codes are 2024 MAST Automatic Transmission & Transaxle tasks (ase-automatic-transmission-and-transaxle.md). Codes prefixed 'FND ' are ASE Foundational Tasks (ase-foundational-tasks.md) — required at all levels but not priority-rated, so they do not affect P-1/P-2/P-3 coverage. Source job sheets used an older NATEF numbering; every lab was re-mapped to 2024 IDs.",
+  "modules": [
+    {
+      "id": "AT-M1",
+      "title": "Module 1 — Fluid Service, Mounts & Shop Tasks",
+      "labRange": "Labs 1–8",
+      "labs": [
+        {
+          "job": 1,
+          "legacyJob": "AT-1",
+          "ase": [
+            "A.9"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check and diagnose fluid condition",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Raise vehicle; inspect housing, pan, seals, cooler for leakage",
+              "checkbox": true
+            },
+            {
+              "text": "Check fluid level, color, smell, feel",
+              "checkbox": true
+            },
+            {
+              "text": "Service external gaskets/seals as needed",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fluid_cond",
+              "type": "select",
+              "label": "Fluid condition",
+              "required": true,
+              "options": [
+                "Good",
+                "Dark/burnt",
+                "Milky (coolant)",
+                "Low/contaminated"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/concerns",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Service/repairs needed or completed",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 2,
+          "legacyJob": "2",
+          "ase": [
+            "B.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Drain and replace fluid and filter(s)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect cooler lines and fluid condition",
+              "checkbox": true
+            },
+            {
+              "text": "Exchange fluid with flush machine",
+              "checkbox": true
+            },
+            {
+              "text": "Drop pan; inspect for debris; clean",
+              "checkbox": true
+            },
+            {
+              "text": "Replace filter and pan gasket; torque in sequence",
+              "checkbox": true
+            },
+            {
+              "text": "Refill and set level at operating temp",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fluid_type",
+              "type": "text",
+              "label": "ATF type per spec",
+              "required": true
+            },
+            {
+              "id": "pan_debris",
+              "type": "textarea",
+              "label": "Pan debris/residue findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 3,
+          "legacyJob": "3",
+          "ase": [
+            "A.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check fluid level with a dipstick",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Warm engine; level ground; correct selector position",
+              "checkbox": true
+            },
+            {
+              "text": "Wipe and reinsert dipstick; read level",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "level",
+              "type": "select",
+              "label": "Fluid level",
+              "required": true,
+              "options": [
+                "Full",
+                "Low",
+                "High"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 4,
+          "legacyJob": "4",
+          "ase": [
+            "B.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect power train mounts",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Visually inspect mounts for looseness/cracks",
+              "checkbox": true
+            },
+            {
+              "text": "Pull up/down on case; watch for rubber separation",
+              "checkbox": true
+            },
+            {
+              "text": "Torque-reaction check at 1500–2000 rpm in gear",
+              "checkbox": true
+            },
+            {
+              "text": "Replace mounts maintaining driveline alignment if needed",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Mount condition and repairs",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 5,
+          "legacyJob": "AT-5",
+          "ase": [
+            "FND PVS.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify and use fender covers and mats",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify purpose and demonstrate proper use of fender covers and mats",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 6,
+          "legacyJob": "AT-6",
+          "ase": [
+            "FND PVS.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Demonstrate use of the three C's (concern, cause, correction)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Demonstrate use of the three C's",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Concern / cause / correction example",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 7,
+          "legacyJob": "AT-7",
+          "ase": [
+            "A.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Review vehicle service history",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Obtain a work order; review and record vehicle service history",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Service history notes",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 8,
+          "legacyJob": "AT-8",
+          "ase": [
+            "FND PVC.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Prepare vehicle to return to customer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Ensure vehicle reassembled; protect floor mats, seats, steering wheel",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M2",
+      "title": "Module 2 — Concerns, Cooling, Fluid Level & Research",
+      "labRange": "Labs 9–18",
+      "labs": [
+        {
+          "job": 9,
+          "legacyJob": "AT-9",
+          "ase": [
+            "A.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify and interpret transmission/transaxle concern",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Check fluid per procedure; note condition",
+              "checkbox": true
+            },
+            {
+              "text": "Road test through all gears, downshifts, reverse, park",
+              "checkbox": true
+            },
+            {
+              "text": "Differentiate engine-performance vs transmission concern",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fluid",
+              "type": "textarea",
+              "label": "Fluid condition and what it indicates",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Concerns noted on road test",
+              "required": true
+            },
+            {
+              "id": "action",
+              "type": "textarea",
+              "label": "Necessary action",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 10,
+          "legacyJob": "AT-10",
+          "ase": [
+            "A.9"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check and diagnose fluid condition",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Raise vehicle; inspect for leakage",
+              "checkbox": true
+            },
+            {
+              "text": "Check fluid level/color/smell/feel",
+              "checkbox": true
+            },
+            {
+              "text": "Service external gaskets/seals as needed",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fluid_cond",
+              "type": "select",
+              "label": "Fluid condition",
+              "required": true,
+              "options": [
+                "Good",
+                "Dark/burnt",
+                "Milky (coolant)",
+                "Low/contaminated"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/concerns",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 11,
+          "legacyJob": "11",
+          "ase": [
+            "C.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Transmission cooling inspection and flushing",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect fluid and radiator for ATF traces",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect cooler lines/fittings",
+              "checkbox": true
+            },
+            {
+              "text": "Leak test cooler at ≤75 psi; check for bubbles",
+              "checkbox": true
+            },
+            {
+              "text": "Check cooler flow/restriction",
+              "checkbox": true
+            },
+            {
+              "text": "Flush cooler and lines; reconnect; set level",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "leak",
+              "type": "select",
+              "label": "Cooler leak test",
+              "required": true,
+              "options": [
+                "No leaks",
+                "Leaks found"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 12,
+          "legacyJob": "12",
+          "ase": [
+            "A.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check fluid level without a dipstick",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Warm engine; level/hoist per procedure",
+              "checkbox": true
+            },
+            {
+              "text": "Correct selector position",
+              "checkbox": true
+            },
+            {
+              "text": "Follow manufacturer fill-check procedure",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "level",
+              "type": "select",
+              "label": "Fluid level",
+              "required": true,
+              "options": [
+                "Correct",
+                "Low",
+                "High"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 13,
+          "legacyJob": "13",
+          "ase": [
+            "A.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check fluid level with a dipstick",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Warm engine; level ground; correct selector position",
+              "checkbox": true
+            },
+            {
+              "text": "Wipe and reinsert dipstick; read level",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "level",
+              "type": "select",
+              "label": "Fluid level",
+              "required": true,
+              "options": [
+                "Full",
+                "Low",
+                "High"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 14,
+          "legacyJob": "AT-14",
+          "ase": [
+            "A.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Research vehicle and service information",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Locate system operation info",
+              "checkbox": true
+            },
+            {
+              "text": "Locate service history",
+              "checkbox": true
+            },
+            {
+              "text": "Locate service precautions",
+              "checkbox": true
+            },
+            {
+              "text": "Locate TSBs; attach one",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "system",
+              "type": "textarea",
+              "label": "System operation notes",
+              "required": true
+            },
+            {
+              "id": "precautions",
+              "type": "textarea",
+              "label": "Service precautions",
+              "required": true
+            },
+            {
+              "id": "tsb",
+              "type": "text",
+              "label": "TSB #(s)",
+              "required": true,
+              "mono": true
+            }
+          ]
+        },
+        {
+          "job": 15,
+          "legacyJob": "AT-15",
+          "ase": [
+            "A.1",
+            "A.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify transmission/transaxle make, model & configuration",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the transmission/transaxle make, model, and configuration",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "makemodel",
+              "type": "text",
+              "label": "Trans make / model / type",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/concerns",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 16,
+          "legacyJob": "16",
+          "ase": [
+            "FND PVS.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Work orders, time sheets, order parts (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Complete the work order form",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "pay",
+              "type": "textarea",
+              "label": "Hourly vs flat-rate pay difference",
+              "required": true
+            },
+            {
+              "id": "parts",
+              "type": "textarea",
+              "label": "Sources/methods for ordering parts",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 17,
+          "legacyJob": "17",
+          "ase": [
+            "A.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check fluid level with a dipstick",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Warm engine; level ground; correct selector position",
+              "checkbox": true
+            },
+            {
+              "text": "Wipe and reinsert dipstick; read level",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "level",
+              "type": "select",
+              "label": "Fluid level",
+              "required": true,
+              "options": [
+                "Full",
+                "Low",
+                "High"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 18,
+          "legacyJob": "AT-18",
+          "ase": [
+            "FND TE.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Demonstrate proper use of precision measuring tools (elective)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Demonstrate proper use of micrometer, dial indicator, dial caliper across labs",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M3",
+      "title": "Module 3 — Linkage, Diagnosis, Removal & Converter",
+      "labRange": "Labs 19–29",
+      "labs": [
+        {
+          "job": 19,
+          "legacyJob": "AT-19",
+          "ase": [
+            "A.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify and interpret transmission/transaxle concern",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Check fluid; road test through all ranges",
+              "checkbox": true
+            },
+            {
+              "text": "Differentiate engine vs transmission concern",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Concerns noted",
+              "required": true
+            },
+            {
+              "id": "action",
+              "type": "textarea",
+              "label": "Necessary action",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 20,
+          "legacyJob": "20",
+          "ase": [
+            "B.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Servicing shift linkages",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect shift linkage/cable",
+              "checkbox": true
+            },
+            {
+              "text": "Check detents through all positions",
+              "checkbox": true
+            },
+            {
+              "text": "Adjust linkage and gear indicator",
+              "checkbox": true
+            },
+            {
+              "text": "Check/adjust neutral safety switch",
+              "checkbox": true
+            },
+            {
+              "text": "Road test",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Service/repairs required",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 21,
+          "legacyJob": "21",
+          "ase": [
+            "B.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Drain and replace fluid and filter(s)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Exchange fluid; drop and clean pan",
+              "checkbox": true
+            },
+            {
+              "text": "Replace filter and gasket; torque",
+              "checkbox": true
+            },
+            {
+              "text": "Refill and set level",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fluid_type",
+              "type": "text",
+              "label": "ATF type per spec",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 22,
+          "legacyJob": "22",
+          "ase": [
+            "A.14"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose noise and vibration concerns",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Road test or operate on lift to locate noise/vibration source",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Noise/vibration findings and action",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 23,
+          "legacyJob": "23",
+          "ase": [
+            "C.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Transmission cooling inspection and flushing",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect cooler and lines; leak test; flush",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "leak",
+              "type": "select",
+              "label": "Cooler leak test",
+              "required": true,
+              "options": [
+                "No leaks",
+                "Leaks found"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 24,
+          "legacyJob": "24",
+          "ase": [
+            "C.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Remove and reinstall a transmission (RWD)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Review removal precautions",
+              "checkbox": true
+            },
+            {
+              "text": "Disconnect from above; raise vehicle",
+              "checkbox": true
+            },
+            {
+              "text": "Support with jack; unbolt; remove with converter",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect core plugs, rear main seal, dowels, mating surfaces",
+              "checkbox": true
+            },
+            {
+              "text": "Reinstall",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "inspection",
+              "type": "textarea",
+              "label": "Core plug/seal/dowel/mating-surface findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems found",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 25,
+          "legacyJob": "25",
+          "ase": [
+            "A.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check fluid level with a dipstick",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Warm; level; correct position; read dipstick",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "level",
+              "type": "select",
+              "label": "Fluid level",
+              "required": true,
+              "options": [
+                "Full",
+                "Low",
+                "High"
+              ]
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 26,
+          "legacyJob": "AT-26",
+          "ase": [
+            "C.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect converter flex (drive) plate and components",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect converter hub for scoring/wear",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect flex plate, bolts, pilot, pump drive surfaces, end play, crankshaft pilot bore",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Converter/flex-plate findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Service/repairs needed",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 27,
+          "legacyJob": "27",
+          "ase": [
+            "B.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and replace external seals, gaskets, and bushings",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect extension housing for leaks/cracks",
+              "checkbox": true
+            },
+            {
+              "text": "Replace output shaft bushing and seal",
+              "checkbox": true
+            },
+            {
+              "text": "Service speedometer seals/o-rings and gears",
+              "checkbox": true
+            },
+            {
+              "text": "Reinstall housing with new gasket; torque",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Leakage findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Seals/gaskets/bushings replaced",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 28,
+          "legacyJob": "AT-28",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose gear reduction/multiplication (power flow)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Locate power-flow application chart",
+              "checkbox": true
+            },
+            {
+              "text": "Identify driving/driven/held members for problem gears",
+              "checkbox": true
+            },
+            {
+              "text": "Note related symptoms",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "flow1",
+              "type": "textarea",
+              "label": "Problem #1: driving/driven/held + symptoms",
+              "required": true
+            },
+            {
+              "id": "flow2",
+              "type": "textarea",
+              "label": "Problem #2: driving/driven/held + symptoms",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 29,
+          "legacyJob": "29",
+          "ase": [
+            "A.11"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Lock-up converter system tests",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify warning lamp; retrieve DTCs",
+              "checkbox": true
+            },
+            {
+              "text": "Road test; activate lock-up solenoid; watch rpm drop",
+              "checkbox": true
+            },
+            {
+              "text": "Verify release; bench-test solenoid resistance",
+              "checkbox": true
+            },
+            {
+              "text": "Replace solenoid if needed",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "sol_res",
+              "type": "number",
+              "label": "Lock-up solenoid resistance",
+              "unit": "ohm",
+              "required": false,
+              "min": 0,
+              "max": 100,
+              "step": 0.1
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues and action",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M4",
+      "title": "Module 4 — Electronic Diagnosis & CVT/Hybrid Theory",
+      "labRange": "Labs 30–34",
+      "labs": [
+        {
+          "job": 30,
+          "legacyJob": "30",
+          "ase": [
+            "A.13",
+            "A.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose electronic transmission/transaxle control systems",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Visual inspection of sensors, connectors, harnesses",
+              "checkbox": true
+            },
+            {
+              "text": "Scan and record engine + transmission DTCs and descriptions",
+              "checkbox": true
+            },
+            {
+              "text": "Determine service/repairs",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "dtcs",
+              "type": "textarea",
+              "label": "DTCs and descriptions recorded",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems/issues",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Service/repairs required",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 31,
+          "legacyJob": "31",
+          "ase": [
+            "B.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Testing electrical / electronic components",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Road test to verify concern",
+              "checkbox": true
+            },
+            {
+              "text": "Locate sensors/solenoids/modules/wiring diagrams",
+              "checkbox": true
+            },
+            {
+              "text": "Visual inspection of wires/connectors",
+              "checkbox": true
+            },
+            {
+              "text": "Retrieve DTCs; follow diagnostic procedure",
+              "checkbox": true
+            },
+            {
+              "text": "Test fuses, grounds, resistance, voltage drop; test components",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Component test findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Service/repairs required",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 32,
+          "legacyJob": "32",
+          "ase": [
+            "B.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Testing electrical / electronic components",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Locate and test electrical/electronic components per procedure",
+              "checkbox": true
+            },
+            {
+              "text": "Measure resistance and voltage drop; test grounds/fuses",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Component test findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Service/repairs required",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 33,
+          "legacyJob": "AT-33",
+          "ase": [
+            "C.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Describe operational characteristics of a CVT (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Describe the operational characteristics of a CVT",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "desc",
+              "type": "textarea",
+              "label": "CVT operational characteristics",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 34,
+          "legacyJob": "AT-34",
+          "ase": [
+            "C.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Describe operational characteristics of a hybrid drivetrain (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Describe the operational characteristics of a hybrid vehicle drivetrain",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "desc",
+              "type": "textarea",
+              "label": "Hybrid drivetrain operational characteristics",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M5",
+      "title": "Module 5 — Pressure, Stall, Transaxle Removal & Converter Testing",
+      "labRange": "Labs 35–39",
+      "labs": [
+        {
+          "job": 35,
+          "legacyJob": "35",
+          "ase": [
+            "A.12"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Pressure testing an automatic transmission (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Obtain pressure specs and operating conditions",
+              "checkbox": true
+            },
+            {
+              "text": "Connect gauges to pressure taps (and vacuum if modulator)",
+              "checkbox": true
+            },
+            {
+              "text": "Record pressures across gears/conditions",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "spec",
+              "type": "text",
+              "label": "Pressure spec reference",
+              "required": true,
+              "mono": true
+            },
+            {
+              "id": "readings",
+              "type": "textarea",
+              "label": "Gear / pressure / vacuum readings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems and repairs",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 36,
+          "legacyJob": "36",
+          "ase": [
+            "C.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Remove and reinstall a transaxle (FWD)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Review removal precautions",
+              "checkbox": true
+            },
+            {
+              "text": "Disconnect from above; raise vehicle",
+              "checkbox": true
+            },
+            {
+              "text": "Support; unbolt; remove with converter",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect core plugs, rear seal, dowels, mating surfaces",
+              "checkbox": true
+            },
+            {
+              "text": "Reinstall",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "inspection",
+              "type": "textarea",
+              "label": "Inspection findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems found",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 37,
+          "legacyJob": "AT-37",
+          "ase": [
+            "C.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspection and testing of a torque converter (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Inspect converter hub",
+              "checkbox": true
+            },
+            {
+              "text": "Check stator-to-turbine and stator-to-impeller interference",
+              "checkbox": true
+            },
+            {
+              "text": "Measure converter end play with dial indicator",
+              "checkbox": true
+            },
+            {
+              "text": "Leak test (if drain plug present)",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "endplay",
+              "type": "number",
+              "label": "Converter end play measured",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Converter test findings",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 38,
+          "legacyJob": "38",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform stall test (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify manufacturer permits stall testing; obtain procedure",
+              "checkbox": true
+            },
+            {
+              "text": "Block wheels; set brake; connect tach; instructor present",
+              "checkbox": true
+            },
+            {
+              "text": "Record stall rpm in each range",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "results",
+              "type": "textarea",
+              "label": "Stall results (Drive/D3/D2/D1/Reverse)",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Problems and action",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 39,
+          "legacyJob": "39",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Pressure testing; diagnose pressure concerns (Pascal's Law) (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Obtain pressure specs; connect gauges",
+              "checkbox": true
+            },
+            {
+              "text": "Record pressures across gears",
+              "checkbox": true
+            },
+            {
+              "text": "Use clutch/band application and hydraulic circuit charts",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose pressure concerns using Pascal's Law",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "readings",
+              "type": "textarea",
+              "label": "Gear / pressure / vacuum readings",
+              "required": true
+            },
+            {
+              "id": "diagnosis",
+              "type": "textarea",
+              "label": "Pressure-concern diagnosis and action",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M6",
+      "title": "Module 6 — Rebuild (unit 1)",
+      "labRange": "Lab 40",
+      "labs": [
+        {
+          "job": 40,
+          "legacyJob": "40",
+          "ase": [
+            "C.7",
+            "C.8",
+            "C.9",
+            "C.10",
+            "C.11",
+            "C.12",
+            "C.13",
+            "C.14",
+            "C.15",
+            "C.16",
+            "C.17",
+            "C.20",
+            "C.21",
+            "C.22",
+            "C.23"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disassemble, inspect, service, and reassemble an automatic transmission",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Measure input-shaft end play and record",
+              "checkbox": true
+            },
+            {
+              "text": "Disassemble the transmission/transaxle into major units per procedure; keep in order",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect planetary gearsets (mesh, splines, carriers, end play)",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect thrust washers, bearings, and bushings",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect shafts, output shaft, and driving shells for wear/damage",
+              "checkbox": true
+            },
+            {
+              "text": "[Valve body] disassemble, clean, inspect valves/bores/check balls; reassemble and torque",
+              "checkbox": true
+            },
+            {
+              "text": "[Servo & accumulator] remove covers/pistons/springs; inspect seals, bores, pistons",
+              "checkbox": true
+            },
+            {
+              "text": "[Case] clean and inspect passages, bores, sealing surfaces, valve-body deck warpage, threads, vents",
+              "checkbox": true
+            },
+            {
+              "text": "[Apply devices] inspect overrunning clutches, bands, clutch packs (steels/frictions/pressure plates/springs/drums)",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble clutch packs with new seals; measure clutch pack clearance",
+              "checkbox": true
+            },
+            {
+              "text": "Air test clutch packs and servo assemblies",
+              "checkbox": true
+            },
+            {
+              "text": "[Parking pawl] inspect pawl, pivot, spring, actuating rod",
+              "checkbox": true
+            },
+            {
+              "text": "[Oil pump] inspect and measure pump gears/clearances; reseal; torque",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble transmission/transaxle; verify input shaft turns; band adjust; install converter",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "endplay_spec",
+              "type": "number",
+              "label": "Input-shaft end play — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "endplay_meas",
+              "type": "number",
+              "label": "Input-shaft end play — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "planetary",
+              "type": "textarea",
+              "label": "Planetary/thrust/shaft inspection findings",
+              "required": true
+            },
+            {
+              "id": "valvebody",
+              "type": "textarea",
+              "label": "Valve body inspection findings",
+              "required": true
+            },
+            {
+              "id": "servo",
+              "type": "textarea",
+              "label": "Servo/accumulator/case findings",
+              "required": true
+            },
+            {
+              "id": "apply",
+              "type": "textarea",
+              "label": "Apply devices (bands/clutch packs/drums) findings",
+              "required": true
+            },
+            {
+              "id": "clutch_spec",
+              "type": "number",
+              "label": "Clutch pack clearance — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "clutch_meas",
+              "type": "number",
+              "label": "Clutch pack clearance — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "pump",
+              "type": "textarea",
+              "label": "Oil pump measurements and findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Overall problems/concerns and repairs",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M7",
+      "title": "Module 7 — Rebuild (unit 2)",
+      "labRange": "Lab 41",
+      "labs": [
+        {
+          "job": 41,
+          "legacyJob": "41",
+          "ase": [
+            "C.7",
+            "C.8",
+            "C.9",
+            "C.10",
+            "C.11",
+            "C.12",
+            "C.13",
+            "C.14",
+            "C.15",
+            "C.16",
+            "C.17",
+            "C.20",
+            "C.21",
+            "C.22",
+            "C.23"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disassemble, inspect, service, and reassemble an automatic transmission",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Measure input-shaft end play and record",
+              "checkbox": true
+            },
+            {
+              "text": "Disassemble the transmission/transaxle into major units per procedure; keep in order",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect planetary gearsets (mesh, splines, carriers, end play)",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect thrust washers, bearings, and bushings",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect shafts, output shaft, and driving shells for wear/damage",
+              "checkbox": true
+            },
+            {
+              "text": "[Valve body] disassemble, clean, inspect valves/bores/check balls; reassemble and torque",
+              "checkbox": true
+            },
+            {
+              "text": "[Servo & accumulator] remove covers/pistons/springs; inspect seals, bores, pistons",
+              "checkbox": true
+            },
+            {
+              "text": "[Case] clean and inspect passages, bores, sealing surfaces, valve-body deck warpage, threads, vents",
+              "checkbox": true
+            },
+            {
+              "text": "[Apply devices] inspect overrunning clutches, bands, clutch packs (steels/frictions/pressure plates/springs/drums)",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble clutch packs with new seals; measure clutch pack clearance",
+              "checkbox": true
+            },
+            {
+              "text": "Air test clutch packs and servo assemblies",
+              "checkbox": true
+            },
+            {
+              "text": "[Parking pawl] inspect pawl, pivot, spring, actuating rod",
+              "checkbox": true
+            },
+            {
+              "text": "[Oil pump] inspect and measure pump gears/clearances; reseal; torque",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble transmission/transaxle; verify input shaft turns; band adjust; install converter",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "endplay_spec",
+              "type": "number",
+              "label": "Input-shaft end play — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "endplay_meas",
+              "type": "number",
+              "label": "Input-shaft end play — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "planetary",
+              "type": "textarea",
+              "label": "Planetary/thrust/shaft inspection findings",
+              "required": true
+            },
+            {
+              "id": "valvebody",
+              "type": "textarea",
+              "label": "Valve body inspection findings",
+              "required": true
+            },
+            {
+              "id": "servo",
+              "type": "textarea",
+              "label": "Servo/accumulator/case findings",
+              "required": true
+            },
+            {
+              "id": "apply",
+              "type": "textarea",
+              "label": "Apply devices (bands/clutch packs/drums) findings",
+              "required": true
+            },
+            {
+              "id": "clutch_spec",
+              "type": "number",
+              "label": "Clutch pack clearance — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "clutch_meas",
+              "type": "number",
+              "label": "Clutch pack clearance — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "pump",
+              "type": "textarea",
+              "label": "Oil pump measurements and findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Overall problems/concerns and repairs",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M8",
+      "title": "Module 8 — Rebuild (unit 3)",
+      "labRange": "Lab 42",
+      "labs": [
+        {
+          "job": 42,
+          "legacyJob": "42",
+          "ase": [
+            "C.7",
+            "C.8",
+            "C.9",
+            "C.10",
+            "C.11",
+            "C.12",
+            "C.13",
+            "C.14",
+            "C.15",
+            "C.16",
+            "C.17",
+            "C.20",
+            "C.21",
+            "C.22",
+            "C.23"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disassemble, inspect, service, and reassemble an automatic transmission",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Measure input-shaft end play and record",
+              "checkbox": true
+            },
+            {
+              "text": "Disassemble the transmission/transaxle into major units per procedure; keep in order",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect planetary gearsets (mesh, splines, carriers, end play)",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect thrust washers, bearings, and bushings",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect shafts, output shaft, and driving shells for wear/damage",
+              "checkbox": true
+            },
+            {
+              "text": "[Valve body] disassemble, clean, inspect valves/bores/check balls; reassemble and torque",
+              "checkbox": true
+            },
+            {
+              "text": "[Servo & accumulator] remove covers/pistons/springs; inspect seals, bores, pistons",
+              "checkbox": true
+            },
+            {
+              "text": "[Case] clean and inspect passages, bores, sealing surfaces, valve-body deck warpage, threads, vents",
+              "checkbox": true
+            },
+            {
+              "text": "[Apply devices] inspect overrunning clutches, bands, clutch packs (steels/frictions/pressure plates/springs/drums)",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble clutch packs with new seals; measure clutch pack clearance",
+              "checkbox": true
+            },
+            {
+              "text": "Air test clutch packs and servo assemblies",
+              "checkbox": true
+            },
+            {
+              "text": "[Parking pawl] inspect pawl, pivot, spring, actuating rod",
+              "checkbox": true
+            },
+            {
+              "text": "[Oil pump] inspect and measure pump gears/clearances; reseal; torque",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble transmission/transaxle; verify input shaft turns; band adjust; install converter",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "endplay_spec",
+              "type": "number",
+              "label": "Input-shaft end play — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "endplay_meas",
+              "type": "number",
+              "label": "Input-shaft end play — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "planetary",
+              "type": "textarea",
+              "label": "Planetary/thrust/shaft inspection findings",
+              "required": true
+            },
+            {
+              "id": "valvebody",
+              "type": "textarea",
+              "label": "Valve body inspection findings",
+              "required": true
+            },
+            {
+              "id": "servo",
+              "type": "textarea",
+              "label": "Servo/accumulator/case findings",
+              "required": true
+            },
+            {
+              "id": "apply",
+              "type": "textarea",
+              "label": "Apply devices (bands/clutch packs/drums) findings",
+              "required": true
+            },
+            {
+              "id": "clutch_spec",
+              "type": "number",
+              "label": "Clutch pack clearance — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "clutch_meas",
+              "type": "number",
+              "label": "Clutch pack clearance — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "pump",
+              "type": "textarea",
+              "label": "Oil pump measurements and findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Overall problems/concerns and repairs",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-M9",
+      "title": "Module 9 — Rebuild (unit 4)",
+      "labRange": "Lab 43",
+      "labs": [
+        {
+          "job": 43,
+          "legacyJob": "43",
+          "ase": [
+            "C.7",
+            "C.8",
+            "C.9",
+            "C.10",
+            "C.11",
+            "C.12",
+            "C.13",
+            "C.14",
+            "C.15",
+            "C.16",
+            "C.17",
+            "C.20",
+            "C.21",
+            "C.22",
+            "C.23"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disassemble, inspect, service, and reassemble an automatic transmission",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Measure input-shaft end play and record",
+              "checkbox": true
+            },
+            {
+              "text": "Disassemble the transmission/transaxle into major units per procedure; keep in order",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect planetary gearsets (mesh, splines, carriers, end play)",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and inspect thrust washers, bearings, and bushings",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect shafts, output shaft, and driving shells for wear/damage",
+              "checkbox": true
+            },
+            {
+              "text": "[Valve body] disassemble, clean, inspect valves/bores/check balls; reassemble and torque",
+              "checkbox": true
+            },
+            {
+              "text": "[Servo & accumulator] remove covers/pistons/springs; inspect seals, bores, pistons",
+              "checkbox": true
+            },
+            {
+              "text": "[Case] clean and inspect passages, bores, sealing surfaces, valve-body deck warpage, threads, vents",
+              "checkbox": true
+            },
+            {
+              "text": "[Apply devices] inspect overrunning clutches, bands, clutch packs (steels/frictions/pressure plates/springs/drums)",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble clutch packs with new seals; measure clutch pack clearance",
+              "checkbox": true
+            },
+            {
+              "text": "Air test clutch packs and servo assemblies",
+              "checkbox": true
+            },
+            {
+              "text": "[Parking pawl] inspect pawl, pivot, spring, actuating rod",
+              "checkbox": true
+            },
+            {
+              "text": "[Oil pump] inspect and measure pump gears/clearances; reseal; torque",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble transmission/transaxle; verify input shaft turns; band adjust; install converter",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "endplay_spec",
+              "type": "number",
+              "label": "Input-shaft end play — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "endplay_meas",
+              "type": "number",
+              "label": "Input-shaft end play — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.1,
+              "step": 0.001
+            },
+            {
+              "id": "planetary",
+              "type": "textarea",
+              "label": "Planetary/thrust/shaft inspection findings",
+              "required": true
+            },
+            {
+              "id": "valvebody",
+              "type": "textarea",
+              "label": "Valve body inspection findings",
+              "required": true
+            },
+            {
+              "id": "servo",
+              "type": "textarea",
+              "label": "Servo/accumulator/case findings",
+              "required": true
+            },
+            {
+              "id": "apply",
+              "type": "textarea",
+              "label": "Apply devices (bands/clutch packs/drums) findings",
+              "required": true
+            },
+            {
+              "id": "clutch_spec",
+              "type": "number",
+              "label": "Clutch pack clearance — spec",
+              "unit": "in",
+              "required": false,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "clutch_meas",
+              "type": "number",
+              "label": "Clutch pack clearance — measured",
+              "unit": "in",
+              "required": true,
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001
+            },
+            {
+              "id": "pump",
+              "type": "textarea",
+              "label": "Oil pump measurements and findings",
+              "required": true
+            },
+            {
+              "id": "problems",
+              "type": "textarea",
+              "label": "Overall problems/concerns and repairs",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AT-CLEAN",
+      "title": "Cleaning — Shop Clean-up (Foundational)",
+      "labRange": "Cleaning 1–3",
+      "labs": [
+        {
+          "job": 44,
+          "legacyJob": "1",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay with water and squeegee",
+              "checkbox": true
+            },
+            {
+              "text": "Clean nearby tables",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Note anything needing attention",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 45,
+          "legacyJob": "2",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay with water and squeegee",
+              "checkbox": true
+            },
+            {
+              "text": "Clean nearby tables",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Note anything needing attention",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 46,
+          "legacyJob": "3",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay with water and squeegee",
+              "checkbox": true
+            },
+            {
+              "text": "Clean nearby tables",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Note anything needing attention",
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

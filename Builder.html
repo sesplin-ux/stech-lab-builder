@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STECH — Job Sheet Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+<style>/* ============================================================
+   Southwest Technical College — Design System
+   Global stylesheet entry point.
+   Consumers link THIS file only. It reaches every token,
+   font-face, and base default in the system.
+   ============================================================ */
+
+/* ============================================================
+   Southwest Technical College — Font Faces
+   Display : Tungsten (Book)  — provided .otf
+   Body    : Roboto (Regular/Medium) — provided .ttf
+   Accent  : Roboto Condensed — loaded from Google Fonts
+             (SUBSTITUTION: no condensed binary was provided;
+              the guide lists "Roboto Condensed" as a brand face.
+              Google Fonts is the authentic upstream source.)
+   ============================================================ */
+
+/* Roboto Condensed — brand accent face, sourced from Google Fonts */
+/* cyrillic-ext */
+/* cyrillic */
+/* greek-ext */
+/* greek */
+/* vietnamese */
+/* latin-ext */
+/* latin */
+/* cyrillic-ext */
+/* cyrillic */
+/* greek-ext */
+/* greek */
+/* vietnamese */
+/* latin-ext */
+/* latin */
+/* cyrillic-ext */
+/* cyrillic */
+/* greek-ext */
+/* greek */
+/* vietnamese */
+/* latin-ext */
+/* latin */
+/* ============================================================
+   Southwest Technical College — Color Tokens
+   Source: STECH Branding Style Guide (official palette)
+   ------------------------------------------------------------
+   Official brand colors:
+     STECH Blue  #047BC1  (Pantone Process Blue)
+     STECH Gray  #656E7B  (Pantone Cool Grey 2 C)
+     Ursa Gray   #424242  (Pantone Black 7 C)
+     Ursa White  #DDDDDD
+   Scales and semantic status colors are derived harmoniously
+   from these four brand anchors.
+   ============================================================ */
+
+:root {
+  /* ---- Brand anchors (verbatim from guide) ---- */
+  --stech-blue: #047BC1;
+  --stech-gray: #656E7B;
+  --ursa-gray: #424242;
+  --ursa-white: #DDDDDD;
+
+  /* ---- Blue scale (primary) ---- */
+  --blue-800: #023a5c;
+  --blue-700: #024a76;
+  --blue-600: #036098;
+  --blue-500: #047BC1;   /* STECH Blue */
+  --blue-400: #3d9bd2;
+  --blue-300: #9bcdeb;
+  --blue-200: #cde6f5;
+  --blue-100: #e6f2fa;
+  --blue-50:  #f2f8fd;
+
+  /* ---- Neutral / gray scale ---- */
+  --gray-900: #2b2b2b;
+  --gray-800: #424242;   /* Ursa Gray */
+  --gray-700: #545b64;
+  --gray-600: #656e7b;   /* STECH Gray */
+  --gray-500: #8a919b;
+  --gray-400: #b4b9c0;
+  --gray-300: #dddddd;   /* Ursa White */
+  --gray-200: #e8eaed;
+  --gray-100: #f2f3f5;
+  --gray-50:  #f8f9fa;
+  --white:    #ffffff;
+  --black:    #1a1a1a;
+
+  /* ---- Semantic status (derived, harmonized to brand) ---- */
+  --green-600: #2e7d46;
+  --green-100: #e6f4ea;
+  --amber-600: #b26a00;
+  --amber-100: #fbf0dc;
+  --red-600:   #c62828;
+  --red-100:   #fdecea;
+
+  /* ============================================================
+     SEMANTIC ALIASES — reference these in components/UI
+     ============================================================ */
+
+  /* Text */
+  --text-strong:   var(--gray-800);   /* headings, primary text */
+  --text-body:     var(--gray-700);   /* default body copy */
+  --text-muted:    var(--gray-600);   /* secondary / meta */
+  --text-subtle:   var(--gray-500);   /* placeholder / disabled */
+  --text-on-blue:  var(--white);
+  --text-link:     var(--blue-600);
+  --text-link-hover: var(--blue-700);
+
+  /* Surfaces */
+  --surface-page:    var(--gray-50);
+  --surface-card:    var(--white);
+  --surface-sunken:  var(--gray-100);
+  --surface-hover:   var(--gray-100);
+  --surface-brand:   var(--blue-500);
+  --surface-brand-subtle: var(--blue-100);
+  --surface-inverse: var(--gray-800);
+
+  /* Borders */
+  --border-subtle:  var(--gray-200);
+  --border-default: var(--gray-300);
+  --border-strong:  var(--gray-400);
+  --border-brand:   var(--blue-500);
+  --border-focus:   var(--blue-500);
+
+  /* Interactive — primary (blue) */
+  --action-primary:        var(--blue-500);
+  --action-primary-hover:  var(--blue-600);
+  --action-primary-active: var(--blue-700);
+
+  /* Interactive — neutral */
+  --action-neutral:        var(--gray-600);
+  --action-neutral-hover:  var(--gray-700);
+
+  /* Status — surfaces + text pairs */
+  --status-success:     var(--green-600);
+  --status-success-bg:  var(--green-100);
+  --status-warning:     var(--amber-600);
+  --status-warning-bg:  var(--amber-100);
+  --status-error:       var(--red-600);
+  --status-error-bg:    var(--red-100);
+  --status-info:        var(--blue-600);
+  --status-info-bg:     var(--blue-100);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(4, 123, 193, 0.35);
+}
+
+/* ============================================================
+   Southwest Technical College — Typography Tokens
+   Display : Tungsten (Book)   — condensed, all-caps headlines
+   Body    : Roboto            — UI + long-form copy
+   Accent  : Roboto Condensed  — labels, table headers, eyebrows
+   ============================================================ */
+
+:root {
+  /* ---- Families ---- */
+  --font-display: "Tungsten", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Roboto", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-condensed: "Roboto Condensed", "Roboto", Arial, sans-serif;
+
+  /* ---- Weights ---- */
+  --fw-regular: 400; /* @kind font */
+  --fw-medium: 500; /* @kind font */
+  --fw-bold: 700; /* @kind font */
+
+  /* ---- Type scale (rem, 16px base) ---- */
+  --fs-display-xl: 72px;   /* hero — Tungsten */
+  --fs-display-lg: 54px;
+  --fs-display-md: 40px;
+  --fs-h1: 32px;
+  --fs-h2: 26px;
+  --fs-h3: 21px;
+  --fs-h4: 18px;
+  --fs-body-lg: 17px;
+  --fs-body: 15px;
+  --fs-body-sm: 13px;
+  --fs-caption: 12px;
+  --fs-eyebrow: 12px;
+
+  /* ---- Line heights ---- */
+  --lh-tight: 1.05;    /* @kind other */
+  --lh-heading: 1.2;   /* @kind other */
+  --lh-snug: 1.4;      /* @kind other */
+  --lh-body: 1.6;      /* @kind other */
+
+  /* ---- Letter spacing ---- */
+  --ls-display: 0.01em; /* @kind other */
+  --ls-eyebrow: 0.12em;   /* @kind other */
+  --ls-tight: -0.01em;  /* @kind other */
+  --ls-normal: 0;       /* @kind other */
+}
+
+/* ============================================================
+   Southwest Technical College — Spacing & Layout Tokens
+   4px base grid.
+   ============================================================ */
+
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ---- Layout ---- */
+  --container-max: 1200px;
+  --container-narrow: 720px;
+  --sidebar-width: 256px;
+  --header-height: 64px;
+  --field-height: 42px;
+  --field-height-sm: 34px;
+}
+
+/* ============================================================
+   Southwest Technical College — Effects Tokens
+   Radii, borders, shadows, transitions.
+   Institutional / utilitarian: modest radii, soft flat shadows.
+   ============================================================ */
+
+:root {
+  /* ---- Corner radii ---- */
+  --radius-none: 0;
+  --radius-sm: 3px;
+  --radius-md: 6px;    /* default: cards, inputs, buttons */
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* ---- Border widths ---- */
+  --border-width: 1px;
+  --border-width-thick: 2px;
+  --border-accent: 3px;   /* left/top brand accent bar */
+
+  /* ---- Shadows (soft, cool-tinted) ---- */
+  --shadow-xs: 0 1px 2px rgba(42, 47, 56, 0.06);
+  --shadow-sm: 0 1px 3px rgba(42, 47, 56, 0.10), 0 1px 2px rgba(42, 47, 56, 0.06);
+  --shadow-md: 0 4px 12px rgba(42, 47, 56, 0.10);
+  --shadow-lg: 0 12px 32px rgba(42, 47, 56, 0.14);
+  --shadow-focus: var(--focus-ring);
+
+  /* ---- Transitions ---- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --duration-fast: 120ms; /* @kind other */
+  --duration-base: 180ms; /* @kind other */
+  --transition-base: all var(--duration-base) var(--ease-standard); /* @kind other */
+}
+
+/* ============================================================
+   Southwest Technical College — Base Element Defaults
+   Applies brand type + color to bare HTML. Consumers get sane
+   defaults just by linking styles.css.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-regular);
+  color: var(--text-strong);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-display);
+  text-transform: uppercase;
+  margin: 0 0 var(--space-4);
+}
+h1 { font-size: var(--fs-h1); line-height: var(--lh-tight); }
+h2 { font-size: var(--fs-h2); }
+h3 { font-size: var(--fs-h3); }
+h4 { font-size: var(--fs-h4); }
+
+p { margin: 0 0 var(--space-4); }
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+}
+
+/* Condensed all-caps eyebrow / label helper */
+.eyebrow {
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+code, pre {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+</style>
+<style>
+  :root{
+    /* Internal names remapped onto STECH design-system tokens */
+    --bg:var(--surface-page); --panel:var(--surface-card);
+    --ink:var(--text-strong); --steel:var(--stech-gray);
+    --line:var(--border-default); --accent:var(--stech-blue); --accent-ink:var(--blue-700);
+    --ok:var(--status-success); --warn:var(--status-warning);
+    --mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:var(--font-body);
+    --display:var(--font-display); --cond:var(--font-condensed);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text-body);font-family:var(--sans);font-size:15px;line-height:var(--lh-body)}
+  a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 16px 64px}
+  header{background:var(--stech-blue);color:#fff;border-bottom:3px solid var(--blue-700)}
+  .bar{max-width:1120px;margin:0 auto;padding:16px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .badge{background:#fff;color:var(--stech-blue);font-family:var(--cond);font-weight:700;padding:5px 10px;font-size:13px;letter-spacing:.08em;border-radius:var(--radius-sm)}
+  h1{font-family:var(--display);font-size:26px;font-weight:400;letter-spacing:.01em;text-transform:uppercase;line-height:var(--lh-tight)}
+  .bar small{font-family:var(--cond);opacity:.8;letter-spacing:.08em;text-transform:uppercase;font-size:11px;margin-left:auto;font-weight:500}
+  nav{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;gap:4px;transform:translateY(1px);flex-wrap:wrap}
+  nav button{font-family:var(--cond);border:1px solid var(--line);border-bottom:none;background:var(--gray-100);padding:10px 18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px;cursor:pointer;color:var(--text-muted);border-radius:var(--radius-md) var(--radius-md) 0 0;transition:var(--transition-base)}
+  nav button:hover{background:var(--gray-200);color:var(--text-strong)}
+  nav button[aria-selected="true"]{background:var(--panel);color:var(--stech-blue);border-top:3px solid var(--stech-blue)}
+  nav button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+  .navband{background:var(--bg);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  main{background:var(--panel);border:1px solid var(--line);border-top:none;padding:28px 28px 40px;border-radius:0 0 var(--radius-md) var(--radius-md);box-shadow:var(--shadow-sm)}
+  h2{font-family:var(--display);font-size:26px;letter-spacing:.01em;text-transform:uppercase;color:var(--text-strong);border-bottom:2px solid var(--border-strong);padding-bottom:8px;margin-bottom:18px;line-height:var(--lh-tight)}
+  h3{font-family:var(--cond);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);font-weight:700;margin:20px 0 10px}
+  .hint{font-size:13px;color:var(--text-muted);margin-bottom:18px}
+  .grid{display:grid;gap:14px}
+  @media(min-width:760px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}}
+  label{display:block;font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px}
+  input[type=text],input[type=number],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--white);font:inherit;color:var(--text-strong);transition:var(--transition-base)}
+  input:disabled,select:disabled,textarea:disabled{background:var(--gray-100);color:var(--text-subtle)}
+  input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--border-focus);box-shadow:var(--focus-ring)}
+  button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+  .measure input{font-family:var(--mono);font-size:16px}
+  .unit{font-family:var(--mono);font-size:12px;color:var(--text-muted);margin-left:6px}
+  .req{color:var(--stech-blue);font-weight:700}
+  .btn{font-family:var(--cond);background:var(--action-primary);color:#fff;border:1px solid transparent;padding:11px 22px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-size:12px;cursor:pointer;border-radius:var(--radius-md);transition:var(--transition-base)}
+  .btn:hover{background:var(--action-primary-hover)}
+  .btn:active{transform:translateY(1px)}
+  .btn.accent{background:var(--action-primary)}
+  .btn.accent:hover{background:var(--action-primary-hover)}
+  .btn.ghost{background:#fff;color:var(--text-strong);border:1px solid var(--border-strong)}
+  .btn.ghost:hover{background:var(--surface-hover)}
+  .btn.sm{padding:6px 12px;font-size:11px}
+  .btn.danger{background:#fff;color:var(--status-error);border:1px solid var(--status-error)}
+  .btn.danger:hover{background:var(--status-error-bg)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn:disabled:hover{background:var(--action-primary)}
+  .chip{display:inline-block;font-family:var(--cond);font-size:11px;font-weight:700;border:1.5px solid var(--blue-700);color:var(--blue-700);padding:2px 8px;letter-spacing:.05em;border-radius:var(--radius-pill)}
+  .pill{display:inline-block;font-family:var(--cond);font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--radius-pill);letter-spacing:.05em;text-transform:capitalize}
+  .p-sub{background:var(--status-info-bg);color:var(--blue-700)} .p-grade{background:var(--status-success-bg);color:var(--status-success)}
+  .p-rev{background:var(--status-warning-bg);color:var(--status-warning)} .p-draft{background:var(--gray-200);color:var(--text-muted)}
+  .err{color:var(--status-error);font-size:12px;font-weight:700;margin-top:4px;display:none}
+  .invalid .err{display:block}
+  .invalid input,.invalid select,.invalid textarea{border-color:var(--status-error)}
+  .wo{border:1px solid var(--border-strong);border-radius:var(--radius-md);margin-bottom:22px;overflow:hidden;box-shadow:var(--shadow-xs)}
+  .wo-top{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--border-default);background:var(--gray-50)}
+  .wo-cell{padding:9px 14px;border-right:1px solid var(--border-subtle);flex:1;min-width:110px}
+  .wo-cell:last-child{border-right:none}
+  .wo-cell b{display:block;font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);font-weight:700}
+  .wo-cell span{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text-strong)}
+  .wo-title{padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .wo-num{font-family:var(--display);font-size:34px;font-weight:400;color:var(--stech-blue);letter-spacing:.01em;line-height:1}
+  .wo-desc{font-weight:500;font-size:17px;max-width:60ch;color:var(--text-strong)}
+  .step{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--border-subtle);border-left:3px solid var(--stech-gray);border-radius:var(--radius-sm);margin-bottom:10px;background:var(--gray-50)}
+  .step input[type=checkbox]{width:20px;height:20px;accent-color:var(--stech-blue);flex-shrink:0;margin-top:2px}
+  .step .stext{flex:1}
+  .step .snum{font-family:var(--mono);font-weight:700;color:var(--text-muted);margin-right:6px}
+  .step.nocheck{border-left-color:var(--border-default);background:#fff}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;text-align:left;color:var(--text-muted);font-weight:700;border-bottom:2px solid var(--border-strong);padding:8px}
+  td{padding:10px 8px;border-bottom:1px solid var(--border-subtle);vertical-align:middle}
+  tr.rowbtn{cursor:pointer} tr.rowbtn:hover{background:var(--surface-hover)}
+  .mono{font-family:var(--mono)}
+  .num{text-align:right;font-family:var(--mono);font-weight:700}
+  .cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:26px}
+  .card{border:1px solid var(--border-subtle);border-top:3px solid var(--stech-gray);border-radius:var(--radius-md);padding:16px;background:#fff;box-shadow:var(--shadow-xs)}
+  .card.hot{border-top-color:var(--stech-blue)}
+  .card b{display:block;font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);font-weight:700}
+  .card span{font-family:var(--display);font-size:40px;font-weight:400;color:var(--text-strong);line-height:1.05}
+  .meter{height:8px;background:var(--gray-200);margin-top:8px;border-radius:var(--radius-pill);overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--stech-blue)}
+  dialog{border:none;border-radius:var(--radius-lg);padding:0;max-width:640px;width:92%;box-shadow:var(--shadow-lg);overflow:hidden}
+  dialog::backdrop{background:rgba(42,47,56,.45)}
+  .dlg-h{background:var(--stech-blue);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+  .dlg-h strong{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.01em;text-transform:uppercase}
+  .dlg-h .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+  .dlg-h .btn.ghost:hover{background:rgba(255,255,255,.15)}
+  .dlg-b{padding:18px;max-height:60vh;overflow:auto}
+  .dlg-f{padding:14px 18px;border-top:1px solid var(--border-subtle);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ans{margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--border-default)}
+  .ans b{display:block;font-family:var(--cond);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);font-weight:700}
+  .ans span{font-family:var(--mono);color:var(--text-strong)}
+  .banner{border:1px solid var(--status-success);background:var(--status-success-bg);color:var(--status-success);font-weight:700;padding:12px 14px;border-radius:var(--radius-md);margin-bottom:18px;display:none}
+  .note{border-left:3px solid var(--stech-blue);background:var(--blue-50);padding:12px 14px;font-size:13.5px;margin:16px 0;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+  .lock-note{border-left:3px solid var(--status-success);background:var(--status-success-bg);padding:10px 12px;font-size:13px;margin-bottom:14px;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+  pre{background:var(--gray-900);color:#D9E2EA;padding:16px;overflow:auto;font-size:12.5px;line-height:1.5;border-left:3px solid var(--stech-blue);border-radius:var(--radius-sm)}
+  code{font-family:var(--mono);font-size:.92em}
+  footer{max-width:1120px;margin:14px auto 0;padding:0 16px;font-size:11px;color:var(--text-subtle);letter-spacing:.02em}
+
+  /* ---------- vehicle block ---------- */
+  .veh-block{border:1px dashed var(--border-default);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;background:var(--gray-50)}
+  .radio-row{display:flex;gap:20px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .radio-row label{display:flex;align-items:center;gap:6px;font-family:var(--sans);text-transform:none;font-weight:400;font-size:13.5px;color:var(--text-strong);letter-spacing:0;margin:0}
+  .radio-row input[type=radio]{width:16px;height:16px;accent-color:var(--stech-blue)}
+
+  /* ---------- recent vehicles (student convenience) ---------- */
+  .veh-recent{margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--border-default)}
+  .veh-recent .rv-hint{font-family:var(--sans);text-transform:none;letter-spacing:0;font-weight:400;color:var(--text-subtle);font-size:11px}
+  .rv-chips{display:flex;gap:8px;flex-wrap:wrap}
+  .veh-chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;color:var(--blue-700);background:#fff;border:1px solid var(--blue-200);border-radius:var(--radius-pill);padding:6px 13px;cursor:pointer;transition:var(--transition-base)}
+  .veh-chip:hover{background:var(--blue-50);border-color:var(--stech-blue)}
+  .veh-chip:active{transform:translateY(1px)}
+  .veh-chip .plus{font-family:var(--sans);font-weight:700;color:var(--stech-blue);font-size:15px;line-height:1}
+
+  /* ---------- student notes / spec scratchpad ---------- */
+  .notespanel{border:1px solid var(--border-strong);border-left:3px solid var(--stech-blue);border-radius:var(--radius-md);margin-bottom:20px;background:#fff;overflow:hidden;box-shadow:var(--shadow-xs)}
+  .notes-head{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--blue-50);border:none;padding:12px 16px;font:inherit;cursor:pointer;transition:var(--transition-base)}
+  .notes-head:hover{background:var(--blue-100)}
+  .notes-head b{font-family:var(--cond);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-strong)}
+  .notes-head .n-ico{font-size:15px;line-height:1}
+  .notes-head .n-sub{font-size:12px;color:var(--text-muted)}
+  .notes-head .n-caret{margin-left:auto;color:var(--stech-blue);font-weight:700;font-size:12px}
+  .notes-body{padding:14px 16px}
+  .notes-body textarea{font-family:var(--mono);font-size:13px;line-height:1.5;min-height:96px;resize:vertical}
+  .notes-actions{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+
+  /* ---------- list field ---------- */
+  .list-item{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .list-item span{font-family:var(--mono);color:var(--text-muted);width:22px;flex-shrink:0}
+
+  /* ---------- batching (student) ---------- */
+  .batchbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--border-strong);border-top:3px solid var(--stech-blue);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:20px;background:#fff;box-shadow:var(--shadow-xs)}
+  .batchbar b{font-family:var(--cond);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-strong)}
+  .jobgrid{border:1px solid var(--border-subtle);border-radius:var(--radius-md);margin-bottom:22px;overflow:hidden}
+  .jobgrid-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 10px;flex-wrap:wrap}
+  .jobgrid-head h3{margin:0}
+  .jobstrip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--blue-200);border-left:3px solid var(--stech-blue);background:var(--blue-50);padding:10px 14px;border-radius:var(--radius-md);margin-bottom:22px}
+  .jobstrip .jn{font-family:var(--cond);font-weight:700;color:var(--stech-blue);min-width:70px;letter-spacing:.04em}
+  .jobstrip .jt{flex:1;min-width:160px;font-size:13.5px;font-weight:500;color:var(--text-strong)}
+  .jobstrip .pills{display:flex;gap:6px;flex-wrap:wrap}
+  .jobrow{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border-subtle);flex-wrap:wrap;transition:var(--transition-base)}
+  .jobrow:last-child{border-bottom:none}
+  .jobrow:hover{background:var(--surface-hover)}
+  .jobrow.active{background:var(--blue-50);border-left:3px solid var(--stech-blue);padding-left:11px}
+  .jobrow .jn{font-family:var(--cond);font-weight:700;color:var(--stech-blue);min-width:70px;letter-spacing:.04em}
+  .jobrow .jt{flex:1;min-width:200px;font-size:13.5px;color:var(--text-body)}
+  .jobrow .pills{display:flex;gap:6px;flex-wrap:wrap}
+
+  /* ---------- instructor batches ---------- */
+  .batch-card{border:1px solid var(--border-subtle);border-left:3px solid var(--stech-gray);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;cursor:pointer;background:#fff;transition:var(--transition-base);box-shadow:var(--shadow-xs)}
+  .batch-card:hover{background:var(--surface-hover);border-left-color:var(--stech-blue)}
+  .batch-card b{font-weight:500;font-size:15px;color:var(--text-strong)}
+  .batch-card .meta{font-size:12px;color:var(--text-muted)}
+
+  /* ---------- editor layout ---------- */
+  .ed-wrap{display:grid;gap:22px}
+  @media(min-width:940px){.ed-wrap{grid-template-columns:270px 1fr}}
+  .ed-list{border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden}
+  .ed-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#fff;border:none;border-bottom:1px solid var(--border-subtle);padding:10px 12px;font:inherit;cursor:pointer;transition:var(--transition-base)}
+  .ed-item:hover{background:var(--surface-hover)}
+  .ed-item[aria-current="true"]{background:var(--blue-50);border-left:3px solid var(--stech-blue);padding-left:9px}
+  .ed-item .jn{font-family:var(--cond);font-weight:700;color:var(--stech-blue);min-width:54px;letter-spacing:.04em}
+  .ed-item .jt{flex:1;font-size:12.5px;color:var(--text-body)}
+  .ed-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;border:1px solid var(--border-subtle);border-left:3px solid var(--stech-gray);border-radius:var(--radius-sm);background:var(--gray-50);padding:10px;margin-bottom:8px}
+  .ed-row .grow{flex:1;min-width:180px}
+  .ed-row .w90{width:90px} .ed-row .w120{width:120px} .ed-row .w150{width:150px}
+  .ed-row .chk{display:flex;align-items:center;gap:6px;padding-bottom:9px}
+  .ed-row .chk input{width:18px;height:18px;accent-color:var(--stech-blue)}
+  .ed-row .chk label{margin:0;font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text-body)}
+  .ed-actions{position:sticky;bottom:0;background:var(--panel);border-top:2px solid var(--border-strong);padding:14px 0 2px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:22px}
+  .draftflag{font-family:var(--cond);font-size:11px;font-weight:700;color:var(--status-warning);letter-spacing:.06em;text-transform:uppercase}
+  .preview-box{border:2px dashed var(--blue-300);border-radius:var(--radius-md);padding:20px;margin-top:20px;background:var(--blue-50)}
+  .preview-label{font-family:var(--cond);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--stech-blue);margin-bottom:14px}
+
+  /* ---------- v3.2: reorder handles, student instructions, assigned vehicle ---------- */
+  .rehandle{display:flex;flex-direction:column;align-items:center;gap:2px;padding-bottom:4px;flex-shrink:0}
+  .grip{cursor:grab;color:var(--gray-400);font-size:14px;line-height:1;user-select:none;padding:1px 4px}
+  .grip:hover{color:var(--stech-blue)}
+  .grip:active{cursor:grabbing}
+  .mvbtn{border:1px solid var(--border-default);background:#fff;color:var(--text-muted);font-size:8px;line-height:1;padding:2px 5px;border-radius:var(--radius-sm);cursor:pointer}
+  .mvbtn:hover{background:var(--surface-hover);color:var(--text-strong)}
+  .mvbtn:disabled{opacity:.3;cursor:default}
+  .ed-row.drag-over{outline:2px dashed var(--stech-blue);outline-offset:-2px}
+  .ed-row.dragging{opacity:.45}
+  .instr-box{border:1px solid var(--blue-200);border-left:3px solid var(--stech-blue);background:var(--blue-50);border-radius:0 var(--radius-md) var(--radius-md) 0;padding:14px 16px;margin-bottom:20px}
+  .instr-box b{display:block;font-family:var(--cond);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--stech-blue);font-weight:700;margin-bottom:8px}
+  .instr-box ul{margin:0 0 0 20px;padding:0}
+  .instr-box li{margin-bottom:6px;font-size:14px;color:var(--text-strong)}
+  .instr-box li:last-child{margin-bottom:0}
+  .veh-assigned{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--blue-200);border-radius:var(--radius-md);padding:12px 14px}
+  .veh-assigned .va-tag{font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--stech-blue);padding:3px 9px;border-radius:var(--radius-pill);flex-shrink:0}
+  .veh-assigned .va-val{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text-strong)}
+  @media(prefers-reduced-motion:no-preference){
+    main{animation:fade .18s var(--ease-standard)}
+    @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  }
+</style>
+<style>
+/* ---- Builder-only layout. Uses its own class names on purpose:
+   .ed-row and .ed-actions in the design system are a bordered card and
+   a sticky footer bar respectively, so borrowing them for plain layout
+   put a box around every header. .ed-row is still used below for the
+   step/field rows, where that card treatment is correct. ---- */
+.app-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;
+  border-bottom:2px solid var(--border-strong);padding-bottom:14px;margin-bottom:18px}
+.app-head-text{min-width:280px;flex:1}
+.app-eyebrow{font-family:var(--cond);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;color:var(--stech-blue)}
+.app-title{font-family:var(--display);font-size:30px;font-weight:400;color:var(--text-strong);
+  margin:1px 0 5px;line-height:1.05;letter-spacing:.01em}
+.app-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:4px}
+
+.sec-head{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.sec-head h2{font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:700;color:var(--text-muted);margin:0;flex:1}
+
+.mod-row{display:flex;align-items:stretch;gap:4px;border:1px solid var(--border-subtle);
+  border-radius:var(--radius-sm);background:#fff;margin-bottom:6px;overflow:hidden}
+.mod-row.active{border-left:3px solid var(--stech-blue);background:var(--blue-50)}
+.mod-open{flex:1;min-width:0;text-align:left;background:none;border:none;cursor:pointer;
+  padding:9px 10px;font:inherit;display:block}
+.mod-open:hover{background:var(--surface-hover)}
+.mod-row.active .mod-open:hover{background:transparent}
+.mod-title{display:block;font-weight:700;font-size:13px;color:var(--text-strong);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod-meta{display:block;font-size:11px;color:var(--text-muted);margin-top:1px}
+.mod-tools{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 5px 4px 0}
+.mod-tools .mvbtn{font-size:9px;padding:2px 5px;line-height:1.1}
+.mod-tools .mvbtn:disabled{opacity:.3;cursor:default}
+
+.dropzone{border:2px dashed var(--border-default);border-radius:var(--radius-md);
+  background:var(--gray-50);padding:16px;margin-bottom:18px;text-align:center;
+  transition:border-color .12s,background .12s}
+.dropzone.drag-over{border-color:var(--stech-blue);background:var(--blue-50)}
+.dropzone .dz-icon{font-size:20px;color:var(--text-subtle);line-height:1;margin-bottom:5px}
+.dropzone.drag-over .dz-icon{color:var(--stech-blue)}
+.dropzone b{font-family:var(--cond);letter-spacing:.02em;font-size:14px}
+
+.ed-form{background:var(--panel,#fff);border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);padding:18px}
+.ed-form > label{display:block;font-family:var(--cond);font-weight:700;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 6px}
+.ed-form .grid > div > label{display:block;font-family:var(--cond);font-weight:700;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:0 0 4px}
+.ed-form input[type=text],.ed-form input[type=number],.ed-form select,.ed-form textarea{
+  width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:13.5px;background:#fff;color:var(--text-strong)}
+.ed-form input:focus,.ed-form select:focus{outline:2px solid var(--blue-300);outline-offset:-1px}
+.ed-row label{display:block;font-family:var(--cond);font-weight:700;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:0 0 3px}
+.snum{width:22px;text-align:right;color:var(--text-subtle);font-size:11px;font-family:var(--mono);
+  padding-bottom:9px;flex-shrink:0}
+.note.err{border-left-color:var(--status-danger,#c0392b);background:#fdf1ef;color:#8e2b20}
+.req{color:var(--status-danger,#c0392b)}
+.instr-box{border-left:3px solid var(--stech-blue);background:var(--blue-50);padding:12px 14px;
+  margin-bottom:16px;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.instr-box ul{margin:6px 0 0;padding-left:18px;font-size:13px}
+</style>
+</head><body>
+<div class="wrap">
+
+  <div class="app-head">
+    <div class="app-head-text">
+      <div class="app-eyebrow">STECH · Automotive Technology</div>
+      <h1 class="app-title">Job Sheet Builder</h1>
+      <div class="hint" style="margin:0">Instructor tool — build and edit job sheets, then export for students. Runs entirely on this computer; nothing is uploaded anywhere.</div>
+    </div>
+    <div class="app-actions">
+      <button class="btn ghost sm" id="btnImport">Import…</button>
+      <button class="btn ghost sm" id="btnExport">Export file</button>
+      <button class="btn accent sm" id="btnPublish">Publish for students</button>
+      <span class="pill" id="saveState">saved</span>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+
+  <div id="dropzone" class="dropzone">
+    <div class="dz-icon">⬇</div>
+    <div><b>Drop a labs file here to import</b></div>
+    <div class="hint" style="margin:2px 0 0">or <button type="button" class="btn ghost sm" id="btnImport2">browse for a file</button> — a <span class="mono">.json</span> file you exported earlier</div>
+  </div>
+
+  <div id="banner"></div>
+
+  <div class="ed-wrap">
+    <!-- LEFT: modules + job sheets -->
+    <div>
+      <div class="sec-head">
+        <h2>Modules</h2>
+        <button class="btn ghost sm" id="btnNewModule">+ Module</button>
+      </div>
+      <div id="moduleList"></div>
+
+      <div class="sec-head" style="margin-top:18px">
+        <h2>Job sheets</h2>
+        <button class="btn ghost sm" id="btnNewLab">+ Job sheet</button>
+      </div>
+      <div class="ed-list" id="labList"></div>
+      <div class="hint" id="labListHint"></div>
+    </div>
+
+    <!-- RIGHT: editor -->
+    <div id="editorPane"></div>
+  </div>
+
+  <!-- ============ ACCREDITATION COVERAGE (additive; read-only) ============ -->
+  <section id="coverageSection" style="margin-top:28px;border-top:2px solid var(--border-strong);padding-top:16px">
+    <div class="sec-head">
+      <h2 style="flex:1">Accreditation coverage</h2>
+      <select id="covAreaSel" style="max-width:280px;font-size:12px"></select>
+      <button class="btn ghost sm" id="btnLoadTasks">Load task list…</button>
+    </div>
+    <div class="hint" id="covHint" style="margin-bottom:12px"></div>
+    <div id="coveragePane"></div>
+    <input type="file" id="taskFileInput" accept="application/json,.json" style="display:none">
+  </section>
+</div>
+
+<script>
+/* ============================================================
+   STECH Job Sheet Builder — instructor authoring tool.
+   Standalone: no server, no accounts, no network. Everything
+   lives in this file plus the browser's local storage, and the
+   authoritative copy is whatever you Export.
+   ============================================================ */
+
+const LS_KEY = "swtc_builder_data_v1";
+const LS_TASKS = "swtc_tasklists_v1";   // loaded ASE task-list packs, keyed by areaKey
+const LS_COVAREA = "swtc_cov_area";     // remembered active area for the coverage panel
+const LS_COMPANION = "swtc_companion_v1"; // optional second-course pack for split-area combined coverage
+const FIELD_TYPES = ["text","number","select","textarea","list","attachment"];
+let TASKLISTS = {};
+let covArea = "";
+let COMPANION = null;   // a whole exported pack {course,modules} counted alongside DATA for coverage only
+
+let DATA = { course:"ELEC I", schema:1, modules:[] };
+let selModule = null;   // module id
+let selLab = null;      // job number
+let editing = null;     // working copy of the lab being edited
+let editingModuleMeta = null; // working copy of module being edited
+let isNewLab = false;
+let dirty = false;
+let showPreview = false;
+
+/* ---------- storage ---------- */
+function persist(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(DATA)); markSaved(); }
+  catch(e){ flash("Couldn't save to this browser: "+e.message+" — use Export to keep your work.", true); }
+}
+function restore(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ DATA = JSON.parse(raw); return true; }
+  } catch(e){}
+  return false;
+}
+function markDirty(){ dirty = true; const el=document.getElementById("saveState"); el.textContent="unsaved"; el.className="pill p-rev"; }
+function markSaved(){ dirty = false; const el=document.getElementById("saveState"); el.textContent="saved"; el.className="pill p-grade"; }
+
+let flashTimer = null;
+function flash(msg, isErr, opts){
+  opts = opts || {};
+  const b = document.getElementById("banner");
+  const html = opts.raw ? msg : esc(msg);
+  b.innerHTML = `<div class="note ${isErr?"err":""}" style="margin-bottom:12px">${html}</div>`;
+  // Cancel any earlier message's pending auto-clear -- without this, an
+  // older flash() call's timer fires later and blindly clears whatever
+  // is in the banner NOW, even a newer persistent message that has
+  // nothing to do with it. That's what made the export confirmation
+  // vanish: the import message before it left a stale timer running.
+  if(flashTimer){ clearTimeout(flashTimer); flashTimer=null; }
+  if(!isErr && !opts.persist){
+    flashTimer = setTimeout(()=>{ b.innerHTML=""; flashTimer=null; }, 4000);
+  }
+}
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+/* ---------- model helpers ---------- */
+function allLabs(){ return DATA.modules.flatMap(m=>m.labs.map(l=>({lab:l, moduleId:m.id}))); }
+
+/* Job numbers are ONE sequence across the whole course, not per
+   module. Computing "next available" per-module is what silently
+   overwrote Module 1 in the previous system -- an empty module
+   produced job 1, which already existed elsewhere. */
+function nextJobNumber(){
+  const nums = allLabs().map(x=>Number(x.lab.job)).filter(n=>!isNaN(n));
+  return nums.length ? Math.max(...nums)+1 : 1;
+}
+function jobNumberOwner(job, ignoreLab){
+  const hit = allLabs().find(x=>String(x.lab.job)===String(job) && x.lab!==ignoreLab);
+  return hit ? hit.moduleId : null;
+}
+function moduleById(id){ return DATA.modules.find(m=>m.id===id); }
+function currentModule(){ return moduleById(selModule); }
+
+function slugModuleId(){
+  let n = DATA.modules.length + 1;
+  let id;
+  do { id = "ELEC1-M"+n; n++; } while(DATA.modules.some(m=>m.id===id));
+  return id;
+}
+
+/* ---------- render: module list ---------- */
+function renderModules(){
+  const host = document.getElementById("moduleList");
+  if(!DATA.modules.length){
+    host.innerHTML = `<div class="note">No modules yet. Create one to start.</div>`;
+    return;
+  }
+  host.innerHTML = DATA.modules.map((m,i)=>`
+    <div class="mod-row ${m.id===selModule?"active":""}">
+      <button type="button" class="mod-open" data-selmod="${esc(m.id)}">
+        <span class="mod-title">${esc(m.title||"(untitled module)")}</span>
+        <span class="mod-meta">${esc(m.id)} · ${m.labs.length} job sheet${m.labs.length===1?"":"s"}${m.labRange?" · "+esc(m.labRange):""}</span>
+      </button>
+      <div class="mod-tools">
+        <button type="button" class="mvbtn" data-upmod="${esc(m.id)}" ${i===0?"disabled":""} title="Move up">▲</button>
+        <button type="button" class="mvbtn" data-downmod="${esc(m.id)}" ${i===DATA.modules.length-1?"disabled":""} title="Move down">▼</button>
+        <button type="button" class="mvbtn" data-editmod="${esc(m.id)}" title="Edit module details">✎</button>
+      </div>
+    </div>`).join("");
+
+  host.querySelectorAll("[data-selmod]").forEach(b=>b.onclick=()=>{
+    selModule=b.dataset.selmod; selLab=null; editing=null; editingModuleMeta=null; renderAll();
+  });
+  host.querySelectorAll("[data-editmod]").forEach(b=>b.onclick=()=>{
+    const m=moduleById(b.dataset.editmod);
+    selModule=m.id; editing=null; editingModuleMeta=Object.assign({},m); delete editingModuleMeta.labs; renderAll();
+  });
+  host.querySelectorAll("[data-upmod]").forEach(b=>b.onclick=()=>moveModule(b.dataset.upmod,-1));
+  host.querySelectorAll("[data-downmod]").forEach(b=>b.onclick=()=>moveModule(b.dataset.downmod,1));
+}
+
+function moveModule(id, dir){
+  const i = DATA.modules.findIndex(m=>m.id===id);
+  const j = i+dir;
+  if(i<0 || j<0 || j>=DATA.modules.length) return;
+  const t = DATA.modules[i]; DATA.modules[i]=DATA.modules[j]; DATA.modules[j]=t;
+  markDirty(); persist(); renderAll();
+}
+
+/* ---------- render: job sheet list ---------- */
+function renderLabList(){
+  const host = document.getElementById("labList");
+  const hint = document.getElementById("labListHint");
+  const m = currentModule();
+  if(!m){ host.innerHTML=""; hint.textContent = DATA.modules.length ? "Open a module to see its job sheets." : ""; return; }
+  hint.textContent = "";
+  if(!m.labs.length){ host.innerHTML = `<div class="note">No job sheets in ${esc(m.title||m.id)} yet.</div>`; return; }
+
+  host.innerHTML = m.labs.map((l,i)=>`
+    <button class="ed-item" data-job="${esc(l.job)}" aria-current="${String(selLab)===String(l.job)}">
+      <span class="jn">JOB ${esc(l.job)}</span>
+      <span class="jt">${esc(l.title||"(untitled)")}</span>
+      ${l.legacyJob?`<span class="pill">old #${esc(l.legacyJob)}</span>`:""}
+      <span class="pill p-grade">${(l.fields||[]).length} field${(l.fields||[]).length===1?"":"s"}</span>
+    </button>`).join("");
+
+  host.querySelectorAll(".ed-item").forEach(b=>b.onclick=()=>openLab(b.dataset.job));
+}
+
+function openLab(job){
+  const m = currentModule(); if(!m) return;
+  const src = m.labs.find(l=>String(l.job)===String(job));
+  if(!src) return;
+  isNewLab=false; selLab=src.job; editingModuleMeta=null; showPreview=false;
+  editing = JSON.parse(JSON.stringify(src));
+  normalizeLab(editing);
+  renderAll();
+}
+
+function normalizeLab(l){
+  l.ase = l.ase || [];
+  l.instructions = l.instructions || [];
+  l.steps = (l.steps||[]).map(s=>typeof s==="string"?{text:s,checkbox:true}:s);
+  l.fields = l.fields || [];
+  if(l.requiresVehicle===undefined) l.requiresVehicle = true;
+  if(!l.type) l.type = "lab";
+  if(l.version==null) l.version = 1;
+  if(l.weight==null) l.weight = 10;
+  l.competency = Object.assign({ requireAllFields:true, requireAllCorrect:true, countCheckoffs:false }, l.competency||{});
+}
+
+/* ---------- render: editor pane ---------- */
+function renderEditor(){
+  const host = document.getElementById("editorPane");
+  if(editingModuleMeta){ host.innerHTML = moduleFormHTML(); wireModuleForm(); return; }
+  if(!editing){
+    host.innerHTML = `<div class="note">Select a job sheet on the left to edit it, create a new one, or edit a module's details.</div>`;
+    return;
+  }
+  host.innerHTML = showPreview ? previewHTML() : labFormHTML();
+  if(showPreview){
+    document.getElementById("btnBackEdit").onclick = ()=>{ showPreview=false; renderAll(); };
+  } else {
+    wireLabForm();
+  }
+}
+
+function moduleFormHTML(){
+  const m = editingModuleMeta;
+  const isNew = !DATA.modules.some(x=>x.id===m.id);
+  return `
+  <div class="ed-form">
+    <h3 style="margin-top:0">${isNew?"New module":"Edit module"}</h3>
+    <div class="grid g2">
+      <div><label for="m_id">Module ID</label>
+        <input type="text" id="m_id" class="mono" value="${esc(m.id)}" ${isNew?"":"disabled"}>
+        <div class="hint">Short code used internally. Can't be changed later.</div></div>
+      <div><label for="m_range">Lab range (label only)</label>
+        <input type="text" id="m_range" value="${esc(m.labRange||"")}" placeholder="Labs 10–19"></div>
+    </div>
+    <div><label for="m_title">Title</label>
+      <input type="text" id="m_title" value="${esc(m.title||"")}" placeholder="Module 2 — Electrical and Electronic Theories and Components"></div>
+    <div class="ed-actions">
+      <button class="btn accent" id="m_save">${isNew?"Create module":"Save module"}</button>
+      <button class="btn ghost" id="m_cancel">Cancel</button>
+      ${isNew?"":`<button class="btn danger" id="m_delete">Delete module</button>`}
+      <span class="hint" style="margin:0" id="m_msg"></span>
+    </div>
+  </div>`;
+}
+
+function wireModuleForm(){
+  const msg = document.getElementById("m_msg");
+  document.getElementById("m_cancel").onclick = ()=>{ editingModuleMeta=null; renderAll(); };
+  document.getElementById("m_save").onclick = ()=>{
+    const id = document.getElementById("m_id").value.trim();
+    const title = document.getElementById("m_title").value.trim();
+    const labRange = document.getElementById("m_range").value.trim();
+    if(!id){ msg.textContent="Module ID is required."; return; }
+    const existing = moduleById(id);
+    if(existing){
+      existing.title=title; existing.labRange=labRange;
+    } else {
+      if(DATA.modules.some(m=>m.id===id)){ msg.textContent="That ID already exists."; return; }
+      DATA.modules.push({ id, title, labRange, labs:[] });
+      selModule = id;
+    }
+    editingModuleMeta=null; markDirty(); persist(); renderAll();
+  };
+  const del = document.getElementById("m_delete");
+  if(del) del.onclick = ()=>{
+    const m = moduleById(editingModuleMeta.id);
+    if(m.labs.length){
+      if(!confirm(`"${m.title||m.id}" still contains ${m.labs.length} job sheet(s). Deleting the module deletes those too. This cannot be undone. Continue?`)) return;
+    } else if(!confirm(`Delete module "${m.title||m.id}"?`)) return;
+    DATA.modules = DATA.modules.filter(x=>x.id!==m.id);
+    if(selModule===m.id){ selModule = DATA.modules.length?DATA.modules[0].id:null; selLab=null; editing=null; }
+    editingModuleMeta=null; markDirty(); persist(); renderAll();
+  };
+}
+
+/* ---------- job sheet form ---------- */
+function labFormHTML(){
+  const l = editing;
+  const owner = jobNumberOwner(l.job, null);
+  const clash = owner && !(isNewLab===false && String(selLab)===String(l.job) && owner===selModule);
+  return `
+  <div class="ed-form">
+    <div class="ed-row" style="align-items:center;margin-bottom:8px">
+      <h3 class="grow" style="margin:0">${isNewLab?"New job sheet":"Edit job sheet"}</h3>
+      <button class="btn ghost sm" id="btnPreview">Preview</button>
+    </div>
+
+    <div class="grid g3">
+      <div><label for="f_job">Job number</label>
+        <input type="number" id="f_job" class="mono" value="${esc(l.job)}">
+        <div class="hint">Unique across the whole course, not just this module.</div></div>
+      <div><label for="f_legacy">Old packet number</label>
+        <input type="text" id="f_legacy" class="mono" value="${esc(l.legacyJob||"")}" placeholder="e.g. 33">
+        <div class="hint">Reference only — helps match the paper packet.</div></div>
+      <div><label for="f_type">Type</label>
+        <select id="f_type">
+          <option value="lab" ${l.type==="lab"?"selected":""}>Lab (hands-on)</option>
+          <option value="class" ${l.type==="class"?"selected":""}>Class (written)</option>
+        </select></div>
+    </div>
+
+    <div><label for="f_title">Title</label>
+      <input type="text" id="f_title" value="${esc(l.title||"")}" placeholder="Perform battery state-of-charge test"></div>
+
+    <div class="grid g2">
+      <div><label for="f_ase">ASE task codes</label>
+        <input type="text" id="f_ase" class="mono" value="${esc((l.ase||[]).join(', '))}" placeholder="B1, A4">
+        <div class="hint">Comma separated.</div></div>
+      <div class="chk" style="align-self:end;padding-bottom:10px">
+        <input type="checkbox" id="f_vehicle" ${l.requiresVehicle?"checked":""}>
+        <label for="f_vehicle">Student must record a vehicle</label></div>
+    </div>
+
+    <div class="grid g2">
+      <div><label for="f_weight">Points / weight</label>
+        <input type="number" id="f_weight" class="mono" value="${esc(l.weight??10)}" min="0" step="1">
+        <div class="hint">Gradebook value when competent — awarded whole or nothing.</div></div>
+      <div class="chk" style="align-self:start;padding-top:26px">
+        <input type="checkbox" id="f_countchk" ${(l.competency&&l.competency.countCheckoffs)?"checked":""}>
+        <label for="f_countchk">Step check-offs also required for completion</label></div>
+    </div>
+    <div class="lock-note">Competency is pass/fail — this job is <b>Complete</b> only when every required field is filled${(l.fields||[]).some(f=>f.checkAnswer)?" and every answer key is correct":""}. No partial credit.</div>
+
+    <label>Instructions <span class="hint">shown in a box above the steps — optional</span></label>
+    <div id="instrHost">${(l.instructions||[]).map((t,i)=>instrRow(t,i)).join("")}</div>
+    <button class="btn ghost sm" id="addInstr" style="margin-bottom:14px">+ Instruction line</button>
+
+    <label>Steps</label>
+    <div id="stepHost">${(l.steps||[]).map((s,i)=>stepRow(s,i)).join("")}</div>
+    <button class="btn ghost sm" id="addStep" style="margin-bottom:14px">+ Step</button>
+
+    <label>Fields <span class="hint">what the student actually records — this is what gets enforced</span></label>
+    <div id="fieldHost">${(l.fields||[]).map((f,i)=>fieldRow(f,i)).join("")}</div>
+    <button class="btn ghost sm" id="addField">+ Field</button>
+
+    ${clash?`<div class="note err" style="margin-top:14px">Job number ${esc(l.job)} is already used in module ${esc(owner)}. Pick a different number.</div>`:""}
+
+    <div class="ed-actions">
+      <button class="btn accent" id="btnSaveLab">Save job sheet</button>
+      <button class="btn ghost" id="btnCancelLab">Cancel</button>
+      ${isNewLab?"":`<button class="btn ghost" id="btnDupLab">Duplicate</button>
+                     <button class="btn danger" id="btnDelLab">Delete</button>`}
+      <span class="hint" style="margin:0" id="labMsg"></span>
+    </div>
+    ${DATA.modules.length>1 && !isNewLab ? `
+    <div class="ed-row" style="margin-top:10px;align-items:center">
+      <span class="hint" style="margin:0">Move to module:</span>
+      <select id="moveTo" style="max-width:260px">
+        ${DATA.modules.map(m=>`<option value="${esc(m.id)}" ${m.id===selModule?"selected":""}>${esc(m.title||m.id)}</option>`).join("")}
+      </select>
+      <button class="btn ghost sm" id="btnMove">Move</button>
+    </div>`:""}
+  </div>`;
+}
+
+function instrRow(t,i){
+  return `<div class="ed-row" data-irow="${i}">
+    <input type="text" data-i="${i}" data-k="instr" value="${esc(t)}" class="grow" placeholder="Something you'd tell them before they start">
+    <button type="button" class="btn ghost sm" data-delinstr="${i}">✕</button>
+  </div>`;
+}
+function stepRow(s,i){
+  return `<div class="ed-row" data-srow="${i}">
+    <span class="snum mono">${i+1}</span>
+    <input type="text" data-i="${i}" data-k="step" value="${esc(s.text||"")}" class="grow" placeholder="What the student does">
+    <span class="chk"><input type="checkbox" data-i="${i}" data-k="stepchk" id="sc${i}" ${s.checkbox?"checked":""}><label for="sc${i}">check-off</label></span>
+    <button type="button" class="btn ghost sm" data-upstep="${i}" ${i===0?"disabled":""}>↑</button>
+    <button type="button" class="btn ghost sm" data-delstep="${i}">✕</button>
+  </div>`;
+}
+function fieldRow(f,i){
+  const t = f.type||"text";
+  return `<div class="ed-row" data-frow="${i}" style="flex-wrap:wrap;align-items:flex-end">
+    <div class="w120"><label>Type</label>
+      <select data-i="${i}" data-k="type">${FIELD_TYPES.map(x=>`<option value="${x}" ${t===x?"selected":""}>${x}</option>`).join("")}</select></div>
+    <div class="grow" style="min-width:180px"><label>Label</label>
+      <input type="text" data-i="${i}" data-k="label" value="${esc(f.label||"")}" placeholder="Open-circuit voltage"></div>
+    <div class="w120"><label>ID</label>
+      <input type="text" data-i="${i}" data-k="id" class="mono" value="${esc(f.id||"")}" placeholder="ocv"></div>
+    <div class="chk"><input type="checkbox" data-i="${i}" data-k="required" id="rq${i}" ${f.required!==false?"checked":""}><label for="rq${i}">required</label></div>
+
+    ${t==="number"?`
+      <div class="w90"><label>Unit</label><input type="text" data-i="${i}" data-k="unit" value="${esc(f.unit||"")}" placeholder="V"></div>
+      <div class="w90"><label>Min</label><input type="number" data-i="${i}" data-k="min" value="${f.min??0}"></div>
+      <div class="w90"><label>Max</label><input type="number" data-i="${i}" data-k="max" value="${f.max??100}"></div>
+      <div class="chk" style="flex-basis:100%"><input type="checkbox" data-i="${i}" data-k="checkAnswer" id="ca${i}" ${f.checkAnswer?"checked":""}><label for="ca${i}">Auto-check against an answer key — only for fixed-answer problems (Ohm's law), never a real measured reading</label></div>
+      ${f.checkAnswer?`<div class="w120"><label>Correct value</label><input type="number" data-i="${i}" data-k="expectedValue" value="${f.expectedValue??""}" step="any"></div>
+      <div class="w90"><label>± tolerance</label><input type="number" data-i="${i}" data-k="tolerance" value="${f.tolerance??0.01}" step="any"></div>`:""}
+    `:""}
+
+    ${t==="select"?`<div class="grow" style="flex-basis:100%"><label>Options</label>
+      <input type="text" data-i="${i}" data-k="options" value="${esc((f.options||[]).join(', '))}" placeholder="Pass, Fail, Retest"><div class="hint">Comma separated.</div></div>`:""}
+
+    ${t==="list"?`<div class="w90"><label>How many</label><input type="number" data-i="${i}" data-k="count" value="${f.count??3}" min="1" max="12"></div>
+      <div class="w120"><label>Lines required</label>
+        <select data-i="${i}" data-k="listreq">
+          <option value="1" ${(!f.requireAll && !(f.minEntries>1))?"selected":""}>Any one</option>
+          <option value="n" ${(!f.requireAll && f.minEntries>1)?"selected":""}>At least…</option>
+          <option value="all" ${f.requireAll?"selected":""}>All lines</option>
+        </select></div>
+      ${(!f.requireAll && f.minEntries>1)?`<div class="w90"><label>Min lines</label><input type="number" data-i="${i}" data-k="minEntries" value="${esc(f.minEntries)}" min="2" max="12"></div>`:""}`:""}
+
+    <button type="button" class="btn ghost sm" data-upfield="${i}" ${i===0?"disabled":""}>↑</button>
+    <button type="button" class="btn ghost sm" data-delfield="${i}">✕</button>
+  </div>`;
+}
+
+/* ---------- reading the form back ---------- */
+/* Mirrors the DOM into `editing` WITHOUT dropping anything, no matter
+   how incomplete. Used before every structural change -- adding or
+   removing a step/field, reordering, or a field's type changing --
+   so nothing you've started typing disappears just because you
+   haven't finished it. The old approach used the strict, filtering
+   collectLab() for this too, which is exactly what silently deleted
+   a field the instant you touched its type dropdown before giving it
+   a label: collectLab() saw a blank label and dropped the row before
+   the rest of your edit ever happened. */
+function syncEditingFromDom(){
+  const l = editing;
+  const jobEl = document.getElementById("f_job");
+  if(!jobEl) return;
+  l.job = Number(jobEl.value)||l.job;
+  l.legacyJob = document.getElementById("f_legacy").value.trim() || null;
+  l.type = document.getElementById("f_type").value;
+  l.title = document.getElementById("f_title").value;
+  l.ase = document.getElementById("f_ase").value.split(",").map(s=>s.trim()).filter(Boolean);
+  l.requiresVehicle = document.getElementById("f_vehicle").checked;
+  const wEl=document.getElementById("f_weight"); if(wEl) l.weight = Math.max(0, Number(wEl.value)||0);
+  l.competency = Object.assign({requireAllFields:true,requireAllCorrect:true,countCheckoffs:false}, l.competency||{});
+  const ccEl=document.getElementById("f_countchk"); if(ccEl) l.competency.countCheckoffs = ccEl.checked;
+
+  const instr=[]; document.querySelectorAll('[data-k="instr"]').forEach(el=>instr.push(el.value));
+  l.instructions = instr;
+
+  const steps=[];
+  document.querySelectorAll('[data-k="step"]').forEach(el=>{
+    const i=+el.dataset.i;
+    const chk=document.querySelector(`[data-k="stepchk"][data-i="${i}"]`);
+    steps.push({ text: el.value, checkbox: chk?chk.checked:true });
+  });
+  l.steps = steps;
+
+  document.querySelectorAll('[data-frow]').forEach(row=>{
+    const i = +row.dataset.frow;
+    const f = l.fields[i]; if(!f) return;
+    const get=k=>row.querySelector(`[data-k="${k}"][data-i="${i}"]`);
+    const gv=k=>{ const el=get(k); return el ? el.value : undefined; };
+    const gc=k=>{ const el=get(k); return el ? el.checked : undefined; };
+
+    const nt=gv("type");  if(nt!==undefined) f.type=nt;
+    const nid=gv("id");   if(nid!==undefined) f.id=nid;
+    const nl=gv("label"); if(nl!==undefined) f.label=nl;
+    const nr=gc("required"); if(nr!==undefined) f.required=nr;
+
+    if(f.type==="number"){
+      const u=gv("unit"); if(u!==undefined) f.unit=u;
+      const mn=gv("min"); if(mn!==undefined) f.min=Number(mn)||0;
+      const mx=gv("max"); if(mx!==undefined) f.max=Number(mx)||100;
+      const ca=gc("checkAnswer"); if(ca!==undefined) f.checkAnswer=ca;
+      if(f.checkAnswer){
+        const ev=gv("expectedValue"); if(ev!==undefined) f.expectedValue=Number(ev)||0;
+        const tol=gv("tolerance"); if(tol!==undefined) f.tolerance=Number(tol)||0.01;
+      }
+    } else {
+      delete f.checkAnswer; delete f.expectedValue; delete f.tolerance;
+    }
+    if(f.type==="select"){ const o=gv("options"); if(o!==undefined) f.options=o.split(",").map(s=>s.trim()).filter(Boolean); }
+    if(f.type==="list"){
+      const c=gv("count"); if(c!==undefined) f.count=Number(c)||3;
+      const lr=gv("listreq");
+      if(lr==="all"){ f.requireAll=true; delete f.minEntries; }
+      else if(lr==="n"){ f.requireAll=false; const me=gv("minEntries"); f.minEntries = me!==undefined?Math.max(2,Number(me)||2):(f.minEntries>1?f.minEntries:2); }
+      else if(lr==="1"){ f.requireAll=false; delete f.minEntries; }
+    } else { delete f.requireAll; delete f.minEntries; }
+  });
+}
+
+/* The strict version -- only used at the moment of actually SAVING.
+   Builds the final payload and VALIDATES rather than silently
+   dropping: a field you've clearly started (picked a type, typed an
+   id, added options) but never labeled blocks the save with a message
+   telling you exactly which row needs attention, instead of quietly
+   vanishing. A field that's genuinely untouched (still the bare
+   default from clicking "+ Field") is dropped without ceremony --
+   that's the same as never having added it. */
+function collectLab(){
+  syncEditingFromDom();
+  const l = editing;
+  l.job = Number(document.getElementById("f_job").value)||0;
+  l.legacyJob = document.getElementById("f_legacy").value.trim() || null;
+  l.type = document.getElementById("f_type").value;
+  l.title = document.getElementById("f_title").value.trim();
+  l.ase = document.getElementById("f_ase").value.split(",").map(s=>s.trim()).filter(Boolean);
+  l.requiresVehicle = document.getElementById("f_vehicle").checked;
+
+  l.instructions = (l.instructions||[]).map(s=>s.trim()).filter(Boolean);
+  l.steps = (l.steps||[])
+    .map(s=>({ text:(s.text||"").trim(), checkbox: s.checkbox!==false }))
+    .filter(s=>s.text);
+
+  const finalFields=[];
+  const src = l.fields||[];
+  for(let i=0;i<src.length;i++){
+    const f = src[i];
+    const label = (f.label||"").trim();
+    const id = (f.id||"").trim();
+    const untouched = !label && !id && f.type==="text" && !(f.options&&f.options.length) && !f.checkAnswer;
+    if(untouched) continue;
+    if(!label){
+      document.getElementById("labMsg").textContent =
+        `Field ${i+1} needs a label before this can be saved — or remove it with the ✕ if you don't need it.`;
+      return null;
+    }
+    const clean = Object.assign({}, f, {
+      label, id: id || label.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,24) || ("f"+i)
+    });
+    if(clean.type==="number"){ clean.step=0.01; if(clean.min==null)clean.min=0; if(clean.max==null)clean.max=100; }
+    if(clean.type==="list"){
+      if(!clean.count) clean.count=3;
+      if(clean.requireAll) delete clean.minEntries;
+      else if(clean.minEntries>1) clean.minEntries=Math.min(clean.minEntries, clean.count);
+      else { delete clean.minEntries; delete clean.requireAll; }
+    } else { delete clean.count; delete clean.requireAll; delete clean.minEntries; }
+    if(clean.type!=="number" || !clean.checkAnswer){ delete clean.checkAnswer; delete clean.expectedValue; delete clean.tolerance; }
+    finalFields.push(clean);
+  }
+  l.fields = finalFields;
+  return l;
+}
+
+function wireLabForm(){
+  const msg = ()=>document.getElementById("labMsg");
+  document.getElementById("btnPreview").onclick = ()=>{ syncEditingFromDom(); showPreview=true; renderAll(); };
+
+  document.getElementById("addInstr").onclick = ()=>{ syncEditingFromDom(); editing.instructions.push(""); renderAll(); };
+  document.getElementById("addStep").onclick  = ()=>{ syncEditingFromDom(); editing.steps.push({text:"",checkbox:true}); renderAll(); };
+  document.getElementById("addField").onclick = ()=>{ syncEditingFromDom(); editing.fields.push({type:"text",id:"",label:"",required:true}); renderAll(); };
+
+  document.querySelectorAll("[data-delinstr]").forEach(b=>b.onclick=()=>{ syncEditingFromDom(); editing.instructions.splice(+b.dataset.delinstr,1); renderAll(); });
+  document.querySelectorAll("[data-delstep]").forEach(b=>b.onclick=()=>{ syncEditingFromDom(); editing.steps.splice(+b.dataset.delstep,1); renderAll(); });
+  document.querySelectorAll("[data-delfield]").forEach(b=>b.onclick=()=>{ syncEditingFromDom(); editing.fields.splice(+b.dataset.delfield,1); renderAll(); });
+  document.querySelectorAll("[data-upstep]").forEach(b=>b.onclick=()=>{ syncEditingFromDom(); const i=+b.dataset.upstep; const a=editing.steps; [a[i-1],a[i]]=[a[i],a[i-1]]; renderAll(); });
+  document.querySelectorAll("[data-upfield]").forEach(b=>b.onclick=()=>{ syncEditingFromDom(); const i=+b.dataset.upfield; const a=editing.fields; [a[i-1],a[i]]=[a[i],a[i-1]]; renderAll(); });
+
+  // changing a field's type or toggling the answer key redraws that row
+  document.querySelectorAll('[data-k="type"], [data-k="checkAnswer"], [data-k="listreq"]').forEach(el=>{
+    el.onchange = ()=>{ syncEditingFromDom(); renderAll(); };
+  });
+
+  document.getElementById("btnCancelLab").onclick = ()=>{ editing=null; isNewLab=false; renderAll(); };
+
+  document.getElementById("btnSaveLab").onclick = ()=>{
+    const l = collectLab();
+    if(!l) return; // collectLab() already put a specific message in labMsg
+    if(!l.title){ msg().textContent="Give it a title first."; return; }
+    if(!l.job || l.job<1){ msg().textContent="Job number must be 1 or higher."; return; }
+    const m = currentModule();
+    const existingIdx = m.labs.findIndex(x=>String(x.job)===String(selLab));
+    const owner = jobNumberOwner(l.job, existingIdx>=0?m.labs[existingIdx]:null);
+    if(owner){ msg().textContent=`Job ${l.job} already exists in ${owner}. Pick another number.`; return; }
+
+    if(isNewLab || existingIdx<0){ m.labs.push(l); }
+    else { m.labs[existingIdx] = l; }
+    m.labs.sort((a,b)=>Number(a.job)-Number(b.job));
+    selLab = l.job; isNewLab=false;
+    markDirty(); persist();
+    flash("Job sheet saved.");
+    renderAll();
+  };
+
+  const dup = document.getElementById("btnDupLab");
+  if(dup) dup.onclick = ()=>{
+    const collected = collectLab();
+    if(!collected) return;
+    const l = JSON.parse(JSON.stringify(collected));
+    l.job = nextJobNumber();
+    l.title = l.title + " (copy)";
+    currentModule().labs.push(l);
+    currentModule().labs.sort((a,b)=>Number(a.job)-Number(b.job));
+    selLab=l.job; editing=l; isNewLab=false;
+    markDirty(); persist(); flash("Duplicated as job "+l.job+"."); renderAll();
+  };
+
+  const del = document.getElementById("btnDelLab");
+  if(del) del.onclick = ()=>{
+    if(!confirm(`Delete job sheet ${selLab} — "${editing.title}"? This cannot be undone.`)) return;
+    const m=currentModule();
+    m.labs = m.labs.filter(x=>String(x.job)!==String(selLab));
+    editing=null; selLab=null; markDirty(); persist(); renderAll();
+  };
+
+  const mv = document.getElementById("btnMove");
+  if(mv) mv.onclick = ()=>{
+    const dest = document.getElementById("moveTo").value;
+    if(dest===selModule) return;
+    const l = collectLab();
+    if(!l) return;
+    const m = currentModule();
+    m.labs = m.labs.filter(x=>String(x.job)!==String(selLab));
+    const d = moduleById(dest);
+    d.labs.push(l); d.labs.sort((a,b)=>Number(a.job)-Number(b.job));
+    selModule=dest; selLab=l.job; markDirty(); persist();
+    flash(`Moved job ${l.job} to ${d.title||d.id}.`);
+    renderAll();
+  };
+
+  // typing anywhere marks unsaved
+  document.querySelectorAll("#editorPane input, #editorPane select").forEach(el=>{
+    el.addEventListener("input", markDirty);
+  });
+}
+
+/* ---------- preview (what the student will see) ---------- */
+function previewHTML(){
+  const l = editing;
+  return `
+  <div class="ed-form">
+    <div class="ed-row" style="align-items:center;margin-bottom:10px">
+      <h3 class="grow" style="margin:0">Preview</h3>
+      <button class="btn accent sm" id="btnBackEdit">Back to editing</button>
+    </div>
+    <div class="preview-box">
+      <div class="preview-label">STUDENT VIEW</div>
+      <div class="wo-top">
+        <div><div class="wo-num mono">JOB ${esc(l.job)}</div>
+          <div class="wo-title">${esc(l.title)}</div>
+          <div class="wo-desc">${(l.ase||[]).map(a=>`<span class="chip">${esc(a)}</span>`).join(" ")}</div></div>
+      </div>
+      ${l.requiresVehicle?`<div class="veh-block"><b>Vehicle</b><div class="hint" style="margin:0">Student records VIN or year/make/model here.</div></div>`:""}
+      ${(l.instructions||[]).length?`<div class="instr-box"><b>Before you start</b><ul>${l.instructions.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}
+      <ol class="steps" style="padding-left:18px">
+        ${(l.steps||[]).map(s=>`<li class="step">${esc(s.text)} ${s.checkbox?'<span class="pill">check-off</span>':'<span class="pill p-draft">read only</span>'}</li>`).join("")}
+      </ol>
+      <div class="grid g2" style="margin-top:12px">
+        ${(l.fields||[]).map(f=>previewField(f)).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+function previewField(f){
+  let ctrl="";
+  if(f.type==="number") ctrl=`<span class="measure"><input type="number" disabled placeholder="0.00"><span class="unit">${esc(f.unit||"")}</span></span>${f.checkAnswer?` <span class="pill p-grade">auto-checked</span>`:""}`;
+  else if(f.type==="select") ctrl=`<select disabled>${(f.options||[]).map(o=>`<option>${esc(o)}</option>`).join("")}</select>`;
+  else if(f.type==="textarea") ctrl=`<textarea disabled rows="2"></textarea>`;
+  else if(f.type==="attachment") ctrl=`<div class="note" style="margin:0">Student attaches a file / photo</div>`;
+  else if(f.type==="list") ctrl=Array.from({length:f.count||3}).map((_,i)=>`<input type="text" disabled placeholder="${i+1}.">`).join("");
+  else ctrl=`<input type="text" disabled>`;
+  return `<div><label>${esc(f.label)} ${f.required?'<span class="req">*</span>':""}</label>${ctrl}</div>`;
+}
+
+/* ---------- import / export ---------- */
+function doExport(){
+  try {
+    const blob = new Blob([JSON.stringify(DATA,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().slice(0,10);
+    const filename = `elec1-labs-${stamp}.json`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoking right away is a known source of flaky downloads -- some
+    // browsers haven't finished reading the blob yet when this runs on
+    // the very next line. Give it a few seconds instead of doing it
+    // immediately.
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+
+    flash(`Exported as ${filename}. If nothing appeared in your downloads, ` +
+      `<a href="${url}" download="${filename}" style="text-decoration:underline;font-weight:700">click here to save it manually</a>. ` +
+      `Keep this file — it's the master copy of your labs.`, false, {raw:true, persist:true});
+  } catch(err){
+    flash("Export failed: "+err.message+". Try the manual link, or check whether this browser/device blocks downloads.", true);
+  }
+}
+
+/* Publish = the instructor's approval step. Promotes the current draft
+   to the student-facing pack: stamps each lab published + a publish time,
+   ensures a version, and downloads the approved copy to put where students
+   fetch it. Distinct from Export (a plain working backup). Version is NOT
+   auto-bumped here — bumping only when a lab's content changes is a later
+   refinement; auto-bumping every publish would make every existing
+   submission read as "drift" in the grader. */
+function doPublish(){
+  if(!DATA.modules.some(m=>(m.labs||[]).length)){ flash("Nothing to publish yet — add a job sheet first.", true); return; }
+  let count=0;
+  DATA.modules.forEach(m=>(m.labs||[]).forEach(l=>{
+    if(l.version==null) l.version=1;
+    l.published=true; l.publishedAt=new Date().toISOString(); count++;
+  }));
+  DATA.publishedAt=new Date().toISOString();
+  persist();
+  try{
+    const blob=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const stamp=new Date().toISOString().slice(0,10);
+    const slug=(DATA.course||"lab-pack").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"lab-pack";
+    const filename=`${slug}-published-${stamp}.json`;
+    const a=document.createElement("a"); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    flash(`Published ${count} job sheet${count===1?"":"s"} as <b>${filename}</b>. This is the approved copy — put it where students fetch it. ` +
+      `<a href="${url}" download="${filename}" style="text-decoration:underline;font-weight:700">save it manually</a> if it didn't download.`,
+      false, {raw:true, persist:true});
+  }catch(err){ flash("Publish failed: "+err.message, true); }
+  renderAll();
+}
+
+function doImport(file){
+  const r = new FileReader();
+  r.onload = ()=>{
+    let incoming;
+    try { incoming = JSON.parse(r.result); }
+    catch(e){ flash("That file isn't valid JSON — "+e.message, true); return; }
+    if(!incoming || !Array.isArray(incoming.modules)){ flash("That file doesn't look like a labs file (no modules list).", true); return; }
+
+    const mode = DATA.modules.length
+      ? (confirm(`You already have ${DATA.modules.length} module(s) open.\n\nOK = REPLACE everything with the imported file.\nCancel = MERGE (add imported modules alongside what you have).`) ? "replace" : "merge")
+      : "replace";
+
+    if(mode==="replace"){ DATA = incoming; }
+    else {
+      incoming.modules.forEach(im=>{
+        const clash = moduleById(im.id);
+        if(clash){ im = Object.assign({}, im, { id: im.id+"-imported" }); }
+        // drop any job numbers that already exist rather than silently overwrite
+        im.labs = (im.labs||[]).filter(l=>!jobNumberOwner(l.job,null));
+        DATA.modules.push(im);
+      });
+    }
+    DATA.modules.forEach(m=>(m.labs||[]).forEach(normalizeLab));
+    selModule = DATA.modules.length?DATA.modules[0].id:null;
+    selLab=null; editing=null; editingModuleMeta=null;
+    markDirty(); persist(); renderAll();
+    flash(`Imported ${incoming.modules.length} module(s).`);
+  };
+  r.readAsText(file);
+}
+
+/* ============================================================
+   ACCREDITATION COVERAGE  (additive, read-only)
+   Loads ASE "task-list packs" (JSON) and shows, live, how the
+   current course's job-sheet `ase` codes cover the selected area's
+   tasks. Never writes to the labs — pure reporting. Task lists are
+   remembered in this browser so they only need loading once, and a
+   new list can be dropped in when ASE revises the standard.
+   ============================================================ */
+function loadTaskLists(){
+  try { TASKLISTS = JSON.parse(localStorage.getItem(LS_TASKS)||"{}") || {}; } catch(e){ TASKLISTS={}; }
+  covArea = localStorage.getItem(LS_COVAREA) || "";
+  try { COMPANION = JSON.parse(localStorage.getItem(LS_COMPANION)||"null"); } catch(e){ COMPANION=null; }
+}
+function saveTaskLists(){ try { localStorage.setItem(LS_TASKS, JSON.stringify(TASKLISTS)); } catch(e){} }
+
+/* A split area (Engine Performance / Electrical) is taught across two courses but
+   accredited on the COMBINED coverage. Loading the OTHER course's exported pack here
+   lets the panel count both together. It is used for coverage only — never merged into
+   your editable labs. It's a snapshot: re-load it after the other course is re-published. */
+function importCompanion(file){
+  const r = new FileReader();
+  r.onload = ()=>{
+    let pk;
+    try { pk = JSON.parse(r.result); }
+    catch(e){ flash("That companion file isn't valid JSON — "+e.message, true); return; }
+    if(!pk || !Array.isArray(pk.modules)){ flash("That doesn't look like a labs pack (no modules list).", true); return; }
+    COMPANION = { course: pk.course||"(other course)", modules: pk.modules, loadedAt: new Date().toISOString(), name: file.name };
+    try { localStorage.setItem(LS_COMPANION, JSON.stringify(COMPANION)); } catch(e){}
+    const n = (pk.modules||[]).reduce((a,m)=>a+(m.labs||[]).length,0);
+    flash(`Companion course loaded: ${esc(COMPANION.course)} (${n} job sheets) — now counted in combined coverage.`);
+    renderCoverage();
+  };
+  r.readAsText(file);
+}
+function clearCompanion(){ COMPANION=null; try{ localStorage.removeItem(LS_COMPANION); }catch(e){} renderCoverage(); }
+
+/* every job sheet that counts toward coverage: this course + optional companion */
+function coverageUnits(){
+  const units = allLabs().map(x=>({lab:x.lab, moduleId:x.moduleId, source:"self"}));
+  if(COMPANION) (COMPANION.modules||[]).forEach(m=>(m.labs||[]).forEach(l=>units.push({lab:l, moduleId:m.id, source:"comp"})));
+  return units;
+}
+
+function importTaskList(file){
+  const r = new FileReader();
+  r.onload = ()=>{
+    let pk;
+    try { pk = JSON.parse(r.result); }
+    catch(e){ flash("That task-list file isn't valid JSON — "+e.message, true); return; }
+    if(!pk || pk.type!=="ase-task-list" || !Array.isArray(pk.tasks) || !pk.areaKey){
+      flash("That doesn't look like a task-list pack (expected an ASE task-list .json).", true); return;
+    }
+    TASKLISTS[pk.areaKey] = pk;
+    saveTaskLists();
+    covArea = pk.areaKey; localStorage.setItem(LS_COVAREA, covArea);
+    flash(`Loaded task list: ${esc(pk.area)} (${pk.tasks.length} tasks).`);
+    renderCoverage();
+  };
+  r.readAsText(file);
+}
+
+/* job sheets (this course + companion) whose ase codes include this code */
+function labsCoveringCode(code){
+  return coverageUnits().filter(u=>(u.lab.ase||[]).includes(code));
+}
+function taskWantedCode(task, prefix){ return prefix ? (prefix+" "+task.id) : task.id; }
+function compTag(){ // short label for companion job chips, e.g. "II"
+  const c = (COMPANION&&COMPANION.course)||"";
+  const m = c.match(/\bII\b|\bI\b|\b2\b|\b1\b/); return m ? m[0] : "other";
+}
+
+function renderCoverage(){
+  const sel  = document.getElementById("covAreaSel");
+  const pane = document.getElementById("coveragePane");
+  const hint = document.getElementById("covHint");
+  if(!sel) return;
+  const keys = Object.keys(TASKLISTS).sort((a,b)=>{
+    const A=TASKLISTS[a], B=TASKLISTS[b];
+    if(A.priorityRated!==B.priorityRated) return A.priorityRated?-1:1;
+    return (A.area||"").localeCompare(B.area||"");
+  });
+  sel.innerHTML = `<option value="">— choose a task list —</option>` +
+    keys.map(k=>`<option value="${esc(k)}" ${k===covArea?"selected":""}>${esc(TASKLISTS[k].area)}${TASKLISTS[k].priorityRated?"":" (foundational)"}</option>`).join("");
+  sel.onchange = ()=>{ covArea=sel.value; localStorage.setItem(LS_COVAREA,covArea); renderCoverage(); };
+  document.getElementById("btnLoadTasks").onclick = ()=>document.getElementById("taskFileInput").click();
+  document.getElementById("taskFileInput").onchange = e=>{ if(e.target.files[0]) importTaskList(e.target.files[0]); e.target.value=""; };
+
+  if(!keys.length){
+    hint.innerHTML = `No task lists loaded yet. Click <b>Load task list…</b> and pick a <span class="mono">*.tasklist.json</span> file from <span class="mono">ASE\\task-list-packs\\</span>. They're remembered on this computer, and you can drop in a newer one whenever ASE revises the standard.`;
+    pane.innerHTML=""; return;
+  }
+  const A = TASKLISTS[covArea];
+  if(!A){ hint.textContent = "Choose a task list above to see how this course's job sheets cover it."; pane.innerHTML=""; return; }
+
+  const prefix = A.codePrefix||"";
+  const selfN = allLabs().length;
+  const compN = COMPANION ? (COMPANION.modules||[]).reduce((a,m)=>a+(m.labs||[]).length,0) : 0;
+  const combined = !!COMPANION;
+  const compCtrl = `<div class="note" style="border-left-color:var(--stech-gray);background:var(--gray-50);margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span><b>Split area?</b> Engine Performance and Electrical are each one ASE area taught across two courses — accreditation counts <b>both together</b>. Load the other course to see the real combined number.</span>
+    ${COMPANION
+      ? `<span class="pill p-grade">＋ ${esc(COMPANION.course)} · ${compN} sheets</span><button class="btn ghost sm" id="btnReloadComp">Reload…</button><button class="btn ghost sm" id="btnClearComp">Remove</button>`
+      : `<button class="btn ghost sm" id="btnAddComp">Add the other course…</button>`}
+    <input type="file" id="compFileInput" accept="application/json,.json" style="display:none">
+  </div>`;
+  hint.innerHTML = compCtrl + `Coverage of <b>${esc(A.area)}</b> by ${combined?`<b>both courses</b> (${selfN} here + ${compN} from ${esc(COMPANION.course)} = ${selfN+compN})`:`the <b>${selfN}</b> job sheet(s) in this course`}, against ${A.tasks.length} tasks · ${esc(A.standard)}.${combined?"":` <span style="color:var(--status-warning);font-weight:700">This is a split area — add the other course above, or these numbers reflect only about half of it.</span>`} <span class="hint" style="display:block;margin-top:3px">Covered = a job sheet's ASE code matches the task${prefix?` (with the <span class="mono">${esc(prefix)}</span> prefix)`:""}. Reporting only — nothing changes your labs.</span>`;
+  (function wireComp(){
+    const fi=document.getElementById("compFileInput");
+    const add=document.getElementById("btnAddComp"), rl=document.getElementById("btnReloadComp"), cl=document.getElementById("btnClearComp");
+    if(add) add.onclick=()=>fi.click();
+    if(rl)  rl.onclick=()=>fi.click();
+    if(cl)  cl.onclick=clearCompanion;
+    if(fi)  fi.onchange=e=>{ if(e.target.files[0]) importCompanion(e.target.files[0]); e.target.value=""; };
+  })();
+
+  const covLabs = t => labsCoveringCode(taskWantedCode(t, prefix));
+  let html = "";
+
+  if(A.priorityRated){
+    const THR = A.thresholds||{"P-1":90,"P-2":75,"P-3":50};
+    const cards = ["P-1","P-2","P-3"].map(p=>{
+      const ts = A.tasks.filter(t=>t.priority===p);
+      const c  = ts.filter(t=>covLabs(t).length).length;
+      const n  = ts.length;
+      const pct = n? Math.round(1000*c/n)/10 : 0;
+      const thr = THR[p]||0;
+      const pass = n===0 || pct>=thr;
+      const col = n===0 ? "var(--gray-400)" : (pass ? "var(--status-success)" : "var(--status-error)");
+      return `<div class="card" style="border-top-color:${col}">
+        <b>${p} coverage <span style="color:var(--text-subtle)">· need ≥${thr}%</span></b>
+        <span style="color:${col}">${n?pct+"%":"—"}</span>
+        <div class="hint" style="margin:2px 0 0">${c}/${n} tasks ${n?(pass?"· meets threshold":"· BELOW threshold"):""}</div>
+        <div class="meter"><i style="width:${n?pct:0}%;background:${col}"></i></div>
+      </div>`;
+    }).join("");
+    const gaps = A.tasks.filter(t=>!covLabs(t).length);
+    const p1gaps = gaps.filter(t=>t.priority==="P-1");
+    html += `<div class="cards">${cards}</div>`;
+    if(gaps.length){
+      html += `<div class="note" style="border-left-color:var(--status-warning);background:var(--status-warning-bg)">
+        <b>${gaps.length} uncovered task${gaps.length===1?"":"s"}</b>${p1gaps.length?` — including ${p1gaps.length} P-1`:""}. Add the task's code to a job sheet that demonstrates it (or create a new job sheet) to close it.</div>`;
+      html += `<table style="margin-bottom:14px"><thead><tr><th style="width:70px">Task</th><th style="width:52px">Pri</th><th>Description</th></tr></thead><tbody>`;
+      html += gaps.map(t=>`<tr><td class="mono">${esc(t.id)}</td><td><span class="pill ${t.priority==="P-1"?"p-sub":t.priority==="P-2"?"p-rev":"p-draft"}">${t.priority}</span></td><td>${esc(t.desc)}</td></tr>`).join("");
+      html += `</tbody></table>`;
+    } else {
+      html += `<div class="note" style="border-left-color:var(--status-success);background:var(--status-success-bg)"><b>Every task in this area is covered by at least one job sheet.</b></div>`;
+    }
+    html += coverageFullTable(A, covLabs, prefix, true);
+  } else {
+    const c = A.tasks.filter(t=>covLabs(t).length).length;
+    html += `<div class="cards"><div class="card" style="border-top-color:var(--stech-blue)"><b>Foundational tasks covered</b><span>${c}/${A.tasks.length}</span><div class="meter"><i style="width:${Math.round(100*c/A.tasks.length)}%"></i></div></div></div>`;
+    html += `<div class="hint" style="margin:-6px 0 12px">Foundational tasks are required at all levels but not priority-rated, so they don't affect the P-1/P-2/P-3 percentages of the graded areas.</div>`;
+    html += coverageFullTable(A, covLabs, prefix, false);
+  }
+  pane.innerHTML = html;
+
+  // clicking a covering job number jumps to that lab
+  pane.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{
+    const [mid,job] = b.dataset.jump.split("|");
+    selModule=mid; editingModuleMeta=null; openLab(job);
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+}
+
+function coverageFullTable(A, covLabs, prefix, prated){
+  const rows = A.tasks.map(t=>{
+    const labs = covLabs(t);
+    const chips = labs.map(x=> x.source==="comp"
+      ? `<span class="chip" style="border-color:var(--stech-gray);color:var(--stech-gray)" title="${esc((COMPANION&&COMPANION.course)||"other course")}: ${esc(x.lab.title||"")}">${esc(compTag())}·Job ${esc(x.lab.job)}</span>`
+      : `<button type="button" class="chip" style="cursor:pointer;border-style:solid" data-jump="${esc(x.moduleId)}|${esc(x.lab.job)}" title="${esc(x.lab.title||"")}">Job ${esc(x.lab.job)}</button>`
+    ).join(" ");
+    const cell = labs.length ? chips : `<span class="pill p-rev">not covered</span>`;
+    const pri = prated ? `<td><span class="pill ${t.priority==="P-1"?"p-sub":t.priority==="P-2"?"p-rev":"p-draft"}">${t.priority}</span></td>` : "";
+    return `<tr${labs.length?"":' style="background:var(--status-warning-bg)"'}><td class="mono">${esc(t.id)}</td>${pri}<td>${esc(t.desc)}</td><td>${cell}</td></tr>`;
+  }).join("");
+  return `<details><summary style="cursor:pointer;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding:6px 0">All ${A.tasks.length} tasks &amp; which job sheets cover them</summary>
+    <table style="margin-top:8px"><thead><tr><th style="width:70px">Task</th>${prated?'<th style="width:52px">Pri</th>':""}<th>Description</th><th style="width:33%">Covered by</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+}
+
+/* ---------- boot ---------- */
+function renderAll(){
+  renderModules();
+  renderLabList();
+  renderEditor();
+  renderCoverage();
+}
+
+document.getElementById("btnNewModule").onclick = ()=>{
+  editing=null; selLab=null;
+  editingModuleMeta = { id:slugModuleId(), title:"", labRange:"" };
+  renderAll();
+};
+document.getElementById("btnNewLab").onclick = ()=>{
+  if(!currentModule()){ flash("Create or open a module first — job sheets live inside modules.", true); return; }
+  editingModuleMeta=null; isNewLab=true; selLab=null; showPreview=false;
+  editing = { job: nextJobNumber(), legacyJob:null, title:"", type:"lab", ase:[], requiresVehicle:true,
+              version:1, weight:10, competency:{requireAllFields:true,requireAllCorrect:true,countCheckoffs:false},
+              instructions:[], steps:[{text:"",checkbox:true}], fields:[] };
+  renderAll();
+};
+document.getElementById("btnExport").onclick = doExport;
+document.getElementById("btnPublish").onclick = doPublish;
+document.getElementById("btnImport").onclick = ()=>document.getElementById("fileInput").click();
+document.getElementById("btnImport2").onclick = ()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = e=>{ if(e.target.files[0]) doImport(e.target.files[0]); e.target.value=""; };
+
+/* ---------- drag & drop import ---------- */
+const dz = document.getElementById("dropzone");
+
+/* Without these two, dropping a file ANYWHERE else on the page makes the
+   browser navigate away from the builder and open the raw file --
+   losing unsaved work. Swallow it everywhere, act only on the zone. */
+["dragover","drop"].forEach(evt=>{
+  window.addEventListener(evt, e=>{ e.preventDefault(); }, false);
+});
+
+["dragenter","dragover"].forEach(evt=>
+  dz.addEventListener(evt, e=>{ e.preventDefault(); dz.classList.add("drag-over"); }));
+["dragleave","dragend"].forEach(evt=>
+  dz.addEventListener(evt, ()=>dz.classList.remove("drag-over")));
+
+dz.addEventListener("drop", e=>{
+  e.preventDefault();
+  dz.classList.remove("drag-over");
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(!f){ return; }
+  if(!/\.json$/i.test(f.name)){
+    flash(`"${f.name}" isn't a labs file — it needs to be the .json file you exported from this tool.`, true);
+    return;
+  }
+  doImport(f);
+});
+
+window.addEventListener("beforeunload", e=>{ if(dirty){ e.preventDefault(); e.returnValue=""; } });
+
+restore();
+loadTaskLists();
+DATA.modules.forEach(m=>(m.labs||[]).forEach(normalizeLab));
+if(!selModule && DATA.modules.length) selModule = DATA.modules[0].id;
+markSaved();
+renderAll();
+</script>
+
+</body></html>

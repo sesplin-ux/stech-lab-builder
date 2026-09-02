@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STECH — Job Sheet (Student)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   STECH Job Sheet — FILL MODE (student) · prototype
+   Standalone: no server, no accounts. Loads a lab pack the
+   instructor published (imported file, cached in this browser),
+   renders each job sheet as a fillable form, evaluates the
+   COMPETENCY GATE live (Complete / Not yet), and exports a
+   submission file the student uploads to Canvas.
+
+   Design intent: the render + evaluate functions here are the
+   same "engine" the Builder previews with and the Grader will
+   score with. Kept as clear functions so they can be extracted
+   into a shared module later.
+   Palette / type = STECH design system (matches Builder.html).
+   ============================================================ */
+:root{
+  --stech-blue:#047BC1; --blue-700:#024a76; --blue-600:#036098; --blue-400:#3d9bd2;
+  --blue-200:#cde6f5; --blue-100:#e6f2fa; --blue-50:#f2f8fd;
+  --gray-900:#2b2b2b; --gray-800:#424242; --gray-700:#545b64; --gray-600:#656e7b;
+  --gray-500:#8a919b; --gray-400:#b4b9c0; --gray-300:#dddddd; --gray-200:#e8eaed;
+  --gray-100:#f2f3f5; --gray-50:#f8f9fa; --white:#fff;
+  --green-600:#2e7d46; --green-100:#e6f4ea; --amber-600:#b26a00; --amber-100:#fbf0dc;
+  --red-600:#c62828; --red-100:#fdecea;
+  --ink:#21262e; --body:#49525d; --muted:#6c7580; --subtle:#8a919b;
+  --line:#d9dfe6; --line-soft:#e8ebef;
+  --radius:6px; --radius-lg:10px; --pill:999px;
+  --focus:0 0 0 3px rgba(4,123,193,.35);
+  --shadow-xs:0 1px 2px rgba(31,42,56,.06); --shadow-sm:0 1px 3px rgba(31,42,56,.1);
+  --shadow-md:0 4px 12px rgba(31,42,56,.1);
+  --display:"Oswald","Roboto Condensed","Arial Narrow",sans-serif;
+  --sans:"Roboto",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --cond:"Oswald","Roboto Condensed",Arial,sans-serif;
+  --mono:"Roboto Mono",ui-monospace,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--gray-50);color:var(--body);font-family:var(--sans);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--blue-600)}
+
+header{background:var(--stech-blue);color:#fff;border-bottom:3px solid var(--blue-700)}
+.bar{max-width:1160px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.badge{background:#fff;color:var(--stech-blue);font-family:var(--cond);font-weight:700;padding:5px 10px;
+  font-size:12px;letter-spacing:.08em;border-radius:var(--radius);text-transform:uppercase}
+.hbar h1{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:.01em;text-transform:uppercase;
+  line-height:1;color:#fff}
+.hbar .sub{font-family:var(--cond);opacity:.85;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
+.who{margin-left:auto;display:flex;align-items:center;gap:8px}
+.who label{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#fff;opacity:.85}
+.who input{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.14);color:#fff;
+  padding:7px 11px;border-radius:var(--radius);font:inherit;font-size:13.5px;width:170px}
+.who input::placeholder{color:rgba(255,255,255,.7)}
+.who input:focus-visible{outline:none;border-color:#fff;background:rgba(255,255,255,.22)}
+
+.wrap{max-width:1160px;margin:0 auto;padding:22px 20px 120px}
+
+/* buttons */
+.btn{font-family:var(--cond);background:var(--stech-blue);color:#fff;border:1px solid transparent;
+  padding:11px 20px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:12.5px;cursor:pointer;
+  border-radius:var(--radius);transition:background .15s,transform .05s}
+.btn:hover{background:var(--blue-600)} .btn:active{transform:translateY(1px)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--gray-400)}
+.btn.ghost:hover{background:var(--gray-100)}
+.btn.sm{padding:7px 13px;font-size:11px}
+.btn.big{padding:13px 26px;font-size:13.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed} .btn:disabled:hover{background:var(--stech-blue)}
+.btn.ghost:disabled:hover{background:#fff}
+
+/* dropzone / empty */
+.dropzone{border:2px dashed var(--gray-400);border-radius:var(--radius-lg);background:#fff;padding:40px 24px;
+  text-align:center;transition:border-color .12s,background .12s;box-shadow:var(--shadow-xs)}
+.dropzone.drag-over{border-color:var(--stech-blue);background:var(--blue-50)}
+.dropzone .dz-ic{font-size:34px;line-height:1;color:var(--subtle);margin-bottom:10px}
+.dropzone h2{font-family:var(--display);text-transform:uppercase;font-size:22px;color:var(--ink);font-weight:600;
+  letter-spacing:.01em;margin-bottom:6px}
+.dropzone p{color:var(--muted);font-size:14px;margin-bottom:16px;max-width:440px;margin-left:auto;margin-right:auto}
+.dz-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* layout */
+.ed-wrap{display:grid;gap:22px}
+@media(min-width:940px){.ed-wrap{grid-template-columns:280px 1fr;align-items:start}}
+.side{position:sticky;top:14px}
+.sec-head{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.sec-head h3{font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  color:var(--muted);flex:1}
+
+/* vehicle bar */
+.veh{border:1px solid var(--gray-400);border-top:3px solid var(--stech-blue);border-radius:var(--radius-lg);
+  background:#fff;padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow-xs)}
+.veh .vh{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.veh .vh b{font-family:var(--cond);font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink)}
+.veh .vh .req{color:var(--stech-blue)}
+.veh-recent{margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.veh-recent .rl{font-family:var(--cond);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle)}
+.veh-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;color:var(--blue-700);
+  background:#fff;border:1px solid var(--blue-200);border-radius:var(--pill);padding:5px 12px;cursor:pointer}
+.veh-chip:hover{background:var(--blue-50);border-color:var(--stech-blue)}
+.radio-row{display:flex;gap:18px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.radio-row label{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.radio-row input{width:16px;height:16px;accent-color:var(--stech-blue)}
+.veh input[type=text]{width:100%;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);
+  background:#fff;font:inherit;font-size:13.5px;color:var(--ink)}
+.veh input.mono{font-family:var(--mono)}
+.veh input[type=text]:focus-visible{outline:none;border-color:var(--stech-blue);box-shadow:var(--focus)}
+
+/* nav list */
+.navlist{border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;background:#fff;
+  box-shadow:var(--shadow-xs)}
+.mod-h{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  color:var(--muted);background:var(--gray-100);padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+.nav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:#fff;border:none;
+  border-bottom:1px solid var(--line-soft);padding:10px 12px;font:inherit;cursor:pointer;transition:background .12s}
+.nav-item:last-child{border-bottom:none}
+.nav-item:hover{background:var(--gray-100)}
+.nav-item[aria-current="true"]{background:var(--blue-50);border-left:3px solid var(--stech-blue);padding-left:9px}
+.nav-item .jn{font-family:var(--cond);font-weight:700;color:var(--stech-blue);font-size:12px;min-width:48px;letter-spacing:.03em}
+.nav-item .jt{flex:1;font-size:12.5px;color:var(--body);line-height:1.35}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:1.5px solid var(--gray-400);background:#fff}
+.dot.ok{background:var(--green-600);border-color:var(--green-600)}
+.dot.part{background:var(--amber-600);border-color:var(--amber-600)}
+
+/* form */
+.sheet{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+  overflow:hidden}
+.wo-top{padding:18px 20px;border-bottom:1px solid var(--line);background:var(--gray-50)}
+.wo-num{font-family:var(--display);font-size:32px;font-weight:600;color:var(--stech-blue);letter-spacing:.01em;line-height:1}
+.wo-title{font-size:19px;font-weight:500;color:var(--ink);margin-top:4px;max-width:60ch}
+.wo-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.chip{display:inline-block;font-family:var(--cond);font-size:11px;font-weight:700;border:1.5px solid var(--blue-700);
+  color:var(--blue-700);padding:2px 9px;letter-spacing:.04em;border-radius:var(--pill)}
+.chip.type{border-color:var(--gray-500);color:var(--gray-700)}
+.sheet-body{padding:20px}
+
+.instr{border:1px solid var(--blue-200);border-left:3px solid var(--stech-blue);background:var(--blue-50);
+  border-radius:0 var(--radius) var(--radius) 0;padding:12px 15px;margin-bottom:20px}
+.instr b{display:block;font-family:var(--cond);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--stech-blue);font-weight:700;margin-bottom:6px}
+.instr ul{margin:0 0 0 18px;padding:0} .instr li{margin-bottom:4px;font-size:14px;color:var(--ink)}
+.instr li:last-child{margin-bottom:0}
+
+h4.block{font-family:var(--cond);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line-soft)}
+
+.step{display:flex;gap:11px;padding:11px 13px;border:1px solid var(--line-soft);border-left:3px solid var(--gray-500);
+  border-radius:var(--radius);margin-bottom:8px;background:var(--gray-50);cursor:pointer}
+.step.done{border-left-color:var(--green-600);background:var(--green-100)}
+.step.nocheck{border-left-color:var(--gray-300);background:#fff;cursor:default}
+.step input[type=checkbox]{width:20px;height:20px;accent-color:var(--stech-blue);flex-shrink:0;margin-top:1px;cursor:pointer}
+.step .snum{font-family:var(--mono);font-weight:600;color:var(--muted);margin-right:2px}
+.step .stext{flex:1;font-size:14px;color:var(--ink)}
+
+.field{margin-bottom:16px}
+.field>label{display:block;font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.field .req{color:var(--stech-blue);font-weight:700}
+.field input[type=text],.field input[type=number],.field select,.field textarea{width:100%;padding:9px 11px;
+  border:1px solid var(--line);border-radius:var(--radius);background:#fff;font:inherit;color:var(--ink);
+  transition:border-color .12s,box-shadow .12s}
+.field.measure input{font-family:var(--mono);font-size:16px}
+.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:none;
+  border-color:var(--stech-blue);box-shadow:var(--focus)}
+.field textarea{min-height:80px;resize:vertical;line-height:1.5}
+.field .unit{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:8px}
+.field .measure-in{display:flex;align-items:center}
+.field .list-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.field .list-row .ln{font-family:var(--mono);color:var(--muted);width:20px;flex-shrink:0;font-size:13px}
+.field.miss>label{color:var(--red-600)}
+.field.miss input,.field.miss select,.field.miss textarea{border-color:var(--red-600)}
+.field .fmark{float:right;font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;padding:1px 7px;border-radius:var(--pill)}
+.fmark.ok{background:var(--green-100);color:var(--green-600)}
+.fmark.chk{background:var(--amber-100);color:var(--amber-600)}
+.fmark.todo{background:var(--gray-100);color:var(--muted)}
+.attach-note{font-size:12.5px;color:var(--muted);border:1px dashed var(--line);border-radius:var(--radius);
+  padding:9px 12px;background:var(--gray-50)}
+
+/* notes scratchpad */
+.notes summary{list-style:none;cursor:pointer;font-family:var(--cond);font-size:12px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--stech-blue);font-weight:700;padding:10px 0}
+.notes summary::-webkit-details-marker{display:none}
+.notes textarea{width:100%;min-height:70px;font-family:var(--mono);font-size:13px;line-height:1.5;padding:10px;
+  border:1px solid var(--line);border-radius:var(--radius);resize:vertical}
+
+/* competency gate */
+.gate{border-radius:var(--radius-lg);border:1px solid var(--line);margin:22px 0 4px;overflow:hidden;
+  box-shadow:var(--shadow-xs)}
+.gate-h{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.gate-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px;flex-shrink:0;
+  font-weight:700;color:#fff}
+.gate-h b{font-family:var(--cond);font-size:16px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink)}
+.gate-h .cnt{margin-left:auto;font-family:var(--mono);font-size:13px;font-weight:600}
+.gate.ok{background:var(--green-100);border-color:var(--green-600)}
+.gate.ok .gate-ic{background:var(--green-600)}
+.gate.no{background:var(--amber-100);border-color:var(--amber-600)}
+.gate.no .gate-ic{background:var(--amber-600)}
+.gate-list{padding:0 16px 14px;display:grid;gap:6px}
+.gate-item{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);background:#fff;
+  border:1px solid var(--line);border-radius:var(--radius);padding:8px 11px;cursor:pointer}
+.gate-item:hover{border-color:var(--stech-blue)}
+.gate-item .rz{margin-left:auto;font-family:var(--cond);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  font-weight:700;padding:1px 7px;border-radius:var(--pill)}
+.rz.required{background:var(--amber-100);color:var(--amber-600)}
+.rz.incorrect{background:var(--red-100);color:var(--red-600)}
+
+/* sticky submit bar */
+.subbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--line);
+  box-shadow:0 -4px 16px rgba(31,42,56,.08);z-index:20}
+.subbar-in{max-width:1160px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.subbar .status{display:flex;align-items:center;gap:9px;font-family:var(--cond);font-size:13px;letter-spacing:.03em;
+  text-transform:uppercase;font-weight:600}
+.subbar .status .pip{width:11px;height:11px;border-radius:50%}
+.subbar .spacer{margin-left:auto}
+.subbar .saved{font-size:11px;color:var(--subtle);font-family:var(--cond);letter-spacing:.05em;text-transform:uppercase}
+
+/* banner */
+.banner{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;max-width:560px;width:92%}
+.banner .msg{padding:12px 16px;border-radius:var(--radius);font-size:14px;box-shadow:var(--shadow-md);
+  border:1px solid var(--green-600);background:var(--green-100);color:var(--green-600);font-weight:500}
+.banner .msg.err{border-color:var(--red-600);background:var(--red-100);color:var(--red-600)}
+.hidden{display:none}
+.pill{display:inline-block;font-family:var(--cond);font-size:11px;font-weight:700;padding:2px 9px;border-radius:var(--pill);
+  letter-spacing:.04em;text-transform:uppercase}
+.pill.ok{background:var(--green-100);color:var(--green-600)} .pill.no{background:var(--amber-100);color:var(--amber-600)}
+footer{max-width:1160px;margin:18px auto 0;padding:0 20px;font-size:11px;color:var(--subtle)}
+</style>
+</head><body>
+
+<header><div class="bar hbar">
+  <span class="badge">STECH</span>
+  <div>
+    <h1>Job Sheet</h1>
+    <div class="sub">Automotive · Student Fill</div>
+  </div>
+  <div class="who">
+    <label for="stuName">Your name</label>
+    <input type="text" id="stuName" placeholder="Last, First" autocomplete="off">
+  </div>
+</div></header>
+
+<div id="banner" class="banner hidden"><div class="msg" id="bannerMsg"></div></div>
+<input type="file" id="fileInput" accept="application/json,.json" class="hidden">
+
+<div class="wrap">
+
+  <!-- EMPTY STATE -->
+  <div id="empty">
+    <div id="dropzone" class="dropzone">
+      <div class="dz-ic">⬇</div>
+      <h2>Open your lab pack — or your saved work</h2>
+      <p><b>New to a course?</b> Open the <span class="mono">.json</span> <b>lab pack</b> your instructor gave you.<br>
+         <b>Continuing?</b> Open your own <b>“my work”</b> file from Google Drive — it brings back your pack <i>and</i> everything you'd filled in. It all stays on this computer.</p>
+      <div class="dz-actions">
+        <button class="btn" id="btnBrowse">Browse for a file</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <div class="ed-wrap">
+      <div class="side">
+        <div id="vehHost"></div>
+        <div class="sec-head"><h3 id="packTitle">Job sheets</h3>
+          <button class="btn ghost sm" id="btnChange">Change pack</button></div>
+        <div class="navlist" id="navlist"></div>
+      </div>
+      <div id="sheetHost"></div>
+    </div>
+  </div>
+</div>
+
+<div id="subbar" class="subbar hidden"><div class="subbar-in">
+  <div class="status" id="subStatus"></div>
+  <span class="spacer"></span>
+  <span class="saved" id="savedFlag">saved on this computer</span>
+  <span id="fileFlag" style="font-size:12px;margin:0 4px"></span>
+  <button class="btn ghost sm" id="btnBackup" title="Downloads ONE file with your pack + all your answers. Keep it in Google Drive and open it next time to continue on any computer.">Save my work (Drive)</button>
+  <button class="btn big" id="btnSubmit">Submit job sheet</button>
+</div></div>
+
+<footer id="footer" class="hidden">Fill mode · Your answers autosave on <b>this computer only</b>. To continue later on another Chromebook, click <b>Save my work (Drive)</b> and keep that one file in Google Drive — opening it restores your pack and answers. <b>Submit job sheet</b> hands a finished job in to Canvas.</footer>
+
+<!-- Shared competency engine — must sit next to this file. Classic script (not a module) so it loads over file://. -->
+<script src="engine.js"></script>
+<script>
+/* ================= state ================= */
+const LS_PACK="swtc_stu_pack_v1";     // cached published pack (offline resilience)
+const LS_WORK="swtc_stu_work_v1";     // student's in-progress work
+let PACK=null;
+let WORK={ studentName:"", vehicle:blankVehicle(), recent:[], labs:{} }; // labs[job] = {responses:{}, checkoffs:[], notes:""}
+let curJob=null, curModuleId=null;
+
+function blankVehicle(){ return { mode:"ymm", vin:"", year:"", make:"", model:"", engine:"" }; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+/* ================= persistence ================= */
+function saveWork(){ try{ localStorage.setItem(LS_WORK, JSON.stringify(WORK)); flagSaved(true); }catch(e){} markFileDirty(); }
+let saveTimer=null;
+function saveSoon(){ flagSaved(false); if(saveTimer)clearTimeout(saveTimer); saveTimer=setTimeout(saveWork,500); }
+function flagSaved(done){ const el=document.getElementById("savedFlag"); if(el){ el.textContent=done?"saved on this computer":"saving…"; } }
+
+/* ---- "saved to a file?" state (the Drive work file), separate from the
+   this-computer autosave. fileDirty = there are answers not yet in a downloaded
+   work file. Drives the subbar flag + the before-you-log-off warning. ---- */
+let fileDirty=false;
+function hasAnyWork(){
+  if(WORK.studentName && WORK.studentName.trim()) return true;
+  return Object.keys(WORK.labs||{}).some(function(j){ var w=WORK.labs[j];
+    return (w.checkoffs&&w.checkoffs.length) || (w.responses&&Object.keys(w.responses).length); });
+}
+function markFileDirty(){ if(!fileDirty){ fileDirty=true; } renderFileFlag(); }
+function markFileSaved(){ fileDirty=false; renderFileFlag(); }
+function renderFileFlag(){ var el=document.getElementById("fileFlag"); if(!el) return;
+  if(!hasAnyWork()){ el.textContent=""; return; }
+  if(fileDirty){ el.textContent="● not saved to a file"; el.style.color="#b45309"; el.style.fontWeight="700"; }
+  else { el.textContent="✓ saved to a file"; el.style.color="#15803d"; el.style.fontWeight="600"; }
+}
+function restore(){
+  try{ const w=localStorage.getItem(LS_WORK); if(w) WORK=Object.assign(blankVehicle()&&{studentName:"",vehicle:blankVehicle(),recent:[],labs:{}}, JSON.parse(w)); }catch(e){}
+  try{ const p=localStorage.getItem(LS_PACK); if(p) PACK=JSON.parse(p); }catch(e){}
+}
+function labWork(job){
+  if(!WORK.labs[job]) WORK.labs[job]={ responses:{}, checkoffs:[], notes:"", touched:[] };
+  if(!WORK.labs[job].touched) WORK.labs[job].touched=[];
+  return WORK.labs[job];
+}
+
+/* ================= competency gate — delegates to the shared engine =================
+   The RULES live in engine.js (window.LabEngine) so Fill, Grade, and
+   Preview can't disagree. These thin wrappers just adapt the student's
+   in-progress "work" object to the engine's context shape. */
+function evaluateLab(lab, w){
+  return LabEngine.evaluate(lab, { responses:w.responses, checkoffs:w.checkoffs, vehicle:WORK.vehicle });
+}
+/* Inline field mark for the form: todo | miss | ansok | ansno | "".
+   Neutral "to do" until the student has interacted (touched) the field. */
+function fieldState(lab,f,w){
+  return LabEngine.fieldMark(f, w.responses, (w.touched||[]).includes(f.id));
+}
+
+/* ================= vehicle ================= */
+function vehicleRecorded(){ return LabEngine.vehicleRecorded(WORK.vehicle); }
+function vehicleLabel(v){
+  if(v.mode==="vin"&&v.vin) return "VIN "+v.vin;
+  const p=[v.year,v.make,v.model].filter(Boolean).join(" ");
+  return p||"(no vehicle)";
+}
+function anyLabNeedsVehicle(){ return allLabs().some(x=>x.lab.requiresVehicle); }
+function renderVehicle(){
+  const host=document.getElementById("vehHost");
+  if(!anyLabNeedsVehicle()){ host.innerHTML=""; return; }
+  const v=WORK.vehicle;
+  const recent=(WORK.recent||[]).slice(0,4);
+  host.innerHTML=`<div class="veh">
+    <div class="vh"><b>Vehicle <span class="req">*</span></b>
+      <span class="pill ${vehicleRecorded()?"ok":"no"}">${vehicleRecorded()?"recorded":"needed"}</span></div>
+    ${recent.length?`<div class="veh-recent"><span class="rl">Recent</span>
+      ${recent.map((r,i)=>`<button class="veh-chip" data-recent="${i}">＋ ${esc(vehicleLabel(r))}</button>`).join("")}</div>`:""}
+    <div class="radio-row">
+      <label><input type="radio" name="vmode" value="ymm" ${v.mode!=="vin"?"checked":""}> Year / Make / Model</label>
+      <label><input type="radio" name="vmode" value="vin" ${v.mode==="vin"?"checked":""}> VIN</label>
+    </div>
+    ${v.mode==="vin"
+      ? `<div class="field measure"><input type="text" id="v_vin" class="mono" placeholder="17-digit VIN" value="${esc(v.vin)}"></div>`
+      : `<div style="display:grid;gap:8px;grid-template-columns:1fr 1fr">
+          <input type="text" id="v_year" placeholder="Year" value="${esc(v.year)}">
+          <input type="text" id="v_make" placeholder="Make" value="${esc(v.make)}">
+          <input type="text" id="v_model" placeholder="Model" value="${esc(v.model)}">
+          <input type="text" id="v_engine" placeholder="Engine (opt.)" value="${esc(v.engine)}">
+        </div>`}
+  </div>`;
+  host.querySelectorAll('[name=vmode]').forEach(r=>r.onchange=()=>{ WORK.vehicle.mode=r.value; saveWork(); renderVehicle(); refreshGateNavSub(); });
+  // Vehicle text inputs update in place — do NOT re-render the block (that would steal focus mid-typing)
+  const bind=(id,key)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>{ WORK.vehicle[key]=el.value; saveSoon(); updateVehiclePill(); refreshGateNavSub(); }; };
+  bind("v_vin","vin"); bind("v_year","year"); bind("v_make","make"); bind("v_model","model"); bind("v_engine","engine");
+  host.querySelectorAll("[data-recent]").forEach(b=>b.onclick=()=>{
+    WORK.vehicle=Object.assign(blankVehicle(),WORK.recent[+b.dataset.recent]); saveWork(); renderVehicle(); refreshGateNavSub();
+  });
+}
+function updateVehiclePill(){
+  const pill=document.querySelector("#vehHost .vh .pill");
+  if(!pill) return;
+  const ok=vehicleRecorded();
+  pill.className="pill "+(ok?"ok":"no"); pill.textContent=ok?"recorded":"needed";
+}
+function rememberVehicle(){
+  if(!vehicleRecorded()) return;
+  const v=Object.assign({},WORK.vehicle);
+  const key=vehicleLabel(v);
+  WORK.recent=(WORK.recent||[]).filter(r=>vehicleLabel(r)!==key);
+  WORK.recent.unshift(v); WORK.recent=WORK.recent.slice(0,6);
+}
+
+/* ================= model helpers ================= */
+function allLabs(){ return (PACK.modules||[]).flatMap(m=>(m.labs||[]).map(l=>({lab:l,moduleId:m.id,moduleTitle:m.title}))); }
+function findLab(job){ return allLabs().find(x=>String(x.lab.job)===String(job)); }
+
+/* ================= nav ================= */
+function renderNav(){
+  const host=document.getElementById("navlist");
+  document.getElementById("packTitle").textContent=(PACK.course||"Job sheets");
+  host.innerHTML=(PACK.modules||[]).map(m=>{
+    const rows=(m.labs||[]).map(l=>{
+      const w=labWork(l.job); const ev=evaluateLab(l,w);
+      const touched=Object.keys(w.responses||{}).length||(w.checkoffs||[]).length;
+      const cls=ev.complete?"ok":(touched?"part":"");
+      return `<button class="nav-item" data-job="${esc(l.job)}" aria-current="${String(curJob)===String(l.job)}">
+        <span class="dot ${cls}" title="${ev.complete?"complete":(touched?"in progress":"not started")}"></span>
+        <span class="jn">JOB ${esc(l.job)}</span>
+        <span class="jt">${esc(l.title||"(untitled)")}</span>
+      </button>`;
+    }).join("");
+    return `<div class="mod-h">${esc(m.title||m.id)}</div>${rows||`<div style="padding:10px 12px;color:var(--subtle);font-size:12.5px">No job sheets.</div>`}`;
+  }).join("");
+  host.querySelectorAll("[data-job]").forEach(b=>b.onclick=()=>openJob(b.dataset.job));
+}
+
+/* ================= sheet (fill form) ================= */
+function openJob(job){
+  const hit=findLab(job); if(!hit) return;
+  curJob=hit.lab.job; curModuleId=hit.moduleId;
+  renderNav(); renderSheet(); window.scrollTo({top:0,behavior:"smooth"});
+}
+function renderSheet(){
+  const hit=findLab(curJob); const host=document.getElementById("sheetHost");
+  if(!hit){ host.innerHTML=""; return; }
+  const l=hit.lab, w=labWork(l.job);
+  _hitLab=l; // set BEFORE building HTML — fieldHTML()/fieldState() read hitLab()
+  host.innerHTML=`<div class="sheet">
+    <div class="wo-top">
+      <div class="wo-num">JOB ${esc(l.job)}</div>
+      <div class="wo-title">${esc(l.title||"")}</div>
+      <div class="wo-tags">
+        ${(l.type&&l.type!=="lab")?`<span class="chip type">${esc(l.type)}</span>`:""}
+        ${(l.ase||[]).map(a=>`<span class="chip">${esc(a)}</span>`).join("")}
+        ${l.legacyJob?`<span class="chip type">old #${esc(l.legacyJob)}</span>`:""}
+      </div>
+    </div>
+    <div class="sheet-body">
+      ${(l.instructions||[]).length?`<div class="instr"><b>Before you start</b><ul>${l.instructions.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}
+      ${(l.steps||[]).length?`<h4 class="block">Steps</h4><div id="stepHost">${l.steps.map((s,i)=>stepHTML(s,i,w)).join("")}</div>`:""}
+      ${(l.fields||[]).length?`<h4 class="block">What you record</h4><div id="fieldHost">${l.fields.map(f=>fieldHTML(f,w)).join("")}</div>`:""}
+      <details class="notes"><summary>＋ My notes (private — not submitted)</summary>
+        <textarea id="notesArea" placeholder="Scratch space: specs you looked up, readings to remember…">${esc(w.notes||"")}</textarea></details>
+      <div id="gateHost"></div>
+    </div>
+  </div>`;
+  wireSheet(l,w);
+  refreshGate();
+  updateSubbar();
+}
+function stepHTML(s,i,w){
+  const done=(w.checkoffs||[]).includes(i);
+  if(!s.checkbox) return `<div class="step nocheck"><span class="stext"><span class="snum">${i+1}.</span> ${esc(s.text)}</span></div>`;
+  return `<label class="step ${done?"done":""}" data-step="${i}">
+    <input type="checkbox" ${done?"checked":""}>
+    <span class="stext"><span class="snum">${i+1}.</span> ${esc(s.text)}</span></label>`;
+}
+function fieldHTML(f,w){
+  const v=(w.responses||{})[f.id];
+  const st=fieldState(hitLab(),f,w);
+  const miss=st==="miss"?" miss":"";
+  const meas=f.type==="number"?" measure":"";
+  let mark="";
+  if(st==="ansok") mark=`<span class="fmark ok">✓ matches</span>`;
+  else if(st==="ansno") mark=`<span class="fmark chk">check answer</span>`;
+  else if(st==="todo") mark=`<span class="fmark todo">to do</span>`;
+  let ctrl="";
+  if(f.type==="number"){
+    ctrl=`<span class="measure-in"><input type="number" step="any" data-fid="${esc(f.id)}" value="${v==null?"":esc(v)}" placeholder="0.00">${f.unit?`<span class="unit">${esc(f.unit)}</span>`:""}</span>`;
+  } else if(f.type==="select"){
+    ctrl=`<select data-fid="${esc(f.id)}"><option value="">— choose —</option>${(f.options||[]).map(o=>`<option ${String(v)===String(o)?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  } else if(f.type==="textarea"){
+    ctrl=`<textarea data-fid="${esc(f.id)}" placeholder="Type your answer">${v==null?"":esc(v)}</textarea>`;
+  } else if(f.type==="list"){
+    const arr=Array.isArray(v)?v:[]; const n=f.count||3;
+    ctrl=Array.from({length:n}).map((_,i)=>`<div class="list-row"><span class="ln">${i+1}.</span><input type="text" data-fid="${esc(f.id)}" data-idx="${i}" value="${esc(arr[i]||"")}"></div>`).join("");
+  } else if(f.type==="attachment"){
+    ctrl=`<div class="attach-note">Attach your photo / file directly in Canvas when you submit. ${f.required?"Required for this job.":""}
+      <div style="margin-top:6px"><input type="text" data-fid="${esc(f.id)}" placeholder="Describe / name the file you attached" value="${v==null?"":esc(v)}"></div></div>`;
+  } else {
+    ctrl=`<input type="text" data-fid="${esc(f.id)}" value="${v==null?"":esc(v)}" placeholder="Type your answer">`;
+  }
+  return `<div class="field${meas}${miss}" data-field="${esc(f.id)}">
+    <label>${mark}${esc(f.label||f.id)} ${f.required?'<span class="req">*</span>':""}</label>${ctrl}</div>`;
+}
+let _hitLab=null; function hitLab(){ return _hitLab; }
+
+function wireSheet(l,w){
+  _hitLab=l;
+  // steps
+  document.querySelectorAll("[data-step]").forEach(lab=>{
+    const i=+lab.dataset.step; const cb=lab.querySelector("input");
+    cb.onchange=()=>{
+      const set=new Set(w.checkoffs||[]); cb.checked?set.add(i):set.delete(i);
+      w.checkoffs=[...set].sort((a,b)=>a-b);
+      lab.classList.toggle("done",cb.checked);
+      saveSoon(); refreshGate(); renderNav(); updateSubbar();
+    };
+  });
+  // fields
+  document.querySelectorAll("[data-fid]").forEach(el=>{
+    el.oninput=el.onchange=()=>{
+      const fid=el.dataset.fid;
+      if(el.dataset.idx!=null){
+        const arr=Array.isArray(w.responses[fid])?w.responses[fid].slice():[];
+        arr[+el.dataset.idx]=el.value; w.responses[fid]=arr;
+      } else {
+        w.responses[fid]=el.value;
+      }
+      markTouched(fid); saveSoon(); onFieldChange(fid); refreshGate(); renderNav(); updateSubbar();
+    };
+    // Leaving a field marks it touched — a required field the student
+    // clicked into but left empty now escalates from "to do" to red.
+    el.addEventListener("blur",()=>{ markTouched(el.dataset.fid); onFieldChange(el.dataset.fid); refreshGate(); renderNav(); updateSubbar(); });
+  });
+  const notes=document.getElementById("notesArea");
+  if(notes) notes.oninput=()=>{ w.notes=notes.value; saveSoon(); };
+}
+function markTouched(fid){ if(!fid) return; const w=labWork(curJob); if(!w.touched.includes(fid)) w.touched.push(fid); }
+function onFieldChange(fid){
+  // update just this field's inline mark/miss without rebuilding (keeps focus)
+  const l=hitLab(), w=labWork(curJob); const f=(l.fields||[]).find(x=>x.id===fid); if(!f) return;
+  const wrap=document.querySelector(`.field[data-field="${CSS.escape(fid)}"]`); if(!wrap) return;
+  const st=fieldState(l,f,w);
+  wrap.classList.toggle("miss", st==="miss");
+  const label=wrap.querySelector("label");
+  const old=label.querySelector(".fmark"); if(old) old.remove();
+  const M={ansok:["ok","✓ matches"],ansno:["chk","check answer"],todo:["todo","to do"]};
+  if(M[st]){ const s=document.createElement("span"); s.className="fmark "+M[st][0]; s.textContent=M[st][1]; label.insertBefore(s,label.firstChild); }
+}
+
+/* ================= gate + submit bar ================= */
+function refreshGate(){
+  const l=hitLab(); if(!l) return; const w=labWork(curJob);
+  const ev=evaluateLab(l,w);
+  const host=document.getElementById("gateHost");
+  host.innerHTML=`<div class="gate ${ev.complete?"ok":"no"}">
+    <div class="gate-h">
+      <div class="gate-ic">${ev.complete?"✓":"!"}</div>
+      <b>${ev.complete?"Complete — ready to submit":"Not yet complete"}</b>
+      <span class="cnt">${ev.complete?"all requirements met":ev.unmet.length+" item"+(ev.unmet.length===1?"":"s")+" left"}</span>
+    </div>
+    ${ev.unmet.length?`<div class="gate-list">${ev.unmet.map(u=>`
+      <div class="gate-item" data-goto="${esc(u.id)}">
+        <span>${u.reason==="vehicle"?"Record the vehicle":u.reason==="checkoff"?"Check off "+esc(u.label):u.reason==="incorrect"?"Re-check your answer: "+esc(u.label):(u.need&&u.need>1?esc(u.label)+" — "+(u.have||0)+" of "+u.need:esc(u.label))}</span>
+        <span class="rz ${u.reason==="incorrect"?"incorrect":"required"}">${u.reason==="incorrect"?"check answer":u.reason==="vehicle"?"required":u.reason==="checkoff"?"step":"required"}</span>
+      </div>`).join("")}</div>`:""}
+  </div>`;
+  host.querySelectorAll("[data-goto]").forEach(it=>it.onclick=()=>{
+    const id=it.dataset.goto;
+    if(id==="__vehicle"){ document.getElementById("vehHost").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+    const wrap=document.querySelector(`.field[data-field="${CSS.escape(id)}"]`)||document.querySelector(`[data-step="${id.replace("step","")}"]`);
+    if(wrap){ wrap.scrollIntoView({behavior:"smooth",block:"center"}); const inp=wrap.querySelector("input,select,textarea"); if(inp) inp.focus(); }
+  });
+}
+function updateSubbar(){
+  const bar=document.getElementById("subbar"); bar.classList.remove("hidden");
+  document.getElementById("footer").classList.remove("hidden");
+  const l=hitLab(); if(!l) return; const w=labWork(curJob);
+  const ev=evaluateLab(l,w);
+  const st=document.getElementById("subStatus");
+  st.innerHTML=`<span class="pip" style="background:${ev.complete?"var(--green-600)":"var(--amber-600)"}"></span>
+    Job ${esc(l.job)} · ${ev.complete?"Complete":ev.unmet.length+" left"}`;
+  const btn=document.getElementById("btnSubmit");
+  btn.textContent=ev.complete?"Submit job sheet":"Submit anyway (incomplete)";
+  btn.className=ev.complete?"btn big":"btn ghost big";
+}
+function refreshGateNavSub(){ renderNav(); if(curJob!=null){ refreshGate(); updateSubbar(); } }
+
+/* ================= submit / export ================= */
+function download(obj, name){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+function submitJob(){
+  if(!WORK.studentName.trim()){ flash("Enter your name up top first.",true); document.getElementById("stuName").focus(); return; }
+  const hit=findLab(curJob); const l=hit.lab, w=labWork(l.job);
+  const ev=evaluateLab(l,w);
+  if(!ev.complete && !confirm("This job sheet isn't complete yet — "+ev.unmet.length+" item(s) still need attention. Submit anyway? Your instructor will return it.")) return;
+  rememberVehicle();
+  const stamp=new Date().toISOString().slice(0,10);
+  const sub={
+    type:"stech-job-submission", schema:1,
+    course:PACK.course||"", generatedAt:new Date().toISOString(),
+    student:{ name:WORK.studentName.trim() },
+    module:{ id:hit.moduleId, title:hit.moduleTitle||"" },
+    labPack:{ job:l.job, version:l.version||1, title:l.title||"" },
+    vehicle:l.requiresVehicle?WORK.vehicle:null,
+    responses:w.responses||{},
+    checkoffs:w.checkoffs||[],
+    selfCheck:ev   // instructor's Grader RE-checks; this is just what the student saw
+  };
+  const who=WORK.studentName.trim().replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").toLowerCase()||"student";
+  download(sub, `job-${l.job}-${who}-${stamp}.json`);
+  saveWork();
+  flash(ev.complete
+    ? `Job ${l.job} submitted — upload THIS file to Canvas. Continuing later on another computer? Also click “Save my work (Drive).”`
+    : `Job ${l.job} exported (incomplete). Save my work (Drive) if you'll finish it on another computer.`);
+}
+/* One self-contained "my work" file = the pack + every answer, so the student
+   manages ONE file: save it to Drive, open it next session on any Chromebook and
+   the pack + progress come back together. (packCourse kept for older readers.) */
+function backupWork(){
+  const who=(WORK.studentName||"").trim().replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").toLowerCase()||"student";
+  download({ type:"stech-student-work", schema:1, generatedAt:new Date().toISOString(),
+    student:{name:WORK.studentName}, work:WORK, packCourse:PACK?PACK.course:null,
+    pack:PACK||null },
+    `my-lab-work-${who}-${new Date().toISOString().slice(0,10)}.json`);
+  markFileSaved();
+  flash("Saved. Put this one file in Google Drive — open it next time to continue right where you left off, on any computer.");
+}
+function normWork(w){ return Object.assign({studentName:"",vehicle:blankVehicle(),recent:[],labs:{}}, w||{}); }
+/* Load a saved work file back. If it carries its pack (self-contained), the pack
+   loads too, so the student only ever opens this one file. */
+function restoreWork(obj){
+  if(!obj || obj.type!=="stech-student-work" || !obj.work){ flash("That work file is missing its saved answers.",true); return false; }
+  WORK = normWork(obj.work);
+  const nm=document.getElementById("stuName"); if(nm) nm.value=WORK.studentName||"";
+  saveWork();
+  if(obj.pack && Array.isArray(obj.pack.modules)){ loadPack(obj.pack); }
+  else if(PACK){ renderVehicle(); renderNav(); const f=allLabs()[0]; if(f) openJob((curJob!=null?curJob:f.lab.job)); }
+  markFileSaved();
+  flash(PACK ? "Welcome back — your pack and answers are restored." : "Your answers loaded. Now open your lab pack to see them.");
+  return true;
+}
+
+/* ================= pack loading ================= */
+function loadPack(obj){
+  if(!obj||!Array.isArray(obj.modules)){ flash("That doesn't look like a labs file (no modules).",true); return false; }
+  PACK=obj;
+  try{ localStorage.setItem(LS_PACK, JSON.stringify(PACK)); }catch(e){}
+  (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab));
+  showApp();
+  const first=allLabs()[0];
+  if(first) openJob(first.lab.job); else { renderNav(); renderVehicle(); }
+  return true;
+}
+function normalizeLab(l){
+  l.fields=l.fields||[]; l.steps=(l.steps||[]).map(s=>typeof s==="string"?{text:s,checkbox:true}:s);
+  l.instructions=l.instructions||[]; l.ase=l.ase||[];
+  if(l.requiresVehicle===undefined) l.requiresVehicle=true;
+  l.competency=l.competency||{ requireAllFields:true, requireAllCorrect:true, countCheckoffs:false };
+}
+function showApp(){
+  document.getElementById("empty").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  renderVehicle(); renderNav();
+}
+function readFile(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    let o; try{ o=JSON.parse(r.result); }catch(e){ flash("That file isn't valid JSON.",true); return; }
+    if(o && o.type==="stech-student-work"){ restoreWork(o); return; }   // a saved "my work" file
+    if(o && Array.isArray(o.modules)){ loadPack(o); return; }           // a lab pack
+    flash("That doesn't look like a lab pack or a saved work file.",true);
+  };
+  r.readAsText(file);
+}
+
+/* ================= misc ui ================= */
+let flashTimer=null;
+function flash(msg,isErr){
+  const b=document.getElementById("banner"), m=document.getElementById("bannerMsg");
+  m.textContent=msg; m.className="msg"+(isErr?" err":""); b.classList.remove("hidden");
+  if(flashTimer)clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>b.classList.add("hidden"), isErr?6000:4500);
+}
+
+/* ================= boot / events ================= */
+document.getElementById("stuName").oninput=e=>{ WORK.studentName=e.target.value; saveSoon(); };
+document.getElementById("btnBrowse").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("btnChange").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=e=>{ if(e.target.files[0]) readFile(e.target.files[0]); e.target.value=""; };
+document.getElementById("btnSubmit").onclick=submitJob;
+document.getElementById("btnBackup").onclick=backupWork;
+
+const dz=document.getElementById("dropzone");
+["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("drag-over");}));
+["dragleave","dragend","drop"].forEach(ev=>dz.addEventListener(ev,()=>dz.classList.remove("drag-over")));
+dz.addEventListener("drop",e=>{ e.preventDefault(); const f=e.dataTransfer.files[0];
+  if(!f) return; if(!/\.json$/i.test(f.name)){ flash("Needs to be the .json labs file.",true); return; } readFile(f); });
+["dragover","drop"].forEach(ev=>window.addEventListener(ev,e=>e.preventDefault()));
+
+/* Save-before-you-log-off safety net: if there are answers not yet written to a
+   work file, the browser asks the student to confirm before leaving. On a shared
+   Chromebook, closing without saving to Drive loses cross-session progress. */
+window.addEventListener("beforeunload", function(e){
+  if(fileDirty && hasAnyWork()){ e.preventDefault(); e.returnValue=""; return ""; }
+});
+
+restore();
+document.getElementById("stuName").value=WORK.studentName||"";
+if(PACK){ (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab)); showApp(); const f=allLabs()[0]; if(f) openJob(f.lab.job); }
+// Returning with work already on this computer: treat as not-yet-saved-to-a-file until they save/restore this session.
+if(hasAnyWork()) fileDirty=true;
+renderFileFlag();
+</script>
+</body></html>
