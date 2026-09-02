@@ -281,11 +281,10 @@ footer{max-width:1160px;margin:18px auto 0;padding:0 20px;font-size:11px;color:v
   <span class="spacer"></span>
   <span class="saved" id="savedFlag">saved on this computer</span>
   <span id="fileFlag" style="font-size:12px;margin:0 4px"></span>
-  <button class="btn ghost sm" id="btnBackup" title="Downloads ONE file with your pack + all your answers. Keep it in Google Drive and open it next time to continue on any computer.">Save my work (Drive)</button>
-  <button class="btn big" id="btnSubmit">Submit job sheet</button>
+  <button class="btn big" id="btnBackup" title="Saves ONE file with your pack + all your answers. Keep it in your shared Google Drive folder — your instructor reviews it there, and you reopen it to continue on any computer.">Save my work (Drive)</button>
 </div></div>
 
-<footer id="footer" class="hidden">Fill mode · Your answers autosave on <b>this computer only</b>. To continue later on another Chromebook, click <b>Save my work (Drive)</b> and keep that one file in Google Drive — opening it restores your pack and answers. <b>Submit job sheet</b> hands a finished job in to Canvas.</footer>
+<footer id="footer" class="hidden">Fill mode · Your answers autosave on <b>this computer only</b>. When you finish for the day (or a job), click <b>Save my work (Drive)</b> and keep that one file in your shared Google Drive folder — your instructor reviews your progress there, and opening it restores your pack and answers on any computer.</footer>
 
 <!-- Shared competency engine — must sit next to this file. Classic script (not a module) so it loads over file://. -->
 <script src="engine.js"></script>
@@ -545,7 +544,7 @@ function refreshGate(){
   host.innerHTML=`<div class="gate ${ev.complete?"ok":"no"}">
     <div class="gate-h">
       <div class="gate-ic">${ev.complete?"✓":"!"}</div>
-      <b>${ev.complete?"Complete — ready to submit":"Not yet complete"}</b>
+      <b>${ev.complete?"Complete":"Not yet complete"}</b>
       <span class="cnt">${ev.complete?"all requirements met":ev.unmet.length+" item"+(ev.unmet.length===1?"":"s")+" left"}</span>
     </div>
     ${ev.unmet.length?`<div class="gate-list">${ev.unmet.map(u=>`
@@ -569,9 +568,6 @@ function updateSubbar(){
   const st=document.getElementById("subStatus");
   st.innerHTML=`<span class="pip" style="background:${ev.complete?"var(--green-600)":"var(--amber-600)"}"></span>
     Job ${esc(l.job)} · ${ev.complete?"Complete":ev.unmet.length+" left"}`;
-  const btn=document.getElementById("btnSubmit");
-  btn.textContent=ev.complete?"Submit job sheet":"Submit anyway (incomplete)";
-  btn.className=ev.complete?"btn big":"btn ghost big";
 }
 function refreshGateNavSub(){ renderNav(); if(curJob!=null){ refreshGate(); updateSubbar(); } }
 
@@ -681,7 +677,6 @@ document.getElementById("stuName").oninput=e=>{ WORK.studentName=e.target.value;
 document.getElementById("btnBrowse").onclick=()=>document.getElementById("fileInput").click();
 document.getElementById("btnChange").onclick=()=>document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange=e=>{ if(e.target.files[0]) readFile(e.target.files[0]); e.target.value=""; };
-document.getElementById("btnSubmit").onclick=submitJob;
 document.getElementById("btnBackup").onclick=backupWork;
 
 const dz=document.getElementById("dropzone");

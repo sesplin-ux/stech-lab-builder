@@ -175,11 +175,11 @@ footer{max-width:1240px;margin:16px auto 0;padding:0 20px;font-size:11px;color:v
   <div id="empty">
     <div id="dropzone" class="dropzone">
       <div class="dz-ic">⬇</div>
-      <h2>Load the pack and the submissions</h2>
-      <p>Drop your lab pack <em>and</em> the students' submitted files here together — the grader sorts them out. Everything stays on this computer.</p>
+      <h2>Load student work to review</h2>
+      <p>Drop the students' <em>“my work”</em> files from your shared Drive folder — each one is a whole course. The grader shows every job each student has done. (You can also drop the lab pack + individual <span class="mono">job-*.json</span> submissions; it sorts them all out.) Everything stays on this computer.</p>
       <div class="dz-steps">
-        <div class="dz-step" id="stepPack"><div class="n">1 · Lab pack</div><div class="d">The labs <span class="mono">.json</span> you published</div></div>
-        <div class="dz-step" id="stepSubs"><div class="n">2 · Submissions</div><div class="d">Students' <span class="mono">job-*.json</span> files</div></div>
+        <div class="dz-step" id="stepPack"><div class="n">Student work</div><div class="d"><span class="mono">my-lab-work-*.json</span> — one per student</div></div>
+        <div class="dz-step" id="stepSubs"><div class="n">or Pack + submissions</div><div class="d">the pack <span class="mono">.json</span> + <span class="mono">job-*.json</span></div></div>
       </div>
       <button class="btn" id="btnBrowse">Browse for files</button>
     </div>
@@ -205,6 +205,25 @@ footer{max-width:1240px;margin:16px auto 0;padding:0 20px;font-size:11px;color:v
 <div id="summary" class="summary hidden"><div class="summary-in" id="summaryIn"></div></div>
 <footer id="footer" class="hidden">Prototype · Grade mode. Re-checks each submission against the current lab pack — the file's own self-check is never trusted. Add the pack and drop as many submissions as you like.</footer>
 
+<!-- Student-review (whole-course "my work" file) styles -->
+<style>
+.dot.part{background:var(--amber-600)!important}
+.jobrow{border-bottom:1px solid var(--line-soft,#eef1f5)}
+.jobhead{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;
+  padding:9px 4px;cursor:pointer;font:inherit;color:inherit}
+.jobhead:hover{background:var(--sunken,#f2f4f7)}
+.jobhead .jn{font-family:var(--cond,inherit);font-weight:600;color:var(--stech-blue);font-size:12px;white-space:nowrap}
+.jobhead .jt{flex:1;font-size:13.5px}
+.jobhead .jstat{font-family:var(--cond,inherit);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;
+  font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.jstat.ok{background:var(--green-50,#e6f4ea);color:var(--green-600)}
+.jstat.part{background:#fbf0dc;color:var(--amber-600)}
+.jstat.no{background:var(--sunken,#eef1f5);color:var(--muted)}
+.jobrow.open{background:var(--sunken,#f6f8fa)}
+.jans{padding:2px 10px 14px}
+.prog{display:inline-block;min-width:120px;height:6px;border-radius:999px;background:var(--sunken,#e7ebf0);overflow:hidden;vertical-align:middle}
+.prog>i{display:block;height:100%;background:var(--green-600)}
+</style>
 <!-- Shared competency engine — must sit next to this file. Classic script (not a module) so it loads over file://. -->
 <script src="engine.js"></script>
 <script>
@@ -214,12 +233,16 @@ let PACK=null;
 let SUBS=[];            // each: submission obj + _id + _inst{decision,comment,flags{}}
 let curId=null;
 let filter="all";
+// Whole-course "my work" files (the Drive-folder review workflow): one per student.
+let STUDENTS=[];       // each: {_id, name, vehicle, labs, generatedAt}
+let curStu=null;       // selected student in review mode
+let expandedJob=null;  // which job is expanded in the student detail
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 
 /* ================= persistence ================= */
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({pack:PACK, subs:SUBS})); }catch(e){} }
-function restore(){ try{ const r=localStorage.getItem(LS_KEY); if(r){ const o=JSON.parse(r); PACK=o.pack||null; SUBS=o.subs||[]; } }catch(e){} }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({pack:PACK, subs:SUBS, students:STUDENTS})); }catch(e){} }
+function restore(){ try{ const r=localStorage.getItem(LS_KEY); if(r){ const o=JSON.parse(r); PACK=o.pack||null; SUBS=o.subs||[]; STUDENTS=o.students||[]; } }catch(e){} }
 
 /* ================= competency gate — delegates to the shared engine =================
    The RULES live in engine.js (window.LabEngine) — the SAME code Fill mode
@@ -254,7 +277,15 @@ function routeFile(obj, name){
     }
     return "sub";
   }
-  if(obj && obj.type==="stech-student-work"){ // a full work backup — pull each lab as a submission-ish? skip for now
+  if(obj && obj.type==="stech-student-work"){ // whole-course "my work" file — one student's full progress
+    if(obj.pack && Array.isArray(obj.pack.modules) && !PACK){ PACK=obj.pack; (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab)); }
+    const w=obj.work||{};
+    const stu={ name:(obj.student&&obj.student.name)||w.studentName||"(no name)",
+                vehicle:w.vehicle||null, labs:w.labs||{}, generatedAt:obj.generatedAt||"" };
+    stu._id="stu|"+stu.name.toLowerCase();
+    const i=STUDENTS.findIndex(s=>s._id===stu._id);   // re-dropping an updated file replaces that student
+    if(i>=0) STUDENTS[i]=stu; else STUDENTS.push(stu);
+    if(!curStu) curStu=stu._id;
     return "work";
   }
   return null;
@@ -265,14 +296,14 @@ function normalizeLab(l){
   if(l.requiresVehicle===undefined) l.requiresVehicle=true;
 }
 function readFiles(fileList){
-  const files=[...fileList]; let pack=0, subs=0, bad=0, pending=files.length;
+  const files=[...fileList]; let pack=0, subs=0, works=0, bad=0, pending=files.length;
   if(!pending) return;
   files.forEach(file=>{
     const r=new FileReader();
     r.onload=()=>{
       let o; try{ o=JSON.parse(r.result); }catch(e){ bad++; done(); return; }
       const kind=routeFile(o, file.name);
-      if(kind==="pack") pack++; else if(kind==="sub") subs++; else bad++;
+      if(kind==="pack") pack++; else if(kind==="sub") subs++; else if(kind==="work") works++; else bad++;
       done();
     };
     r.onerror=()=>{ bad++; done(); };
@@ -281,10 +312,10 @@ function readFiles(fileList){
   function done(){
     if(--pending>0) return;
     save();
-    if(PACK) showApp();
-    let msg=[]; if(pack)msg.push(pack+" pack"); if(subs)msg.push(subs+" submission"+(subs===1?"":"s"));
-    if(bad)msg.push(bad+" skipped");
-    if(!PACK && subs){ flash("Loaded "+subs+" submission(s) — now drop the lab pack to grade them.",true); }
+    if(PACK||STUDENTS.length) showApp();
+    let msg=[]; if(pack)msg.push(pack+" pack"); if(works)msg.push(works+" student"+(works===1?"":"s"));
+    if(subs)msg.push(subs+" submission"+(subs===1?"":"s")); if(bad)msg.push(bad+" skipped");
+    if(!PACK && (subs||works)){ flash("Loaded "+[works?works+" student file(s)":"",subs?subs+" submission(s)":""].filter(Boolean).join(", ")+" — now drop the lab pack too.",true); }
     else if(msg.length){ flash("Loaded "+msg.join(", ")+"."); }
     if(PACK){ if(!curId && SUBS.length) selectFirstVisible(); renderAll(); }
   }
@@ -391,7 +422,7 @@ function renderDetail(){
   wireDetail(sub, g);
 }
 function vehLabel(v){ if(!v) return ""; if(v.mode==="vin"&&v.vin) return "VIN "+v.vin; return [v.year,v.make,v.model,v.engine].filter(Boolean).join(" "); }
-function answerHTML(f, res, sub){
+function answerHTML(f, res, sub, readonly){
   const v=(sub.responses||{})[f.id];
   const map={good:["good","ok","✓ recorded"],missing:["miss","miss","missing"],correct:["good","good","✓ correct"],
     incorrect:["bad","bad","✗ incorrect"],review:["review","review","spot-check"],"empty-optional":["","", "optional — blank"]};
@@ -401,8 +432,8 @@ function answerHTML(f, res, sub){
   else if(v==null||String(v).trim()===""){ val=`<span class="empty">— blank —</span>`; }
   else if(f.type==="number"){ val=esc(v)+(f.unit?" "+esc(f.unit):""); }
   else val=esc(v);
-  const flag=sub._inst.flags[f.id];
-  const showSpot = res.state==="review"; // subjective required -> let instructor confirm
+  const flag=(sub._inst&&sub._inst.flags||{})[f.id];
+  const showSpot = res.state==="review" && !readonly; // subjective required -> let instructor confirm
   return `<div class="ans ${cls} ${flag==="flag"?"bad":flag==="ok"?"good":""}" data-fid="${esc(f.id)}">
     <div class="al">${esc(f.label||f.id)} ${f.required?'<span style="color:var(--stech-blue)">*</span>':""}
       <span class="st ${stcls}">${stlabel}</span></div>
@@ -445,7 +476,94 @@ function renderSummary(){
   document.getElementById("btnCsv").onclick=exportCsv;
   document.getElementById("btnReset").onclick=()=>{ if(confirm("Clear the pack and all loaded submissions from this browser?")){ PACK=null;SUBS=[];curId=null;save();location.reload(); } };
 }
-function renderAll(){ renderHeaderStat(); renderRoster(); renderDetail(); renderSummary(); }
+function renderAll(){
+  if(STUDENTS.length){ renderStudentReview(); return; }
+  const fb=document.getElementById("filterbar"); if(fb) fb.style.display="";
+  renderHeaderStat(); renderRoster(); renderDetail(); renderSummary();
+}
+
+/* ===== whole-course "my work" review (Drive-folder workflow) =====
+   Each dropped "my work" file is one student's full course progress. Show every
+   job in the pack per student with status (complete / in progress / not started),
+   click a job to see the recorded answers. Read-only review — grade in your own
+   system. Re-checks with the same engine.js, so it can't disagree with the gate. */
+function allPackLabs(){ const mods=PACK?(PACK.modules||[]):[]; const out=[]; mods.forEach(m=>(m.labs||[]).forEach(l=>out.push(l))); return out; }
+function pseudoSub(stu, lab){ const wl=(stu.labs||{})[lab.job]||{};
+  return { student:{name:stu.name}, labPack:{job:lab.job, version:lab.version, title:lab.title},
+           vehicle: lab.requiresVehicle?stu.vehicle:null, responses:wl.responses||{}, checkoffs:wl.checkoffs||[], _inst:{flags:{}} }; }
+function jobTouched(stu, lab){ const wl=(stu.labs||{})[lab.job]||{};
+  return (wl.responses&&Object.keys(wl.responses).length>0)||(wl.checkoffs&&wl.checkoffs.length>0); }
+function jobState(stu, lab){ if(!jobTouched(stu,lab)) return {state:"no"};
+  const g=gradeSubmission(lab, pseudoSub(stu,lab)); return {state:g.complete?"ok":"part", g}; }
+function studentProgress(stu){ let c=0,p=0,n=0; allPackLabs().forEach(l=>{ const s=jobState(stu,l).state; if(s==="ok")c++; else if(s==="part")p++; else n++; }); return {c,p,n,t:c+p+n}; }
+
+function renderStudentReview(){
+  const fb=document.getElementById("filterbar"); if(fb) fb.style.display="none";
+  const h=document.getElementById("hstat");
+  if(h){ h.innerHTML=`<span class="chipw">${esc(PACK?PACK.course:"(no pack)")}</span>`+
+    `<span class="chipw">${STUDENTS.length} student${STUDENTS.length===1?"":"s"}</span>`+
+    `<button class="btn ghost sm" id="btnAdd">Add files</button>`;
+    const ba=document.getElementById("btnAdd"); if(ba) ba.onclick=()=>document.getElementById("fileInput").click(); }
+  if(!curStu && STUDENTS.length) curStu=STUDENTS[0]._id;
+  const rhost=document.getElementById("roster");
+  rhost.innerHTML = STUDENTS.map(stu=>{
+    const pr=PACK?studentProgress(stu):{c:0,p:0,n:0,t:0};
+    const pct=pr.t?Math.round(100*pr.c/pr.t):0;
+    return `<button class="ritem" data-stu="${esc(stu._id)}" aria-current="${stu._id===curStu}">
+      <span class="dot ${pr.t&&pr.c===pr.t?'ok':(pr.c||pr.p)?'part':'no'}"></span>
+      <span class="rn"><b>${esc(stu.name)}</b>
+        <span>${pr.c}/${pr.t} complete${pr.p?` · ${pr.p} in progress`:""}</span>
+        <span class="prog"><i style="width:${pct}%"></i></span></span>
+    </button>`;
+  }).join("");
+  rhost.querySelectorAll("[data-stu]").forEach(b=>b.onclick=()=>{ curStu=b.dataset.stu; expandedJob=null; renderAll(); });
+  renderStudentDetail();
+  const el=document.getElementById("summaryIn");
+  let C=0,P=0,N=0; if(PACK) STUDENTS.forEach(s=>{const pr=studentProgress(s);C+=pr.c;P+=pr.p;N+=pr.n;});
+  el.innerHTML=`<span class="stat"><span class="pip" style="background:var(--green-600)"></span>${C} jobs complete</span>
+    <span class="stat"><span class="pip" style="background:var(--amber-600)"></span>${P} in progress</span>
+    <span class="stat"><span class="pip" style="background:var(--muted)"></span>${N} not started</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" id="btnReset">Clear all</button>`;
+  document.getElementById("btnReset").onclick=()=>{ if(confirm("Clear the pack and all loaded student work from this browser?")){ PACK=null;SUBS=[];STUDENTS=[];curStu=null;curId=null;save();location.reload(); } };
+}
+function renderStudentDetail(){
+  const host=document.getElementById("detailHost");
+  const stu=STUDENTS.find(s=>s._id===curStu);
+  if(!stu){ host.innerHTML=`<div class="detail"><div class="d-body">Select a student on the left.</div></div>`; return; }
+  if(!PACK){ host.innerHTML=`<div class="detail"><div class="d-body"><div class="drift" style="margin:0">Drop the lab pack too, so the grader can show ${esc(stu.name)}'s jobs.</div></div></div>`; return; }
+  const pr=studentProgress(stu);
+  let body=`<div class="detail"><div class="d-top"><div class="who"><b>${esc(stu.name)}</b>
+    <div class="meta">${pr.c}/${pr.t} complete · ${pr.p} in progress · ${pr.n} not started${stu.generatedAt?` · saved ${esc((stu.generatedAt||"").slice(0,10))}`:""}</div>
+    ${stu.vehicle&&vehicleRecorded(stu.vehicle)?`<div class="veh-line"><b>Vehicle</b> — ${esc(vehLabel(stu.vehicle))}</div>`:""}
+    </div></div><div class="d-body">`;
+  (PACK.modules||[]).forEach(m=>{
+    body+=`<div class="rmod" style="margin:14px 0 4px">${esc(m.title||m.id)}</div>`;
+    (m.labs||[]).forEach(lab=>{
+      const st=jobState(stu,lab);
+      const label = st.state==="ok"?"complete":st.state==="part"?(st.g.unmet.length+" to finish"):"not started";
+      const open = String(expandedJob)===String(lab.job);
+      body+=`<div class="jobrow ${open?"open":""}">
+        <button class="jobhead" data-job="${esc(lab.job)}">
+          <span class="dot ${st.state}"></span>
+          <span class="jn">JOB ${esc(lab.job)}</span>
+          <span class="jt">${esc(lab.title||"")}</span>
+          <span class="jstat ${st.state}">${label}</span>
+        </button>`;
+      if(open){
+        const sub=pseudoSub(stu,lab), g=gradeSubmission(lab,sub);
+        body+=`<div class="jans">`;
+        if((lab.steps||[]).length) body+=`<h4 class="block">Steps</h4>`+lab.steps.map((s,i)=>`<div class="stepline ${(sub.checkoffs||[]).includes(i)?"on":""}"><span class="box">${(sub.checkoffs||[]).includes(i)?"✓":""}</span><span>${esc(s.text)}</span></div>`).join("");
+        body+=`<h4 class="block">Recorded answers</h4>`+ (g.fields.map(fr=>answerHTML(fr.f, fr.res, sub, true)).join("")||'<div style="color:var(--subtle)">No fields on this job.</div>');
+        body+=`</div>`;
+      }
+      body+=`</div>`;
+    });
+  });
+  body+=`</div></div>`;
+  host.innerHTML=body;
+  host.querySelectorAll("[data-job]").forEach(b=>b.onclick=()=>{ const j=b.dataset.job; expandedJob = String(expandedJob)===String(j)?null:j; renderStudentDetail(); });
+}
 
 /* ================= export ================= */
 function exportCsv(){
@@ -488,6 +606,7 @@ dz.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer.files.leng
 window.addEventListener("drop",e=>{ if(!document.getElementById("app").classList.contains("hidden") && e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
 
 restore();
-if(PACK){ (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab)); showApp(); if(SUBS.length) selectFirstVisible(); renderAll(); }
+if(PACK){ (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab)); }
+if(PACK||STUDENTS.length){ showApp(); if(!STUDENTS.length && SUBS.length) selectFirstVisible(); renderAll(); }
 </script>
 </body></html>
