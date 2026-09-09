@@ -5072,7 +5072,7 @@
     {
       "id": "EL1-CLEAN",
       "title": "Cleaning — Shop Clean-up (Foundational)",
-      "labRange": "Cleaning 1–3",
+      "labRange": "Cleaning 1–5",
       "labs": [
         {
           "job": 78,
@@ -5149,6 +5149,78 @@
         {
           "job": 80,
           "legacyJob": "3",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 81,
+          "legacyJob": "4",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 82,
+          "legacyJob": "5",
           "ase": [
             "FND SAF.17"
           ],

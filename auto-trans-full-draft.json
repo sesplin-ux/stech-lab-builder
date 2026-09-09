@@ -2362,7 +2362,7 @@
     {
       "id": "AT-CLEAN",
       "title": "Cleaning — Shop Clean-up (Foundational)",
-      "labRange": "Cleaning 1–3",
+      "labRange": "Cleaning 1–5",
       "labs": [
         {
           "job": 44,
@@ -2439,6 +2439,78 @@
         {
           "job": 46,
           "legacyJob": "3",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay with water and squeegee",
+              "checkbox": true
+            },
+            {
+              "text": "Clean nearby tables",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Note anything needing attention",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 47,
+          "legacyJob": "4",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay with water and squeegee",
+              "checkbox": true
+            },
+            {
+              "text": "Clean nearby tables",
+              "checkbox": true
+            },
+            {
+              "text": "Clean and put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Note anything needing attention",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 48,
+          "legacyJob": "5",
           "ase": [
             "FND SAF.17"
           ],
