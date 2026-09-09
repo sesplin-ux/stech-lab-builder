@@ -1,0 +1,3703 @@
+{
+  "course": "Electrical I",
+  "schema": 1,
+  "draft": true,
+  "correlationStandard": "ASE Education Foundation MAST (Feb 2024)",
+  "correlationNote": "Codes are 2024 MAST Electrical/Electronic Systems tasks (ase-electrical-electronic-systems.md), shared across Electrical I & II (one ASE area — accreditation is measured on the combined coverage). H.x = xEV/high-voltage sub-section. 'FND ' = Foundational. Empty ase = legacy lab with no distinct 2024 task. Source used its own numbering; re-mapped to 2024.",
+  "modules": [
+    {
+      "id": "EL1-M1",
+      "title": "Module 1 — DMM/Battery Basics",
+      "labRange": "9 labs",
+      "labs": [
+        {
+          "job": 1,
+          "legacyJob": "1",
+          "ase": [
+            "A.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Research applicable vehicle and service information",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 2,
+          "legacyJob": "2",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use wiring diagrams to trace circuits",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 3,
+          "legacyJob": "3",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Proper use of a DMM",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 4,
+          "legacyJob": "4",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure source voltage and voltage drop",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 5,
+          "legacyJob": "5",
+          "ase": [
+            "A.6",
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure current flow in a lighting circuit",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "amp",
+              "type": "number",
+              "label": "Current",
+              "unit": "A",
+              "required": true,
+              "min": 0,
+              "max": 200,
+              "step": 0.1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 6,
+          "legacyJob": "6",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 7,
+          "legacyJob": "7",
+          "ase": [
+            "B.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform battery state-of-charge test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "ocv",
+              "type": "number",
+              "label": "Open-circuit voltage",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.01
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 8,
+          "legacyJob": "8",
+          "ase": [
+            "B.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Confirm battery; perform capacity/load test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 9,
+          "legacyJob": "9",
+          "ase": [
+            "B.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform slow/fast battery charge",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M2",
+      "title": "Module 2 — Circuits/Starter/Charging",
+      "labRange": "10 labs",
+      "labs": [
+        {
+          "job": 10,
+          "legacyJob": "10",
+          "ase": [
+            "A.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of circuits using Ohm's Law",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 11,
+          "legacyJob": "11",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Proper use of a DMM",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 12,
+          "legacyJob": "12",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Proper use of a DMM",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 13,
+          "legacyJob": "13",
+          "ase": [
+            "A.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check circuits with a test light",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 14,
+          "legacyJob": "14",
+          "ase": [
+            "A.9"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check circuits using fused jumper wires",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 15,
+          "legacyJob": "15",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 16,
+          "legacyJob": "16",
+          "ase": [
+            "B.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and clean battery; check cables",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 17,
+          "legacyJob": "17",
+          "ase": [
+            "C.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and test starter relays and solenoids",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 18,
+          "legacyJob": "18",
+          "ase": [
+            "D.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform charging system output test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "out",
+              "type": "number",
+              "label": "Charging output",
+              "unit": "A",
+              "required": true,
+              "min": 0,
+              "max": 200,
+              "step": 1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 19,
+          "legacyJob": "19",
+          "ase": [
+            "D.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform charging circuit voltage drop tests",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M3",
+      "title": "Module 3 — Wiring Diagrams/Starter",
+      "labRange": "10 labs",
+      "labs": [
+        {
+          "job": 20,
+          "legacyJob": "20",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use wiring diagrams during diagnosis",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 21,
+          "legacyJob": "21",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use wiring diagrams during diagnosis",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 22,
+          "legacyJob": "22",
+          "ase": [
+            "B.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Battery state-of-charge test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "ocv",
+              "type": "number",
+              "label": "Open-circuit voltage",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.01
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 23,
+          "legacyJob": "23",
+          "ase": [
+            "B.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Confirm battery; capacity/load test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 24,
+          "legacyJob": "24",
+          "ase": [
+            "B.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Slow/fast battery charge",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 25,
+          "legacyJob": "25",
+          "ase": [
+            "C.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform starter current draw test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "amp",
+              "type": "number",
+              "label": "Current",
+              "unit": "A",
+              "required": true,
+              "min": 0,
+              "max": 200,
+              "step": 0.1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 26,
+          "legacyJob": "26",
+          "ase": [
+            "C.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform starter circuit voltage drop test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 27,
+          "legacyJob": "27",
+          "ase": [
+            "C.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and test starter relays/solenoids",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 28,
+          "legacyJob": "28",
+          "ase": [
+            "C.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Remove and install starter",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 29,
+          "legacyJob": "29",
+          "ase": [],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disassemble, clean, test, reassemble starter",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M4",
+      "title": "Module 4 — Charging/Lighting",
+      "labRange": "12 labs",
+      "labs": [
+        {
+          "job": 30,
+          "legacyJob": "30",
+          "ase": [
+            "A.6",
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure current flow in a lighting circuit",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "amp",
+              "type": "number",
+              "label": "Current",
+              "unit": "A",
+              "required": true,
+              "min": 0,
+              "max": 200,
+              "step": 0.1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 31,
+          "legacyJob": "31",
+          "ase": [
+            "B.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and clean battery",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 32,
+          "legacyJob": "32",
+          "ase": [
+            "C.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Starter circuit voltage drop test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 33,
+          "legacyJob": "33",
+          "ase": [
+            "D.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Charging system output test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "out",
+              "type": "number",
+              "label": "Charging output",
+              "unit": "A",
+              "required": true,
+              "min": 0,
+              "max": 200,
+              "step": 1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 34,
+          "legacyJob": "34",
+          "ase": [
+            "D.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose charging under/no/overcharge",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 35,
+          "legacyJob": "35",
+          "ase": [
+            "D.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose charging under/no/overcharge",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 36,
+          "legacyJob": "36",
+          "ase": [
+            "D.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose charging under/no/overcharge",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 37,
+          "legacyJob": "37",
+          "ase": [
+            "D.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/adjust/replace alternator belts",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 38,
+          "legacyJob": "38",
+          "ase": [
+            "D.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Remove and install alternator",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 39,
+          "legacyJob": "39",
+          "ase": [
+            "D.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Charging circuit voltage drop tests",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 40,
+          "legacyJob": "40",
+          "ase": [],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disassemble, clean, test, reassemble alternator",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 41,
+          "legacyJob": "41",
+          "ase": [
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect headlamps and sockets; replace",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M5",
+      "title": "Module 5 — Continuity/Connectors",
+      "labRange": "7 labs",
+      "labs": [
+        {
+          "job": 42,
+          "legacyJob": "42",
+          "ase": [
+            "A.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check circuits with a test light",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 43,
+          "legacyJob": "43",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check continuity and measure resistance",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 44,
+          "legacyJob": "44",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check continuity and measure resistance",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 45,
+          "legacyJob": "45",
+          "ase": [
+            "A.9"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check circuits using fused jumper wires",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 46,
+          "legacyJob": "46",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Replace electrical connectors and terminals",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 47,
+          "legacyJob": "47",
+          "ase": [
+            "B.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Maintain/restore electronic memory functions",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 48,
+          "legacyJob": "48",
+          "ase": [
+            "C.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test starter control circuit switches",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M6",
+      "title": "Module 6 — Fuses/Lighting",
+      "labRange": "10 labs",
+      "labs": [
+        {
+          "job": 49,
+          "legacyJob": "49",
+          "ase": [
+            "A.6",
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure source voltage and voltage drop",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 50,
+          "legacyJob": "50",
+          "ase": [
+            "A.6",
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure source voltage and voltage drop",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vd",
+              "type": "number",
+              "label": "Total voltage drop",
+              "unit": "V",
+              "required": true,
+              "min": 0,
+              "max": 20,
+              "step": 0.001
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 51,
+          "legacyJob": "51",
+          "ase": [
+            "A.12"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test fusible links, breakers, fuses",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 52,
+          "legacyJob": "52",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test/repair components and connectors",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 53,
+          "legacyJob": "53",
+          "ase": [
+            "E.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose no-light operation (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 54,
+          "legacyJob": "54",
+          "ase": [
+            "E.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose light operation (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 55,
+          "legacyJob": "55",
+          "ase": [
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/diagnose turn signal and hazard",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 56,
+          "legacyJob": "56",
+          "ase": [
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect exterior lamps and sockets",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 57,
+          "legacyJob": "57",
+          "ase": [
+            "E.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Aim headlights",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 58,
+          "legacyJob": "58",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M7",
+      "title": "Module 7 — Parasitic/Components",
+      "labRange": "10 labs",
+      "labs": [
+        {
+          "job": 59,
+          "legacyJob": "59",
+          "ase": [
+            "A.11"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure and diagnose key-off battery drain",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "drain",
+              "type": "number",
+              "label": "Parasitic draw",
+              "unit": "mA",
+              "required": true,
+              "min": 0,
+              "max": 5000,
+              "step": 1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 60,
+          "legacyJob": "60",
+          "ase": [
+            "A.11"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure and diagnose key-off battery drain",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "drain",
+              "type": "number",
+              "label": "Parasitic draw",
+              "unit": "mA",
+              "required": true,
+              "min": 0,
+              "max": 5000,
+              "step": 1
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 61,
+          "legacyJob": "61",
+          "ase": [
+            "A.11"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose excessive key-off drain (parasitic)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 62,
+          "legacyJob": "62",
+          "ase": [
+            "A.12"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test fusible links, breakers, fuses",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 63,
+          "legacyJob": "63",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Repair wiring harness; perform solder repair",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 64,
+          "legacyJob": "64",
+          "ase": [
+            "A.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify electrical/electronic system components",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 65,
+          "legacyJob": "65",
+          "ase": [
+            "B.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify components needing reinitialization",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 66,
+          "legacyJob": "66",
+          "ase": [
+            "D.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/adjust/replace alternator belts",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 67,
+          "legacyJob": "67",
+          "ase": [
+            "E.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect interior lamps and sockets",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 68,
+          "legacyJob": "68",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-M8",
+      "title": "Module 8 — Jump-start/xEV/No-crank",
+      "labRange": "9 labs",
+      "labs": [
+        {
+          "job": 69,
+          "legacyJob": "69",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test/repair components and connectors",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 70,
+          "legacyJob": "70",
+          "ase": [
+            "B.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Jump-start with jumper cables",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 71,
+          "legacyJob": "71",
+          "ase": [
+            "H.2",
+            "H.4",
+            "FND SAF.14",
+            "FND SAF.16",
+            "FND XEV.1",
+            "FND XEV.2",
+            "FND XEV.3",
+            "FND XEV.4",
+            "FND XEV.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify HV safety precautions",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Review SI for this vehicle's HV service precautions and LOTO requirements before any hands-on work.",
+              "checkbox": true
+            },
+            {
+              "text": "Walk the vehicle: identify orange HV cables/connectors, warning labels, HV battery/energy-storage location, and any ready/interlock indicators.",
+              "checkbox": true
+            },
+            {
+              "text": "Point out systems that can present HV hazard (drivetrain/inverter, HV lighting if equipped, A/C compressor circuit, other orange HV circuits).",
+              "checkbox": true
+            },
+            {
+              "text": "List HV hazards that apply here (shock/electrocution, arc flash, fire/explosion, gases/fumes, chemicals, EMF) and the shop emergency response path.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify required HV PPE by class/rating (gloves class, leather protectors, face shield/safety glasses, arc-rated clothing if required) and inspect for damage/expiration before use.",
+              "checkbox": true
+            },
+            {
+              "text": "State which HV work you are qualified to do at this training level vs what stays instructor-only / L3+.",
+              "checkbox": true
+            },
+            {
+              "text": "Record PPE class/condition and HV components identified; note any concerns before service.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            },
+            {
+              "label": "HV PPE class / rating inspected",
+              "id": "ppe_class",
+              "type": "text",
+              "required": true
+            },
+            {
+              "label": "HV components / orange circuits identified",
+              "id": "hv_components",
+              "type": "textarea",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 72,
+          "legacyJob": "72",
+          "ase": [
+            "H.2",
+            "FND SAF.13",
+            "FND SAF.15"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify hybrid auxiliary (12V) battery/HV concerns",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Locate this vehicle's 12V auxiliary/low-voltage battery per SI; record its type (often AGM) and location (e.g., trunk, under seat, rear cargo).",
+              "checkbox": true
+            },
+            {
+              "text": "State the 12V battery's role in an xEV: it wakes the control modules and closes the HV contactors, and is recharged by the DC-DC converter from the HV pack — a dead 12V can prevent the HV system from booting or being safely disabled.",
+              "checkbox": true
+            },
+            {
+              "text": "Safety-critical: confirm from SI that disconnecting the 12V battery does NOT de-energize the HV system — HV remains live behind the contactors. De-energizing HV is done per Job 76, not by pulling the 12V.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify SI's correct 12V disconnect/reconnect sequence and any module wake/sleep timing or relearn/reset concerns after reconnection.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify systems on this hybrid that can move or restart the vehicle unexpectedly during service (auto idle-stop / stop-start, remote start, READY mode); note how SI says to confirm the system is off/disabled before working.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify HV battery/energy-storage materials-handling concerns from SI and the SDS: chemistry (Li-ion / NiMH), off-gassing/venting, HV-battery coolant type, and corrosive electrolyte. Locate the applicable SDS.",
+              "checkbox": true
+            },
+            {
+              "text": "List thermal-runaway warning signs (excess heat, swelling, hissing, smoke, sweet/chemical odor) and the shop emergency-response path if any are observed.",
+              "checkbox": true
+            },
+            {
+              "text": "State which actions stay instructor-only / L3+ at this training level (opening, probing, or handling a damaged, leaking, or submerged pack).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the 12V aux-battery details, ESS materials-handling concerns, disconnect note, and auto-restart/movement hazard systems; note any concerns before service.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            },
+            {
+              "id": "aux_battery",
+              "type": "text",
+              "label": "12V aux battery — type & location (per SI)",
+              "required": true
+            },
+            {
+              "id": "ess_concerns",
+              "type": "textarea",
+              "label": "HV battery/ESS materials-handling concerns (chemistry, gassing, coolant, SDS)",
+              "required": true
+            },
+            {
+              "id": "disconnect_note",
+              "type": "textarea",
+              "label": "12V disconnect/reconnect sequence — note it does NOT de-energize HV",
+              "required": true
+            },
+            {
+              "id": "hazard_systems",
+              "type": "textarea",
+              "label": "Auto-restart/movement hazard systems (stop-start, remote start, READY) & how SI disables them",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 73,
+          "legacyJob": "73",
+          "ase": [
+            "C.7",
+            "C.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Differentiate/diagnose no-crank (mechanical vs electrical)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 74,
+          "legacyJob": "74",
+          "ase": [
+            "C.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of automatic idle-stop system",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 75,
+          "legacyJob": "75",
+          "ase": [
+            "E.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Aim headlights",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 76,
+          "legacyJob": "76",
+          "ase": [
+            "H.1",
+            "H.3",
+            "H.5",
+            "H.6",
+            "FND XEV.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "De-energize HV: identify system voltage and safety",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Locate SI procedure to safely de-energize/disable and re-enable this vehicle's HV system; note system voltage class from SI/labels.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify and demo the special equipment required: CAT-rated HV multimeter (or HV test tool), insulated tools, and any required test adapters — do not use a standard 12 V meter on HV circuits.",
+              "checkbox": true
+            },
+            {
+              "text": "Don/verify HV PPE required for this procedure (class/rating per SI).",
+              "checkbox": true
+            },
+            {
+              "text": "With instructor oversight, follow SI to disable/de-energize the HV system (service plug / disconnect / LOTO as specified). Do not invent steps.",
+              "checkbox": true
+            },
+            {
+              "text": "Demonstrate live-dead-live / zero-potential verify: prove meter works on a known live source → measure HV bus/isolation points per SI (expect ~0 V / zero potential) → re-check meter on known live.",
+              "checkbox": true
+            },
+            {
+              "text": "Demonstrate knowledge of chassis-ground vs HV-circuit isolation: identify how SI verifies isolation between chassis ground and HV circuits/components; record pass/fail or SI method used (no invented numeric key).",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm re-enable / return-to-service steps in SI are understood; leave vehicle LOTO'd or restored only as instructor directs.",
+              "checkbox": true
+            },
+            {
+              "text": "Record meter/tool IDs used, LDL observations, and isolation verify method/result.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            },
+            {
+              "label": "HV meter / insulated tools used",
+              "id": "meter_tool",
+              "type": "text",
+              "required": true
+            },
+            {
+              "label": "Live-dead-live / zero-potential observations",
+              "id": "ldl_notes",
+              "type": "textarea",
+              "required": true
+            },
+            {
+              "label": "Chassis vs HV isolation verify method / result",
+              "id": "isolation_notes",
+              "type": "textarea",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 77,
+          "legacyJob": "77",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Perform the procedure per the job sheet and service information",
+              "checkbox": true
+            },
+            {
+              "text": "Record measurements/observations",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL1-CLEAN",
+      "title": "Cleaning — Shop Clean-up (Foundational)",
+      "labRange": "Cleaning 1–3",
+      "labs": [
+        {
+          "job": 78,
+          "legacyJob": "1",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 79,
+          "legacyJob": "2",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 80,
+          "legacyJob": "3",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
