@@ -2665,19 +2665,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the type of test light in use (incandescent vs. LED / high-impedance logic probe) and its correct connection.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "State the key precaution: do NOT use an incandescent test light on sensitive electronic, network (CAN), or airbag circuits — its current draw can damage modules; use a high-impedance/LED tester there.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Verify the test light works on a known-good powered source before relying on it.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the test light to check for power and ground on a designated non-sensitive circuit; record the result.",
+              "checkbox": true
+            },
+            {
+              "text": "State when a DMM should be used instead of a test light.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the precautions demonstrated and the check result.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "testlight_notes",
+              "type": "textarea",
+              "label": "Test-light precautions demonstrated + check result",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -2701,25 +2719,43 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Check continuity and measure resistance",
+          "title": "Check circuit and connector continuity",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set the DMM to continuity/ohms; verify it on a known-good jumper (near 0 Ω / beep) and on an open (OL).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "De-energize the circuit — continuity and resistance are always tested with the circuit powered off.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Check a wire/circuit end-to-end for continuity, including through its connectors; record good (~0 Ω) or open (OL).",
+              "checkbox": true
+            },
+            {
+              "text": "Check a connector/terminal for continuity and for high resistance (corroded or spread terminal) — note any reading above ~0 Ω on what should be a solid connection.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the results: continuity good, open, or high-resistance connection.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "continuity",
+              "type": "textarea",
+              "label": "Continuity results (wire/connector) — good / open / high-R",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -2743,29 +2779,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Check continuity and measure resistance",
+          "title": "Measure component resistance to specification",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set the DMM to the correct ohms range and account for lead resistance (zero if the meter allows).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Isolate the component — disconnect it from the circuit so the reading is not back-fed through parallel paths.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure the component's resistance (e.g., sensor, coil, relay winding, resistor, motor winding); record.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare the measured value to specification (SI); interpret in-spec, open (OL), or shorted (abnormally low).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the measured resistance against the specified value.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "resistance",
+              "type": "text",
+              "label": "Measured resistance vs. spec (component)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / interpretation",
               "required": true
             },
             {
@@ -2791,19 +2845,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Select a fused jumper wire with the correct fuse rating for the circuit per service information.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Identify a circuit/component to check and the SI-approved points to apply the jumper (do not bypass protection or loads that SI does not permit).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Use the fused jumper to supply power or ground to the component per SI; observe whether it operates.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret: if the component works when jumped, the fault is upstream (supply, ground, or control side); record your reasoning.",
+              "checkbox": true
+            },
+            {
+              "text": "State the safety limits: correct fuse rating, no jumping across loads or into airbag/sensitive circuits.",
+              "checkbox": true
+            },
+            {
+              "text": "Record what was checked and the result.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "jumper_notes",
+              "type": "textarea",
+              "label": "Fused-jumper check: what was jumped + result/reasoning",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -2833,19 +2905,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the connector/terminal type (e.g., Weather-Pack, Metri-Pack, Molex) and obtain the correct replacement terminal and seals.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Use the correct terminal release tool to remove the damaged terminal without damaging the connector body; note the terminal's cavity/position.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Prepare the wire and install the new terminal: correct crimp (proper crimp tool/die) and/or solder per SI; then insulate and seal (heat-shrink, cavity/wire seals).",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble the connector with each terminal in its correct cavity and the locks/seals fully seated.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the repair: continuity, secure terminal retention (tug test), and proper circuit operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the repair performed and determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "connector_repair",
+              "type": "textarea",
+              "label": "Connector/terminal replaced — type, crimp/solder, seals, retention test",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -2875,19 +2965,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the memory/learned functions that could be lost on battery disconnect (radio presets/codes, HVAC settings, power-window one-touch, idle/transmission adaptives, steering-angle, etc.).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Connect a memory saver per procedure (OBD-port or battery-clip type) OR document the settings before disconnect, per SI.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Disconnect the battery as required for the service.",
+              "checkbox": true
+            },
+            {
+              "text": "After reconnection, restore/relearn the affected functions per SI (window one-touch, radio code, idle relearn, etc.).",
+              "checkbox": true
+            },
+            {
+              "text": "Verify all affected systems operate correctly.",
+              "checkbox": true
+            },
+            {
+              "text": "Record what was maintained or restored.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "memory_notes",
+              "type": "textarea",
+              "label": "Memory functions maintained/restored + relearns performed",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -2917,23 +3025,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the starter control-circuit switches from the wiring diagram: ignition switch (START), neutral-safety/range switch (automatic) or clutch-position switch (manual), and any starter-enable relays.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the switches, connectors, and wires for damage, corrosion, or looseness.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Test each switch for correct continuity in the correct position (e.g., neutral-safety closes only in P/N; clutch switch closes with the pedal down) using the DMM/test.",
+              "checkbox": true
+            },
+            {
+              "text": "Check for voltage/continuity through the control circuit during a crank attempt to find where it opens.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret which switch, connector, or wire is faulty in a no-crank; determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the switch/circuit test results.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "switch_tests",
+              "type": "textarea",
+              "label": "Starter control switch/connector test results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
