@@ -3171,7 +3171,9 @@
             "FND XEV.2",
             "FND XEV.3",
             "FND XEV.4",
-            "FND XEV.5"
+            "FND XEV.5",
+            "H.7",
+            "H.9"
           ],
           "version": 1,
           "type": "lab",
@@ -3208,6 +3210,38 @@
             {
               "text": "Record PPE class/condition and HV components identified; note any concerns before service.",
               "checkbox": true
+            },
+            {
+              "text": "From SI, identify this vehicle's HV A/C compressor (if equipped) and its orange HV wiring/connectors; point them out without disconnecting. If not equipped, use SI diagram or HV trainer and record \"not equipped on this vehicle\".",
+              "checkbox": true
+            },
+            {
+              "text": "Demonstrate understanding of safe handling for HV A/C compressor and orange wiring per SI: do not cut/pierce/crush orange cables; no standard service on HV compressor until de-energized per Job 76; oil/refrigerant boundaries per SI / instructor.",
+              "checkbox": true
+            },
+            {
+              "text": "State training-level scope: identify/locate only — opening/unplugging/repairing HV A/C compressor is instructor-only / L3+ unless authorized after verified de-energize.",
+              "checkbox": true
+            },
+            {
+              "text": "Record HV A/C compressor location and orange wiring path (or not equipped); note SI safe-handling points.",
+              "checkbox": true
+            },
+            {
+              "text": "From SI, identify HV powertrain: electric motor(s)/generator(s), inverter/PEU, and orange HV cabling pack to inverter to motor.",
+              "checkbox": true
+            },
+            {
+              "text": "Demonstrate safe handling per SI: treat inverter/motor as HV until de-energized/verified (Job 76); no 12 V meter on HV terminals; watch residual/backfeed and rotating-machine hazards; do not spin/drive wheels that can generate voltage if SI warns.",
+              "checkbox": true
+            },
+            {
+              "text": "State scope: identify/locate only — inverter/motor R&R and live HV work remain instructor-only / L3+ after verified de-energize.",
+              "checkbox": true
+            },
+            {
+              "text": "Record motor/inverter locations and SI safe-handling points.",
+              "checkbox": true
             }
           ],
           "fields": [
@@ -3234,6 +3268,18 @@
               "id": "hv_components",
               "type": "textarea",
               "required": true
+            },
+            {
+              "id": "hv_ac_handling",
+              "type": "textarea",
+              "label": "HV A/C compressor location / orange path (or not equipped) + SI safe-handling points",
+              "required": true
+            },
+            {
+              "id": "hv_powertrain_handling",
+              "type": "textarea",
+              "label": "HV powertrain (motor/inverter) locations + SI safe-handling points",
+              "required": true
             }
           ]
         },
@@ -3243,7 +3289,8 @@
           "ase": [
             "H.2",
             "FND SAF.13",
-            "FND SAF.15"
+            "FND SAF.15",
+            "H.8"
           ],
           "version": 1,
           "type": "lab",
@@ -3288,6 +3335,22 @@
             {
               "text": "Record the 12V aux-battery details, ESS materials-handling concerns, disconnect note, and auto-restart/movement hazard systems; note any concerns before service.",
               "checkbox": true
+            },
+            {
+              "text": "Using SI, identify this vehicle's HV thermal-management path: battery/ESS coolant loop, heater, radiator/chiller, and heat-pump if equipped; walk the path without opening the system.",
+              "checkbox": true
+            },
+            {
+              "text": "Record coolant type (per SI), reservoir/fill if shown, and whether cabin heat-pump shares the loop; note SI precautions (no mixing coolants; pressurized/hot hazards).",
+              "checkbox": true
+            },
+            {
+              "text": "Demonstrate knowledge: why thermal management matters (pack temp, charge/power limits, thermal-runaway risk reduction) per SI — identify only.",
+              "checkbox": true
+            },
+            {
+              "text": "Record thermal-management path components and SI coolant/service notes.",
+              "checkbox": true
             }
           ],
           "fields": [
@@ -3325,6 +3388,12 @@
               "id": "hazard_systems",
               "type": "textarea",
               "label": "Auto-restart/movement hazard systems (stop-start, remote start, READY) & how SI disables them",
+              "required": true
+            },
+            {
+              "id": "hv_thermal_path",
+              "type": "textarea",
+              "label": "HV thermal-management path components + SI coolant/service notes",
               "required": true
             }
           ]
