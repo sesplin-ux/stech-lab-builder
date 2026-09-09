@@ -25,19 +25,53 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the vehicle: year, make, model, engine, and VIN; note the concern or the service being performed.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "In your service information system (Alldata), locate and record the specifications relevant to this job (fluid types/capacities, torque or test specs as applicable).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Record the service precautions/warnings for this vehicle, including xEV high-voltage cautions and ADAS cautions if equipped.",
+              "checkbox": true
+            },
+            {
+              "text": "In Alldata, search for and record any Technical Service Bulletins (TSBs) that apply to the concern or system.",
+              "checkbox": true
+            },
+            {
+              "text": "In Alldata, check for open recalls/campaigns by VIN and record what you find.",
+              "checkbox": true
+            },
+            {
+              "text": "Review the vehicle service history (if available) for related prior work.",
+              "checkbox": true
+            },
+            {
+              "text": "Summarize what the service information tells you before starting: specs, cautions, and any special tools required.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "veh_info",
+              "type": "text",
+              "label": "Vehicle: year/make/model/engine/VIN + concern",
+              "required": true
+            },
+            {
+              "id": "si_findings",
+              "type": "textarea",
+              "label": "Specs & service precautions found (incl. xEV/ADAS if equipped)",
+              "required": true
+            },
+            {
+              "id": "tsb_recall",
+              "type": "textarea",
+              "label": "TSBs and open recalls found (or none)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -67,19 +101,49 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Select the correct wiring diagram for this vehicle and the target system from service information.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Identify the circuit to trace; locate its power source (fuse/relay), the load/component, and its ground on the diagram.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Trace the circuit source → load → ground; list the connectors, splices, and inline components in the path.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wire colors and circuit/pin numbers at the key points along the path.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify where you would test (accessible connectors/test points) to isolate an open, short, or high-resistance fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the traced path and your candidate test points.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "circuit_id",
+              "type": "text",
+              "label": "Circuit/system traced",
+              "required": true
+            },
+            {
+              "id": "path_notes",
+              "type": "textarea",
+              "label": "Traced path: source → load → ground, with connectors/splices & wire colors",
+              "required": true
+            },
+            {
+              "id": "test_points",
+              "type": "textarea",
+              "label": "Where you would test to isolate a fault",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -109,19 +173,43 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the DMM controls: function dial, the VΩ / COM / A(mA) jacks, and range/auto-range.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "State the correct lead placement and function selection for each measurement type: voltage (parallel), resistance (component isolated), current (in series).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Verify the meter before use: inspect leads, confirm the current-jack fuse, and prove the meter on a known source (e.g., a known-good ~12 V battery).",
+              "checkbox": true
+            },
+            {
+              "text": "Demonstrate a DC voltage reading and a resistance reading (component disconnected); describe how a current reading is taken in series.",
+              "checkbox": true
+            },
+            {
+              "text": "State meter safety: use the current jack for current only, never place it across a voltage source; select the correct range/function.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the readings taken and confirm the meter is functioning correctly.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "meter_id",
+              "type": "text",
+              "label": "DMM used (make/ID)",
+              "required": true
+            },
+            {
+              "id": "readings",
+              "type": "textarea",
+              "label": "Readings taken (V, Ω) + meter-verify note",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -151,33 +239,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Select DC volts and connect the meter correctly (red to the circuit point, black to a known-good ground/return).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Measure and record source voltage at the battery/supply.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure and record available voltage at the component/load.",
+              "checkbox": true
+            },
+            {
+              "text": "With the load operating, perform voltage-drop tests: measure the drop across the insulated (positive) side and across the ground (return) side; record each.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare the voltage drops to specification (SI, or general limit — typically ≤ spec) and determine whether excessive resistance is present.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action based on the results.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "v_source",
+              "type": "text",
+              "label": "Source voltage (V)",
+              "required": true
+            },
+            {
               "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "type": "text",
+              "label": "Voltage-drop readings — insulated side & ground side (V)",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / interpretation vs. spec",
               "required": true
             },
             {
@@ -204,33 +306,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the lighting circuit and its expected current draw (from SI or lamp rating).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the lamps and sockets (including headlights/auxiliary lights) for damage, corrosion, or moisture before testing.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Set up to measure current: DMM in series (current jack, correct range) or a current clamp around the conductor.",
+              "checkbox": true
+            },
+            {
+              "text": "Operate the circuit and measure the current draw; record the amps.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare measured draw to expected and interpret: high draw (short/added load) or low/no draw (high resistance/open).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action for the lamps, sockets, and circuit.",
               "checkbox": true
             }
           ],
           "fields": [
             {
               "id": "amp",
-              "type": "number",
-              "label": "Current",
-              "unit": "A",
-              "required": true,
-              "min": 0,
-              "max": 200,
-              "step": 0.1
+              "type": "text",
+              "label": "Measured current draw (A) vs. expected",
+              "required": true
+            },
+            {
+              "id": "lamp_condition",
+              "type": "textarea",
+              "label": "Lamp/socket condition (headlights & auxiliary)",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / interpretation",
               "required": true
             },
             {
@@ -245,30 +361,66 @@
           "job": 6,
           "legacyJob": "6",
           "ase": [
-            "A.7"
+            "A.7",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "title": "Diagnose shorts, grounds, opens on the diagnostic trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the diagnostic trainer; identify the circuit(s) under test and obtain the correct wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Using the wiring diagram, trace the circuit source → load → ground; identify connectors, test points, and the values you expect at each (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "For each fault type — open, short-to-power, short-to-ground, high resistance — state the cause and its effect on circuit operation and on meter readings (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose it using the DMM across multiple principles of testing: source voltage, voltage drop, and resistance/continuity, measured at the points identified on the diagram (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings to identify the fault type and its location; confirm against the wiring diagram (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Repeat so that an open, a short, and a high-resistance fault are each diagnosed at least once (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wiring-diagram path used, the DMM readings for each fault, and how you identified each one.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "trainer_circuit",
+              "type": "text",
+              "label": "Diagnostic trainer / circuit under test",
+              "required": true
+            },
+            {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Wiring-diagram path & test points used (A.10)",
+              "required": true
+            },
+            {
+              "id": "fault_diag",
+              "type": "textarea",
+              "label": "Each fault (open / short / high-resistance): DMM readings + how identified (A.6/A.7)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -298,33 +450,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up safely: PPE on, no sparks or open flame near the battery; note the battery type (flooded / AGM).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Remove any surface charge per procedure (e.g., briefly apply a load) so the reading is stable.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure and record the open-circuit voltage (OCV) with the DMM across the battery terminals.",
+              "checkbox": true
+            },
+            {
+              "text": "If accessible on a flooded battery, measure and record specific gravity with a hydrometer/refractometer.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine state of charge from the OCV (and SG) — e.g., ~12.6 V ≈ 100%; record the % state of charge.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action (return to service, charge, further testing, or replace).",
               "checkbox": true
             }
           ],
           "fields": [
             {
               "id": "ocv",
-              "type": "number",
-              "label": "Open-circuit voltage",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.01
+              "type": "text",
+              "label": "Open-circuit voltage (V)",
+              "required": true
+            },
+            {
+              "id": "soc",
+              "type": "text",
+              "label": "State of charge (%) + SG if measured",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -350,23 +516,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm the battery is correct for the vehicle: group size, CCA rating, type, and application per SI or label; record it.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the terminals, cables, and case for corrosion, looseness, or damage.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Confirm the battery is adequately charged before load testing (use the state of charge from the SOC test).",
+              "checkbox": true
+            },
+            {
+              "text": "Perform the capacity/load test by the manufacturer's method (electronic conductance tester, or carbon-pile to the rated load); record the measured values.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the result (measured CCA and voltage under load) as pass/fail against the rating.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "bat_spec",
+              "type": "text",
+              "label": "Battery confirmed: group size / CCA / type / application",
+              "required": true
+            },
+            {
+              "id": "load_result",
+              "type": "textarea",
+              "label": "Capacity/load test values + pass or fail",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -392,19 +582,43 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Determine the correct charging method for this battery per the manufacturer (charge rate, AGM vs. flooded, and any in-vehicle cautions).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Set up safely: ensure ventilation, PPE on, and connect/disconnect the charger leads with the charger turned off.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Select slow or fast charge appropriate to the situation and set the rate/time per specification.",
+              "checkbox": true
+            },
+            {
+              "text": "Monitor during charging (voltage, case temperature, gassing) and note the precautions you observed.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the charge is complete (voltage / state of charge), then disconnect the charger safely.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the method, rate, and result.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "charge_method",
+              "type": "text",
+              "label": "Charging method & rate selected (slow/fast, per spec)",
+              "required": true
+            },
+            {
+              "id": "charge_result",
+              "type": "textarea",
+              "label": "Result (final voltage / SOC) + precautions observed",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
