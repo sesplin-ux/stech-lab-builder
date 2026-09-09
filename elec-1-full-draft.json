@@ -1292,25 +1292,49 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Use wiring diagrams during diagnosis",
+          "title": "Find and read the starter-system wiring diagram",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the vehicle and the starting system; in service information, locate the correct wiring diagram for the starting/cranking system.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Confirm it is the right diagram: verify it matches this vehicle’s engine/trim and starting-system type.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Read the legend/symbols and identify the starting-system components on the diagram: ignition switch, neutral-safety/clutch-position switch, starter relay, solenoid, starter motor, connectors, splices, and grounds.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the wire colors, circuit numbers, and connector/pin references used for the starter circuits.",
+              "checkbox": true
+            },
+            {
+              "text": "Note the power sources (battery, fusible link/fuse) and the grounds for the starting system.",
+              "checkbox": true
+            },
+            {
+              "text": "Record where the diagram is found and the key starter components/identifiers you located.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "diagram_source",
+              "type": "text",
+              "label": "Where the starter wiring diagram is found (SI location)",
+              "required": true
+            },
+            {
+              "id": "components_id",
+              "type": "textarea",
+              "label": "Starter components identified on the diagram + wire/circuit IDs",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -1334,25 +1358,49 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Use wiring diagrams during diagnosis",
+          "title": "Use a wiring diagram to trace the starter control circuit",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Select the starting-system wiring diagram for this vehicle from service information.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Trace the starter CONTROL circuit on the diagram: ignition switch (START) → neutral-safety/clutch-position switch → starter relay/solenoid control → ground.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Trace the HIGH-CURRENT circuit: battery → positive cable → solenoid → starter motor → engine ground → negative cable.",
+              "checkbox": true
+            },
+            {
+              "text": "List the connectors, grounds, and components in each path; note wire colors and cable gauges.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify where you would test the control side vs. the high-current side to diagnose a no-crank.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the traced starter circuits and your test points.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "starter_circuit",
+              "type": "textarea",
+              "label": "Starter control + high-current paths traced",
+              "required": true
+            },
+            {
+              "id": "test_points",
+              "type": "textarea",
+              "label": "Control-side vs. high-current test points for a no-crank",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -1382,33 +1430,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up safely: PPE on, no sparks or open flame near the battery; note the battery type (flooded / AGM).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Remove any surface charge per procedure (e.g., briefly apply a load) so the reading is stable.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure and record the open-circuit voltage (OCV) with the DMM across the battery terminals.",
+              "checkbox": true
+            },
+            {
+              "text": "If accessible on a flooded battery, measure and record specific gravity with a hydrometer/refractometer.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine state of charge from the OCV (and SG) — e.g., ~12.6 V ≈ 100%; record the % state of charge.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action (return to service, charge, further testing, or replace).",
               "checkbox": true
             }
           ],
           "fields": [
             {
               "id": "ocv",
-              "type": "number",
-              "label": "Open-circuit voltage",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.01
+              "type": "text",
+              "label": "Open-circuit voltage (V)",
+              "required": true
+            },
+            {
+              "id": "soc",
+              "type": "text",
+              "label": "State of charge (%) + SG if measured",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -1434,23 +1496,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm the battery is correct for the vehicle: group size, CCA rating, type, and application per SI or label; record it.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the terminals, cables, and case for corrosion, looseness, or damage.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Confirm the battery is adequately charged before load testing (use the state of charge result).",
+              "checkbox": true
+            },
+            {
+              "text": "Perform the capacity/load test by the manufacturer's method (electronic conductance tester, or carbon-pile to the rated load); record the measured values.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the result (measured CCA and voltage under load) as pass/fail against the rating.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "bat_spec",
+              "type": "text",
+              "label": "Battery confirmed: group size / CCA / type / application",
+              "required": true
+            },
+            {
+              "id": "load_result",
+              "type": "textarea",
+              "label": "Capacity/load test values + pass or fail",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -1476,19 +1562,43 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Determine the correct charging method for this battery per the manufacturer (charge rate, AGM vs. flooded, and any in-vehicle cautions).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Set up safely: ensure ventilation, PPE on, and connect/disconnect the charger leads with the charger turned off.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Select slow or fast charge appropriate to the situation and set the rate/time per specification.",
+              "checkbox": true
+            },
+            {
+              "text": "Monitor during charging (voltage, case temperature, gassing) and note the precautions you observed.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the charge is complete (voltage / state of charge), then disconnect the charger safely.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the method, rate, and result.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "charge_method",
+              "type": "text",
+              "label": "Charging method & rate selected (slow/fast, per spec)",
+              "required": true
+            },
+            {
+              "id": "charge_result",
+              "type": "textarea",
+              "label": "Result (final voltage / SOC) + precautions observed",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -1518,33 +1628,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm prerequisites: battery is good and fully charged; cables and connections are sound.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Connect the starter current-draw test equipment (inductive amp clamp on the battery cable + voltmeter) per the procedure.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Disable the engine from starting per SI (so it cranks without starting).",
+              "checkbox": true
+            },
+            {
+              "text": "Crank the engine and measure the starter current draw (amps) and cranking voltage; record both.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare to specification; interpret high draw (mechanical resistance / faulty starter) or low draw with low RPM (high circuit resistance).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "amp",
-              "type": "number",
-              "label": "Current",
-              "unit": "A",
-              "required": true,
-              "min": 0,
-              "max": 200,
-              "step": 0.1
+              "id": "current_draw",
+              "type": "text",
+              "label": "Starter current draw (A) + cranking voltage vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -1570,33 +1688,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "With the engine disabled and cranking, measure voltage drop on the INSULATED side: battery positive → solenoid → starter; record each segment.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Measure voltage drop on the GROUND side: starter/engine ground → battery negative; record.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Compare each drop to the maximum allowable spec (per SI — commonly low tenths of a volt); flag any excessive drop.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the connection or cable causing an excessive drop.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record all voltage drops and your interpretation.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "id": "starter_vdrop",
+              "type": "textarea",
+              "label": "Insulated-side / ground-side drops (V) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -1622,23 +1748,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the starter relay(s) and solenoid and their control and load circuits from the wiring diagram.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the connections and grounds at the relay/solenoid for corrosion or looseness.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Test the relay: check the control-side coil and the load-side contacts per SI (resistance/continuity, and voltage drop across the contacts under load).",
+              "checkbox": true
+            },
+            {
+              "text": "Test the solenoid: pull-in/hold-in function and the high-current contacts; measure voltage drop across the solenoid during cranking.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the results against specification and identify a faulty relay or solenoid.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "relay_solenoid",
+              "type": "textarea",
+              "label": "Relay/solenoid test values vs. spec",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -1664,23 +1808,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Review service information: precautions, fastener torque specs, and any special procedures; disconnect the battery negative cable first.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Access the starter: remove obstructions per SI, then disconnect and label the starter wiring (solenoid B+, control, and grounds).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Support the starter, remove the mounting bolts, and remove the starter from the vehicle.",
+              "checkbox": true
+            },
+            {
+              "text": "Install the starter: seat it correctly, torque the mounting bolts to spec, and reconnect the wiring in the correct positions.",
+              "checkbox": true
+            },
+            {
+              "text": "Reconnect the battery and verify proper cranking/starting operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the R&R performed and the verification result.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "rr_notes",
+              "type": "textarea",
+              "label": "Starter R&R — torque specs + wiring reconnected",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / verification",
               "required": true
             },
             {
@@ -1704,23 +1866,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "On the bench, disassemble the starter per reference, noting the order: drive-end housing, commutator-end housing, armature, field coils/frame, brushes, and solenoid.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Clean and inspect the components: commutator surface, brushes and holders, bushings, drive/pinion (one-way clutch), and field coils.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Test the internals with the DMM (and growler if available): armature for opens/shorts/grounds, field coils for continuity and grounds, brushes for wear; record results.",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble in the correct order per reference; ensure proper brush/spring seating and end-play/clearances.",
+              "checkbox": true
+            },
+            {
+              "text": "Bench-test the reassembled starter (free/no-load run) for proper operation; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine serviceability and needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "starter_bench",
+              "type": "textarea",
+              "label": "Disassembly/inspection + armature/field/brush test results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Serviceability / needed action",
               "required": true
             },
             {
