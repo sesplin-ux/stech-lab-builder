@@ -3087,39 +3087,53 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Measure source voltage and voltage drop",
+          "title": "Measure voltage and voltage drop on a headlight circuit",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the headlight circuit and its normal operating voltage from service information.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the headlamp and socket for damage, corrosion, or moisture.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "With the lights on, measure the available (source) voltage at the headlight connector; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform voltage-drop tests on the feed side and the ground side of the headlight circuit with the lights on; record each.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare the drops to spec; interpret excessive resistance (a cause of dim headlights) vs. a good circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "id": "v_avail_front",
+              "type": "text",
+              "label": "Available voltage at headlamp (V)",
+              "required": true
+            },
+            {
+              "id": "vd_front",
+              "type": "text",
+              "label": "Feed-side / ground-side voltage drops (V) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3140,39 +3154,53 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Measure source voltage and voltage drop",
+          "title": "Measure voltage and voltage drop on a rear lighting circuit",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify a rear/exterior lighting circuit (tail, brake, or turn) and its normal operating voltage.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the lamp(s) and sockets for damage, corrosion, or moisture.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "With the circuit on, measure the available voltage at the lamp; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform voltage-drop tests on the feed side and the ground side; record each.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare the drops to spec; interpret dim or uneven operation caused by high resistance / poor ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "id": "v_avail_rear",
+              "type": "text",
+              "label": "Available voltage at rear lamp (V)",
+              "required": true
+            },
+            {
+              "id": "vd_rear",
+              "type": "text",
+              "label": "Feed-side / ground-side voltage drops (V) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3198,23 +3226,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the circuit-protection devices for the affected circuits from SI/the fuse-box legend: fuses, fusible links, and circuit breakers.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect and test fuses: confirm power is present on BOTH sides with the circuit live (or test continuity out of the vehicle).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Test fusible links for continuity/open and inspect for overheating or damage.",
+              "checkbox": true
+            },
+            {
+              "text": "Test circuit breakers (cycling or auto-reset type) for proper operation per SI.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret a blown fuse/link as a symptom — find and correct the cause of the overload before replacing.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "protection_tests",
+              "type": "textarea",
+              "label": "Fuse / fusible link / breaker test results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3240,19 +3286,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Inspect the component, connector, or harness for damage, corrosion, chafing, or loose/backed-out terminals.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Test to confirm the fault (continuity, resistance, or voltage-drop as appropriate).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Repair or replace per SI: terminal replacement, solder repair, connector/seal, or the component.",
+              "checkbox": true
+            },
+            {
+              "text": "Insulate and secure the repair (heat-shrink, loom, correct routing).",
+              "checkbox": true
+            },
+            {
+              "text": "Verify proper operation after the repair.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action and record the repair.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "repair_notes",
+              "type": "textarea",
+              "label": "Component/connector inspected, tested, and repaired/replaced",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -3271,34 +3335,60 @@
           "job": 53,
           "legacyJob": "53",
           "ase": [
-            "E.3"
+            "E.3",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Diagnose no-light operation (CLASS)",
+          "title": "Diagnose dim or no-light operation on the lighting trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the lighting diagnostic trainer; identify the affected lighting circuit and obtain its wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Using the wiring diagram, trace the circuit source → lamp → ground; identify test points and the values you expect at each (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Confirm the symptom (dim or no light) and verify the bulb and socket first.",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose with the DMM: for NO light, check power and ground at the lamp (fuse, feed, switch, ground) to isolate the open; for DIM, voltage-drop test the feed and ground sides for high resistance (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings against the diagram to identify the fault type and its location (E.3).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action; record the diagram path, readings, and cause.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Lighting-circuit path & test points from the diagram (A.10)",
+              "required": true
+            },
+            {
+              "id": "dim_no_dx",
+              "type": "textarea",
+              "label": "Dim/no-light diagnosis — DMM readings + isolated cause (A.6/E.3)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3313,34 +3403,60 @@
           "job": 54,
           "legacyJob": "54",
           "ase": [
-            "E.3"
+            "E.3",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Diagnose light operation (CLASS)",
+          "title": "Diagnose intermittent or brighter-than-normal light on the lighting trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the lighting diagnostic trainer; identify the affected circuit and obtain its wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Trace the circuit on the diagram; identify connectors, grounds, and test points (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Confirm the symptom (intermittent operation, or brighter-than-normal light).",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose with the DMM: for INTERMITTENT, wiggle-test connectors/grounds while monitoring the lamp/meter; for BRIGHTER, check supply voltage and confirm correct bulb rating (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings against the diagram to isolate the cause (E.3).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action; record the diagram path, readings, and cause.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Lighting-circuit path & test points from the diagram (A.10)",
+              "required": true
+            },
+            {
+              "id": "int_bright_dx",
+              "type": "textarea",
+              "label": "Intermittent/bright diagnosis — DMM readings + isolated cause (A.6/E.3)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3355,34 +3471,60 @@
           "job": 55,
           "legacyJob": "55",
           "ase": [
-            "E.1"
+            "E.1",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Inspect/diagnose turn signal and hazard",
+          "title": "Diagnose turn signal and hazard operation on the lighting trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the lighting diagnostic trainer; operate the turn/hazard circuits and note the symptom (no flash, rapid flash, inoperative, or one side out).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Obtain the wiring diagram for the turn/hazard circuits; trace the feeds, flasher/module, switch, bulbs, and grounds (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Inspect the affected bulbs and sockets — a rapid flash often means a burned-out or incorrect bulb.",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose with the DMM: check the flasher/module, switch, feeds, grounds, and connectors to isolate the cause (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings against the diagram to identify the cause (E.1).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action; record the diagram path, readings, and cause.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Turn/hazard circuit path & test points from the diagram (A.10)",
+              "required": true
+            },
+            {
+              "id": "turn_hazard",
+              "type": "textarea",
+              "label": "Turn/hazard diagnosis — DMM readings + isolated cause (A.6/E.1)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3408,23 +3550,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Operate and inspect all exterior lamps: headlights, park, tail, brake, turn, reverse, license, and fog/auxiliary.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the sockets and connectors for corrosion, moisture, or heat damage.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Confirm the correct bulb types and proper operation of each lamp.",
+              "checkbox": true
+            },
+            {
+              "text": "Note any inoperative, dim, or damaged lamp or lens.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action for each.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the inspection results.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "exterior_inspect",
+              "type": "textarea",
+              "label": "Exterior lamp/socket inspection results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3450,19 +3610,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Prepare the vehicle per SI: correct tire pressure, level ground, proper load/fuel, and the specified distance/screen or aiming-equipment setup.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Locate the headlight aim adjusters and any built-in level/bubble or aim marks.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Turn on the low beams and check the aim pattern against specification (screen or aiming equipment).",
+              "checkbox": true
+            },
+            {
+              "text": "Adjust the vertical and horizontal aim to spec.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the final aim (and high beams if applicable).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the aim adjustment.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "aim_notes",
+              "type": "textarea",
+              "label": "Headlight aim — setup + adjustment made",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -3481,30 +3659,66 @@
           "job": 58,
           "legacyJob": "58",
           "ase": [
-            "A.7"
+            "A.7",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "title": "Diagnose shorts, grounds, opens on the diagnostic trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the diagnostic trainer; identify the circuit(s) under test and obtain the correct wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Using the wiring diagram, trace the circuit source → load → ground; identify connectors, test points, and the values you expect at each (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "For each fault type — open, short-to-power, short-to-ground, high resistance — state the cause and its effect on circuit operation and on meter readings (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose it using the DMM across multiple principles of testing: source voltage, voltage drop, and resistance/continuity, measured at the points identified on the diagram (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings to identify the fault type and its location; confirm against the wiring diagram (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Repeat so that an open, a short, and a high-resistance fault are each diagnosed at least once (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wiring-diagram path used, the DMM readings for each fault, and how you identified each one.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "trainer_circuit",
+              "type": "text",
+              "label": "Diagnostic trainer / circuit under test",
+              "required": true
+            },
+            {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Wiring-diagram path & test points used (A.10)",
+              "required": true
+            },
+            {
+              "id": "fault_diag",
+              "type": "textarea",
+              "label": "Each fault (open / short / high-resistance): DMM readings + how identified (A.6/A.7)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
