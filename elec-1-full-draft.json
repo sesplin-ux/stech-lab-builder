@@ -1934,33 +1934,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the lighting circuit and its expected current draw (from SI or lamp rating).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the lamps and sockets (including headlights/auxiliary lights) for damage, corrosion, or moisture before testing.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Set up to measure current: DMM in series (current jack, correct range) or a current clamp around the conductor.",
+              "checkbox": true
+            },
+            {
+              "text": "Operate the circuit and measure the current draw; record the amps.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare measured draw to expected and interpret: high draw (short/added load) or low/no draw (high resistance/open).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action for the lamps, sockets, and circuit.",
               "checkbox": true
             }
           ],
           "fields": [
             {
               "id": "amp",
-              "type": "number",
-              "label": "Current",
-              "unit": "A",
-              "required": true,
-              "min": 0,
-              "max": 200,
-              "step": 0.1
+              "type": "text",
+              "label": "Measured current draw (A) vs. expected",
+              "required": true
+            },
+            {
+              "id": "lamp_condition",
+              "type": "textarea",
+              "label": "Lamp/socket condition (headlights & auxiliary)",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / interpretation",
               "required": true
             },
             {
@@ -1986,23 +2000,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "PPE on; inspect the battery case, terminals, cables, connectors, clamps, and hold-downs for corrosion, damage, or looseness.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Clean the terminals and connectors per procedure (baking-soda/water for corrosion, terminal brush); protect eyes and skin.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Check the cable ends and hold-down for tightness/torque per SI; note any damaged cables.",
+              "checkbox": true
+            },
+            {
+              "text": "Apply terminal protectant if specified and confirm the battery is securely mounted.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the condition found and the service performed.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action (replace cable, clamp, or hold-down as needed).",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "batt_service",
+              "type": "textarea",
+              "label": "Battery/cable condition found + service performed",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2028,33 +2060,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "With the engine disabled and cranking, measure voltage drop on the INSULATED side: battery positive → solenoid → starter; record each segment.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Measure voltage drop on the GROUND side: starter/engine ground → battery negative; record.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Compare each drop to the maximum allowable spec (per SI — commonly low tenths of a volt); flag any excessive drop.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the connection or cable causing an excessive drop.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record all voltage drops and your interpretation.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "id": "starter_vdrop",
+              "type": "textarea",
+              "label": "Insulated-side / ground-side drops (V) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2080,33 +2120,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm prerequisites: battery good and charged, drive belt and connections sound.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Connect the charging system tester (or DMM + current clamp) per the procedure.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure and record charging voltage at idle and at raised RPM.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record charging output (amperage) under load per the tester's procedure.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare voltage and output to specification; interpret over- or under-charging.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "out",
-              "type": "number",
-              "label": "Charging output",
-              "unit": "A",
-              "required": true,
-              "min": 0,
-              "max": 200,
-              "step": 1
+              "id": "charge_output",
+              "type": "textarea",
+              "label": "Charging voltage (idle/raised) + output amps vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2126,29 +2174,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Diagnose charging under/no/overcharge",
+          "title": "Diagnose an undercharge condition",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm the undercharge symptom (battery frequently low, charge warning, short battery life).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Verify battery condition first (state of charge / load test) to rule out a failed battery.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure charging voltage and output at idle and under load; confirm they are BELOW specification.",
+              "checkbox": true
+            },
+            {
+              "text": "Check likely undercharge causes: loose/glazed drive belt, high resistance in the charging circuit (run a voltage-drop test), poor grounds, weak alternator/regulator, or excessive parasitic load.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the wiring diagram and your measurements to isolate the cause.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "undercharge_dx",
+              "type": "textarea",
+              "label": "Charging voltage/output vs. spec + isolated cause",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2168,29 +2234,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Diagnose charging under/no/overcharge",
+          "title": "Diagnose a no-charge condition",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm the no-charge symptom (dead/discharging battery, charge light on, no output).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Verify the battery and connections; check the charging fuse / fusible link for the alternator.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure charging output — confirm there is little or no output.",
+              "checkbox": true
+            },
+            {
+              "text": "Check no-charge causes: broken/missing belt, open in the charging or field/exciter (turn-on) circuit, blown fusible link, or a failed alternator/regulator.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the field/exciter circuit and the alternator per SI to isolate the open or failure.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "nocharge_dx",
+              "type": "textarea",
+              "label": "Output reading + field/exciter test + isolated cause",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2210,29 +2294,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Diagnose charging under/no/overcharge",
+          "title": "Diagnose an overcharge condition",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm the overcharge symptom (battery gassing/boiling, high system voltage, short battery or bulb life).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Measure charging voltage — confirm it is ABOVE specification.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Check overcharge causes: faulty voltage regulator, poor voltage-sense or ground-reference circuit, incorrect alternator, or a PCM charging-control fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the regulator sense/ground circuit and the charging control per SI.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the cause using the diagram and your measurements.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "overcharge_dx",
+              "type": "textarea",
+              "label": "Charging voltage vs. spec + isolated cause",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2258,23 +2360,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Inspect the alternator drive belt for wear (cracks, glazing, fraying), correct routing, and proper tension.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Check the pulleys and tensioner for wear, wobble, or bearing noise; check belt-to-pulley alignment.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Verify belt tension per specification (or confirm the automatic tensioner is within its range/marks).",
+              "checkbox": true
+            },
+            {
+              "text": "Adjust the tension or replace the belt/tensioner per SI as needed; confirm correct routing.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify proper operation after service (no slip, chirp, or noise).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the condition found and service performed; determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "belt_service",
+              "type": "textarea",
+              "label": "Belt/pulley/tensioner condition + tension/alignment + service",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2300,23 +2420,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Review SI precautions; disconnect the battery negative cable first.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Relieve belt tension and remove the drive belt; disconnect and label the alternator wiring (B+ output, field/sense connector, grounds).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Remove the mounting bolts and remove the alternator; inspect it and the mounting.",
+              "checkbox": true
+            },
+            {
+              "text": "Install the alternator (same or replacement): mount and torque to spec, reconnect the wiring correctly, and reinstall/route the belt with proper tension.",
+              "checkbox": true
+            },
+            {
+              "text": "Reconnect the battery and verify charging operation with an output test.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the R&R performed and the verification result.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "alt_rr",
+              "type": "textarea",
+              "label": "Alternator R&R — torque specs, wiring, belt tension",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / verification (output test)",
               "required": true
             },
             {
@@ -2342,33 +2480,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "With the charging system operating under load, measure the voltage drop on the insulated (B+) side: alternator output to battery positive; record.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Measure the voltage drop on the ground side: alternator case/ground to battery negative; record.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Compare each drop to the maximum allowable spec (per SI — commonly a few tenths of a volt); flag any excessive drop.",
+              "checkbox": true
+            },
+            {
+              "text": "If a drop is excessive, isolate where it occurs (which connection or cable).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record both voltage drops and your interpretation.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "id": "vdrop_charge",
+              "type": "text",
+              "label": "B+ side drop / ground side drop (V) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -2392,23 +2538,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "On the bench, disassemble the alternator per reference, noting the order: pulley, front/rear housings, rotor, stator, rectifier/diodes, and brushes/regulator.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Clean and inspect the components: slip rings, brushes and holders, bearings, stator windings, and the rectifier.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Test the internals with the DMM: rotor (field) winding resistance and grounds, stator continuity and grounds, the rectifier diodes for proper one-way conduction, and brush wear; record results.",
+              "checkbox": true
+            },
+            {
+              "text": "Reassemble in the correct order per reference; seat the brushes correctly.",
+              "checkbox": true
+            },
+            {
+              "text": "Bench-test the reassembled alternator if equipment allows; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine serviceability and needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "alt_bench",
+              "type": "textarea",
+              "label": "Disassembly/inspection + rotor/stator/diode/brush test results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Serviceability / needed action",
               "required": true
             },
             {
@@ -2434,23 +2598,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Operate and inspect the headlamps and auxiliary lights (fog/driving) for proper operation, output, and any aim concern.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the sockets and connectors for corrosion, heat damage, or melting.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Determine the correct bulb type/part; handle halogen bulbs without touching the glass (oil causes hot spots/failure).",
+              "checkbox": true
+            },
+            {
+              "text": "Replace a lamp or socket as needed per SI and verify proper operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Note any headlight-aim concern for adjustment (cross-reference the headlight-aim job).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "lamp_service",
+              "type": "textarea",
+              "label": "Headlamp/socket condition + bulb type + service performed",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
