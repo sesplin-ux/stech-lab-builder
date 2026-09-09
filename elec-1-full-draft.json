@@ -4380,19 +4380,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Inspect the component, connector, or harness for damage, corrosion, chafing, or loose/backed-out terminals.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Test to confirm the fault (continuity, resistance, or voltage-drop as appropriate).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Repair or replace per SI: terminal replacement, solder repair, connector/seal, or the component.",
+              "checkbox": true
+            },
+            {
+              "text": "Insulate and secure the repair (heat-shrink, loom, correct routing).",
+              "checkbox": true
+            },
+            {
+              "text": "Verify proper operation after the repair.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action and record the repair.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "repair_notes",
+              "type": "textarea",
+              "label": "Component/connector inspected, tested, and repaired/replaced",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -4422,23 +4440,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm both batteries are the same voltage; inspect the discharged battery for damage or freezing — do NOT jump a damaged or frozen battery.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Position the booster source/vehicle safely; both vehicles off, ignition off, and the vehicles not touching.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Connect the cables in the manufacturer's sequence: positive to positive, then the good source's negative to an engine ground on the disabled vehicle (not the battery negative post) — make the last connection away from the dead battery.",
+              "checkbox": true
+            },
+            {
+              "text": "Start the booster/good vehicle, let it run briefly, then start the disabled vehicle.",
+              "checkbox": true
+            },
+            {
+              "text": "Remove the cables in the reverse order, not letting the clamps touch each other or ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine why the battery was discharged (charging, parasitic, or battery fault) and record.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "jumpstart_notes",
+              "type": "textarea",
+              "label": "Jump-start sequence followed + condition of discharged battery",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / cause of discharge",
               "required": true
             },
             {
@@ -4704,23 +4740,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Verify the complaint (slow-crank or no-crank); confirm battery state of charge and cable connections first.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Differentiate electrical vs. engine-mechanical cause: try to rotate the engine by hand/breaker bar, and note whether the starter clicks or draws high current without cranking — distinguish a seized/hydro-locked engine or high mechanical resistance from an electrical fault (C.7).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Using the wiring diagram and test equipment, test the starter CONTROL circuit for power/ground during a crank attempt: ignition switch, neutral-safety/clutch switch, and relay/solenoid control (C.8).",
+              "checkbox": true
+            },
+            {
+              "text": "Test the high-current path: voltage drops battery → solenoid → starter and the grounds, plus starter current draw.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault to a specific electrical component/connection or to a mechanical cause.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "nocrank_dx",
+              "type": "textarea",
+              "label": "Electrical vs. mechanical determination + isolated cause",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -4746,19 +4800,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Describe the purpose of an automatic idle-stop / start-stop system (reduce fuel use and emissions by shutting the engine off at idle).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Explain how it restarts the engine using a low-voltage (enhanced 12 V) starter, and the components involved: the enhanced starter, an AGM/auxiliary battery, dual-battery or DC-DC support, and the enable sensors.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "State the conditions that ENABLE and INHIBIT auto-stop (brake applied, HVAC demand, battery state of charge, temperature, hood/seatbelt status).",
+              "checkbox": true
+            },
+            {
+              "text": "Describe the key service precaution: the engine can auto-restart unexpectedly — state how to disable the system before working near the engine (per SI).",
+              "checkbox": true
+            },
+            {
+              "text": "Identify how a fault presents (auto-stop inoperative, warning lamp) and where to begin looking.",
+              "checkbox": true
+            },
+            {
+              "text": "Record your explanation and any findings.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "idle_stop",
+              "type": "textarea",
+              "label": "Idle-stop operation, enable/inhibit conditions, service precaution",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -4788,19 +4860,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Prepare the vehicle per SI: correct tire pressure, level ground, proper load/fuel, and the specified distance/screen or aiming-equipment setup.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Locate the headlight aim adjusters and any built-in level/bubble or aim marks.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Turn on the low beams and check the aim pattern against specification (screen or aiming equipment).",
+              "checkbox": true
+            },
+            {
+              "text": "Adjust the vertical and horizontal aim to spec.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the final aim (and high beams if applicable).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the aim adjustment.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "aim_notes",
+              "type": "textarea",
+              "label": "Headlight aim — setup + adjustment made",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -4903,30 +4993,66 @@
           "job": 77,
           "legacyJob": "77",
           "ase": [
-            "A.7"
+            "A.7",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "title": "Diagnose shorts, grounds, opens on the diagnostic trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the diagnostic trainer; identify the circuit(s) under test and obtain the correct wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Using the wiring diagram, trace the circuit source → load → ground; identify connectors, test points, and the values you expect at each (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "For each fault type — open, short-to-power, short-to-ground, high resistance — state the cause and its effect on circuit operation and on meter readings (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose it using the DMM across multiple principles of testing: source voltage, voltage drop, and resistance/continuity, measured at the points identified on the diagram (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings to identify the fault type and its location; confirm against the wiring diagram (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Repeat so that an open, a short, and a high-resistance fault are each diagnosed at least once (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wiring-diagram path used, the DMM readings for each fault, and how you identified each one.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "trainer_circuit",
+              "type": "text",
+              "label": "Diagnostic trainer / circuit under test",
+              "required": true
+            },
+            {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Wiring-diagram path & test points used (A.10)",
+              "required": true
+            },
+            {
+              "id": "fault_diag",
+              "type": "textarea",
+              "label": "Each fault (open / short / high-resistance): DMM readings + how identified (A.6/A.7)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
