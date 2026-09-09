@@ -655,19 +655,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "State Ohm's Law (E = I × R) and the power formula (P = I × E); define voltage, current, and resistance with their units.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Describe a series circuit: current is the same throughout, voltage drops add up to source, resistances add.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Describe a parallel circuit: voltage is the same across branches, branch currents add to total, total resistance is less than the smallest branch.",
+              "checkbox": true
+            },
+            {
+              "text": "Describe a series-parallel circuit and the order you'd use to analyze it.",
+              "checkbox": true
+            },
+            {
+              "text": "Given example values, calculate total resistance, total current, and the voltage drops for one series, one parallel, and one series-parallel circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Record your calculations and short explanations.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "ohms_work",
+              "type": "textarea",
+              "label": "Ohm's Law calculations (series / parallel / series-parallel)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -691,29 +709,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Proper use of a DMM",
+          "title": "DMM measurements on a series circuit (Ohm's Law)",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Build or identify a series circuit on the trainer per the diagram.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Predict the values first using Ohm's Law from Job 10: total resistance, circuit current, and each voltage drop.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "With the DMM, measure source voltage and each component's voltage drop; record. Confirm the drops add up to source.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure current (DMM in series) at one point; record — note current is the same everywhere in a series circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure each resistance (component isolated) and record; compare to your predicted values.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare measured vs. predicted, explain any difference, and record findings.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "series_data",
+              "type": "textarea",
+              "label": "Series circuit: predicted vs. measured (R, I, voltage drops)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / interpretation",
               "required": true
             },
             {
@@ -733,29 +769,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Proper use of a DMM",
+          "title": "DMM measurements on a parallel circuit (Ohm's Law)",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Build or identify a parallel circuit on the trainer per the diagram.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Predict the values first using Ohm's Law: each branch current, total current, and total resistance.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure the voltage across each branch with the DMM; record — note it is the same across parallel branches.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure each branch current and the total current (DMM in series with each branch / the source); record — observe the branch currents add up to total.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm total-resistance behavior (less than the smallest branch); record.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare measured vs. predicted, explain any difference, and record findings.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "parallel_data",
+              "type": "textarea",
+              "label": "Parallel circuit: predicted vs. measured (branch I, total I, R)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / interpretation",
               "required": true
             },
             {
@@ -781,19 +835,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the type of test light in use (incandescent vs. LED / high-impedance logic probe) and its correct connection.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "State the key precaution: do NOT use an incandescent test light on sensitive electronic, network (CAN), or airbag circuits — its current draw can damage modules; use a high-impedance/LED tester there.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Verify the test light works on a known-good powered source before relying on it.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the test light to check for power and ground on a designated non-sensitive circuit; record the result.",
+              "checkbox": true
+            },
+            {
+              "text": "State when a DMM should be used instead of a test light (voltage-drop, sensitive circuits, exact values).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the precautions demonstrated and the check result.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "testlight_notes",
+              "type": "textarea",
+              "label": "Test-light precautions demonstrated + check result",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -812,30 +884,59 @@
           "job": 14,
           "legacyJob": "14",
           "ase": [
-            "A.9"
+            "A.9",
+            "A.13"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Check circuits using fused jumper wires",
+          "title": "Make a fused jumper wire; jump a relay control side",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Gather materials: wire of appropriate gauge, an inline fuse holder with the correct fuse rating, and end terminals/clips for the jumper you will build.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Cut and strip the wire, then make the solder terminations: mechanically secure the joint, heat the joint (not the solder), flow solder to a clean bright joint, and insulate with heat-shrink — an accurate, professional solder termination (A.13).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Inspect and test your finished jumper: continuity end-to-end, a good fuse, and secure, insulated terminations (A.13).",
+              "checkbox": true
+            },
+            {
+              "text": "From the wiring diagram, identify the relay and its control (switch) side vs. its load side, and the SI-approved points to apply the jumper (A.9).",
+              "checkbox": true
+            },
+            {
+              "text": "Use your fused jumper to energize the control/switch side of the relay and confirm the relay actuates — a correct use case for a fused jumper wire (A.9).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the result: if the relay/load actuates when you jump the control side, what does that tell you about the control vs. load side? Record it.",
+              "checkbox": true
+            },
+            {
+              "text": "State the safety limits: correct fuse rating, never jump across a load or into airbag/sensitive circuits.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "jumper_build",
+              "type": "textarea",
+              "label": "Fused jumper build — solder-joint quality + continuity/fuse check (A.13)",
+              "required": true
+            },
+            {
+              "id": "relay_jump",
+              "type": "textarea",
+              "label": "Relay control-side jump: did it actuate? interpretation (A.9)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -854,30 +955,66 @@
           "job": 15,
           "legacyJob": "15",
           "ase": [
-            "A.7"
+            "A.7",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "title": "Diagnose shorts, grounds, opens on the diagnostic trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the diagnostic trainer; identify the circuit(s) under test and obtain the correct wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Using the wiring diagram, trace the circuit source → load → ground; identify connectors, test points, and the values you expect at each (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "For each fault type — open, short-to-power, short-to-ground, high resistance — state the cause and its effect on circuit operation and on meter readings (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose it using the DMM across multiple principles of testing: source voltage, voltage drop, and resistance/continuity, measured at the points identified on the diagram (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings to identify the fault type and its location; confirm against the wiring diagram (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Repeat so that an open, a short, and a high-resistance fault are each diagnosed at least once (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wiring-diagram path used, the DMM readings for each fault, and how you identified each one.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "trainer_circuit",
+              "type": "text",
+              "label": "Diagnostic trainer / circuit under test",
+              "required": true
+            },
+            {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Wiring-diagram path & test points used (A.10)",
+              "required": true
+            },
+            {
+              "id": "fault_diag",
+              "type": "textarea",
+              "label": "Each fault (open / short / high-resistance): DMM readings + how identified (A.6/A.7)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -907,23 +1044,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "PPE on; inspect the battery case, terminals, cables, connectors, clamps, and hold-downs for corrosion, damage, or looseness.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Clean the terminals and connectors per procedure (baking-soda/water for corrosion, terminal brush); protect eyes and skin.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Check the cable ends and hold-down for tightness/torque per SI; note any damaged or swollen cables.",
+              "checkbox": true
+            },
+            {
+              "text": "Apply terminal protectant if specified and confirm the battery is securely mounted.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the condition found and the service performed.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action (replace cable, clamp, or hold-down as needed).",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "batt_service",
+              "type": "textarea",
+              "label": "Battery/cable condition found + service performed",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -938,7 +1093,8 @@
           "job": 17,
           "legacyJob": "17",
           "ase": [
-            "C.3"
+            "C.3",
+            "A.6"
           ],
           "version": 1,
           "type": "lab",
@@ -949,23 +1105,47 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the starter relay(s) and solenoid and their control and load circuits from the wiring diagram.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Remove the relay you tested/jumped in Job 14 for bench testing.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Ohm out the removed relay with the DMM: measure the control coil resistance, and check the load contacts for continuity de-energized vs. energized (per SI) (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect and test the solenoid on the vehicle: pull-in/hold-in function and the high-current contacts; measure the voltage drop across the solenoid during cranking (C.3).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret all results against specification and identify a faulty relay or solenoid.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "relay_ohm",
+              "type": "textarea",
+              "label": "Removed relay ohmed out — coil resistance + contact continuity (A.6)",
+              "required": true
+            },
+            {
+              "id": "solenoid_test",
+              "type": "textarea",
+              "label": "Solenoid test — pull-in/hold-in + cranking voltage drop (C.3)",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -991,33 +1171,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Confirm prerequisites: battery good and charged, drive belt and connections sound.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Connect the charging system tester (or DMM + current clamp) per the procedure.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Measure and record charging voltage at idle and at raised RPM.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record charging output (amperage) under load per the tester's procedure.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare voltage and output to specification; interpret over- or under-charging.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "out",
-              "type": "number",
-              "label": "Charging output",
-              "unit": "A",
-              "required": true,
-              "min": 0,
-              "max": 200,
-              "step": 1
+              "id": "charge_output",
+              "type": "textarea",
+              "label": "Charging voltage (idle/raised) + output amps vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -1043,33 +1231,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "With the charging system operating under load, measure the voltage drop on the insulated (B+) side: alternator output to battery positive; record.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Measure the voltage drop on the ground side: alternator case/ground to battery negative; record.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Compare each drop to the maximum allowable spec (per SI — commonly a few tenths of a volt); flag any excessive drop.",
+              "checkbox": true
+            },
+            {
+              "text": "If a drop is excessive, isolate where it occurs (which connection or cable).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record both voltage drops and your interpretation.",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "vd",
-              "type": "number",
-              "label": "Total voltage drop",
-              "unit": "V",
-              "required": true,
-              "min": 0,
-              "max": 20,
-              "step": 0.001
+              "id": "vdrop_charge",
+              "type": "text",
+              "label": "B+ side drop / ground side drop (V) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
