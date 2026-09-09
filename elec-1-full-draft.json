@@ -3749,39 +3749,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Measure and diagnose key-off battery drain",
+          "title": "Measure key-off parasitic battery drain",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Verify the battery is fully charged and the connections are good.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Prepare per SI: turn everything off, close/defeat the door switches, and allow the modules to enter sleep mode (can take 20–60 min) — do not wake them once timing starts.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Connect a milliammeter in series (or a low-current clamp) per procedure without breaking the circuit and waking modules (switch/clamp method).",
+              "checkbox": true
+            },
+            {
+              "text": "After the modules sleep, measure the key-off current draw in milliamps; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare to specification (commonly ~20–50 mA); determine whether the draw is excessive.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the next step (isolate the circuit if the draw is excessive).",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "drain",
-              "type": "number",
-              "label": "Parasitic draw",
-              "unit": "mA",
-              "required": true,
-              "min": 0,
-              "max": 5000,
-              "step": 1
+              "id": "draw_ma",
+              "type": "text",
+              "label": "Key-off current draw (mA) vs. spec",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / next step",
               "required": true
             },
             {
@@ -3801,39 +3809,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Measure and diagnose key-off battery drain",
+          "title": "Isolate a parasitic draw using the fuse-pull method",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "With an excessive parasitic draw confirmed and the meter reading, pull fuses one at a time (or use the fuse-drop / millivolt method) per SI.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Watch the draw for a drop as each fuse is pulled — the circuit that makes the draw fall toward spec contains the offending load.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Record which circuit/fuse causes the draw to drop.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the wiring diagram to identify what is powered on that circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Reinstall the fuses and note the suspect circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the next step (find the specific component).",
               "checkbox": true
             }
           ],
           "fields": [
             {
-              "id": "drain",
-              "type": "number",
-              "label": "Parasitic draw",
-              "unit": "mA",
-              "required": true,
-              "min": 0,
-              "max": 5000,
-              "step": 1
+              "id": "circuit_isolated",
+              "type": "textarea",
+              "label": "Circuit/fuse that dropped the draw + what's on it",
+              "required": true
             },
             {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / next step",
               "required": true
             },
             {
@@ -3853,29 +3869,47 @@
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Diagnose excessive key-off drain (parasitic)",
+          "title": "Diagnose the component causing parasitic draw",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "On the isolated circuit, list the components/modules that could keep drawing current.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Disconnect or test the components on that circuit one at a time while monitoring the draw.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Identify the specific component, module, or wiring fault causing the draw.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm: with the faulty component disconnected, the draw returns to specification.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the repair (replace the component, repair the wiring, or address the module fault).",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the repair returns the key-off draw to spec.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "component_found",
+              "type": "textarea",
+              "label": "Component/module (or fault) causing the draw + confirmation",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3901,23 +3935,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the circuit-protection devices for the affected circuits from SI/the fuse-box legend: fuses, fusible links, and circuit breakers.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect and test fuses: confirm power is present on BOTH sides with the circuit live (or test continuity out of the vehicle).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Test fusible links for continuity/open and inspect for overheating or damage.",
+              "checkbox": true
+            },
+            {
+              "text": "Test circuit breakers (cycling or auto-reset type) for proper operation per SI.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret a blown fuse/link as a symptom — find and correct the cause of the overload before replacing.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "protection_tests",
+              "type": "textarea",
+              "label": "Fuse / fusible link / breaker test results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -3943,19 +3995,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Identify the harness damage or fault (chafe, break, corroded splice) from inspection and the wiring diagram.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Prepare the wires: cut out the damaged section, strip, and align the conductors for repair.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Make the repair per SI — a proper splice (crimp-and-seal or solder); for a solder repair, heat the joint (not the solder) and flow solder to a clean, bright joint.",
+              "checkbox": true
+            },
+            {
+              "text": "Insulate and seal the repair (adhesive-lined heat-shrink), then support/loom it and keep correct wire length and routing.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the repair: continuity and proper circuit operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the repair performed.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "harness_repair",
+              "type": "textarea",
+              "label": "Harness/solder repair — splice method, seal, continuity test",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -3985,19 +4055,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Using SI/component locations, identify the major electrical/electronic components on this vehicle and where they are (battery, alternator, starter, fuse/relay centers, PCM/BCM and other modules, key sensors, and main grounds).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Identify the system configuration: the network/bus type (e.g., CAN), power distribution, and ground distribution.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Match the components to their symbols on the wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Note how to access the key components for service.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the components identified and their locations.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine any component needing attention.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "components_id",
+              "type": "textarea",
+              "label": "Components identified + locations + network/config",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -4027,19 +4115,37 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "From SI, identify which modules, security systems, radios, and accessories require reinitialization or code entry after a battery reconnect.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "For each, note the specific relearn/code procedure (radio code, power-window one-touch, steering-angle, throttle/idle relearn, immobilizer/security).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Determine what information or tools are needed (radio code, scan tool).",
+              "checkbox": true
+            },
+            {
+              "text": "State the risk of not performing them (inoperative features, stored DTCs, no-start on secured vehicles).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the list of items requiring reinitialization for this vehicle.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "reinit_list",
+              "type": "textarea",
+              "label": "Items needing reinitialization/code + procedure/tool needed",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
@@ -4069,23 +4175,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Inspect the alternator drive belt for wear (cracks, glazing, fraying), correct routing, and proper tension.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Check the pulleys and tensioner for wear, wobble, or bearing noise; check belt-to-pulley alignment.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Verify belt tension per specification (or confirm the automatic tensioner is within its range/marks).",
+              "checkbox": true
+            },
+            {
+              "text": "Adjust the tension or replace the belt/tensioner per SI as needed; confirm correct routing.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify proper operation after service (no slip, chirp, or noise).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the condition found and service performed; determine needed action.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "belt_service",
+              "type": "textarea",
+              "label": "Belt/pulley/tensioner condition + tension/alignment + service",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -4111,23 +4235,41 @@
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Operate and inspect the interior lamps: dome/courtesy, map, door, cargo, and instrument/dash illumination.",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Inspect the sockets and connectors for corrosion or damage.",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "Confirm the correct bulb types and proper operation, including door-switch-triggered lamps and dimming.",
+              "checkbox": true
+            },
+            {
+              "text": "Note any inoperative or dim lamp, or a switch/dimmer concern.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action for each.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the inspection results.",
               "checkbox": true
             }
           ],
           "fields": [
             {
+              "id": "interior_inspect",
+              "type": "textarea",
+              "label": "Interior lamp/socket inspection results",
+              "required": true
+            },
+            {
               "id": "findings",
               "type": "textarea",
-              "label": "Findings",
+              "label": "Findings / needed action",
               "required": true
             },
             {
@@ -4142,30 +4284,66 @@
           "job": 68,
           "legacyJob": "68",
           "ase": [
-            "A.7"
+            "A.7",
+            "A.6",
+            "A.10"
           ],
           "version": 1,
           "type": "lab",
           "requiresVehicle": true,
-          "title": "Knowledge of causes/effects of shorts, grounds, opens",
+          "title": "Diagnose shorts, grounds, opens on the diagnostic trainer",
           "competency": {
             "countCheckoffs": true
           },
           "steps": [
             {
-              "text": "Perform the procedure per the job sheet and service information",
+              "text": "Set up at the diagnostic trainer; identify the circuit(s) under test and obtain the correct wiring diagram (A.10).",
               "checkbox": true
             },
             {
-              "text": "Record measurements/observations",
+              "text": "Using the wiring diagram, trace the circuit source → load → ground; identify connectors, test points, and the values you expect at each (A.10).",
               "checkbox": true
             },
             {
-              "text": "Determine needed action",
+              "text": "For each fault type — open, short-to-power, short-to-ground, high resistance — state the cause and its effect on circuit operation and on meter readings (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set on the trainer, diagnose it using the DMM across multiple principles of testing: source voltage, voltage drop, and resistance/continuity, measured at the points identified on the diagram (A.6).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the readings to identify the fault type and its location; confirm against the wiring diagram (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Repeat so that an open, a short, and a high-resistance fault are each diagnosed at least once (A.7).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wiring-diagram path used, the DMM readings for each fault, and how you identified each one.",
               "checkbox": true
             }
           ],
           "fields": [
+            {
+              "id": "trainer_circuit",
+              "type": "text",
+              "label": "Diagnostic trainer / circuit under test",
+              "required": true
+            },
+            {
+              "id": "diagram_path",
+              "type": "textarea",
+              "label": "Wiring-diagram path & test points used (A.10)",
+              "required": true
+            },
+            {
+              "id": "fault_diag",
+              "type": "textarea",
+              "label": "Each fault (open / short / high-resistance): DMM readings + how identified (A.6/A.7)",
+              "required": true
+            },
             {
               "id": "findings",
               "type": "textarea",
