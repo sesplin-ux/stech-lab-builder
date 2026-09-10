@@ -266,7 +266,6 @@ footer{max-width:1160px;margin:18px auto 0;padding:0 20px;font-size:11px;color:v
   <div id="app" class="hidden">
     <div class="ed-wrap">
       <div class="side">
-        <div id="vehHost"></div>
         <div class="sec-head"><h3 id="packTitle">Job sheets</h3>
           <button class="btn ghost sm" id="btnChange">Change pack</button></div>
         <div class="navlist" id="navlist"></div>
@@ -293,7 +292,7 @@ footer{max-width:1160px;margin:18px auto 0;padding:0 20px;font-size:11px;color:v
 const LS_PACK="swtc_stu_pack_v1";     // cached published pack (offline resilience)
 const LS_WORK="swtc_stu_work_v1";     // student's in-progress work
 let PACK=null;
-let WORK={ studentName:"", vehicle:blankVehicle(), recent:[], labs:{} }; // labs[job] = {responses:{}, checkoffs:[], notes:""}
+let WORK={ studentName:"", recent:[], labs:{} }; // labs[job] = {responses:{}, checkoffs:[], notes:"", vehicle:{}} — each lab keeps its OWN vehicle
 let curJob=null, curModuleId=null;
 
 function blankVehicle(){ return { mode:"ymm", vin:"", year:"", make:"", model:"", engine:"" }; }
@@ -322,12 +321,13 @@ function renderFileFlag(){ var el=document.getElementById("fileFlag"); if(!el) r
   else { el.textContent="✓ saved to a file"; el.style.color="#15803d"; el.style.fontWeight="600"; }
 }
 function restore(){
-  try{ const w=localStorage.getItem(LS_WORK); if(w) WORK=Object.assign(blankVehicle()&&{studentName:"",vehicle:blankVehicle(),recent:[],labs:{}}, JSON.parse(w)); }catch(e){}
+  try{ const w=localStorage.getItem(LS_WORK); if(w) WORK=normWork(JSON.parse(w)); }catch(e){}
   try{ const p=localStorage.getItem(LS_PACK); if(p) PACK=JSON.parse(p); }catch(e){}
 }
 function labWork(job){
-  if(!WORK.labs[job]) WORK.labs[job]={ responses:{}, checkoffs:[], notes:"", touched:[] };
+  if(!WORK.labs[job]) WORK.labs[job]={ responses:{}, checkoffs:[], notes:"", touched:[], vehicle:blankVehicle() };
   if(!WORK.labs[job].touched) WORK.labs[job].touched=[];
+  if(!WORK.labs[job].vehicle) WORK.labs[job].vehicle=blankVehicle();
   return WORK.labs[job];
 }
 
@@ -336,7 +336,7 @@ function labWork(job){
    Preview can't disagree. These thin wrappers just adapt the student's
    in-progress "work" object to the engine's context shape. */
 function evaluateLab(lab, w){
-  return LabEngine.evaluate(lab, { responses:w.responses, checkoffs:w.checkoffs, vehicle:WORK.vehicle });
+  return LabEngine.evaluate(lab, { responses:w.responses, checkoffs:w.checkoffs, vehicle:w.vehicle });
 }
 /* Inline field mark for the form: todo | miss | ansok | ansno | "".
    Neutral "to do" until the student has interacted (touched) the field. */
@@ -344,24 +344,37 @@ function fieldState(lab,f,w){
   return LabEngine.fieldMark(f, w.responses, (w.touched||[]).includes(f.id));
 }
 
-/* ================= vehicle ================= */
-function vehicleRecorded(){ return LabEngine.vehicleRecorded(WORK.vehicle); }
+/* ================= vehicle (PER-LAB) =================
+   Each job sheet requires its OWN vehicle — a lab is worked on one specific
+   car, and different jobs are typically different cars. The picker lives
+   inside each sheet (not a shared sidebar), so what you pick applies only to
+   the job you're on. "Recent" chips surface cars you've already entered on
+   OTHER jobs this session, so when the job you're on IS the same vehicle you
+   confirm it in one click instead of retyping it. */
+function vehicleRecorded(v){ return LabEngine.vehicleRecorded(v); }
 function vehicleLabel(v){
+  if(!v) return "(no vehicle)";
   if(v.mode==="vin"&&v.vin) return "VIN "+v.vin;
   const p=[v.year,v.make,v.model].filter(Boolean).join(" ");
   return p||"(no vehicle)";
 }
-function anyLabNeedsVehicle(){ return allLabs().some(x=>x.lab.requiresVehicle); }
-function renderVehicle(){
-  const host=document.getElementById("vehHost");
-  if(!anyLabNeedsVehicle()){ host.innerHTML=""; return; }
-  const v=WORK.vehicle;
-  const recent=(WORK.recent||[]).slice(0,4);
-  host.innerHTML=`<div class="veh">
-    <div class="vh"><b>Vehicle <span class="req">*</span></b>
-      <span class="pill ${vehicleRecorded()?"ok":"no"}">${vehicleRecorded()?"recorded":"needed"}</span></div>
-    ${recent.length?`<div class="veh-recent"><span class="rl">Recent</span>
-      ${recent.map((r,i)=>`<button class="veh-chip" data-recent="${i}">＋ ${esc(vehicleLabel(r))}</button>`).join("")}</div>`:""}
+/* Recent = every recorded vehicle from OTHER labs (newest labs aren't ordered,
+   so we follow with the explicit history list), deduped by label. */
+function recentVehicles(exceptJob){
+  const seen=new Set(), out=[];
+  const add=v=>{ if(v&&vehicleRecorded(v)){ const k=vehicleLabel(v); if(!seen.has(k)){ seen.add(k); out.push(v); } } };
+  (WORK.recent||[]).forEach(add);
+  Object.keys(WORK.labs||{}).forEach(j=>{ if(String(j)!==String(exceptJob)) add(WORK.labs[j].vehicle); });
+  return out.slice(0,6);
+}
+function vehicleBlockHTML(l,w){
+  const v=w.vehicle||(w.vehicle=blankVehicle());
+  const recent=recentVehicles(l.job);
+  return `<div class="veh">
+    <div class="vh"><b>Vehicle for this job <span class="req">*</span></b>
+      <span class="pill ${vehicleRecorded(v)?"ok":"no"}">${vehicleRecorded(v)?"recorded":"needed"}</span></div>
+    ${recent.length?`<div class="veh-recent"><span class="rl">Same car as</span>
+      ${recent.map((r,i)=>`<button type="button" class="veh-chip" data-recent="${i}">＋ ${esc(vehicleLabel(r))}</button>`).join("")}</div>`:""}
     <div class="radio-row">
       <label><input type="radio" name="vmode" value="ymm" ${v.mode!=="vin"?"checked":""}> Year / Make / Model</label>
       <label><input type="radio" name="vmode" value="vin" ${v.mode==="vin"?"checked":""}> VIN</label>
@@ -375,26 +388,37 @@ function renderVehicle(){
           <input type="text" id="v_engine" placeholder="Engine (opt.)" value="${esc(v.engine)}">
         </div>`}
   </div>`;
-  host.querySelectorAll('[name=vmode]').forEach(r=>r.onchange=()=>{ WORK.vehicle.mode=r.value; saveWork(); renderVehicle(); refreshGateNavSub(); });
-  // Vehicle text inputs update in place — do NOT re-render the block (that would steal focus mid-typing)
-  const bind=(id,key)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>{ WORK.vehicle[key]=el.value; saveSoon(); updateVehiclePill(); refreshGateNavSub(); }; };
+}
+/* Rebuild just the vehicle block inside the current sheet (radio flip / recent pick). */
+function renderVehicleBlock(){
+  const host=document.getElementById("vehHost"); if(!host) return;
+  const l=hitLab(); if(!l) return; const w=labWork(curJob);
+  host.innerHTML=vehicleBlockHTML(l,w);
+  wireVehicle(l,w);
+}
+function wireVehicle(l,w){
+  const host=document.getElementById("vehHost"); if(!host) return;
+  const v=w.vehicle||(w.vehicle=blankVehicle());
+  host.querySelectorAll('[name=vmode]').forEach(r=>r.onchange=()=>{ v.mode=r.value; saveWork(); renderVehicleBlock(); refreshGate(); renderNav(); updateSubbar(); });
+  // Text inputs update in place — do NOT re-render (that would steal focus mid-typing)
+  const bind=(id,key)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>{ v[key]=el.value; saveSoon(); updateVehiclePill(v); refreshGate(); renderNav(); updateSubbar(); }; };
   bind("v_vin","vin"); bind("v_year","year"); bind("v_make","make"); bind("v_model","model"); bind("v_engine","engine");
+  // "Same car as" chip: copy that vehicle onto THIS lab (still its own copy).
   host.querySelectorAll("[data-recent]").forEach(b=>b.onclick=()=>{
-    WORK.vehicle=Object.assign(blankVehicle(),WORK.recent[+b.dataset.recent]); saveWork(); renderVehicle(); refreshGateNavSub();
+    const rec=recentVehicles(l.job)[+b.dataset.recent]; if(!rec) return;
+    w.vehicle=Object.assign(blankVehicle(),rec); saveWork(); renderVehicleBlock(); refreshGate(); renderNav(); updateSubbar();
   });
 }
-function updateVehiclePill(){
-  const pill=document.querySelector("#vehHost .vh .pill");
-  if(!pill) return;
-  const ok=vehicleRecorded();
+function updateVehiclePill(v){
+  const pill=document.querySelector("#vehHost .vh .pill"); if(!pill) return;
+  const ok=vehicleRecorded(v);
   pill.className="pill "+(ok?"ok":"no"); pill.textContent=ok?"recorded":"needed";
 }
-function rememberVehicle(){
-  if(!vehicleRecorded()) return;
-  const v=Object.assign({},WORK.vehicle);
+function rememberVehicle(v){
+  if(!vehicleRecorded(v)) return;
   const key=vehicleLabel(v);
   WORK.recent=(WORK.recent||[]).filter(r=>vehicleLabel(r)!==key);
-  WORK.recent.unshift(v); WORK.recent=WORK.recent.slice(0,6);
+  WORK.recent.unshift(Object.assign({},v)); WORK.recent=WORK.recent.slice(0,6);
 }
 
 /* ================= model helpers ================= */
@@ -443,6 +467,7 @@ function renderSheet(){
       </div>
     </div>
     <div class="sheet-body">
+      ${l.requiresVehicle?`<div id="vehHost">${vehicleBlockHTML(l,w)}</div>`:""}
       ${(l.instructions||[]).length?`<div class="instr"><b>Before you start</b><ul>${l.instructions.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}
       ${(l.steps||[]).length?`<h4 class="block">Steps</h4><div id="stepHost">${l.steps.map((s,i)=>stepHTML(s,i,w)).join("")}</div>`:""}
       ${(l.fields||[]).length?`<h4 class="block">What you record</h4><div id="fieldHost">${l.fields.map(f=>fieldHTML(f,w)).join("")}</div>`:""}
@@ -494,6 +519,8 @@ let _hitLab=null; function hitLab(){ return _hitLab; }
 
 function wireSheet(l,w){
   _hitLab=l;
+  // vehicle (per-lab)
+  if(l.requiresVehicle) wireVehicle(l,w);
   // steps
   document.querySelectorAll("[data-step]").forEach(lab=>{
     const i=+lab.dataset.step; const cb=lab.querySelector("input");
@@ -583,7 +610,7 @@ function submitJob(){
   const hit=findLab(curJob); const l=hit.lab, w=labWork(l.job);
   const ev=evaluateLab(l,w);
   if(!ev.complete && !confirm("This job sheet isn't complete yet — "+ev.unmet.length+" item(s) still need attention. Submit anyway? Your instructor will return it.")) return;
-  rememberVehicle();
+  rememberVehicle(w.vehicle);
   const stamp=new Date().toISOString().slice(0,10);
   const sub={
     type:"stech-job-submission", schema:1,
@@ -591,7 +618,7 @@ function submitJob(){
     student:{ name:WORK.studentName.trim() },
     module:{ id:hit.moduleId, title:hit.moduleTitle||"" },
     labPack:{ job:l.job, version:l.version||1, title:l.title||"" },
-    vehicle:l.requiresVehicle?WORK.vehicle:null,
+    vehicle:l.requiresVehicle?w.vehicle:null,
     responses:w.responses||{},
     checkoffs:w.checkoffs||[],
     selfCheck:ev   // instructor's Grader RE-checks; this is just what the student saw
@@ -620,7 +647,24 @@ function backupWork(){
   markFileSaved();
   flash("Saved. Put this one file in Google Drive — open it next time to continue right where you left off, on any computer.");
 }
-function normWork(w){ return Object.assign({studentName:"",vehicle:blankVehicle(),recent:[],labs:{}}, w||{}); }
+function normWork(w){
+  w=Object.assign({studentName:"",recent:[],labs:{}}, w||{});
+  // Migrate older saves that kept ONE shared vehicle for every lab: keep it as a
+  // recent option, and carry it onto any lab already in progress (those jobs were
+  // genuinely worked on that car) so no recorded work is lost. New/empty labs
+  // stay blank and must get their own vehicle.
+  const legacy=w.vehicle;
+  if(legacy && LabEngine.vehicleRecorded(legacy)){
+    const key=vehicleLabel(legacy);
+    w.recent=(w.recent||[]).filter(r=>vehicleLabel(r)!==key); w.recent.unshift(Object.assign({},legacy));
+    Object.keys(w.labs||{}).forEach(j=>{ const lw=w.labs[j];
+      const hasWork=(lw.checkoffs&&lw.checkoffs.length)||(lw.responses&&Object.keys(lw.responses).length);
+      if(hasWork && (!lw.vehicle || !LabEngine.vehicleRecorded(lw.vehicle))) lw.vehicle=Object.assign(blankVehicle(),legacy);
+    });
+  }
+  delete w.vehicle;
+  return w;
+}
 /* Load a saved work file back. If it carries its pack (self-contained), the pack
    loads too, so the student only ever opens this one file. */
 function restoreWork(obj){
@@ -629,7 +673,7 @@ function restoreWork(obj){
   const nm=document.getElementById("stuName"); if(nm) nm.value=WORK.studentName||"";
   saveWork();
   if(obj.pack && Array.isArray(obj.pack.modules)){ loadPack(obj.pack); }
-  else if(PACK){ renderVehicle(); renderNav(); const f=allLabs()[0]; if(f) openJob((curJob!=null?curJob:f.lab.job)); }
+  else if(PACK){ renderNav(); const f=allLabs()[0]; if(f) openJob((curJob!=null?curJob:f.lab.job)); }
   markFileSaved();
   flash(PACK ? "Welcome back — your pack and answers are restored." : "Your answers loaded. Now open your lab pack to see them.");
   return true;
@@ -643,7 +687,7 @@ function loadPack(obj){
   (PACK.modules||[]).forEach(m=>(m.labs||[]).forEach(normalizeLab));
   showApp();
   const first=allLabs()[0];
-  if(first) openJob(first.lab.job); else { renderNav(); renderVehicle(); }
+  if(first) openJob(first.lab.job); else { renderNav(); }
   return true;
 }
 function normalizeLab(l){
@@ -655,7 +699,7 @@ function normalizeLab(l){
 function showApp(){
   document.getElementById("empty").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  renderVehicle(); renderNav();
+  renderNav();
 }
 function readFile(file){
   const r=new FileReader();
