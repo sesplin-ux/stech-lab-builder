@@ -1,0 +1,4603 @@
+{
+  "course": "Electrical II",
+  "schema": 1,
+  "draft": true,
+  "correlationStandard": "ASE Education Foundation MAST (Feb 2024)",
+  "correlationNote": "Codes are 2024 MAST Electrical/Electronic Systems tasks (ase-electrical-electronic-systems.md), shared across Electrical I & II (one ASE area — accreditation is measured on the combined coverage). H.x = xEV/high-voltage sub-section. 'FND ' = Foundational. Empty ase = legacy lab with no distinct 2024 task. Source used its own numbering; re-mapped to 2024.",
+  "modules": [
+    {
+      "id": "EL2-M1",
+      "title": "Module 1 — DMM/Circuit Basics",
+      "labRange": "10 labs",
+      "labs": [
+        {
+          "job": 1,
+          "legacyJob": "1",
+          "ase": [
+            "A.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Research applicable vehicle and service information",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the vehicle: year, make, model, engine, trim, and VIN; note the electrical/body concern to be diagnosed.",
+              "checkbox": true
+            },
+            {
+              "text": "In service information (Alldata), locate and record the wiring diagram(s), connector/pin views, and component/ground locations for the affected system.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the electrical specifications and test values you will need: test-point voltages, resistance/continuity specs, and module supply/reference values.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the service precautions/warnings for this vehicle, including SRS/airbag, high-voltage (if xEV), and ADAS cautions.",
+              "checkbox": true
+            },
+            {
+              "text": "In Alldata, search for and record any TSBs and open recalls/campaigns (by VIN) related to the concern.",
+              "checkbox": true
+            },
+            {
+              "text": "Review the vehicle service history for related prior electrical/body work.",
+              "checkbox": true
+            },
+            {
+              "text": "Summarize what the service information tells you before you begin diagnosis: diagrams, specs, cautions, and special tools.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "service_info",
+              "type": "textarea",
+              "label": "Service information gathered (diagrams, specs, TSBs, cautions)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 2,
+          "legacyJob": "2",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use wiring diagrams to trace circuits",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Select the correct wiring diagram for this vehicle and the target body/electrical system from service information.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the circuit to diagnose; on the diagram locate its power source (fuse/relay), the control (switch/module driver), the load, and its ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Trace the circuit source → control → load → ground; list every connector, splice, inline component, and module in the path.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wire colors and circuit/pin numbers at each key test point.",
+              "checkbox": true
+            },
+            {
+              "text": "For each test point, state the value you EXPECT with the circuit at rest and operating (voltage, ground, continuity).",
+              "checkbox": true
+            },
+            {
+              "text": "Choose accessible test points that would isolate an open, short-to-power, short-to-ground, or high-resistance fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the traced path, expected values, and your planned test sequence.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "traced_path",
+              "type": "textarea",
+              "label": "Traced path + expected values at each test point",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 3,
+          "legacyJob": "3",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Proper use of a DMM — voltage and resistance on live circuits",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the DMM controls and jacks (V/Ω, COM, current jack) and select auto-range vs. manual range appropriately.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the meter before use: inspect leads, confirm the current-jack fuse, and prove the meter on a known-good ~12 V source.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record DC voltage at a designated live circuit point (key on), black lead to a known-good ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record resistance/continuity on a de-energized component (isolated from the circuit) and interpret the reading.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the DMM min/max (peak-capture) function to catch an intermittent or momentary reading; record what you capture.",
+              "checkbox": true
+            },
+            {
+              "text": "State DMM safety: use the current jack for current only, never place it across a voltage source; select the correct function/range.",
+              "checkbox": true
+            },
+            {
+              "text": "Record all readings and confirm the meter is functioning correctly.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "dmm_readings",
+              "type": "textarea",
+              "label": "DMM readings (voltage, resistance, min/max)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 4,
+          "legacyJob": "4",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Proper use of a DMM — measure current (in-series and clamp)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify an operating circuit/accessory and its expected current draw from service information or the load rating.",
+              "checkbox": true
+            },
+            {
+              "text": "Set up an in-series current measurement: DMM on the current jack and correct A range, meter placed in series in the circuit; observe polarity and fuse limits.",
+              "checkbox": true
+            },
+            {
+              "text": "Operate the circuit and measure/record the current draw with the DMM in series.",
+              "checkbox": true
+            },
+            {
+              "text": "Set up a low-current/inductive clamp around a single conductor; measure and record the same circuit's current without breaking it.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare the in-series reading to the clamp reading; explain any difference and the pros/cons of each method.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the current draw: high (short/added load) vs. low or no draw (high resistance/open).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the current values and the needed action.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "current_readings",
+              "type": "textarea",
+              "label": "Current readings (in-series vs. clamp)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 5,
+          "legacyJob": "5",
+          "ase": [
+            "A.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check circuits with a test light",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the type of test light available (incandescent vs. high-impedance LED/logic probe) and its correct connection.",
+              "checkbox": true
+            },
+            {
+              "text": "State the key precaution: never use an incandescent test light on electronic, network (CAN/LIN), SRS, or other sensitive circuits — its current draw can damage modules; use a high-impedance tester there.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the test light works on a known-good powered source before relying on it.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the test light to check for power and ground on a designated non-sensitive circuit; record where power/ground is present or missing.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare what the test light tells you vs. a DMM: state when the DMM must be used instead (voltage-drop, exact values, sensitive circuits).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the precautions demonstrated and the results.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 6,
+          "legacyJob": "6",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure source voltage and voltage drop",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Select DC volts; connect red to the circuit point under test and black to a known-good ground/return.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record source voltage at the supply (fuse/relay/battery) with the circuit at rest.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record available voltage at the load with the circuit operating.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform voltage-drop tests with the load operating: measure the drop across the insulated (positive) side and across the ground (return) side; record each.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare each voltage drop to specification (SI, or the general limit — typically a few tenths of a volt); identify excessive resistance and where it is.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action (clean/repair connection, replace cable or connector).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the source voltage, both voltage drops, and your interpretation.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "voltage_readings",
+              "type": "textarea",
+              "label": "Voltage readings (source, available, insulated-side drop, ground-side drop)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 7,
+          "legacyJob": "7",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check continuity and measure resistance",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Isolate the component/circuit segment to be tested (disconnect from power and from parallel paths) so the resistance reading is valid.",
+              "checkbox": true
+            },
+            {
+              "text": "Select ohms/continuity; verify the meter by shorting the leads and noting lead resistance.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record continuity and resistance of the target (wire segment, winding, switch, or connector path); compare to specification.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret: infinite/OL = open; higher-than-spec = high resistance/corrosion; near-zero across an open switch = short.",
+              "checkbox": true
+            },
+            {
+              "text": "Flex/wiggle the harness or actuate the switch while watching for intermittent changes; record any variation.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the resistance/continuity values and interpretation.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "resistance_readings",
+              "type": "textarea",
+              "label": "Resistance / continuity readings",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 8,
+          "legacyJob": "8",
+          "ase": [
+            "A.12"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test fusible links, breakers, fuses",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "From the wiring diagram and fuse maps, identify the fuses, fusible links, and circuit breakers protecting the affected circuits; record their ratings and locations.",
+              "checkbox": true
+            },
+            {
+              "text": "Visually inspect fuses/links for opens, discoloration, or heat damage; inspect fuse boxes/connectors for corrosion or melting.",
+              "checkbox": true
+            },
+            {
+              "text": "Test each suspect fuse for voltage on both sides (key on) with a DMM/test light, or measure across it for a voltage drop; record which are open vs. good.",
+              "checkbox": true
+            },
+            {
+              "text": "Test fusible links for continuity and inspect for stretched/burned insulation; test resettable/PTC breakers per procedure.",
+              "checkbox": true
+            },
+            {
+              "text": "For any open protection device, determine the CAUSE (overload/short) before replacing — do not simply replace the fuse.",
+              "checkbox": true
+            },
+            {
+              "text": "Replace with the correct type and rating; verify circuit operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Record findings and the needed action.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 9,
+          "legacyJob": "9",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect/test switches, connectors, relays",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the switches, connectors, and relays in the affected circuit from the wiring diagram; record their locations and pinouts.",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect connectors and terminals for backed-out or spread terminals, corrosion, moisture, and damaged locks/seals; check terminal tension with a proper probe (do not spread terminals).",
+              "checkbox": true
+            },
+            {
+              "text": "Test switches for correct continuity/state (open vs. closed) across their positions per SI; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Test relays: check the control-coil resistance and the load-contact continuity de-energized vs. energized (bench or in-circuit per SI); confirm switching.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform voltage-drop across suspect connectors/terminals under load to find high resistance.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action (clean, re-tension, repair, or replace connector/terminal/switch/relay).",
+              "checkbox": true
+            },
+            {
+              "text": "Record all test results and interpretation.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 10,
+          "legacyJob": "10",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose the effects of shorts, grounds, opens, and high resistance",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "For each fault type — open, short-to-power, short-to-ground, and high resistance — state the cause and its effect on circuit operation and on meter readings.",
+              "checkbox": true
+            },
+            {
+              "text": "On the diagnostic trainer (or a faulted vehicle circuit), obtain the wiring diagram and identify the circuit and its expected values.",
+              "checkbox": true
+            },
+            {
+              "text": "With a fault set, use the DMM (source voltage, voltage drop, resistance/continuity) at the diagram's test points to locate it.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the fault type and its location; explain how the readings distinguish an open from a short from high resistance.",
+              "checkbox": true
+            },
+            {
+              "text": "Repeat so that an open, a short, and a high-resistance fault are each diagnosed at least once.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the fault symptoms, the readings for each, and how you identified each one.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "faults_diagnosed",
+              "type": "textarea",
+              "label": "Faults diagnosed (type, readings, location)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-M2",
+      "title": "Module 2 — Diagnosis/Solder",
+      "labRange": "7 labs",
+      "labs": [
+        {
+          "job": 11,
+          "legacyJob": "11",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use wiring diagrams during diagnosis",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Start from a customer concern for an inoperative or intermittent electrical circuit; verify and document the symptom before testing.",
+              "checkbox": true
+            },
+            {
+              "text": "Select the correct wiring diagram and pull the component locations, connector faces, and ground points for that circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "On the diagram, mark the power feed (fuse/relay), the control (switch/module driver), the load, and the ground; identify shared feeds/grounds that could explain the symptom.",
+              "checkbox": true
+            },
+            {
+              "text": "Build a diagnostic strategy: pick a logical first test point (split-half) that divides the circuit and rules out the largest section.",
+              "checkbox": true
+            },
+            {
+              "text": "For each planned test point, write the value you expect (voltage at rest/operating, ground, continuity) so a bad reading is obvious.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the diagram path, the split-half test plan, and the order you will test.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "dx_plan",
+              "type": "textarea",
+              "label": "Concern, diagram path, and split-half test plan (with expected values)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 12,
+          "legacyJob": "12",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use a DMM to isolate the fault",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Working the plan from Job 11, take the first split-half reading with the DMM and record it against the expected value.",
+              "checkbox": true
+            },
+            {
+              "text": "Based on that result, move toward the faulty section: test for source voltage, then available voltage at the load, then ground integrity.",
+              "checkbox": true
+            },
+            {
+              "text": "Where voltage is present but the load is dead, voltage-drop test the insulated and ground sides under load to find high resistance.",
+              "checkbox": true
+            },
+            {
+              "text": "Where voltage is missing, work upstream test point by test point until power appears — the fault is between the last dead and first live point.",
+              "checkbox": true
+            },
+            {
+              "text": "Narrow the fault to a specific segment, connector, or component; state which and why the readings point there.",
+              "checkbox": true
+            },
+            {
+              "text": "Record each reading, the point it was taken, and how it moved you toward the fault.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "dmm_dx",
+              "type": "textarea",
+              "label": "DMM readings by test point, and the section isolated",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 13,
+          "legacyJob": "13",
+          "ase": [
+            "A.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Check circuits with a test light during diagnosis",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Confirm the circuit under test is NOT electronic/network (CAN/LIN)/SRS before choosing an incandescent test light; use a high-impedance LED/logic probe on sensitive circuits.",
+              "checkbox": true
+            },
+            {
+              "text": "Prove the test light on a known-good powered source.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the test light for a quick power-and-ground presence check at the connectors identified in your diagnosis; record present/missing at each.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the test light to confirm a switched circuit changes state when the switch/relay is operated.",
+              "checkbox": true
+            },
+            {
+              "text": "State where the test light was sufficient and where you switched to the DMM for exact values (voltage-drop, high-resistance, sensitive circuits).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the checks and how they supported the diagnosis.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 14,
+          "legacyJob": "14",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Pinpoint high resistance with a voltage-drop test",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "At the suspect connection identified during diagnosis, set up a voltage-drop test: DMM across the connection with the circuit's load operating.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record the drop across the insulated (positive) side of the suspect segment.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record the drop across the ground (return) side.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare each to spec (typically a few tenths of a volt); a high drop confirms resistance in that segment.",
+              "checkbox": true
+            },
+            {
+              "text": "Localize the resistance: wiggle/flex and re-measure; move the test leads to split the segment until the drop appears across one connector or length.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action (clean, repair, replace) and where exactly to repair.",
+              "checkbox": true
+            },
+            {
+              "text": "Record both drops and the pinpointed location.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "vdrop_dx",
+              "type": "textarea",
+              "label": "Voltage drops (insulated / ground side) and pinpointed high-resistance point",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 15,
+          "legacyJob": "15",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Classify the fault: short, ground, open, or high resistance",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Review your diagnostic data (voltage, drop, continuity) from Jobs 11–14.",
+              "checkbox": true
+            },
+            {
+              "text": "Classify the fault as an open, short-to-power, short-to-ground, or high resistance, and state the reading pattern that identifies it.",
+              "checkbox": true
+            },
+            {
+              "text": "Explain the cause and the effect on circuit operation (e.g., blown fuse from a short-to-ground; dead load from an open; dim/slow operation from high resistance).",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the classification is consistent with ALL your readings — note any reading that doesn't fit and re-check it.",
+              "checkbox": true
+            },
+            {
+              "text": "State how this fault type is repaired (and what NOT to do, e.g., replacing a fuse without finding the short).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the fault classification, the supporting evidence, and the repair approach.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fault_class",
+              "type": "textarea",
+              "label": "Fault classification with supporting readings and cause/effect",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 16,
+          "legacyJob": "16",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and test the suspect switch, connector, or relay",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the specific suspect component from the diagnosis (switch, connector/terminal, or relay) and its pinout from the diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect the connector/terminals for backed-out or spread terminals, corrosion, moisture, and damaged locks/seals; check terminal tension with a proper probe (do not spread terminals).",
+              "checkbox": true
+            },
+            {
+              "text": "If a switch: test continuity/state across its positions per SI and record.",
+              "checkbox": true
+            },
+            {
+              "text": "If a relay: test control-coil resistance and load-contact continuity de-energized vs. energized (bench or in-circuit per SI); confirm it switches.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the component is the fault (or clear it and go back to the circuit) — state the evidence either way.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action and record all results.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 17,
+          "legacyJob": "17",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform a solder repair of the wiring",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Disconnect the battery (or the circuit) as required, and confirm the repair location and wire gauge from the diagnosis.",
+              "checkbox": true
+            },
+            {
+              "text": "Prepare the repair: cut out the damaged section, strip the ends, and select heat-shrink (slide it on first) and the correct solder/technique for the gauge.",
+              "checkbox": true
+            },
+            {
+              "text": "Make the mechanical joint (e.g., lineman's/Western Union or a butt-splice), then heat the JOINT — not the solder — and flow rosin-core solder to a clean, bright, fully-wetted joint.",
+              "checkbox": true
+            },
+            {
+              "text": "Insulate with adhesive-lined heat-shrink; confirm no exposed conductor and a strain-relieved, sealed repair.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the repair: continuity end-to-end and a voltage-drop across the repair under load to confirm it is not adding resistance.",
+              "checkbox": true
+            },
+            {
+              "text": "Restore power and verify the circuit/concern is fixed; record the repair and the verification readings.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "solder_repair",
+              "type": "textarea",
+              "label": "Repair made + verification (continuity, voltage drop across repair, circuit operation)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-M3",
+      "title": "Module 3 — Waveforms/CAN Repair",
+      "labRange": "9 labs",
+      "labs": [
+        {
+          "job": 18,
+          "legacyJob": "18",
+          "ase": [
+            "A.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Measure resistance and continuity (including CAN termination)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Isolate the segment to be tested; for a network, turn the key off and allow modules to sleep so bus voltage does not skew the reading.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the meter (short the leads, note lead resistance) and select ohms/continuity.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure and record continuity/resistance of a target wire, winding, or connector path; compare to spec.",
+              "checkbox": true
+            },
+            {
+              "text": "On a CAN bus, measure resistance across CAN-High and CAN-Low at the diagnostic connector; a healthy dual-terminated bus reads about 60 Ω (two 120 Ω resistors in parallel).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret: ~120 Ω = one terminator missing/open; near 0 Ω = CAN-H/CAN-L shorted together; OL = open bus.",
+              "checkbox": true
+            },
+            {
+              "text": "Flex/wiggle suspect harness sections while watching for intermittent change; record.",
+              "checkbox": true
+            },
+            {
+              "text": "Record all resistance readings and interpretation.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "resistance_data",
+              "type": "textarea",
+              "label": "Resistance readings (incl. CAN-H/CAN-L termination ≈ 60 Ω) and interpretation",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 19,
+          "legacyJob": "19",
+          "ase": [
+            "A.9"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use fused jumper wires to confirm a component",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "From the wiring diagram, identify a component you can safely substitute-test with a fused jumper (e.g., supply a ground or switched power to a motor/lamp/relay control).",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the circuit is NOT a network/SRS/electronic-driver circuit — do not apply jumpers to those.",
+              "checkbox": true
+            },
+            {
+              "text": "Select a jumper with the correct fuse rating for the load; inspect it for good terminations and a good fuse.",
+              "checkbox": true
+            },
+            {
+              "text": "Apply the fused jumper to energize the control/ground side per SI and observe whether the component operates.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret: component runs on the jumper = the component is good and the fault is upstream (control/feed/ground); no operation = suspect the component.",
+              "checkbox": true
+            },
+            {
+              "text": "Remove the jumper; state the safety limits (correct fuse, never jump across a load or into sensitive circuits).",
+              "checkbox": true
+            },
+            {
+              "text": "Record what you jumped, the result, and the conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 20,
+          "legacyJob": "20",
+          "ase": [
+            "A.12"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a blown or repeatedly-blowing fuse / fusible link",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the affected protection device, its rating, and everything it feeds from the fuse map and wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the device is open (voltage on one side only, or no continuity) and inspect for heat/discoloration at the fuse box and connectors.",
+              "checkbox": true
+            },
+            {
+              "text": "Before replacing: find the cause. Disconnect loads on the circuit one at a time (or section the circuit) and measure resistance to ground to locate a short-to-ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Use a fused jumper or a smart fuse/short-finder if available to trace the shorted branch without repeatedly blowing fuses.",
+              "checkbox": true
+            },
+            {
+              "text": "For fusible links, test continuity and inspect for stretched/burned insulation indicating a prior high-current event.",
+              "checkbox": true
+            },
+            {
+              "text": "Repair the cause, then install the correct type and rating and verify normal current draw and operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the cause found, the repair, and verification.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 21,
+          "legacyJob": "21",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Replace electrical connectors and terminals",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the connector/terminal type (e.g., Weather-Pack, Metri-Pack, Micro-Pack) and obtain the correct replacement terminals, seals, and the proper release/crimp tools.",
+              "checkbox": true
+            },
+            {
+              "text": "Release the terminal correctly using the terminal pick/tool — lift the lock tang without deforming the terminal; note terminal position/color in the connector.",
+              "checkbox": true
+            },
+            {
+              "text": "Cut off the damaged terminal, strip to the correct length, and crimp the new terminal with the proper tool: separate crimps for the core and the insulation/seal.",
+              "checkbox": true
+            },
+            {
+              "text": "For sealed connectors, install the cable seal and confirm it is captured by the insulation crimp.",
+              "checkbox": true
+            },
+            {
+              "text": "Reinsert the terminal until it locks; tug-test each terminal and confirm the connector position assurance (CPA/TPA) is seated.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify continuity through the repaired terminal and a voltage-drop under load; confirm the connector seals fully.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the terminal type, the repair, and verification readings.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "connector_repair",
+              "type": "textarea",
+              "label": "Connector/terminal type, repair made, and verification (tug-test, continuity, drop)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 22,
+          "legacyJob": "22",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Repair a wiring harness",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the damaged harness section and each affected circuit/wire gauge from the diagram; disconnect the battery/circuit as required.",
+              "checkbox": true
+            },
+            {
+              "text": "Plan the repair so splices are staggered (offset) along the harness, not all at one point, to keep the bundle flat and reliable.",
+              "checkbox": true
+            },
+            {
+              "text": "Repair each wire with the correct method (solder + adhesive heat-shrink, or an approved sealed crimp splice) using the matching gauge.",
+              "checkbox": true
+            },
+            {
+              "text": "Restore the harness: individual heat-shrink per wire, then re-bundle and tape/loom per the original, maintaining length and routing.",
+              "checkbox": true
+            },
+            {
+              "text": "Provide strain relief and re-secure the harness in its original clips/standoffs, away from heat and moving/sharp edges.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify each repaired circuit: continuity and a voltage-drop under load; confirm the concern is resolved.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wires repaired, the method, and verification.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "harness_repair",
+              "type": "textarea",
+              "label": "Wires repaired, method (staggered splices), and verification readings",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 23,
+          "legacyJob": "23",
+          "ase": [
+            "A.14"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Capture and interpret waveforms with an oscilloscope / GMM",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Select the signal to capture and look up its known-good pattern in service information (e.g., a PWM output, a Hall/variable-reluctance sensor, or an actuator command).",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scope/GMM safely: correct channel, ground reference, and probe; set volts/division and time/division to frame the expected signal.",
+              "checkbox": true
+            },
+            {
+              "text": "Capture the waveform with the circuit operating; adjust trigger and scaling until the pattern is stable and readable.",
+              "checkbox": true
+            },
+            {
+              "text": "Read the signal's key attributes: amplitude (peak voltage), frequency, duty cycle or pulse width, and shape; record them.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare to the known-good pattern; identify defects a DMM would miss — glitches, dropouts, rounded/loaded edges, or excessive noise.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret what the waveform indicates about the circuit or sensor, and the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the captured values and your interpretation (attach or describe the trace).",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "scope_capture",
+              "type": "textarea",
+              "label": "Waveform captured (amplitude, frequency, duty cycle/shape) vs. known-good, and interpretation",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 24,
+          "legacyJob": "24",
+          "ase": [
+            "A.13"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Repair a CAN/BUS twisted-pair harness",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the network and the damaged twisted-pair (CAN-H/CAN-L) segment from the topology/wiring diagram; note the OEM's approved repair method — some prohibit splicing and require harness replacement.",
+              "checkbox": true
+            },
+            {
+              "text": "Power down the network (key off, modules asleep) before working on the bus.",
+              "checkbox": true
+            },
+            {
+              "text": "If repair is permitted, match wire gauge and repair CAN-H and CAN-L with staggered splices; keep the splices as short as possible.",
+              "checkbox": true
+            },
+            {
+              "text": "Restore the twist: maintain the original number of twists per inch right up to the splices — the twist rate protects the differential signal from noise and preserves impedance.",
+              "checkbox": true
+            },
+            {
+              "text": "Insulate each conductor with adhesive heat-shrink and re-bundle; do not add extra length to either conductor.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify: bus termination resistance is back to ≈60 Ω, CAN-H/CAN-L are not shorted to each other or to power/ground, and (with a scope) the H/L waveforms are clean mirror images.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm all modules communicate (no U-codes) and record the repair and verification.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "can_repair",
+              "type": "textarea",
+              "label": "CAN repair method (twist maintained), termination ≈ 60 Ω, no shorts, and module-comm verification",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 25,
+          "legacyJob": "25",
+          "ase": [
+            "G.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a network module-communication concern on the ATECH trainer (scan tool)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"A padlock/security light is on in the cluster, and the vehicle cranks, starts, then dies.\" Verify on the ATECH GMLAN Network trainer (model 3802) with the assigned fault: confirm the security indicator and the crank-start-stall behavior.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scan tool and run a network/module scan (topology). Record which modules respond and which show 'no communication'; retrieve U-codes (lost communication with a module) and any security/theft DTCs.",
+              "checkbox": true
+            },
+            {
+              "text": "In service information, pull the GMLAN topology and the theft-deterrent module's power, ground, and serial-data circuits; identify accessible test points and note how a module that can't communicate causes the security system to disable/limit engine operation (crank-start-stall).",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret the pattern: a single module 'no communication' points to that node's power, ground, or serial-data connection — not the whole bus.",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: check the affected module's power and grounds, then test its serial-data circuit for an open (continuity from the module to the bus splice, per the wiring diagram); locate the open.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the open agrees with the scan-tool U-codes. State the fault and the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Clear the fault when directed (press 1 on the trainer) and re-scan to confirm communication is restored and the security light is out. Record the module list, U-codes, SI circuit path, DMM readings, and the isolated fault (circuit + type).",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "net_scan",
+              "type": "textarea",
+              "label": "Module list (responding vs. no-comm) + U-codes",
+              "required": true
+            },
+            {
+              "id": "net_readings",
+              "type": "textarea",
+              "label": "SI circuit path + DMM readings + isolated fault (circuit # and type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH GMLAN Network trainer (model 3802). Insert Fault Code #1 — Theft Deterrent Module, Open, CKT 651 (BK/WH) — via keypad (disconnect the ANS-16 / Instructor Management Program first), press #. Station needs SERVICE INFO (GMLAN topology/wiring), a SCAN TOOL, and a DMM. Student clears with 'press 1'.",
+            "commonStucks": [
+              "Reading U-codes and stopping without testing the module's power/ground/data circuit",
+              "Assuming the whole bus is dead when only one node is no-comm",
+              "Not tying the crank-start-stall symptom to the theft/immobilizer function"
+            ],
+            "competentLooksLike": "Uses scan-tool topology + U-codes to find the no-comm node, then proves the open in the theft module serial-data circuit (CKT 651) with the wiring diagram + DMM; verifies by re-scan.",
+            "interveneWhen": "Back-probing that spreads terminals; unfused jumpers on serial-data lines.",
+            "spotCheck": "No-comm node = theft module; isolated fault names CKT 651 / open; re-scan clean, light out."
+          }
+        },
+        {
+          "job": 26,
+          "legacyJob": "26",
+          "ase": [
+            "A.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Effects of shorts, grounds, and opens on a network/circuit",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "For a data bus, state how each fault affects communication: CAN-H/CAN-L shorted together, either wire shorted to power or ground, an open in one wire, or a missing terminator.",
+              "checkbox": true
+            },
+            {
+              "text": "Relate each fault to what you would observe: bus voltages, termination resistance, scope pattern, and which modules drop off.",
+              "checkbox": true
+            },
+            {
+              "text": "For a conventional circuit, restate the effect of open, short-to-power, short-to-ground, and high resistance on operation and meter readings.",
+              "checkbox": true
+            },
+            {
+              "text": "On the trainer or a faulted vehicle, set/observe at least one fault and confirm the readings match the expected pattern.",
+              "checkbox": true
+            },
+            {
+              "text": "Explain how the differential CAN design tolerates some noise but not a hard short or open, and why termination matters.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the fault types reviewed, the observed effects, and how each is identified.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "fault_effects",
+              "type": "textarea",
+              "label": "Fault types (bus + conventional), observed effects, and how each is identified",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-M4",
+      "title": "Module 4 — Body: Horn/Locks/Theft",
+      "labRange": "8 labs",
+      "labs": [
+        {
+          "job": 27,
+          "legacyJob": "27",
+          "ase": [
+            "G.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose horn operation",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern (no horn, always on, weak) and pull the horn wiring diagram; note whether the horn is relay-driven and BCM-controlled.",
+              "checkbox": true
+            },
+            {
+              "text": "Operate the horn and check the relay: swap/click test, then confirm the relay gets its control (from the switch/BCM) and its feed.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the horn switch in the steering wheel through the clockspring/spiral cable — a common open; check its ground/signal to the BCM.",
+              "checkbox": true
+            },
+            {
+              "text": "At the horn, check for power and ground when commanded; voltage-drop the feed and ground under load.",
+              "checkbox": true
+            },
+            {
+              "text": "If body-controlled, use the scan tool to command the horn (bidirectional) and read any body DTCs.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (switch/clockspring, relay, BCM, wiring, or the horn itself) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the tests, readings, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "horn_dx",
+              "type": "textarea",
+              "label": "Horn diagnosis: relay/switch/clockspring tests, commanded power/ground, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 28,
+          "legacyJob": "28",
+          "ase": [
+            "G.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a wiper speed concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Windshield wipers only work on high speed.\" Verify the concern on the ATECH Wiper/Washer trainer (model 830C, simulates a 2010 Chevy Malibu) with the assigned fault set: operate the wiper switch through OFF / INT / LOW / HIGH and record which speeds work.",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the wiper-system wiring diagram; identify the LOW-speed and HIGH-speed control paths from the switch/BCM to the wiper motor, the motor speed circuits, the park switch, and the grounds. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "State the value you expect at each speed's control circuit at rest and operating; predict how a short-to-ground on the high-speed circuit would affect operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: at the wiper motor connector and along the speed circuits, test each speed's control for voltage and for an unexpected short-to-ground (resistance to ground / voltage present with switch off).",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the faulted circuit and fault type — which wire, and short-to-ground vs. open/high-resistance; confirm the location against the wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. After you have identified the fault, clear it on the trainer (press 1) and confirm normal operation at all speeds.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wiper circuit path and expected values, your DMM readings, the isolated fault (circuit + type), and how you identified it.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "wiper_path",
+              "type": "textarea",
+              "label": "Wiper speed-circuit path & expected values (LOW/HIGH)",
+              "required": true
+            },
+            {
+              "id": "wiper_readings",
+              "type": "textarea",
+              "label": "DMM readings + isolated fault (circuit # and fault type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Wiper/Washer trainer (model 830C; simulates 2010 Chevy Malibu). Insert Fault Code #2 — Wiper Motor High Speed Only, Short to Ground, CKT 112 (GY) — via keypad in User Mode (disconnect the ANS-16 / Instructor Management Program first), then press #. Have a DMM and 12V supply at the station. Student clears with 'press 1' after diagnosis.",
+            "commonStucks": [
+              "Not confirming which speeds actually work before testing",
+              "Looking for an open when the fault is a short-to-ground on the high-speed circuit",
+              "Not using resistance-to-ground / key-off voltage to find the short"
+            ],
+            "competentLooksLike": "Correctly isolates the high-speed circuit (CKT 112) short-to-ground with DMM evidence, not a guess; readings match the diagram and the identified fault.",
+            "interveneWhen": "Student bridges circuits with an unfused jumper or probes the wrong (network/SRS) harness.",
+            "spotCheck": "Isolated fault names CKT 112 / short-to-ground; readings support it."
+          }
+        },
+        {
+          "job": 29,
+          "legacyJob": "29",
+          "ase": [
+            "G.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a washer concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Windshield washer won't spray.\" Verify the concern on the ATECH Wiper/Washer trainer (model 830C, 2010 Chevy Malibu) with the assigned fault: operate the washer and confirm the pump does not run.",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the washer circuit diagram; identify the washer switch input, the pump feed/control, the washer pump, and its ground. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "State what you expect when the washer is commanded — voltage at the pump feed and a good ground; predict how an OPEN in the pump circuit behaves (pump never runs).",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: command the washer and check for voltage at the pump feed and continuity of its ground. If voltage is missing at the pump, work upstream test point by test point to find the open; use continuity/voltage-drop on the pump circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the open and its location on the pump circuit; confirm against the wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. Clear the fault on the trainer (press 1) and confirm the pump runs.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the washer circuit path, your DMM readings, the isolated fault (circuit + type), and how you found it.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "washer_path",
+              "type": "textarea",
+              "label": "Washer circuit path & expected values",
+              "required": true
+            },
+            {
+              "id": "washer_readings",
+              "type": "textarea",
+              "label": "DMM readings + isolated fault (circuit # and fault type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Wiper/Washer trainer (model 830C; 2010 Chevy Malibu). Insert Fault Code #8 — Windshield Washer Fluid Pump, Open, CKT 251 — via keypad in User Mode (disconnect ANS-16 / Instructor Mgmt Program first), press #. DMM + 12V supply at station.",
+            "commonStucks": [
+              "Chasing fluid level/nozzles when the trainer models the electrical circuit",
+              "Not confirming a good ground before condemning the pump feed",
+              "Stopping at 'no voltage at pump' without walking upstream to the open"
+            ],
+            "competentLooksLike": "Isolates the open in the washer pump circuit (CKT 251) with voltage/continuity evidence and points to the exact open segment.",
+            "interveneWhen": "Unfused jumper across the pump motor, or reversed polarity.",
+            "spotCheck": "Isolated fault names CKT 251 / open; readings support it."
+          }
+        },
+        {
+          "job": 30,
+          "legacyJob": "30",
+          "ase": [
+            "G.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a power window concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Driver's window doesn't work.\" Verify on the ATECH Power Window trainer (model 840C) with the assigned fault: operate every window from the master and the individual switches and record which windows work and that the driver window does not (up or down).",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the power-window wiring diagram; identify the driver window switch (and master), the driver window motor circuit and its two directions, connectors, and grounds. Record wire colors and circuit numbers. If the system is module/BCM-controlled, note the scan-tool data/commands available.",
+              "checkbox": true
+            },
+            {
+              "text": "State the value you expect: command the driver window up and down and check for commanded voltage (polarity reversal) at the motor; predict how an OPEN in the driver motor circuit behaves (that window dead while others work).",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: at the driver window motor connector, check for commanded power and ground in both directions. If a command is present but the motor is dead, test the motor feed/return for an open; voltage-drop/continuity to locate it.",
+              "checkbox": true
+            },
+            {
+              "text": "Separate switch vs. motor circuit: confirm whether the master and individual switches send the command, and compare a known-good window's circuit to the driver's.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the open and its location on the driver window motor circuit; confirm against the wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. Clear the fault on the trainer (press 1) and confirm the driver window operates. Record the circuit path, DMM readings, the isolated fault (circuit + type), and how you found it.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "window_path",
+              "type": "textarea",
+              "label": "Window circuit path & expected values (commanded up/down)",
+              "required": true
+            },
+            {
+              "id": "window_readings",
+              "type": "textarea",
+              "label": "DMM readings + isolated fault (circuit # and fault type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Power Window trainer (model 840C). Insert Fault Code #4 — Window Motor Inoperable (D), Open, CKT 1164 (D-BU) — via keypad in User Mode (disconnect the ANS-16 / Instructor Management Program first), press #. Station needs SERVICE INFO and a DMM (scan tool if the system is module-controlled). Student clears with 'press 1'.",
+            "commonStucks": [
+              "Condemning the motor without confirming a good command reaches it",
+              "Not checking both up and down directions (polarity reversal)",
+              "Not comparing to a known-good window to split switch vs. motor circuit"
+            ],
+            "competentLooksLike": "Confirms a good command, then proves the open in the driver window motor circuit (CKT 1164) by test; compares to a working window.",
+            "interveneWhen": "Unfused jumper across the motor; back-probing that spreads terminals.",
+            "spotCheck": "Isolated fault names CKT 1164 / open; command-vs-motor logic shown."
+          }
+        },
+        {
+          "job": 31,
+          "legacyJob": "31",
+          "ase": [
+            "G.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose heated accessory operation (seats, mirrors, rear defog)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern and identify the heated accessory (seat, mirror, rear-window defogger grid); pull its diagram and current rating.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the request input (switch/HVAC control) reaches the controlling module/relay and that the timed function starts.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the feed and ground to the heating element under load; measure current draw and compare to spec (a high-current load — check the relay/connections for heat).",
+              "checkbox": true
+            },
+            {
+              "text": "For a rear-defog grid, test the grid with the defogger on: voltage should taper across the grid; use a voltmeter/test light to find a break in a grid line.",
+              "checkbox": true
+            },
+            {
+              "text": "For heated seats/mirrors, check the element resistance and any temperature sensor/limiter input.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (switch/module, relay, element, grid line, or wiring) and determine the needed action, including grid-line repair if applicable.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the tests, readings, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "heated_dx",
+              "type": "textarea",
+              "label": "Heated-accessory diagnosis: request input, current draw, grid/element test, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 32,
+          "legacyJob": "32",
+          "ase": [
+            "G.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a power door lock concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Driver's door lock doesn't work.\" Verify on the ATECH Power Door Lock trainer (model 850C) with the assigned fault: operate lock and unlock from the driver and passenger switches and record which doors respond and which do not.",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the door-lock wiring diagram; identify the BCM lock/unlock outputs, the driver door latch solenoid (actuator) circuit and its two directions, the connectors (including the door-jamb harness), and grounds. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "State the value you expect: command lock and unlock and check for commanded voltage (polarity reversal) at the driver actuator; predict how an OPEN in the actuator circuit behaves (that actuator will not operate while others do).",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: at the driver door latch solenoid connector, check for commanded power and ground in both directions. If the command is present but the actuator is dead, test the actuator feed/return for an open; voltage-drop/continuity through the door-jamb harness (a common flex point).",
+              "checkbox": true
+            },
+            {
+              "text": "Use the scan tool to command the driver lock/unlock (bidirectional) if available, and compare a known-good door to the driver door.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the open and its location on the driver latch solenoid circuit; confirm against the wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. Clear the fault on the trainer (press 1) and confirm the driver lock operates. Record the circuit path, DMM readings, the isolated fault (circuit + type), and how you found it.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "lock_path",
+              "type": "textarea",
+              "label": "Door-lock circuit path & expected values (commanded lock/unlock)",
+              "required": true
+            },
+            {
+              "id": "lock_readings",
+              "type": "textarea",
+              "label": "DMM/scan-tool readings + isolated fault (circuit # and fault type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Power Door Lock trainer (model 850C). Insert Fault Code #1 — Driver Door Latch Solenoid, Open, CKT 2951 (GY) — via keypad in User Mode (disconnect the ALS-16 / Instructor Management Program first), then press #. DMM + 12V supply (scan tool optional) at station. Student clears with 'press 1'.",
+            "commonStucks": [
+              "Condemning the actuator without confirming a good command reaches it",
+              "Not checking both lock and unlock directions (polarity reversal)",
+              "Overlooking the door-jamb harness as the open location"
+            ],
+            "competentLooksLike": "Confirms a good BCM command, then proves the open in the driver latch solenoid circuit (CKT 2951) by test — not a guess; compares to a working door.",
+            "interveneWhen": "Unfused jumper across the actuator; back-probing that spreads terminals.",
+            "spotCheck": "Isolated fault names CKT 2951 / open; command-vs-actuator logic shown."
+          }
+        },
+        {
+          "job": 33,
+          "legacyJob": "33",
+          "ase": [
+            "G.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose the anti-theft / immobilizer system",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern (no-start with security lamp, false alarms) and review the anti-theft/immobilizer operation and precautions in service information.",
+              "checkbox": true
+            },
+            {
+              "text": "Observe the security indicator behavior (key on / crank) and note whether the engine cranks but won't run (immobilizer) vs. an alarm-only fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Retrieve and record theft/immobilizer DTCs from the BCM/immobilizer/PCM with the scan tool.",
+              "checkbox": true
+            },
+            {
+              "text": "Check the transponder/key and antenna ring, and the module data (key count, learned keys) per SI; verify the immobilizer and PCM are communicating.",
+              "checkbox": true
+            },
+            {
+              "text": "For alarm faults, test the trigger inputs (door/hood/trunk switches, tilt/glass-break sensors) and the siren.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault and determine the needed action, including any required key/immobilizer relearn (note it may require security access).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the DTCs, tests, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "theft_dx",
+              "type": "textarea",
+              "label": "Anti-theft diagnosis: indicator behavior, DTCs, transponder/inputs, relearn needed",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 34,
+          "legacyJob": "34",
+          "ase": [
+            "G.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Describe keyless entry / remote and PEPS operation",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Describe how remote keyless entry (RKE) and passive entry / push-button start (PEPS) work: fob transmitter, vehicle receiver/antennas, and BCM/immobilizer roles.",
+              "checkbox": true
+            },
+            {
+              "text": "Describe the difference between RKE (button press, RF) and passive entry (LF antennas detect the fob near the vehicle).",
+              "checkbox": true
+            },
+            {
+              "text": "Verify operation: test each fob function (lock/unlock/trunk/panic) and note range/intermittent behavior; check the fob battery.",
+              "checkbox": true
+            },
+            {
+              "text": "Describe how to diagnose a dead-fob vs. receiver concern (test a second fob, check the receiver, look for RF interference).",
+              "checkbox": true
+            },
+            {
+              "text": "Describe the fob/key programming (relearn) procedure and what tool/security access it requires; note maximum keys.",
+              "checkbox": true
+            },
+            {
+              "text": "Record how the system works, what you verified, and the correct programming/diagnostic path.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "keyless_desc",
+              "type": "textarea",
+              "label": "Keyless/PEPS: how it works, verification of each function, and programming/diagnostic path",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-M5",
+      "title": "Module 5 — Body: Wiper/SRS/CAN",
+      "labRange": "7 labs",
+      "labs": [
+        {
+          "job": 35,
+          "legacyJob": "35",
+          "ase": [
+            "G.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose horn operation through the SRS clockspring",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the horn concern and pull the diagram; note the horn switch signal routes through the steering-wheel clockspring / rotary coupler that ALSO carries the driver airbag circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Observe SRS safety: do not damage or over-rotate the clockspring; if the wheel/airbag must come off, follow SRS disarm first (see Jobs 39–40).",
+              "checkbox": true
+            },
+            {
+              "text": "Test the horn switch/ground input at the coupler and confirm continuity through the clockspring to the BCM/relay.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the relay control and feed, and power/ground at the horn when commanded (bidirectional scan-tool command if body-controlled).",
+              "checkbox": true
+            },
+            {
+              "text": "Operate the horn and work systematically toward the fault: compare against a known-good reference where possible and determine whether the failure is at the horn switch/clockspring, the relay/control circuit, or the horn itself.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (clockspring/coupler, switch, relay, BCM, wiring, or horn) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the tests, readings, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "horn_srs_dx",
+              "type": "textarea",
+              "label": "Horn-through-clockspring diagnosis: coupler continuity, relay/command, trainer fault, conclusion",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 36,
+          "legacyJob": "36",
+          "ase": [
+            "G.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a no-wipers concern on the ATECH trainer (scan tool + DTC)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Windshield wipers won't turn on at all.\" Verify the concern on the ATECH Wiper/Washer trainer (model 830C, 2010 Chevy Malibu) with the assigned fault: operate the wiper switch and confirm no operation at any speed.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scan tool; retrieve and record DTCs. Note DTC B3715 (front wiper relay drive circuit); read its descriptor and the conditions for setting it (the BCM detects an open/short in the wiper relay control circuit and will not activate the wiper output).",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the wiper-relay-control wiring diagram; identify the BCM wiper-relay drive circuit from the BCM to the wiper relay, the relay, and the motor feed. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose the relay-control circuit with the DMM: check the BCM drive output and the relay-control circuit for continuity and an open between the BCM and the relay; confirm the relay and its power/ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the open on the wiper relay control circuit and confirm it agrees with DTC B3715; explain how the DTC plus your testing point to the same circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. Clear the DTC/fault when directed (press 1 on the trainer) and re-scan to confirm the code does not return.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the DTC(s) and descriptor, the circuit path, your readings, the isolated fault, and how the DTC guided the diagnosis.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "wiper_dtc",
+              "type": "textarea",
+              "label": "DTC(s) retrieved + descriptor",
+              "required": true
+            },
+            {
+              "id": "wiper_relay_path",
+              "type": "textarea",
+              "label": "Wiper relay-control circuit path & DMM readings + isolated fault (circuit # and type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Wiper/Washer trainer (model 830C; 2010 Chevy Malibu). Insert Fault Code #3 — DTC B3715, Wiper Relay Control, Open, CKT 113 (D-GN) — via keypad in User Mode (disconnect ANS-16 / Instructor Mgmt Program first), press #. Scan tool + DMM at station.",
+            "commonStucks": [
+              "Reading the DTC and replacing the relay without testing the control circuit",
+              "Not distinguishing the BCM drive circuit (CKT 113) from relay power/ground",
+              "Forgetting to re-scan after clearing"
+            ],
+            "competentLooksLike": "Uses B3715 to focus on the wiper relay control circuit, then proves the open in CKT 113 by test — code + readings agree; verifies the fix by re-scan.",
+            "interveneWhen": "Probing SRS/other network harness by mistake; back-probing that spreads terminals.",
+            "spotCheck": "DTC B3715 recorded; isolated fault names CKT 113 / open; re-scan clean."
+          }
+        },
+        {
+          "job": 37,
+          "legacyJob": "37",
+          "ase": [
+            "G.5"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose an intermittent wiper/washer concern on the ATECH trainer and replace blades",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Windshield wipers work intermittently, sometimes no response at all.\" Verify on the ATECH Wiper/Washer trainer (model 830C, 2010 Chevy Malibu) with the assigned fault: operate the wiper/washer switch and record the intermittent/erratic behavior.",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the wiring diagram; identify the wiper/washer switch connector and the circuits that pass through it — note that a shared switch connector can affect more than one function. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "Predict how HIGH RESISTANCE at a connector behaves: intermittent operation, voltage present at rest but dropping under load, and readings that change when the connector is flexed.",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: voltage-drop test across the switch connector with the circuit loaded; wiggle/flex the connector while monitoring; measure connector/terminal resistance to locate the high-resistance point.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the high-resistance connector/terminal and confirm against the diagram; determine the repair (clean, re-tension, or replace the terminal).",
+              "checkbox": true
+            },
+            {
+              "text": "As part of the service, inspect and replace the wiper blades with the correct length/type and confirm a full, chatter-free sweep.",
+              "checkbox": true
+            },
+            {
+              "text": "Clear the fault on the trainer (press 1). Record the switch-connector circuit path, your voltage-drop/resistance readings, the isolated fault, and the blade replacement.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "switch_path",
+              "type": "textarea",
+              "label": "Switch-connector circuit path & expected values",
+              "required": true
+            },
+            {
+              "id": "switch_readings",
+              "type": "textarea",
+              "label": "Voltage-drop / resistance readings + isolated high-resistance point (circuit #)",
+              "required": true
+            },
+            {
+              "id": "blades",
+              "type": "textarea",
+              "label": "Wiper blades replaced (size / result)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Wiper/Washer trainer (model 830C; 2010 Chevy Malibu). Insert Fault Code #1 — Wiper/Washer Switch Connector, High Resistance, CKT 143 (YE) — via keypad in User Mode (disconnect ANS-16 / Instructor Mgmt Program first), press #. DMM + 12V supply + a set of replacement wiper blades at station.",
+            "commonStucks": [
+              "Looking for a hard open when the fault is intermittent high resistance",
+              "Not loading the circuit for the voltage-drop test",
+              "Not wiggle-testing the connector to reproduce the intermittent"
+            ],
+            "competentLooksLike": "Reproduces the intermittent, uses voltage-drop under load + wiggle test to isolate the high-resistance switch connector (CKT 143), and replaces blades correctly.",
+            "interveneWhen": "Spreading terminals with an oversized probe; unfused jumpers.",
+            "spotCheck": "Isolated fault names CKT 143 / high resistance; voltage-drop evidence; blades replaced."
+          }
+        },
+        {
+          "job": 38,
+          "legacyJob": "38",
+          "ase": [
+            "G.7"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose an SRS warning-light concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"The airbag light is on.\" Before any testing, review SRS operation and safety in service information: on a REAL vehicle you must disarm the SRS first (see Job 39) and NEVER probe live deployment/squib circuits with a test light or ohmmeter — use only OEM-specified tools. (The ATECH SRS trainer, model 1552, is a safe simulation with no live inflators, so you may measure its circuits here to learn the diagnosis.)",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the concern on the trainer: key on and observe the airbag/SRS warning lamp — it should bulb-check then go out; here it stays on, indicating a stored fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scan tool to the SRS module; retrieve and record the SRS DTC(s). Note the code for the front-impact (front end) sensor circuit and whether it is current or history.",
+              "checkbox": true
+            },
+            {
+              "text": "In service information, pull the SRS wiring diagram and the diagnostic procedure for the recorded DTC; identify the front end sensor circuit, its connector/pins, and the expected values.",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM per the OEM procedure: test the sensor circuit for HIGH RESISTANCE — voltage-drop / resistance on the signal and return; wiggle/flex to check for an intermittent; locate the high-resistance point.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the high-resistance fault agrees with the DTC; state the fault and the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Clear codes when directed (press 1 on the trainer) and proceed to enable/verify (Job 40). Record the lamp behavior, DTC(s), the SI circuit path, your DMM readings, and the isolated fault (circuit + type).",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "srs_dtc",
+              "type": "textarea",
+              "label": "SRS DTC(s) + warning-lamp behavior",
+              "required": true
+            },
+            {
+              "id": "srs_readings",
+              "type": "textarea",
+              "label": "SI circuit path + DMM readings + isolated fault (circuit # and type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH SRS/SIR trainer (model 1552). Insert Fault Code #3 — Left Front End Sensor, High Resistance, CKT 5045 (TN/OG), DTC B0083 — via keypad in User Mode (disconnect the ANS-16 / Instructor Management Program first), press #. Station needs SERVICE INFO, a SCAN TOOL, and a DMM. Trainer is a safe simulation (no live inflators). Student clears with 'press 1'.",
+            "commonStucks": [
+              "Trying to probe deployment/squib circuits — reinforce that this is only safe on the trainer, never on a live vehicle",
+              "Not using voltage-drop to find HIGH resistance (an ohmmeter alone can mislead)",
+              "Replacing the sensor without proving the fault is in the circuit"
+            ],
+            "competentLooksLike": "Reads the SRS DTC, follows the OEM procedure, and proves the high-resistance fault in the front end sensor circuit (CKT 5045) by test; states real-vehicle SRS precautions correctly.",
+            "interveneWhen": "Any student treating a live vehicle like the trainer; probing squib circuits; skipping disarm on a real car.",
+            "spotCheck": "DTC B0083 recorded; isolated fault names CKT 5045 / high resistance; correct SRS safety stated."
+          }
+        },
+        {
+          "job": 39,
+          "legacyJob": "39",
+          "ase": [
+            "G.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Disarm the airbag system (SRS) safely on a vehicle",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "On an actual SRS-equipped vehicle, look up the exact OEM disarm procedure and the required capacitor-discharge WAIT TIME for this vehicle; gather the correct PPE.",
+              "checkbox": true
+            },
+            {
+              "text": "Turn the ignition off, remove the key/fob from range, and note any timer/lockout requirements.",
+              "checkbox": true
+            },
+            {
+              "text": "Disconnect and isolate the battery (negative first) per procedure so it cannot be reconnected accidentally.",
+              "checkbox": true
+            },
+            {
+              "text": "WAIT the specified time (commonly ~1–3 minutes, per OEM) for the SRS backup capacitor to fully discharge before touching any SRS component.",
+              "checkbox": true
+            },
+            {
+              "text": "Where required, disconnect the airbag module connector(s) and confirm the shorting bars engage; handle any removed live module pointed away from your body and store it face-up.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm from service information that the system is disarmed and safe to service before beginning any SRS work.",
+              "checkbox": true
+            },
+            {
+              "text": "Record each disarm step performed and the capacitor wait time observed.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "srs_disarm",
+              "type": "textarea",
+              "label": "Disarm steps performed + capacitor wait time observed (per OEM)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ACTUAL vehicle equipped with SRS + service information; battery hand tools; PPE. This is a real-vehicle procedure — NOT the trainer. No fault is inserted.",
+            "commonStucks": [
+              "Not looking up the specific capacitor wait time",
+              "Reconnecting or leaving the battery accessible during the wait",
+              "Mishandling a removed live module (must be face-up, pointed away)"
+            ],
+            "competentLooksLike": "Follows the OEM disarm sequence exactly, observes the full capacitor-discharge wait, and can state why each step matters.",
+            "interveneWhen": "Any deviation from the OEM disarm sequence; working SRS before the wait elapses; live module mishandled.",
+            "spotCheck": "Correct wait time cited; battery isolated; module handled/stored correctly."
+          }
+        },
+        {
+          "job": 40,
+          "legacyJob": "40",
+          "ase": [
+            "G.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Enable the SRS and verify readiness after repair (ATECH trainer)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "After locating and correcting the assigned SRS fault (Job 38) on the ATECH SRS trainer (model 1552), prepare to return the system to a ready state; confirm all SRS connectors are fully seated and locked and nothing obstructs the system.",
+              "checkbox": true
+            },
+            {
+              "text": "Restore/enable the system per procedure — on the trainer, ensure the fault is cleared and power restored (on a real vehicle, reconnect and secure the battery per the OEM sequence with no one inside).",
+              "checkbox": true
+            },
+            {
+              "text": "Turn the ignition on and observe the airbag warning lamp: it should perform its bulb-check and then go OUT, confirming no active fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scan tool and confirm there are no current SRS DTCs; if the lamp stays on or a code remains, return to diagnosis (Job 38).",
+              "checkbox": true
+            },
+            {
+              "text": "Describe safe handling, storage, and disposal of live vs. deployed airbag modules and the shorting-bar precautions (real-vehicle knowledge).",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the SRS is ready before the vehicle would be returned to the customer.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the enable/verify sequence and the final warning-lamp and scan-tool status.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "srs_enable",
+              "type": "textarea",
+              "label": "SRS enable/verify: warning-lamp behavior + scan-tool status (no current DTCs)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH SRS/SIR trainer (model 1552). Performed AFTER Job 38's fault is located and cleared (press 1). Scan tool + service info at station. No new fault is inserted for this lab.",
+            "commonStucks": [
+              "Calling the system ready while the lamp is still on",
+              "Not re-scanning to confirm zero current SRS DTCs",
+              "Confusing bulb-check (normal) with a stuck-on lamp (fault)"
+            ],
+            "competentLooksLike": "Confirms the SRS lamp bulb-checks then goes out AND the scan tool shows no current SRS DTCs before declaring the system ready.",
+            "interveneWhen": "Student declares ready with lamp on or codes present.",
+            "spotCheck": "Lamp out after bulb-check; scan tool clean; ties back to the Job 38 repair."
+          }
+        },
+        {
+          "job": 41,
+          "legacyJob": "41",
+          "ase": [
+            "G.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a high-speed network fault on the ATECH trainer (scan tool + scope)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"Vehicle won't start.\" Verify on the ATECH GMLAN Network trainer (model 3802) with the assigned fault: confirm the no-start and note any warning indicators.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scan tool and pull the network topology. Record which modules respond, are 'no communication,' or communicate intermittently; retrieve U-codes. Note that a high-resistance bus fault often shows intermittent/partial communication rather than a fully dead module.",
+              "checkbox": true
+            },
+            {
+              "text": "In service information, pull the GMLAN high-speed topology, the termination locations, and the BCM↔VCIM serial-data circuit; identify accessible test points.",
+              "checkbox": true
+            },
+            {
+              "text": "Measure bus health with the DMM: high-speed CAN termination (should be ≈60 Ω) and check the serial-data circuit for high resistance (resistance / voltage-drop on the affected circuit).",
+              "checkbox": true
+            },
+            {
+              "text": "Scope the CAN-H/CAN-L waveforms at an accessible point and compare to a known-good differential pattern; a high-resistance fault attenuates/distorts the waveform and can corrupt the messages required to start.",
+              "checkbox": true
+            },
+            {
+              "text": "Using SI + DMM + scope together, isolate the high-resistance point on the BCM↔VCIM serial-data circuit; confirm against the topology.",
+              "checkbox": true
+            },
+            {
+              "text": "State the fault and the needed action. Clear the fault (press 1) and re-verify communication and starting. Record the topology, U-codes, termination/resistance readings, the waveform, and the isolated fault (circuit + type).",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "net_topo",
+              "type": "textarea",
+              "label": "Topology + U-codes + termination (≈60 Ω)",
+              "required": true
+            },
+            {
+              "id": "net_scope",
+              "type": "textarea",
+              "label": "DMM/scope readings + isolated fault (circuit # and type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH GMLAN Network trainer (model 3802). Insert Fault Code #6 — GMLAN High Speed Serial Data BCM to VCIM, High Resistance, CKT 2500 (TN/BK) — via keypad (disconnect ANS-16 / Instructor Mgmt Program first), press #. Station needs SERVICE INFO, a SCAN TOOL, a DMM, and a SCOPE/GMM.",
+            "commonStucks": [
+              "Looking only for a dead module when the fault is high resistance (intermittent/partial comm)",
+              "Skipping the scope — a high-R bus fault is easiest to see on the waveform",
+              "Not measuring termination (~60 Ω) as a first bus-health check"
+            ],
+            "competentLooksLike": "Recognizes a high-resistance bus fault (not a hard open), uses termination + scope waveform + DMM to isolate CKT 2500 (BCM↔VCIM); verifies start after clearing.",
+            "interveneWhen": "Unfused jumpers on serial-data lines; probing that damages terminals.",
+            "spotCheck": "Isolated fault names CKT 2500 / high resistance; scope waveform + termination evidence shown."
+          }
+        }
+      ]
+    },
+    {
+      "id": "EL2-M6",
+      "title": "Module 6 — Warning/Accessories",
+      "labRange": "7 labs",
+      "labs": [
+        {
+          "job": 42,
+          "legacyJob": "42",
+          "ase": [
+            "A.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use wiring diagrams during diagnosis",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Select the correct wiring diagram for the warning or accessory system you will diagnose (a body-controlled circuit).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine from the diagram whether the function is hardwired or multiplexed: identify the input (switch/sensor), the controlling module (BCM/other), the output driver, the load, and the ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Trace the full path input → module → output/load → ground; list every connector, splice, ground, and any data-bus involvement.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the wire colors and circuit/pin numbers at each key test point, and note shared grounds/feeds that could cause multiple symptoms at once.",
+              "checkbox": true
+            },
+            {
+              "text": "For each test point, state the value you EXPECT at rest and operating (voltage, ground, or the commanded output).",
+              "checkbox": true
+            },
+            {
+              "text": "Decide where to test the INPUT side vs. the module OUTPUT side so a reading splits the fault between them.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the traced path, expected values, and the planned test sequence.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "traced_path",
+              "type": "textarea",
+              "label": "Traced path + expected values (input / module / output / ground)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 43,
+          "legacyJob": "43",
+          "ase": [
+            "A.9"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use fused jumper wires to isolate a warning/accessory fault",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "From the wiring diagram, pick a safe substitution point in the affected warning/accessory circuit (supply a ground or switched power to a lamp, motor, or relay control) — confirm it is not a network/SRS/electronic-driver circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Select a fused jumper with the correct fuse rating for the load and inspect it for good terminations and fuse.",
+              "checkbox": true
+            },
+            {
+              "text": "Apply the fused jumper to bypass a suspect switch/relay/ground and observe whether the accessory or warning device now operates.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret: operates on the jumper = fault is upstream (switch, feed, ground, or module driver); still inoperative = suspect the device itself.",
+              "checkbox": true
+            },
+            {
+              "text": "Use the result to divide the circuit and point to the next test; remove the jumper afterward.",
+              "checkbox": true
+            },
+            {
+              "text": "State the safety limits (correct fuse, never jump across a load or into sensitive circuits) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record what was jumped, the result, and the conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 44,
+          "legacyJob": "44",
+          "ase": [
+            "F.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose warning and driver information systems",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern (a warning lamp on/inop, a chime, or a message-center/driver-information fault) and pull the relevant diagram and DTC list.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the warning device's bulb-check/self-test at key-on and note normal vs. abnormal behavior.",
+              "checkbox": true
+            },
+            {
+              "text": "Retrieve DTCs from the module that drives the warning (BCM/IPC/relevant module) and identify the input/sensor the warning reports on (e.g., low fluid, lamp-out, door-ajar, TPMS).",
+              "checkbox": true
+            },
+            {
+              "text": "Test that input/sensor and its circuit: is the warning correct (real fault) or false (bad sensor/wiring/module)?",
+              "checkbox": true
+            },
+            {
+              "text": "For message-center/driver-info displays, check the network message from the source module and the display module's operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (sensor/input, wiring, driving module, or display) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the warning behavior, DTCs, tests, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "warning_dx",
+              "type": "textarea",
+              "label": "Warning/driver-info diagnosis: lamp/chime behavior, DTCs, input tested, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 45,
+          "legacyJob": "45",
+          "ase": [
+            "G.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a power seat lumbar concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"The lumbar adjustment isn't working\" (it moves down / deflates but won't come back up). Verify on the ATECH Power Seat trainer (model 860C) with the assigned fault: operate the lumbar switch both directions and confirm it goes down but not up, and that the other seat functions work.",
+              "checkbox": true
+            },
+            {
+              "text": "Obtain the power-seat wiring diagram; identify the lumbar switch, the lumbar motor and its TWO directional circuits (up vs. down), connectors, and grounds. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "Read the clue: a motor that runs one direction but not the other points to an OPEN in that one direction's circuit — the shared motor and ground are fine. State the value you expect for the up vs. down command at the motor.",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: command lumbar up and down and check for commanded voltage (polarity reversal) at the motor. The failing direction will be missing its command/feed; test that circuit for an open and use voltage-drop/continuity to locate it.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the working direction proves the motor and ground are good; isolate the open on the failed-direction circuit and confirm against the wiring diagram.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. Clear the fault on the trainer (press 1) and confirm the lumbar moves both directions. ",
+              "checkbox": true
+            },
+            {
+              "text": "Record the lumbar circuit path, your DMM readings for BOTH directions, the isolated fault (circuit + type), and how you found it.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "lumbar_path",
+              "type": "textarea",
+              "label": "Lumbar circuit path & expected values (up vs. down)",
+              "required": true
+            },
+            {
+              "id": "lumbar_readings",
+              "type": "textarea",
+              "label": "DMM readings both directions + isolated fault (circuit # and fault type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Power Seat trainer (model 860C). Insert Fault Code #6 — Power Seat Lumbar Support Motor Goes Down But Not Up, Open, CKT 152 (D-BU/OG) — via keypad in User Mode (disconnect the ANS-16 / Instructor Management Program first), press #. Station needs SERVICE INFO and a DMM. Student clears with 'press 1'.",
+            "commonStucks": [
+              "Missing the 'runs one way only' clue that points to a single-direction open",
+              "Testing only one direction at the motor",
+              "Condemning the motor when one direction proves it is good"
+            ],
+            "competentLooksLike": "Uses the 'down works, up doesn't' clue to target the up-direction circuit and proves the open (CKT 152) by test in both directions.",
+            "interveneWhen": "Unfused jumper across the motor; forcing the seat mechanism.",
+            "spotCheck": "Both-direction readings shown; isolated fault names CKT 152 / open on the failed direction."
+          }
+        },
+        {
+          "job": 46,
+          "legacyJob": "46",
+          "ase": [
+            "G.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose a remote (key fob) lock concern on the ATECH trainer",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Customer concern: \"The key fob won't lock or unlock the doors, but the inside lock switches work normally.\" Verify on the ATECH Power Door Lock trainer (model 850C) with the assigned fault: confirm the manual lock switches operate the locks and the remote (fob) does not.",
+              "checkbox": true
+            },
+            {
+              "text": "Because the manual path works and the remote does not, focus on the RKE/remote path. Obtain the wiring diagram; identify the key-fob / RKE receiver, its power feed and ground, and how a remote command reaches the BCM. Record wire colors and circuit numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "Check the transmitter first: test fob operation (and a second fob if available) and the fob battery to rule out the remote itself.",
+              "checkbox": true
+            },
+            {
+              "text": "State the value you expect at the receiver/fob power circuit (voltage present); predict how an OPEN in that circuit behaves (remote dead, manual unaffected).",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose with the DMM: check for voltage at the receiver/fob power feed; if it is missing, work upstream test point by test point to find the open; confirm the receiver ground.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the open on the fob/receiver power circuit; confirm against the wiring diagram. Note any fob relearn that would be required after the repair.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action. Clear the fault on the trainer (press 1) and confirm the remote operates. Record the RKE path, fob checks, DMM readings, the isolated fault (circuit + type), and method.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "rke_path",
+              "type": "textarea",
+              "label": "Remote/RKE path & expected values",
+              "required": true
+            },
+            {
+              "id": "rke_readings",
+              "type": "textarea",
+              "label": "Fob checks + DMM readings + isolated fault (circuit # and fault type)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ],
+          "instructorNotes": {
+            "version": 1,
+            "setup": "ATECH Power Door Lock trainer (model 850C). Insert Fault Code #8 — Key Fob Power, Open, CKT 1240 (RD/WH) — via keypad in User Mode (disconnect the ALS-16 / Instructor Management Program first), then press #. DMM + 12V supply at station; a spare fob is useful.",
+            "commonStucks": [
+              "Jumping straight to the fob battery and stopping there",
+              "Not using the 'manual works, remote doesn't' clue to split the system",
+              "Testing the actuator circuits instead of the receiver power feed"
+            ],
+            "competentLooksLike": "Uses the manual-vs-remote split to focus on the RKE receiver power circuit, rules out the fob, and proves the open in CKT 1240 by test; mentions relearn if needed.",
+            "interveneWhen": "Unfused jumpers on the receiver circuit; probing SRS/other harness by mistake.",
+            "spotCheck": "Isolated fault names CKT 1240 / open (receiver power); fob ruled out first."
+          }
+        },
+        {
+          "job": 47,
+          "legacyJob": "47",
+          "ase": [
+            "G.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose cruise control operation",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern and identify the cruise system type: conventional (throttle-cable/actuator) or electronic-throttle, and whether it is adaptive/ACC.",
+              "checkbox": true
+            },
+            {
+              "text": "Review operation and safety inputs: on/off, set/coast/resume/accel, and the brake- and (manual) clutch-switch cutoffs that must disable cruise.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the cruise switch inputs to the module and confirm the brake/clutch switch cutoff works (a common cause of 'won't engage').",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the required enabling inputs are present (vehicle speed on the bus, in-gear/range, no active faults) and read cruise/powertrain DTCs.",
+              "checkbox": true
+            },
+            {
+              "text": "For electronic throttle, verify the module commands the throttle correctly; for ACC, note the radar/camera sensor and its calibration (knowledge — ADAS calibration is a separate task).",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (switch, brake/clutch cutoff, speed input, module, or actuator) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the inputs tested, DTCs, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "cruise_dx",
+              "type": "textarea",
+              "label": "Cruise diagnosis: switch inputs, brake/clutch cutoff, speed/enable inputs, DTCs, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 48,
+          "legacyJob": "48",
+          "ase": [
+            "G.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Remove and reinstall a door panel",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Look up the OEM door-panel removal procedure and fastener locations; disable/ disarm any side-airbag or check SRS precautions if applicable.",
+              "checkbox": true
+            },
+            {
+              "text": "Remove screws in handles/pulls/switch bezels, then release the retaining clips around the perimeter with a trim tool without cracking the panel.",
+              "checkbox": true
+            },
+            {
+              "text": "Disconnect switch/harness connectors and any cable links (latch/lock rods) as you lift the panel; note their positions.",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect and preserve the plastic moisture/vapor barrier — it must be resealed on reassembly to prevent water intrusion and wind noise.",
+              "checkbox": true
+            },
+            {
+              "text": "Reinstall in reverse: reconnect all connectors and cables, reseat every clip, and reinstall fasteners to spec; restore the moisture barrier.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify all switches/window/lock and the door function correctly and there are no rattles or loose clips.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the R&R, the moisture-barrier condition, and post-repair verification.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-M7",
+      "title": "Module 7 — Gauges/Body/Infotainment",
+      "labRange": "7 labs",
+      "labs": [
+        {
+          "job": 49,
+          "legacyJob": "49",
+          "ase": [
+            "A.14"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Use a scope/GMM to diagnose a gauge or sensor signal",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the gauge/sensor or data signal to diagnose (e.g., a sending-unit signal, a PWM-driven gauge, or a serial/PWM data line into the cluster) and look up its known-good pattern in SI.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scope/GMM safely with the correct channel, ground reference, and probe; set volts/div and time/div to frame the expected signal.",
+              "checkbox": true
+            },
+            {
+              "text": "Capture the waveform with the system operating; adjust trigger/scaling until the pattern is stable.",
+              "checkbox": true
+            },
+            {
+              "text": "Read the signal's key attributes (amplitude, frequency, duty cycle/pulse width, shape) and compare to known-good.",
+              "checkbox": true
+            },
+            {
+              "text": "Look for defects a DMM would miss — dropouts, glitches, noise/RFI on the signal, or a slow/loaded edge indicating resistance.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret what the waveform indicates about the sensor, gauge, or its wiring, and the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the captured values and interpretation (describe or attach the trace).",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "scope_gauge",
+              "type": "textarea",
+              "label": "Waveform captured (amplitude/frequency/shape) vs. known-good, and interpretation",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 50,
+          "legacyJob": "50",
+          "ase": [
+            "F.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Inspect and test gauges and sending units",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern (a gauge reads wrong, pegged, or dead — fuel level, coolant temp, oil pressure, etc.) and pull the circuit diagram and specs for the gauge and its sending unit.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform the cluster self-test/gauge sweep if the vehicle supports it, and read cluster DTCs, to separate a cluster fault from a sender/wiring fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the sending unit: measure its resistance (or output) across its range per SI (e.g., empty vs. full, cold vs. hot) and compare to spec.",
+              "checkbox": true
+            },
+            {
+              "text": "Substitute a known value at the gauge signal (per SI — e.g., ground the sender wire or use a sender simulator) and watch the gauge respond to confirm the gauge and wiring.",
+              "checkbox": true
+            },
+            {
+              "text": "Check the sending-unit ground and the signal-wire integrity (voltage-drop / continuity).",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (sender, wiring/ground, or gauge/cluster) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the sender readings across range, the gauge response, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "gauge_test",
+              "type": "textarea",
+              "label": "Sending-unit readings across range, gauge response, and fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 51,
+          "legacyJob": "51",
+          "ase": [
+            "F.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose instrument-cluster warning lights and telltales",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern with a cluster (IPC) telltale/warning (a lamp stuck on, not illuminating at bulb-check, or a false warning) and pull the relevant diagram/DTC list.",
+              "checkbox": true
+            },
+            {
+              "text": "Observe the key-on bulb-check: which telltales light and go out; a lamp that never lights may be a bulb/LED or a missing network message, one stuck on is an active fault or driver fault.",
+              "checkbox": true
+            },
+            {
+              "text": "Determine whether the telltale is driven directly (hardwired input) or by a network message from another module; read cluster and source-module DTCs.",
+              "checkbox": true
+            },
+            {
+              "text": "For a network-driven telltale, confirm the source module is reporting and communicating; for a hardwired one, test the input/sensor and its circuit.",
+              "checkbox": true
+            },
+            {
+              "text": "Decide whether the warning is TRUE (real fault the lamp reports) or FALSE (bad input/wiring/cluster) and confirm with the data.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (input/sensor, wiring, source module, network message, or the cluster) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the bulb-check behavior, DTCs, tests, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "telltale_dx",
+              "type": "textarea",
+              "label": "Cluster telltale diagnosis: bulb-check behavior, DTCs, true-vs-false, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 52,
+          "legacyJob": "52",
+          "ase": [
+            "G.10"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose electronic / adaptive cruise control and its display",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the cruise type — electronic-throttle conventional cruise or adaptive cruise (ACC) — and pull operation, inputs, and the driver-display/indicator info.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify the cruise indicator and set-speed display in the cluster respond correctly to on/set/resume/cancel.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the enabling inputs on the network: vehicle speed, brake/clutch cancel, gear/range, and no disabling faults; read cruise/ACC and powertrain DTCs.",
+              "checkbox": true
+            },
+            {
+              "text": "For electronic throttle, verify the module commands throttle to hold/adjust speed; for ACC, note the radar/camera sensor role and that a misaligned sensor disables ACC (calibration is a separate task).",
+              "checkbox": true
+            },
+            {
+              "text": "Diagnose a fault to the responsible part (switch, brake/clutch cancel input, speed/enable message, module, actuator, or ACC sensor status).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine the needed action, including whether an ACC sensor calibration would be required after repair.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the indicator/display behavior, inputs tested, DTCs, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "cruise2_dx",
+              "type": "textarea",
+              "label": "Electronic/ACC cruise diagnosis: display behavior, enable inputs, DTCs, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 53,
+          "legacyJob": "53",
+          "ase": [
+            "G.6"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose radio / infotainment reception concerns",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern (poor AM/FM reception, static/noise, no audio, or an inoperative feature) and pull the audio/infotainment diagram; note antenna type (mast, amplified, or diversity) and module layout.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the radio/infotainment module has power, ground, and communicates (read audio-module DTCs); a no-comm module points to power/ground/network, not reception.",
+              "checkbox": true
+            },
+            {
+              "text": "Inspect and test the antenna and its ground/base, the antenna lead/connector, and any antenna amplifier and its power feed.",
+              "checkbox": true
+            },
+            {
+              "text": "Distinguish reception vs. noise: reception loss points to antenna/lead/amplifier; noise/RFI points to a ground or a noise source (alternator, ignition, accessory) — test by isolating suspected sources.",
+              "checkbox": true
+            },
+            {
+              "text": "Check the speakers/wiring and audio output if the concern is sound quality rather than reception.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (antenna/lead/amplifier, ground, noise source, module, or speakers) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the tests, what you isolated, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "radio_dx",
+              "type": "textarea",
+              "label": "Infotainment/reception diagnosis: antenna/ground/amplifier tests, noise source, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 54,
+          "legacyJob": "54",
+          "ase": [
+            "G.8",
+            "A.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose body electronic circuits with scan tool",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Research SI for this vehicle's scan-tool connect, module list, and body-electronic diagnosis precautions (SRS/ADAS notes if SI lists them).",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the shop scan tool; establish communication with the body/control modules SI identifies for this concern.",
+              "checkbox": true
+            },
+            {
+              "text": "Retrieve and record all DTCs present (active/stored/pending as SI/tool shows); note module source for each code.",
+              "checkbox": true
+            },
+            {
+              "text": "Record monitor status (complete/incomplete/not supported as displayed) for the monitors SI or the tool shows for this system.",
+              "checkbox": true
+            },
+            {
+              "text": "Open and record freeze-frame / snapshot data tied to the stored DTC(s); note key operating conditions SI uses for diagnosis.",
+              "checkbox": true
+            },
+            {
+              "text": "Using DTCs + freeze frame + SI wiring/data, diagnose the body electronic circuit concern; determine needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Clear codes/data only when instructor/SI directs; recheck communication and note residual codes if any.",
+              "checkbox": true
+            },
+            {
+              "text": "Record DTCs, monitor status, freeze-frame notes, diagnosis, and needed action.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            },
+            {
+              "id": "dtc_list",
+              "type": "textarea",
+              "label": "DTCs retrieved (module + code)",
+              "required": true
+            },
+            {
+              "id": "monitor_status",
+              "type": "textarea",
+              "label": "Monitor status",
+              "required": true
+            },
+            {
+              "id": "freeze_frame",
+              "type": "textarea",
+              "label": "Freeze-frame / snapshot notes",
+              "required": true
+            },
+            {
+              "id": "clear_directed",
+              "type": "text",
+              "label": "Clear directed by instructor/SI? (Y/N + residual)",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 55,
+          "legacyJob": "55",
+          "ase": [
+            "G.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose the anti-theft alarm and perimeter security",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern on the alarm/perimeter side (false alarms, no arm/disarm, siren inoperative) and review the anti-theft operation and precautions in SI.",
+              "checkbox": true
+            },
+            {
+              "text": "Observe the security indicator arm/disarm behavior and read theft/BCM DTCs with the scan tool.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the perimeter trigger inputs to the module: door, hood, and trunk/liftgate ajar switches, and any tilt/motion or glass-break sensor — a stuck/failed switch is a common false-alarm cause.",
+              "checkbox": true
+            },
+            {
+              "text": "Test the arming/disarming path (RKE/passive entry command and the module response) and the siren's power/ground/command.",
+              "checkbox": true
+            },
+            {
+              "text": "Use scan-tool data to watch the inputs change as you actuate each switch/sensor and identify the one misreporting.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (a trigger switch/sensor, arming input, siren, wiring, or module) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the indicator behavior, DTCs, input states, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "alarm_dx",
+              "type": "textarea",
+              "label": "Alarm/perimeter diagnosis: indicator behavior, DTCs, trigger inputs, siren, fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-M8",
+      "title": "Module 8 — Instrument/Body/Foundational",
+      "labRange": "10 labs",
+      "labs": [
+        {
+          "job": 56,
+          "legacyJob": "57",
+          "ase": [
+            "F.2"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Test speedometer, tachometer, and electronic cluster sending units",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Verify the concern on a speed/engine-data gauge (speedometer, tachometer, odometer, or a digital cluster reading) and pull the diagram and the input source (VSS/wheel-speed, engine RPM, or a network message).",
+              "checkbox": true
+            },
+            {
+              "text": "Determine whether the gauge is fed by a hardwired sensor signal or a network message from the PCM/ABS/BCM; read cluster and source-module DTCs.",
+              "checkbox": true
+            },
+            {
+              "text": "For a hardwired sender, test the signal with a DMM/scope (e.g., a VSS AC/PWM signal) and its supply/ground; for a network-fed gauge, confirm the source module reports the value.",
+              "checkbox": true
+            },
+            {
+              "text": "Run the cluster self-test/sweep if supported to confirm the gauge and cluster hardware.",
+              "checkbox": true
+            },
+            {
+              "text": "Compare the gauge reading to a known reference (scan-tool PID or a second source) to confirm accuracy.",
+              "checkbox": true
+            },
+            {
+              "text": "Isolate the fault (sensor/signal, wiring/ground, source module, network message, or cluster) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the signal readings, the gauge vs. reference comparison, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "cluster_sender",
+              "type": "textarea",
+              "label": "Speed/RPM signal readings, gauge vs. reference, and fault found",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 57,
+          "legacyJob": "58",
+          "ase": [
+            "G.8"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Diagnose body electronic circuits with bidirectional scan-tool controls",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Identify the body electronic circuit to diagnose and confirm SI's scan-tool coverage: available data PIDs and the bidirectional/output tests for that system.",
+              "checkbox": true
+            },
+            {
+              "text": "Connect the scan tool and open the module's live data list; record the relevant PIDs at rest and note what 'normal' should be per SI.",
+              "checkbox": true
+            },
+            {
+              "text": "Use bidirectional controls to command the output (e.g., cycle a lock/relay/lamp/motor) and observe whether the actuator responds and the data reflects the command.",
+              "checkbox": true
+            },
+            {
+              "text": "Interpret: commands work but the function fails = output-side (driver/wiring/actuator); no response to command = input/logic/module or communication.",
+              "checkbox": true
+            },
+            {
+              "text": "Correlate the live-data inputs (switch states, sensor values) with the commanded outputs to pinpoint where the chain breaks.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm with a hardware test at the isolated point (power/ground/command at the actuator) and determine the needed action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the PIDs, the bidirectional results, and conclusion.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "bidir_dx",
+              "type": "textarea",
+              "label": "Body-circuit diagnosis: live-data PIDs, bidirectional command results, fault isolated",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 58,
+          "legacyJob": "59",
+          "ase": [
+            "F.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Verify instrument-panel gauges/warning lights and reset maintenance indicators",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Turn the ignition on and verify every gauge sweeps/reads and every warning telltale performs its bulb-check then behaves correctly; record any that fail.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the cluster communicates and shows no active warning after the bulb-check; read cluster DTCs if any telltale is abnormal.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the maintenance/service indicators present (oil-life/service reminder, and TPMS if applicable) and look up the OEM reset/relearn procedure.",
+              "checkbox": true
+            },
+            {
+              "text": "Reset the oil-life / maintenance-required indicator per procedure (scan tool or the vehicle's button/menu sequence) and confirm it cleared.",
+              "checkbox": true
+            },
+            {
+              "text": "If applicable, perform the TPMS reset/relearn per SI and confirm the TPMS telltale is out.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify all indicators are in their normal state before returning the vehicle; determine any further action.",
+              "checkbox": true
+            },
+            {
+              "text": "Record which gauges/telltales were verified and the indicators reset.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "ipc_verify",
+              "type": "textarea",
+              "label": "Gauges/telltales verified and maintenance indicators reset (oil-life, TPMS)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 59,
+          "legacyJob": "60",
+          "ase": [
+            "G.9",
+            "A.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Perform software transfers/updates/reprogramming",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Research SI for this module's software update / reprogram / flash procedure, battery support, and post-update calibration/relearn/init requirements.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the target module(s), current software/calibration ID (as SI/tool shows), and the update package SI specifies — do not flash without SI match.",
+              "checkbox": true
+            },
+            {
+              "text": "Set up power support / battery maintainer per SI; verify stable voltage support before programming.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform the software transfer/update/reprogramming per SI and instructor oversight; do not invent steps or interrupt mid-flash.",
+              "checkbox": true
+            },
+            {
+              "text": "After update, perform any required calibration / recalibration, initialization, or relearn procedures SI lists for this module/system. If SI lists none, record \"None required per SI\".",
+              "checkbox": true
+            },
+            {
+              "text": "Verify module communication, indicator behavior, and any SI post-program checks; note pass/fail observations (no invented numeric key).",
+              "checkbox": true
+            },
+            {
+              "text": "Record pre/post software IDs, update result, and which calibration/relearn/init steps were completed.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            },
+            {
+              "id": "module_sw_before",
+              "type": "text",
+              "label": "Module software/calibration ID before",
+              "required": true
+            },
+            {
+              "id": "module_sw_after",
+              "type": "text",
+              "label": "Module software/calibration ID after",
+              "required": true
+            },
+            {
+              "id": "relearn_done",
+              "type": "textarea",
+              "label": "Calibration/relearn/init completed (or None required per SI)",
+              "required": true
+            },
+            {
+              "id": "post_checks",
+              "type": "textarea",
+              "label": "Post-program checks / pass-fail observations",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 60,
+          "title": "Recalibrate ADAS (OEM procedure with targets)",
+          "ase": [
+            "G.11"
+          ],
+          "type": "lab",
+          "version": 1,
+          "requiresVehicle": true,
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Research SI for this vehicle: which ADAS systems need recal after which service (camera/radar/USS/other as SI lists); note SI procedure ID(s). Do not invent systems.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify on the vehicle (or SI diagram) the sensor(s)/module(s) for the assigned recal — camera(s), radar(s), USS, etc. Point out mounting area and any SI warnings (glass, bumper, aiming).",
+              "checkbox": true
+            },
+            {
+              "text": "From SI, determine static vs dynamic (or both) for each system assigned. Record the type SI requires — do not substitute the other type.",
+              "checkbox": true
+            },
+            {
+              "text": "If SI requires static cal: set up the shop ADAS target system per SI (target type, placement, distance/height/aim as SI states). Record setup notes from SI — no invented numeric keys.",
+              "checkbox": true
+            },
+            {
+              "text": "If SI requires dynamic / drive-cycle cal: perform only under instructor oversight and only per SI + school road policy. No live-road ADAS testing beyond that.",
+              "checkbox": true
+            },
+            {
+              "text": "With instructor oversight, connect the OEM-capable scan/ADAS tool and perform the OEM recalibration procedure for the assigned system(s) per SI. Follow on-screen/SI prompts; do not skip target or drive-cycle steps SI requires.",
+              "checkbox": true
+            },
+            {
+              "text": "Verify SI completion criteria (tool result, indicator behavior, any SI post-cal checks). Record pass/fail from tool/SI — no invented pass numbers.",
+              "checkbox": true
+            },
+            {
+              "text": "Record: system(s) calibrated, SI procedure ID, static vs dynamic, target setup notes (or dynamic route note), pass/fail; note any DTCs/concerns left for instructor.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            },
+            {
+              "id": "adas_systems",
+              "type": "textarea",
+              "label": "ADAS system(s) calibrated",
+              "required": true
+            },
+            {
+              "id": "si_procedure_id",
+              "type": "text",
+              "label": "SI procedure ID(s)",
+              "required": true
+            },
+            {
+              "id": "cal_type",
+              "type": "text",
+              "label": "Static / dynamic / both (per SI)",
+              "required": true
+            },
+            {
+              "id": "target_setup_notes",
+              "type": "textarea",
+              "label": "Target setup notes or dynamic route note",
+              "required": true
+            },
+            {
+              "id": "cal_result",
+              "type": "text",
+              "label": "Pass/fail (per tool/SI)",
+              "required": true
+            }
+          ]
+        },
+        {
+          "job": 61,
+          "legacyJob": "61",
+          "ase": [
+            "FND PVS.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Identify information and service on a work order (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Obtain a work order (repair order) and identify the customer information and the vehicle identification (year/make/model, VIN, mileage, license).",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the customer's stated concern(s) and any requested/declined services and the authorization (signature, estimate/approval, and any authorized-amount limit).",
+              "checkbox": true
+            },
+            {
+              "text": "Locate the service/repair information referenced: applicable maintenance interval, any TSBs/recalls noted, and warranty status.",
+              "checkbox": true
+            },
+            {
+              "text": "Identify the assigned technician, the RO number/date, and where labor operations and parts are recorded.",
+              "checkbox": true
+            },
+            {
+              "text": "Explain why complete, accurate RO information matters (authorization, warranty, liability, and the vehicle history record).",
+              "checkbox": true
+            },
+            {
+              "text": "Record the key fields you identified on the work order.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "wo_identify",
+              "type": "textarea",
+              "label": "Work-order fields identified: customer, vehicle/VIN, concern, authorization, service info",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 62,
+          "legacyJob": "62",
+          "ase": [
+            "FND PVS.3"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Demonstrate the three C's: Concern, Cause, Correction (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "For a completed (or example) repair, write the CONCERN in the customer's terms plus the technician's verification of the symptom.",
+              "checkbox": true
+            },
+            {
+              "text": "Write the CAUSE: the root cause found through diagnosis, stated specifically (the failed component/condition), not just the part replaced.",
+              "checkbox": true
+            },
+            {
+              "text": "Write the CORRECTION: exactly what was done to repair it, including tests/verification and any relearn/calibration performed.",
+              "checkbox": true
+            },
+            {
+              "text": "Keep the documentation clear, factual, and free of jargon the customer/record won't understand; avoid blaming language.",
+              "checkbox": true
+            },
+            {
+              "text": "Explain how good three-C documentation supports warranty, comebacks, and the vehicle's service history.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the three C's for the repair.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "three_cs",
+              "type": "textarea",
+              "label": "The three C's: Concern / Cause / Correction (written out)",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 63,
+          "legacyJob": "63",
+          "ase": [
+            "A.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Review vehicle service history (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Locate the vehicle's service history from the available sources (shop management system, prior ROs, and SI/OEM history by VIN).",
+              "checkbox": true
+            },
+            {
+              "text": "Record prior services and repairs relevant to the current concern, especially prior work on the same system (a repeat repair / comeback pattern).",
+              "checkbox": true
+            },
+            {
+              "text": "Check for open recalls/campaigns and any outstanding declined/recommended services by VIN.",
+              "checkbox": true
+            },
+            {
+              "text": "Note maintenance history against the recommended intervals (what's due or overdue).",
+              "checkbox": true
+            },
+            {
+              "text": "Explain how the history informs the current diagnosis (e.g., a recently replaced part, a known recurring issue) and the service recommendation.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the relevant history and how it affects today's work.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "service_history",
+              "type": "textarea",
+              "label": "Relevant prior work, recalls/campaigns, maintenance due, and how it informs the concern",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 64,
+          "legacyJob": "64",
+          "ase": [
+            "FND PVS.4"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete a work order (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Starting from the concern and authorization, record the cause and correction (the three C's) accurately on the work order.",
+              "checkbox": true
+            },
+            {
+              "text": "List each part used with its number and quantity, and record the labor operation(s) with the flat-rate/actual time per shop policy.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the diagnostic findings and test results that justify the work performed.",
+              "checkbox": true
+            },
+            {
+              "text": "Note any additional recommended/declined services and any warranty on parts/labor.",
+              "checkbox": true
+            },
+            {
+              "text": "Total the order (parts + labor + fees) and confirm it stays within the customer's authorized amount — or note the additional approval obtained.",
+              "checkbox": true
+            },
+            {
+              "text": "Ensure the RO is complete, legible, and signed/closed per policy so it stands as an accurate record.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the completed work-order summary.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "wo_complete",
+              "type": "textarea",
+              "label": "Completed work order: three C's, parts, labor/time, findings, totals vs. authorization",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 65,
+          "legacyJob": "65",
+          "ase": [
+            "FND PVC.1"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Prepare the vehicle to return to the customer (CLASS)",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Confirm the repair is complete and verified: retest the original concern and confirm no new DTCs or warning lamps remain.",
+              "checkbox": true
+            },
+            {
+              "text": "Perform a functional check / short road test as appropriate to confirm the fix and normal operation.",
+              "checkbox": true
+            },
+            {
+              "text": "Restore anything reset by a battery disconnect or service: clock/date, radio presets/anti-theft code, power-window/one-touch and other relearns as needed.",
+              "checkbox": true
+            },
+            {
+              "text": "Remove all protective covers (seat, steering wheel, floor mat, fender cover) and remove any tools/shop materials from the vehicle.",
+              "checkbox": true
+            },
+            {
+              "text": "Clean up any service-related dirt (fingerprints, handprints) and return seat/mirror positions to reasonable settings.",
+              "checkbox": true
+            },
+            {
+              "text": "Confirm the paperwork (RO, warranty, any recommendations) is ready to review with the customer.",
+              "checkbox": true
+            },
+            {
+              "text": "Record the return-to-customer checks completed.",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "return_prep",
+              "type": "textarea",
+              "label": "Return-to-customer checklist: retest, road test, presets/relearns restored, covers removed, cleanliness",
+              "required": true
+            },
+            {
+              "id": "findings",
+              "type": "textarea",
+              "label": "Findings",
+              "required": true
+            },
+            {
+              "id": "repairs",
+              "type": "textarea",
+              "label": "Repairs needed/completed",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EL2-CLEAN",
+      "title": "Cleaning — Shop Clean-up (Foundational)",
+      "labRange": "Cleaning 1–5",
+      "labs": [
+        {
+          "job": 66,
+          "legacyJob": "1",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 67,
+          "legacyJob": "2",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 68,
+          "legacyJob": "3",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 69,
+          "legacyJob": "4",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        },
+        {
+          "job": 70,
+          "legacyJob": "5",
+          "ase": [
+            "FND SAF.17"
+          ],
+          "version": 1,
+          "type": "lab",
+          "requiresVehicle": true,
+          "title": "Complete required clean-up tasks",
+          "competency": {
+            "countCheckoffs": true
+          },
+          "steps": [
+            {
+              "text": "Clean shop/bay",
+              "checkbox": true
+            },
+            {
+              "text": "Clean tables",
+              "checkbox": true
+            },
+            {
+              "text": "Put away tools",
+              "checkbox": true
+            }
+          ],
+          "fields": [
+            {
+              "id": "notes",
+              "type": "textarea",
+              "label": "Notes",
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
