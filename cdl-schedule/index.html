@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Two truck-rotation schedule models for a hybrid Class A CDL program.">
+<title>CDL Cohort Rotation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  [hidden]{display:none!important}
+  img{max-width:100%}
+  :root{
+    --bg:#e7eaed; --panel:#ffffff; --panel-2:#eef1f4; --panel-3:#f7f9fb;
+    --ink:#14181c; --muted:#5e6771; --faint:#8a939c; --line:#d2d8de;
+    --accent:#b9741a; --accent-ink:#8a5510;
+    --drive-bg:#c67f22; --drive-ink:#ffffff; --drive-edge:#a5661a;
+    --online-bg:#2f6d8f; --online-ink:#ffffff; --online-edge:#255a77;
+    --test-bg:#bf4a3d; --test-ink:#ffffff;
+    --idle-ink:#9aa3ac; --idle-line:#c6ced6;
+    --good:#3d7a52;
+    --shadow:0 1px 2px rgba(20,24,28,.06),0 6px 20px rgba(20,24,28,.06);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#101316; --panel:#1a1f24; --panel-2:#20272d; --panel-3:#161b20;
+      --ink:#eef2f5; --muted:#9aa4ad; --faint:#6d777f; --line:#2f373e;
+      --accent:#e0a24a; --accent-ink:#e8b063;
+      --drive-bg:#cf8526; --drive-ink:#1a1206; --drive-edge:#e59b3b;
+      --online-bg:#3f83a8; --online-ink:#06131b; --online-edge:#57a0c4;
+      --test-bg:#d0574a; --test-ink:#180705;
+      --idle-ink:#77828b; --idle-line:#333c44;
+      --good:#5aa273;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101316; --panel:#1a1f24; --panel-2:#20272d; --panel-3:#161b20;
+    --ink:#eef2f5; --muted:#9aa4ad; --faint:#6d777f; --line:#2f373e;
+    --accent:#e0a24a; --accent-ink:#e8b063;
+    --drive-bg:#cf8526; --drive-ink:#1a1206; --drive-edge:#e59b3b;
+    --online-bg:#3f83a8; --online-ink:#06131b; --online-edge:#57a0c4;
+    --test-bg:#d0574a; --test-ink:#180705;
+    --idle-ink:#77828b; --idle-line:#333c44;
+    --good:#5aa273;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.5; margin:0;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:28px 20px 72px}
+  @media(max-width:560px){.wrap{padding:20px 14px 56px}}
+
+  h1,h2,h3,.disp{font-family:"Saira Condensed","IBM Plex Sans",sans-serif; letter-spacing:.01em}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent-ink); margin:0 0 8px}
+  h1{font-size:clamp(30px,5.5vw,46px); font-weight:700; line-height:1.02; margin:0;
+    text-wrap:balance; text-transform:uppercase}
+  .lede{color:var(--muted); max-width:64ch; margin:12px 0 0; font-size:16px}
+
+  /* spec strip */
+  .spec{display:flex; flex-wrap:wrap; gap:8px; margin:22px 0 6px}
+  .spec .chip{font-family:"IBM Plex Mono",monospace; font-size:12.5px;
+    background:var(--panel); border:1px solid var(--line); border-radius:999px;
+    padding:6px 12px; color:var(--ink); white-space:nowrap}
+  .spec .chip b{color:var(--accent-ink); font-weight:600}
+
+  /* section */
+  section{margin-top:40px}
+  .sec-h{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+  .sec-h h2{font-size:26px; font-weight:700; margin:0; text-transform:uppercase}
+  .sec-h .k{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted)}
+  .sec-note{color:var(--muted); max-width:70ch; margin:6px 0 18px; font-size:15px}
+
+  /* compare cards */
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:680px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:18px 18px 16px; box-shadow:var(--shadow)}
+  .card.a{border-top:3px solid var(--drive-bg)}
+  .card.b{border-top:3px solid var(--online-bg)}
+  .card .tag{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted)}
+  .card h3{font-size:22px; margin:4px 0 2px; font-weight:600}
+  .card .sub{color:var(--muted); font-size:14px; margin:0 0 14px}
+  .metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin:0 0 12px}
+  .metrics div{display:flex; flex-direction:column; gap:1px}
+  .metrics .n{font-family:"Saira Condensed",sans-serif; font-size:27px; font-weight:700; line-height:1}
+  .metrics .l{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.05em}
+  .best{font-size:13.5px; color:var(--ink); border-top:1px solid var(--line); padding-top:11px; margin:0}
+  .best b{color:var(--accent-ink)}
+
+  /* board */
+  .board-tabs{display:inline-flex; gap:4px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:10px; padding:4px; margin-bottom:16px}
+  .board-tabs button{font-family:"Saira Condensed",sans-serif; font-weight:600; font-size:15px;
+    letter-spacing:.02em; border:0; background:transparent; color:var(--muted);
+    padding:8px 14px; border-radius:7px; cursor:pointer; text-transform:uppercase}
+  .board-tabs button[aria-selected="true"]{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
+  .board-tabs button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .board-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:12px;
+    background:var(--panel); box-shadow:var(--shadow)}
+  .board{min-width:760px; padding:14px 14px 10px}
+  .row{display:grid; grid-template-columns:120px repeat(12,minmax(0,1fr)); gap:5px; align-items:stretch}
+  .row + .row{margin-top:5px}
+  .rlab{font-family:"Saira Condensed",sans-serif; font-weight:600; font-size:15px;
+    display:flex; align-items:center; text-transform:uppercase; color:var(--ink); padding-right:6px}
+  .rlab.sub{font-size:12.5px; color:var(--muted); font-family:"IBM Plex Mono",monospace;
+    font-weight:400; text-transform:none; letter-spacing:0}
+
+  .head .wh{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted);
+    text-align:center; padding:2px 2px 6px; border-bottom:1px solid var(--line);
+    display:flex; flex-direction:column; gap:1px; align-items:center}
+  .head .wh b{color:var(--accent-ink); font-weight:500}
+  .head .wh .d{font-size:10px; color:var(--ink); opacity:.8}
+  .head .wh.hol{border-bottom:2px solid var(--test-bg)}
+  .head .wh.hol .hf{font-size:8.5px; color:var(--test-bg); text-transform:uppercase;
+    letter-spacing:.02em; line-height:1.05; margin-top:1px}
+  .blk .badge{position:absolute; top:-6px; right:-5px; background:var(--test-bg); color:#fff;
+    font-family:"IBM Plex Mono",monospace; font-size:10px; width:16px; height:16px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.35)}
+  /* annual stat row */
+  .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:4px 0 18px}
+  @media(max-width:680px){.stat-row{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px}
+  .stat .n{font-family:"Saira Condensed",sans-serif; font-weight:700; font-size:30px; line-height:1;
+    color:var(--accent-ink)}
+  .stat .l{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.04em; margin-top:4px}
+  .hol-list{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.hol-list{grid-template-columns:1fr}}
+  .hitem{display:flex; gap:12px; background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:13px 15px}
+  .hitem .when{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--accent-ink);
+    font-weight:500; flex:none; width:92px}
+  .hitem .what{font-size:13.5px; color:var(--muted)}
+  .hitem .what b{color:var(--ink); font-weight:600; display:block; margin-bottom:2px;
+    font-family:"IBM Plex Sans",sans-serif}
+  .hitem.free{border-left:3px solid var(--good)}
+  .hitem.cost{border-left:3px solid var(--test-bg)}
+
+  .blk{border-radius:7px; min-height:42px; display:flex; flex-direction:column;
+    justify-content:center; align-items:center; gap:1px; padding:4px 6px; position:relative;
+    transition:transform .08s ease, box-shadow .08s ease}
+  .blk .ch{font-family:"Saira Condensed",sans-serif; font-weight:700; font-size:17px; line-height:1}
+  .blk .wk{font-family:"IBM Plex Mono",monospace; font-size:10px; opacity:.85; line-height:1}
+  .blk.drive{background:var(--drive-bg); color:var(--drive-ink); border:1px solid var(--drive-edge)}
+  .blk.online{background:var(--online-bg); color:var(--online-ink); border:1px solid var(--online-edge)}
+  .blk.test{background:var(--test-bg); color:var(--test-ink)}
+  .blk.idle{background:
+    repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--idle-line) 55%, transparent) 6px 7px);
+    border:1px dashed var(--idle-line); min-height:42px}
+  .blk.idle .ch{font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:400;
+    color:var(--idle-ink); text-transform:uppercase; letter-spacing:.04em}
+  .tcell{min-height:42px; border-radius:7px; background:var(--panel-3); border:1px dashed transparent}
+
+  /* pair highlight */
+  .blk[data-pair]{cursor:pointer}
+  .board.lit .blk[data-pair]:not(.on){opacity:.34}
+  .blk.on{outline:2px solid var(--accent); outline-offset:1px; transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(0,0,0,.18); opacity:1 !important; z-index:2}
+
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:14px 2px 0; font-size:13px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:7px}
+  .sw{width:15px; height:15px; border-radius:4px; display:inline-block; flex:none}
+  .sw.drive{background:var(--drive-bg); border:1px solid var(--drive-edge)}
+  .sw.online{background:var(--online-bg); border:1px solid var(--online-edge)}
+  .sw.test{background:var(--test-bg)}
+  .sw.idle{background:repeating-linear-gradient(135deg,transparent 0 4px,var(--idle-line) 4px 5px);
+    border:1px dashed var(--idle-line)}
+  .hint{font-size:12.5px; color:var(--faint); margin-top:8px; font-style:italic}
+
+  /* notes */
+  .notes{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:680px){.notes{grid-template-columns:1fr}}
+  .note{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:15px 16px}
+  .note h4{font-family:"Saira Condensed",sans-serif; text-transform:uppercase; font-size:16px;
+    font-weight:600; margin:0 0 6px; letter-spacing:.02em}
+  .note h4 .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:middle}
+  .note p{margin:0; font-size:13.8px; color:var(--muted)}
+  .note p b{color:var(--ink); font-weight:600}
+
+  .foot{margin-top:34px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:12.5px; color:var(--faint); font-family:"IBM Plex Mono",monospace}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Class A CDL · Hybrid Program Design</p>
+    <h1>CDL Cohort Rotation Board</h1>
+    <p class="lede">Two ways to run the truck fleet against a steady intake of six students every two weeks. Same online funnel, same four trucks and four instructors — the only thing that changes is how long a cohort holds a truck, and that changes everything downstream.</p>
+    <div class="spec">
+      <span class="chip"><b>60 hr</b> online · self-led · prerequisite</span>
+      <span class="chip"><b>120 hr</b> behind-the-wheel</span>
+      <span class="chip"><b>4</b> trucks · <b>3</b> students each</span>
+      <span class="chip"><b>10 hr/day</b> Mon–Thu</span>
+      <span class="chip"><b>Fri</b> skills testing</span>
+      <span class="chip">intake <b>6 / 2 wks</b></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-h"><h2>The two models at a glance</h2><span class="k">per-student &amp; per-fleet</span></div>
+    <p class="sec-note">Because you count all in-truck time toward the 120 hours, a cohort clears its behind-the-wheel requirement in three weeks — Model&nbsp;A. If your ELDT / Wisconsin DOT approval only lets part of the ride-along count (say 30 of the 40 weekly hours), it stretches to four weeks — Model&nbsp;B, the conservative fallback.</p>
+    <div class="cards">
+      <div class="card a">
+        <span class="tag">Model A · all truck time counts</span>
+        <h3>3-week truck phase</h3>
+        <p class="sub">40 counted hrs/week per student → 120 in 3 weeks</p>
+        <div class="metrics">
+          <div><span class="n">5 wks</span><span class="l">door-to-door / student</span></div>
+          <div><span class="n">~75%</span><span class="l">fleet utilization</span></div>
+          <div><span class="n">6 / 2wk</span><span class="l">intake (ceiling ~8)</span></div>
+          <div><span class="n">1 wk</span><span class="l">idle buffer / truck cycle</span></div>
+        </div>
+        <p class="best"><b>Best when</b> you want slack in the system — the idle week per truck absorbs a holiday, a weather day, or maintenance with no ripple, and you have headroom to grow past six.</p>
+      </div>
+      <div class="card b">
+        <span class="tag">Model B · 30 of 40 hrs count</span>
+        <h3>4-week truck phase</h3>
+        <p class="sub">30 counted hrs/week per student → 120 in 4 weeks</p>
+        <div class="metrics">
+          <div><span class="n">6 wks</span><span class="l">door-to-door / student</span></div>
+          <div><span class="n">100%</span><span class="l">fleet utilization</span></div>
+          <div><span class="n">6 / 2wk</span><span class="l">intake (no headroom)</span></div>
+          <div><span class="n">0 wk</span><span class="l">idle buffer / truck cycle</span></div>
+        </div>
+        <p class="best"><b>Best when</b> only partial observation may count. It hits six exactly, but runs flat-out — a lost day pushes that cohort's finish and its test day, since nothing is idle to absorb it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Rotation board</h2><span class="k" id="phaseK">3-week phase · W = program week</span></div>
+    <p class="sec-note">Each truck carries one cohort of three. Cohorts launch in pairs (six students) every two weeks. Click any block to trace one pair's journey — online on-ramp → truck weeks → Friday test.</p>
+
+    <div class="board-tabs" role="tablist" aria-label="Schedule model">
+      <button role="tab" id="tabA" aria-selected="true" aria-controls="boardA">Model A · 3-week</button>
+      <button role="tab" id="tabB" aria-selected="false" aria-controls="boardB">Model B · 4-week</button>
+    </div>
+
+    <!-- ================= MODEL A ================= -->
+    <div class="board-scroll" id="boardA" role="tabpanel" aria-labelledby="tabA">
+      <div class="board" id="gridA">
+        <div class="row head">
+          <div class="rlab"></div>
+          <div class="wh"><b>W1</b><span class="d">Oct 5</span></div>
+          <div class="wh hol"><b>W2</b><span class="d">Oct 12</span><span class="hf">Fall Bk · Fri</span></div>
+          <div class="wh"><b>W3</b><span class="d">Oct 19</span></div>
+          <div class="wh"><b>W4</b><span class="d">Oct 26</span></div>
+          <div class="wh"><b>W5</b><span class="d">Nov 2</span></div>
+          <div class="wh"><b>W6</b><span class="d">Nov 9</span></div>
+          <div class="wh"><b>W7</b><span class="d">Nov 16</span></div>
+          <div class="wh hol"><b>W8</b><span class="d">Nov 23</span><span class="hf">Thanksgiving</span></div>
+          <div class="wh"><b>W9</b><span class="d">Nov 30</span></div>
+          <div class="wh"><b>W10</b><span class="d">Dec 7</span></div>
+          <div class="wh"><b>W11</b><span class="d">Dec 14</span></div>
+          <div class="wh hol"><b>W12</b><span class="d">Dec 21</span><span class="hf">Winter Break</span></div>
+        </div>
+
+        <div class="row">
+          <div class="rlab sub">Online on-ramp</div>
+          <div class="blk online" data-pair="2" style="grid-column:span 2" title="Cohorts C·D — 60 hr online, 30 hr/wk"><span class="ch">C·D</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="3" style="grid-column:span 2"><span class="ch">E·F</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="4" style="grid-column:span 2"><span class="ch">G·H</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="5" style="grid-column:span 2"><span class="ch">I·J</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="6" style="grid-column:span 2"><span class="ch">K·L</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="7" style="grid-column:span 2"><span class="ch">M·N</span><span class="wk">60 hr online</span></div>
+        </div>
+
+        <div class="row">
+          <div class="rlab">Truck 1</div>
+          <div class="blk drive" data-pair="1" style="grid-column:span 3" title="Cohort A · behind-the-wheel"><span class="ch">A</span><span class="wk">W1–3 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="3" style="grid-column:span 3"><span class="ch">E</span><span class="wk">W5–7 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="5" style="grid-column:span 3"><span class="ch">I</span><span class="wk">W9–11 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+        </div>
+        <div class="row">
+          <div class="rlab">Truck 2</div>
+          <div class="blk drive" data-pair="1" style="grid-column:span 3"><span class="ch">B</span><span class="wk">W1–3 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="3" style="grid-column:span 3"><span class="ch">F</span><span class="wk">W5–7 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="5" style="grid-column:span 3"><span class="ch">J</span><span class="wk">W9–11 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+        </div>
+        <div class="row">
+          <div class="rlab">Truck 3</div>
+          <div class="blk idle" style="grid-column:span 2"><span class="ch">waiting</span></div>
+          <div class="blk drive" data-pair="2" style="grid-column:span 3"><span class="ch">C</span><span class="wk">W3–5 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="4" style="grid-column:span 3"><span class="ch">G</span><span class="wk">W7–9 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="6" style="grid-column:span 2"><span class="ch">K →</span><span class="wk">W11–13</span></div>
+        </div>
+        <div class="row">
+          <div class="rlab">Truck 4</div>
+          <div class="blk idle" style="grid-column:span 2"><span class="ch">waiting</span></div>
+          <div class="blk drive" data-pair="2" style="grid-column:span 3"><span class="ch">D</span><span class="wk">W3–5 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="4" style="grid-column:span 3"><span class="ch">H</span><span class="wk">W7–9 BTW</span></div>
+          <div class="blk idle" style="grid-column:span 1"><span class="ch">turn</span></div>
+          <div class="blk drive" data-pair="6" style="grid-column:span 2"><span class="ch">L →</span><span class="wk">W11–13</span></div>
+        </div>
+
+        <div class="row">
+          <div class="rlab sub">Fri skills test</div>
+          <div class="tcell" style="grid-column:span 2"></div>
+          <div class="blk test" data-pair="1" style="grid-column:span 1" title="Test A·B — examined by the 2 instructors who didn't teach them"><span class="ch">A·B</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="2" style="grid-column:span 1"><span class="ch">C·D</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="3" style="grid-column:span 1"><span class="ch">E·F</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="4" style="grid-column:span 1"><span class="ch">G·H</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="5" style="grid-column:span 1"><span class="ch">I·J</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODEL B ================= -->
+    <div class="board-scroll" id="boardB" role="tabpanel" aria-labelledby="tabB" hidden>
+      <div class="board" id="gridB">
+        <div class="row head">
+          <div class="rlab"></div>
+          <div class="wh"><b>W1</b><span class="d">Oct 5</span></div>
+          <div class="wh hol"><b>W2</b><span class="d">Oct 12</span><span class="hf">Fall Bk · Fri</span></div>
+          <div class="wh"><b>W3</b><span class="d">Oct 19</span></div>
+          <div class="wh"><b>W4</b><span class="d">Oct 26</span></div>
+          <div class="wh"><b>W5</b><span class="d">Nov 2</span></div>
+          <div class="wh"><b>W6</b><span class="d">Nov 9</span></div>
+          <div class="wh"><b>W7</b><span class="d">Nov 16</span></div>
+          <div class="wh hol"><b>W8</b><span class="d">Nov 23</span><span class="hf">Thanksgiving</span></div>
+          <div class="wh"><b>W9</b><span class="d">Nov 30</span></div>
+          <div class="wh"><b>W10</b><span class="d">Dec 7</span></div>
+          <div class="wh"><b>W11</b><span class="d">Dec 14</span></div>
+          <div class="wh hol"><b>W12</b><span class="d">Dec 21</span><span class="hf">Winter Break</span></div>
+        </div>
+
+        <div class="row">
+          <div class="rlab sub">Online on-ramp</div>
+          <div class="blk online" data-pair="2" style="grid-column:span 2"><span class="ch">C·D</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="3" style="grid-column:span 2"><span class="ch">E·F</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="4" style="grid-column:span 2"><span class="ch">G·H</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="5" style="grid-column:span 2"><span class="ch">I·J</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="6" style="grid-column:span 2"><span class="ch">K·L</span><span class="wk">60 hr online</span></div>
+          <div class="blk online" data-pair="7" style="grid-column:span 2"><span class="ch">M·N</span><span class="wk">60 hr online</span></div>
+        </div>
+
+        <div class="row">
+          <div class="rlab">Truck 1</div>
+          <div class="blk drive" data-pair="1" style="grid-column:span 4"><span class="ch">A</span><span class="wk">W1–4 BTW</span></div>
+          <div class="blk drive" data-pair="3" style="grid-column:span 4"><span class="ch">E</span><span class="wk">W5–8 BTW</span></div>
+          <div class="blk drive" data-pair="5" style="grid-column:span 4"><span class="ch">I</span><span class="wk">W9–12 BTW</span></div>
+        </div>
+        <div class="row">
+          <div class="rlab">Truck 2</div>
+          <div class="blk drive" data-pair="1" style="grid-column:span 4"><span class="ch">B</span><span class="wk">W1–4 BTW</span></div>
+          <div class="blk drive" data-pair="3" style="grid-column:span 4"><span class="ch">F</span><span class="wk">W5–8 BTW</span></div>
+          <div class="blk drive" data-pair="5" style="grid-column:span 4"><span class="ch">J</span><span class="wk">W9–12 BTW</span></div>
+        </div>
+        <div class="row">
+          <div class="rlab">Truck 3</div>
+          <div class="blk idle" style="grid-column:span 2"><span class="ch">waiting</span></div>
+          <div class="blk drive" data-pair="2" style="grid-column:span 4"><span class="ch">C</span><span class="wk">W3–6 BTW</span></div>
+          <div class="blk drive" data-pair="4" style="grid-column:span 4"><span class="ch">G</span><span class="wk">W7–10 BTW</span></div>
+          <div class="blk drive" data-pair="6" style="grid-column:span 2"><span class="ch">K →</span><span class="wk">W11–14</span></div>
+        </div>
+        <div class="row">
+          <div class="rlab">Truck 4</div>
+          <div class="blk idle" style="grid-column:span 2"><span class="ch">waiting</span></div>
+          <div class="blk drive" data-pair="2" style="grid-column:span 4"><span class="ch">D</span><span class="wk">W3–6 BTW</span></div>
+          <div class="blk drive" data-pair="4" style="grid-column:span 4"><span class="ch">H</span><span class="wk">W7–10 BTW</span></div>
+          <div class="blk drive" data-pair="6" style="grid-column:span 2"><span class="ch">L →</span><span class="wk">W11–14</span></div>
+        </div>
+
+        <div class="row">
+          <div class="rlab sub">Fri skills test</div>
+          <div class="tcell" style="grid-column:span 3"></div>
+          <div class="blk test" data-pair="1" style="grid-column:span 1"><span class="ch">A·B</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="2" style="grid-column:span 1"><span class="ch">C·D</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="3" style="grid-column:span 1" title="Test E·F falls on Fri Nov 27 — Thanksgiving. Must move; collides with I·J truck start."><span class="ch">E·F</span><span class="badge">!</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="4" style="grid-column:span 1"><span class="ch">G·H</span></div>
+          <div class="tcell" style="grid-column:span 1"></div>
+          <div class="blk test" data-pair="5" style="grid-column:span 1" title="Test I·J falls on Fri Dec 25 — Christmas / Winter Break. Must move."><span class="ch">I·J</span><span class="badge">!</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="sw online"></i> 60 hr online on-ramp (30 hr/wk)</span>
+      <span><i class="sw drive"></i> Behind-the-wheel, 10 hr/day Mon–Thu</span>
+      <span><i class="sw test"></i> Friday skills test (6 students)</span>
+      <span><i class="sw idle"></i> Truck idle — turnaround / waiting</span>
+    </div>
+    <p class="hint">Pairs A·B and M·N are drawn at the edges — A·B finished its online in the two weeks before W1; M·N is on-ramping toward a start just past W12.</p>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>What holds in both models</h2></div>
+    <div class="notes">
+      <div class="note">
+        <h4><span class="dot" style="background:var(--online-bg)"></span>The online funnel is identical</h4>
+        <p>Six students begin the <b>60-hour online course every two weeks</b> — 30 hr/wk, self-led, due the day before truck Day&nbsp;1. Because it needs no truck, you can start it earlier and stretch it (e.g. 4 wks @ 15 hr/wk) if 30 hr/wk is too heavy for working adults; the only hard rule is <b>done before the wheel</b>.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot" style="background:var(--test-bg)"></span>Friday testing never bottlenecks</h4>
+        <p>A finishing pair is <b>6 students</b>. The two instructors who taught them are excluded, leaving two eligible examiners — <b>3 tests each × ~2 hr</b>, staggered across the 10-hour Friday. Trucks don't run Fridays, so every instructor is free to test.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot" style="background:var(--drive-bg)"></span>Instructor load differs</h4>
+        <p><b>Model A</b> oscillates 2↔4 trucks active by week (some instructors get a lighter week). <b>Model B</b> keeps all <b>4 instructors on a truck every week</b> — full, steady, no cushion. Either way it's one instructor per truck; a second daily shift isn't possible with four.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot" style="background:var(--good)"></span>Holidays &amp; the ramp</h4>
+        <p>Weeks 1–2 only run two trucks while trucks 3–4 wait for their first online cohort. On holidays, <b>Model A's idle week absorbs a closure</b> cleanly; in <b>Model B a closure shifts</b> that cohort's finish and Friday test — plan make-ups around Fall Break (Oct 16–19 on your campus calendar).</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>On the real calendar</h2><span class="k">anchored to W1 = Mon Oct 5, 2026</span></div>
+    <p class="sec-note">Here's the finding that jumps out once you drop it onto actual dates: because <b>driving is Mon–Thu, every Friday and weekend holiday costs zero driving time.</b> Only breaks that include a weekday Mon–Thu — Thanksgiving Thursday, and full-week closures — actually reduce capacity.</p>
+    <div class="hol-list">
+      <div class="hitem free">
+        <div class="when">Sep 7</div>
+        <div class="what"><b>Labor Day (Mon) — before intake</b>Falls in the online on-ramp window; no truck impact. If a Monday closure did land in a driving week it would cost one 10-hr day.</div>
+      </div>
+      <div class="hitem free">
+        <div class="when">Oct 16</div>
+        <div class="what"><b>Fall Break + Employee Prep (Fri) — free</b>Friday only. No Mon–Thu driving lost. No cohort tests that Friday in either model. Costs nothing.</div>
+      </div>
+      <div class="hitem cost">
+        <div class="when">Nov 26–27</div>
+        <div class="what"><b>Thanksgiving (Thu + Fri) — costs a day</b>Loses one 10-hr driving day. <b>Model A</b> absorbs it in a truck's turnaround week. <b>Model B</b> can't — cohort E·F ends 10 hrs short and its Fri Nov 27 test collides with the next cohort's start.</div>
+      </div>
+      <div class="hitem cost">
+        <div class="when">Dec 21–Jan 1</div>
+        <div class="what"><b>Winter Break (~2 weeks) — planned pause</b>Any cohort straddling it stretches by two weeks. The clean fix in <b>both</b> models: don't launch a cohort that would span the break — take a deliberate ~3-week intake pause and resume in January.</div>
+      </div>
+    </div>
+    <p class="hint">Model B's test cadence happens to land on Nov 27 and Dec 25 at this start date (the ⚠ flags) — shifting the program's start Monday can dodge that, but the underlying point stands: Model A can move a test with no cascade, Model B can't.</p>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Annual outlook</h2><span class="k">theoretical · proof of concept</span></div>
+    <p class="sec-note">Across a full year, both models run the same <b>6-students-every-2-weeks</b> intake. The difference is how much the calendar erodes it — and how gracefully.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="n">~47</div><div class="l">usable weeks / yr</div></div>
+      <div class="stat"><div class="n">~23</div><div class="l">intake pairs / yr</div></div>
+      <div class="stat"><div class="n">~138</div><div class="l">students / yr (Model A)</div></div>
+      <div class="stat"><div class="n">~120</div><div class="l">students / yr (Model B)</div></div>
+    </div>
+    <div class="notes">
+      <div class="note">
+        <h4><span class="dot" style="background:var(--drive-bg)"></span>Model A over a year</h4>
+        <p>The 25% turnaround slack is the hero: single-day holidays vanish into it, and the <b>~8/2wk ceiling</b> means a post-break backlog can be caught up. One planned <b>~3-week pause at Winter Break</b> is the only calendar-driven gap. Highest theoretical throughput, most resilient.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot" style="background:var(--online-bg)"></span>Model B over a year</h4>
+        <p>At 100% utilization there's nothing to catch up with, so <b>every closure must become a planned intake gap</b> — Thanksgiving week and Winter Break both. That trims annual output and demands disciplined test-day make-ups. Choose it only if compliance forces the 4-week phase.</p>
+      </div>
+    </div>
+    <p class="hint">Student counts assume the "all in-truck time counts toward the 120" basis you specified — an ELDT / Wisconsin DOT determination. If only partial observation counts, Model B's numbers are the realistic ceiling.</p>
+  </section>
+
+  <p class="foot">Theoretical proof of concept · W1 anchored to Mon Oct 5 2026 · holidays per Southwest Tech calendar (Nov–Jan assumed) · Class A CDL</p>
+</div>
+
+<script>
+(function(){
+  var tabA=document.getElementById('tabA'), tabB=document.getElementById('tabB');
+  var boardA=document.getElementById('boardA'), boardB=document.getElementById('boardB');
+  var phaseK=document.getElementById('phaseK');
+  function select(which){
+    var a=which==='A';
+    tabA.setAttribute('aria-selected',a); tabB.setAttribute('aria-selected',!a);
+    boardA.hidden=!a; boardB.hidden=a;
+    phaseK.textContent=(a?'3-week phase':'4-week phase')+' · W = program week';
+  }
+  tabA.addEventListener('click',function(){select('A');});
+  tabB.addEventListener('click',function(){select('B');});
+
+  // pair journey highlight
+  function grids(){return [document.getElementById('gridA'),document.getElementById('gridB')];}
+  function lightPair(p){
+    grids().forEach(function(g){
+      var any=false;
+      g.querySelectorAll('.blk[data-pair]').forEach(function(el){
+        var on=el.getAttribute('data-pair')===p;
+        el.classList.toggle('on',on); if(on)any=true;
+      });
+      g.classList.toggle('lit',!!p);
+    });
+  }
+  var pinned=null;
+  document.querySelectorAll('.board').forEach(function(g){
+    g.addEventListener('mouseover',function(e){
+      if(pinned)return; var b=e.target.closest('.blk[data-pair]'); if(b)lightPair(b.getAttribute('data-pair'));
+    });
+    g.addEventListener('mouseout',function(e){
+      if(pinned)return; if(!e.relatedTarget||!e.relatedTarget.closest('.blk[data-pair]'))lightPair(null);
+    });
+    g.addEventListener('click',function(e){
+      var b=e.target.closest('.blk[data-pair]'); if(!b)return;
+      var p=b.getAttribute('data-pair');
+      if(pinned===p){pinned=null;lightPair(null);} else {pinned=p;lightPair(p);}
+    });
+  });
+})();
+</script>
+</body>
+</html>
