@@ -490,7 +490,7 @@ function renderAll(){
 function allPackLabs(){ const mods=PACK?(PACK.modules||[]):[]; const out=[]; mods.forEach(m=>(m.labs||[]).forEach(l=>out.push(l))); return out; }
 function pseudoSub(stu, lab){ const wl=(stu.labs||{})[lab.job]||{};
   return { student:{name:stu.name}, labPack:{job:lab.job, version:lab.version, title:lab.title},
-           vehicle: lab.requiresVehicle?stu.vehicle:null, responses:wl.responses||{}, checkoffs:wl.checkoffs||[], _inst:{flags:{}} }; }
+           vehicle: lab.requiresVehicle?(vehicleRecorded(wl.vehicle)?wl.vehicle:stu.vehicle):null, responses:wl.responses||{}, checkoffs:wl.checkoffs||[], _inst:{flags:{}} }; }
 function jobTouched(stu, lab){ const wl=(stu.labs||{})[lab.job]||{};
   return (wl.responses&&Object.keys(wl.responses).length>0)||(wl.checkoffs&&wl.checkoffs.length>0); }
 function jobState(stu, lab){ if(!jobTouched(stu,lab)) return {state:"no"};
@@ -553,6 +553,7 @@ function renderStudentDetail(){
       if(open){
         const sub=pseudoSub(stu,lab), g=gradeSubmission(lab,sub);
         body+=`<div class="jans">`;
+        if(lab.requiresVehicle) body+=`<h4 class="block">Vehicle</h4><div>${vehicleRecorded(sub.vehicle)?esc(vehLabel(sub.vehicle)):'<span style="color:var(--subtle)">Not recorded</span>'}</div>`;
         if((lab.steps||[]).length) body+=`<h4 class="block">Steps</h4>`+lab.steps.map((s,i)=>`<div class="stepline ${(sub.checkoffs||[]).includes(i)?"on":""}"><span class="box">${(sub.checkoffs||[]).includes(i)?"✓":""}</span><span>${esc(s.text)}</span></div>`).join("");
         body+=`<h4 class="block">Recorded answers</h4>`+ (g.fields.map(fr=>answerHTML(fr.f, fr.res, sub, true)).join("")||'<div style="color:var(--subtle)">No fields on this job.</div>');
         body+=`</div>`;
