@@ -183,7 +183,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .reads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .read{min-width:0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line);transition:border-color .2s}
 .read label{display:block;font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
-.read b{display:block;margin-top:5px;font:600 21px/1.1 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.read b{display:block;margin-top:5px;font:600 21px/23px var(--f-mono);height:23px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}  /* fixed height: long values shrink (renderReadouts) without resizing the card */
 .read small{display:block;margin-top:3px;font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .read.alert{border-color:rgba(255,90,78,.5)}
 .read.alert b{color:#FF8A80}
@@ -195,6 +195,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 #chart{width:100%;height:auto;max-height:160px;display:block}
 #chart text{font-family:var(--f-mono);font-size:9px;fill:var(--faint)}
 #chart .zl{font-family:var(--f-label);font-weight:700;letter-spacing:.12em;font-size:8.5px;fill:#FF8A80}
+#chart .ann{font-family:var(--f-label);font-weight:700;letter-spacing:.1em;font-size:8.5px}
 .sec{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px}
 .sec h3{margin:0;font:700 10.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
 .sec span{font-size:11.5px;color:var(--faint)}
@@ -253,6 +254,9 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .tell.t2.on svg{filter:drop-shadow(0 0 6px rgba(47,155,224,.8))}
 .milpath{fill:#2A2419;transition:fill .3s}
 .tell.on .milpath{fill:var(--warn)}
+#milTxt,#t2Txt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}  /* status text never wraps, so the dash never changes height */
+.tell.flash svg{animation:milblink .8s steps(1,end) infinite}
+@keyframes milblink{50%{opacity:.15}}
 .ic{fill:#1f2a35;transition:fill .3s}
 .tell.t2.on .ic{fill:#8CCBF3}
 .fanrot{transform-origin:12px 12px}
@@ -314,7 +318,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   #pickSub{display:none}
 }
 @media (prefers-reduced-motion:reduce){
-  .spot,#circuit .spot,#chart .spot,.tell.t2.on .fanrot{animation:none}
+  .spot,#circuit .spot,#chart .spot,.tell.t2.on .fanrot,.tell.flash svg{animation:none}
   .toast{animation:none}
 }
 </style>
@@ -430,6 +434,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
               <path id="scopePath" fill="none" stroke="#5FD4FF" stroke-width="1.8" stroke-linejoin="round"/>
               <circle id="scopeDot" r="3.5" fill="#EAFBFF"/>
             </g>
+            <g id="trigAnn"></g>
           </svg>
         </div>
         <div class="sec"><h3>Diagnostic monitors</h3><span>Click a monitor to see its enable criteria</span></div>
@@ -1595,12 +1600,491 @@ O2.lesson = [
     goal: { text: 'P0171 stored as pending', test: () => S.M.P0171.pending || S.M.P0171.confirmed } },
   { title: 'Reading an O2 circuit',
     body: 'An O2 sensor makes its own voltage, but only when it\'s hot, so the <b>heater circuit</b> matters as much as the signal. Stuck low or high points to the circuit. Stuck at the <b>bias voltage</b> means no activity: open signal, open ground, or a cold sensor. And fuel trim codes like P0171 can come from a perfectly good sensor telling the truth about a leak.',
+    final: true, alt: { label: 'Injector lesson ▸', go() { switchSensor('inj'); } } },
+];
+
+/* ================= Fuel injector: 2-wire solenoid, low-side driver ================= */
+const INJ_R = 12, INJ_L = 0.010, INJ_IOPEN = 0.7, INJ_VCL = 62, INJ_CLOG = 0.76;
+const INJ_ST = { ok: 'OK', open: 'Open', low: 'Short to ground', high: 'Short to voltage' };
+const injRate = () => { const l = S.p.log; return l.length ? l.filter(Boolean).length / l.length : 0; };
+const injCur = () => { const m = S.M.P0301; return S.key === 'run' && m.ev0 != null ? S.p.missN - m.miss0 : 0; };
+function setRpm(x) { if (S.p.rpmT != null) S.p.rpmT = x; }
+
+/* Coil current ramp for one injection: I(t) = Iss(1 - e^-t/tau), pintle opens at INJ_IOPEN */
+function injWave() {
+  const s = S.inj, p = S.p, run = S.key === 'run';
+  const stuck = s.iOff > 0.3, drive = run && !s.oc && !stuck && s.iOn > 0.02;
+  const Iss = s.iOn, tau = Iss > 0.02 ? INJ_L * 1000 * Iss / S.batt : 0.8;             // ms
+  const tO = drive && Iss > INJ_IOPEN ? -tau * Math.log(1 - INJ_IOPEN / Iss) : null;
+  const Ioff = drive ? Iss * (1 - Math.exp(-p.pw / tau)) : 0, kick = Ioff > 0.02;
+  const peak = s.voff + (INJ_VCL - s.voff) * clamp(Ioff / 0.25, 0, 1);
+  const tk = kick ? INJ_L * 1000 * Ioff / Math.max(INJ_VCL - s.voff, 5) : 0;           // clamp time while the field collapses
+  return { stuck, drive, Iss, tau, tO, Ioff, kick, peak, tk };
+}
+/* Fuel delivered on one injection, relative to a healthy injector at the same pulse width */
+function injFuel() {
+  const s = S.inj, p = S.p;
+  if (s.iOff > 0.3) return { frac: 10, stuck: true };                                  // coil energized with the driver off
+  if (s.oc || s.iOn < INJ_IOPEN) return { frac: 0 };                                    // never reaches pull-in current
+  const tOpen = I => -(INJ_L * 1000 * I / S.batt) * Math.log(1 - INJ_IOPEN / I);
+  const t = tOpen(s.iOn), t0 = tOpen(S.batt / (INJ_R + 0.45));
+  return { frac: (S.f.clog ? INJ_CLOG : 1) * Math.max(0, p.pw - t + 0.3) / (p.pw - t0 + 0.3) };
+}
+/* One firing of cylinder 1: the ECM pulses the injector, the cylinder fires or misfires */
+function injEvent() {
+  const p = S.p;
+  INJ.solve();
+  const { frac, stuck } = injFuel();
+  const pm = frac >= 1.8 ? clamp((frac - 1.8) / 0.7, 0, 1) : clamp((0.85 - frac) / 0.35, 0, 1);
+  const miss = Math.random() < pm;
+  p.evN++;
+  if (miss) { p.missN++; p.missTot++; p.dip += 45; }
+  p.log.push(miss); if (p.log.length > 24) p.log.shift();
+  p.fa += (Math.min(frac, 2) - p.fa) * 0.25;
+  p.last = { frac, miss, stuck: !!stuck };
+}
+/* Triggered scope capture of one injection: control pin volts ('v') or coil amps ('a') */
+function injTrace(kind) {
+  const T = INJ.chart.trig, pts = [];
+  if (!on()) return [[0, 0], [T.ms, 0]];
+  const s = S.inj, run = S.key === 'run', w = injWave(), t0 = T.t0, t1 = t0 + S.p.pw;
+  const I = u => w.Iss * (1 - Math.exp(-u / w.tau));
+  const hump = x => x > 0 && x < 1 ? Math.sin(Math.PI * x) : 0;
+  for (let t = 0; t <= T.ms + 1e-9; t += 0.02) {
+    let y;
+    if (kind === 'v') {
+      if (w.stuck || !run || t < t0) y = s.voff;
+      else if (t < t1) y = s.oc ? (t < t0 + 0.08 ? s.vonRaw : s.voff) : w.drive ? s.von * I(t - t0) / w.Iss : s.von;
+      else {
+        const u = t - t1;
+        if (!w.kick) y = s.voff;
+        else if (u < 0.03) y = s.von + (w.peak - s.von) * u / 0.03;
+        else if (u < 0.03 + w.tk) y = w.peak;
+        else { const g = u - 0.03 - w.tk; y = s.voff + (w.peak - s.voff) * 0.12 * Math.exp(-g / 0.08) * Math.cos(g / 0.05) + (w.tO != null ? 2.4 * Math.exp(-(((g - 0.45) / 0.1) ** 2)) : 0); }
+      }
+    } else {
+      if (w.stuck) y = s.iOff;
+      else if (!run || t < t0 || !w.drive) y = 0;
+      else if (t < t1) { const u = t - t0; y = I(u) - (w.tO != null ? 0.06 * hump((u - w.tO) / 0.3) : 0); }
+      else y = w.kick ? Math.max(0, w.Ioff * (1 - (t - t1) / (w.tk + 0.03))) : 0;
+    }
+    pts.push([t, y]);
+  }
+  return pts;
+}
+function injAnnot(mode) {
+  if (!on()) return '';
+  const s = S.inj, p = S.p, run = S.key === 'run', t0 = INJ.chart.trig.t0, t1 = t0 + p.pw, w = injWave();
+  const tx = (x, y, str, fill, a = 'start') => `<text class="ann" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" style="fill:${fill}">${str}</text>`;
+  const RED = '#FF8A80', DIM = '#8A98A8', BLU = '#8CCBF3', YEL = '#FFC766';
+  let h = '';
+  if (mode === 'scope') {
+    h += tx(CH.x0 + 3, cy(20) - 2, 'OFF-STATE CHECK', YEL);
+    if (!run) h += tx(cx(7), cy(34), 'ENGINE NOT RUNNING · NO PULSES', DIM, 'middle');
+    else if (w.stuck) h += tx(cx(7), cy(34), 'PIN HELD AT 0 V · INJECTOR ON NONSTOP', RED, 'middle');
+    else if (s.oc) h += tx(cx(t0) + 6, cy(34), 'OVERCURRENT · DRIVER SHUTS ITSELF OFF', RED);
+    else {
+      const y = cy(26), a = cx(t0), b = cx(t1);
+      h += `<path d="M${a} ${y - 3}V${y + 3}M${a} ${y}H${b}M${b} ${y - 3}V${y + 3}" stroke="${BLU}" stroke-width="1" fill="none"/>`;
+      h += tx((a + b) / 2, y - 5, `ON ${p.pw.toFixed(1)} ms`, BLU, 'middle');
+      if (w.kick) {
+        h += tx(cx(t1 + 0.03 + w.tk) + 5, cy(w.peak) + 8, `${Math.round(w.peak)} V SPIKE`, BLU);
+        if (w.tO != null) h += tx(cx(t1 + 0.5 + w.tk) + 4, cy(s.voff + 3) - 6, 'PINTLE CLOSES', DIM);
+      } else h += tx(b + 7, cy(34), 'NO SPIKE · NO COIL CURRENT', RED);
+    }
+  } else {
+    const yo = ay(INJ_IOPEN);
+    h += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${yo}" y2="${yo}" stroke="#FFB224" stroke-dasharray="3 3" stroke-width="1" opacity=".7"/>`;
+    h += tx(CH.x1 - 4, yo - 4, 'OPENING CURRENT 0.7 A', YEL, 'end');
+    if (!run) h += tx(cx(7), ay(0.35), 'ENGINE NOT RUNNING · NO PULSES', DIM, 'middle');
+    else if (w.stuck) h += tx(cx(7), ay(s.iOff) - 7, 'COIL ENERGIZED NONSTOP · INJECTOR OPEN', RED, 'middle');
+    else if (!w.drive) h += tx(cx(7), ay(0.35), 'NO CURRENT THROUGH THE COIL', RED, 'middle');
+    else {
+      if (w.tO != null) { const x = cx(t0 + w.tO); h += `<circle cx="${x}" cy="${yo}" r="3.5" fill="none" stroke="${BLU}" stroke-width="1.2"/>` + tx(x - 7, yo - 5, 'PINTLE OPENS', BLU, 'end'); }
+      else h += tx(cx(t1) + 7, ay(w.Ioff) - 6, 'NEVER REACHES OPENING CURRENT', RED);
+      h += tx(cx(t1) + 7, ay(w.Ioff) + 4, `${w.Ioff.toFixed(2)} A`, DIM);
+    }
+  }
+  return h;
+}
+
+const INJ_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gBI" gradientUnits="userSpaceOnUse" x1="152" y1="83" x2="212" y2="83"><stop offset="0" id="gBI0" stop-color="#2c3e50"/><stop offset="1" id="gBI1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="440" y1="318" x2="440" y2="348"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gCO" gradientUnits="userSpaceOnUse" x1="290" y1="480" x2="390" y2="480"><stop offset="0" id="gCO0" stop-color="#2c3e50"/><stop offset="1" id="gCO1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9A8350"/><stop offset="1" stop-color="#4A3D20"/></linearGradient>
+  <linearGradient id="sprayG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EAF4FF" stop-opacity=".95"/><stop offset="1" stop-color="#8FC3F0" stop-opacity="0"/></linearGradient>
+  <radialGradient id="burnG"><stop offset="0" stop-color="#FFE7B0"/><stop offset=".45" stop-color="#FF9A3C" stop-opacity=".85"/><stop offset="1" stop-color="#FF5A1F" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="320" height="200" rx="14" class="ecm"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<g id="g-bias">
+  <rect x="40" y="70" width="84" height="26" rx="6" class="blk"/>
+  <text x="82" y="87" class="t-blk" text-anchor="middle">BIAS 3 V</text>
+  <text x="182" y="68" class="t-tiny" text-anchor="middle">20 kΩ</text>
+</g>
+<rect x="262" y="112" width="64" height="38" rx="7" class="blk"/>
+<text x="294" y="129" class="t-blk" text-anchor="middle">A/D</text>
+<text x="294" y="142" class="t-tiny" text-anchor="middle">DIAG ▸</text>
+<g id="g-driver">
+  <text x="40" y="150" class="t-tiny">LOW-SIDE DRIVER</text>
+  <text x="40" y="165" class="t-mono" id="pwLbl" style="font-size:10px">PW 0.0 ms</text>
+  <text x="40" y="180" class="t-tiny">CLAMP 62 V</text>
+  <path class="gnd" d="M168 150 H192 M172 155 H188 M176 160 H184"/>
+</g>
+<text x="232" y="204" class="t-pin" text-anchor="end">INJ 1 CTRL</text>
+<g id="g-fuse">
+  <rect x="372" y="36" width="128" height="72" rx="10" class="blk"/>
+  <text x="386" y="58" class="t-blk">FUSE 15 A</text>
+  <text x="386" y="72" class="t-tiny">IGN FEED · INJ</text>
+  <text x="386" y="94" class="t-mono" id="bpLbl">B+ 0.0 V</text>
+</g>
+<text x="452" y="134" class="t-tiny">INJ 2–4 ▸</text>
+<rect x="200" y="318" width="276" height="30" rx="8" class="conn"/>
+<text x="482" y="337" class="t-blk">C1</text>
+<g id="g-cyl">
+  <rect x="26" y="232" width="160" height="272" rx="12" fill="#0E151C" stroke="#1D2732"/>
+  <text x="40" y="254" class="t-blk">CYL 1</text>
+  <text x="172" y="254" class="t-mono" text-anchor="end" id="cylLbl" style="font-size:10px">OFF</text>
+  <rect x="101" y="266" width="10" height="14" rx="2" fill="#6B7887"/>
+  <path d="M60 392 V280 H152 V392" fill="none" stroke="#2B3847" stroke-width="2"/>
+  <ellipse id="burn" cx="106" cy="306" rx="42" ry="24" fill="url(#burnG)" opacity="0"/>
+  <g id="missX" opacity="0"><path d="M96 298 l20 16 M116 298 l-20 16" stroke="#FF5A4E" stroke-width="2.4" stroke-linecap="round"/></g>
+  <rect x="64" y="340" width="84" height="30" rx="3" fill="#1b2530" stroke="#3a4a5c"/>
+  <path d="M64 348 H148 M64 354 H148" stroke="#2A3644"/>
+  <path d="M106 370 V392" stroke="#3a4a5c" stroke-width="6"/>
+  <text x="40" y="414" class="t-tiny">LAST 24 FIRINGS</text>
+  ${Array.from({ length: 24 }, (_, i) => `<rect id="lg${i}" x="${40 + (i % 12) * 12}" y="${422 + Math.floor(i / 12) * 12}" width="9" height="9" rx="2" fill="#18212B"/>`).join('')}
+  <text x="40" y="464" class="t-mono" id="misLbl" style="font-size:10px">Engine off</text>
+  <text x="40" y="484" class="t-tiny">SEEN AS A DIP IN</text>
+  <text x="40" y="495" class="t-tiny">CRANKSHAFT SPEED</text>
+</g>
+<rect x="30" y="518" width="470" height="30" rx="15" fill="#10161d" stroke="#2c3643"/>
+<text x="46" y="537" class="t-tiny" style="fill:#8A98A8">◂ INTAKE PORT · CYL 1</text>
+<text x="488" y="537" class="t-mono" text-anchor="end" id="portLbl">Engine off</text>
+<g id="g-inj">
+  <rect x="200" y="440" width="276" height="66" rx="14" class="sensor"/>
+  <text x="214" y="499" class="t-sub">FUEL INJECTOR 1</text>
+  <text x="462" y="499" class="t-mono" text-anchor="end" id="coilLbl" style="font-size:10px">12.0 Ω · 10 mH</text>
+</g>
+<rect x="332" y="506" width="16" height="13" rx="3" fill="url(#brass)"/>
+<g id="g-spray">
+  <path id="spray" d="M336 519 L318 547 H362 L344 519 Z" fill="url(#sprayG)" opacity="0"/>
+  <path id="stream" d="M337 519 L335 547 H345 L343 519 Z" fill="#CFE6FF" opacity="0"/>
+</g>
+<g id="g-clog" style="display:none"><circle cx="336" cy="518" r="1.8" fill="#1a1508"/><circle cx="343" cy="519" r="2.2" fill="#1a1508"/><circle cx="339" cy="516" r="1.4" fill="#2a2210"/></g>
+<text x="354" y="515" class="t-tiny" id="g-stuck" style="fill:#FF8A80;display:none">STUCK OPEN</text>
+<g>
+  <path class="w" data-n="VBI" d="M124 83 H152"/>
+  <path class="w" data-g="gBI" d="M152 83 L157 76 L165 90 L173 76 L181 90 L189 76 L197 90 L205 76 L212 83"/>
+  <path class="w" data-n="CP" d="M212 83 H240 V262"/>
+  <path class="w" data-n="CP" d="M240 131 H262"/>
+  <path class="w" data-n="CP" d="M240 184 H208"/>
+  <path class="w" data-n="CP" id="blade" d="M208 184 L193 160"/>
+  <path class="w" data-n="G" d="M208 156 V142 H180 V150"/>
+  <path class="w" data-n="CP" id="br-ctrlUp" d="M240 262 V270"/>
+  <path class="w" data-n="CA" d="M240 270 V348"/>
+  <path class="w" data-n="CX" d="M240 348 V424"/>
+  <path class="w" data-n="CX" id="br-ctrlLo" d="M240 424 V432"/>
+  <path class="w" data-n="HC" d="M240 432 V480 H290"/>
+  <path class="w" data-g="gCO" d="M290 480 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0 a6.25 6.25 0 0 1 12.5 0"/>
+  <path class="w" data-n="FC" d="M390 480 H440 V432"/>
+  <path class="w" data-n="FX" id="br-feedLo" d="M440 432 V424"/>
+  <path class="w" data-n="FX" d="M440 424 V348"/>
+  <path class="w" data-g="gHR" id="c1s" d="M440 348 V318"/>
+  <path class="w" data-g="gHR" id="c1z" d="M440 348 V344 L432 341 L448 336 L432 331 L448 326 L440 323 V318"/>
+  <path class="w" data-n="FA" d="M440 318 V270"/>
+  <path class="w" data-n="FB" id="br-feedUp" d="M440 270 V262"/>
+  <path class="w" data-n="FB" d="M440 262 V108"/>
+  <path class="w" data-n="FB" d="M440 140 H500"/>
+</g>
+<rect x="435" y="108" width="10" height="14" rx="2" class="pinbox"/>
+<circle cx="240" cy="131" r="3" class="jdot"/><circle cx="240" cy="184" r="3" class="jdot"/><circle cx="440" cy="140" r="3" class="jdot"/>
+<circle cx="208" cy="184" r="2.5" class="jdot"/><circle cx="208" cy="156" r="2.5" class="jdot"/>
+<rect x="234" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<text x="248" y="300" class="t-tiny">CTRL · GN</text>
+<text x="448" y="300" class="t-tiny">FEED · PK</text>
+<g id="g-hr" class="jump">
+  <circle class="corr" cx="432" cy="321" r="2.2"/><circle class="corr" cx="449" cy="326" r="1.6"/><circle class="corr" cx="446" cy="344" r="2"/><circle class="corr" cx="431" cy="340" r="1.4"/>
+  <text x="424" y="331" class="t-mono" text-anchor="end" id="hrLbl1" style="fill:#FFB3AC">+0.0 Ω</text>
+  <text x="424" y="344" class="t-tiny" text-anchor="end" id="hrLbl2">DROP 0.0 V ON</text>
+</g>
+<g id="g-inter" class="jump">
+  <text x="252" y="331" class="t-tiny" style="fill:#FFD48A">LOOSE TERMINAL</text>
+  <g id="interSpark"><path class="spark" d="M230 326 l-5 5 M236 324 v5 M246 327 l5 4 M232 342 l-6 -2"/></g>
+</g>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="CX" d="M240 384 H286 V394"/>
+  <path class="gnd" d="M274 394 H298 M278 399 H294 M282 404 H290"/>
+  <circle cx="240" cy="384" r="5" class="chafe"/>
+  <text x="252" y="378" class="t-tiny" style="fill:#FF8A80">CHAFED TO GROUND</text>
+</g>
+<g id="g-shortb" class="jump">
+  <path class="w" data-n="BAT" d="M462 408 H446 a6 6 0 0 0 -12 0 H240"/>
+  <rect x="462" y="397" width="52" height="22" rx="6" class="btag"/>
+  <text x="488" y="412" class="t-blk" text-anchor="middle" style="fill:#FFB08E" id="sbLbl">B+</text>
+  <circle cx="240" cy="408" r="5" class="chafe"/>
+  <text x="252" y="402" class="t-tiny" style="fill:#FFB08E">RUBBING ON B+</text>
+</g>
+<path class="flow" id="fFeed" d="M440 108 V480 H390"/>
+<path class="flow" id="fCoil" d="M390 480 H290"/>
+<path class="flow" id="fClo" d="M290 480 H240 V384"/>
+<path class="flow" id="fCup" d="M240 384 V184 H208 V142 H180 V150"/>
+<path class="flow" id="fSG" d="M240 384 H286 V394"/>
+<path class="flow" id="fSB" d="M462 408 H446 a6 6 0 0 0 -12 0 H240"/>
+<g class="openpill" id="om-ctrlUp" style="display:none"><path class="spark" d="M232 262 l-5 -3 M232 270 l-5 3 M248 262 l5 -3 M248 270 l5 3"/><rect x="252" y="258" width="44" height="16" rx="8"/><text x="274" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-ctrlLo" style="display:none"><path class="spark" d="M232 424 l-5 -3 M232 432 l-5 3 M248 424 l5 -3 M248 432 l5 3"/><rect x="252" y="420" width="44" height="16" rx="8"/><text x="274" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-feedUp" style="display:none"><path class="spark" d="M432 262 l-5 -3 M432 270 l-5 3 M448 262 l5 -3 M448 270 l5 3"/><rect x="386" y="258" width="44" height="16" rx="8"/><text x="408" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-feedLo" style="display:none"><path class="spark" d="M432 424 l-5 -3 M432 432 l-5 3 M448 424 l5 -3 M448 432 l5 3"/><rect x="386" y="420" width="44" height="16" rx="8"/><text x="408" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-coil" style="display:none"><rect x="318" y="472" width="44" height="16" rx="8"/><text x="340" y="483.5" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tpC"><title>ECM injector control pin (average, as a DMM reads it)</title><circle class="tpdot" cx="240" cy="236" r="4.5"/><rect x="250" y="225" width="88" height="22" rx="6"/><text x="258" y="239.5" class="lbl">CTRL</text><text x="330" y="240" text-anchor="end" id="tpCv">0.00 V</text></g>
+<g class="badge" id="tpF"><title>Injector B+ feed (after the fuse)</title><circle class="tpdot" cx="440" cy="182" r="4.5"/><rect x="344" y="171" width="90" height="22" rx="6"/><text x="352" y="185.5" class="lbl">FEED</text><text x="426" y="186" text-anchor="end" id="tpFv">0.00 V</text></g>
+<g class="badge" id="tpB"><title>Injector terminal, control side</title><circle class="tpdot" cx="240" cy="452" r="4.5"/><rect x="250" y="441" width="90" height="22" rx="6"/><text x="258" y="455.5" class="lbl">INJ−</text><text x="332" y="456" text-anchor="end" id="tpBv">0.00 V</text></g>
+<g class="badge" id="tpA"><title>Injector terminal, B+ side</title><circle class="tpdot" cx="440" cy="452" r="4.5"/><rect x="344" y="441" width="90" height="22" rx="6"/><text x="352" y="455.5" class="lbl">INJ+</text><text x="426" y="456" text-anchor="end" id="tpAv">0.00 V</text></g>
+<path class="hit" data-open="ctrlUp" d="M240 222 V316"><title>Click to open or repair the injector control wire (ECM side)</title></path>
+<path class="hit" data-open="ctrlLo" d="M240 350 V432"><title>Click to open or repair the injector control wire (injector side)</title></path>
+<path class="hit" data-open="feedUp" d="M440 200 V316"><title>Click to open or repair the injector B+ feed (fuse side)</title></path>
+<path class="hit" data-open="feedLo" d="M440 350 V432"><title>Click to open or repair the injector B+ feed (injector side)</title></path>`;
+
+const injMon = (code, name, key, lim, rule, val) => ({ code, name, kind: 'Continuous', trips: 2, mat: 2, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+  run(m, dt) { const en = S.key === 'run' && S.batt >= 10; circ(m, en, en && S.inj.diag === key, dt); },
+  view(m) {
+    const crit = [['Engine running (injector being pulsed)', S.key === 'run'], ['Ignition voltage at least 10 V', on() && S.batt >= 10], [rule, null]];
+    if (!m.en) return waitView(crit, 'Runs while the ECM is pulsing the injector.');
+    return circView(m, S.inj.diag === key, lim, val(), crit);
+  } });
+const pinOff = () => `Pin ${fmtV(S.inj.voff)} with driver off`;
+
+const INJ = {
+  id: 'inj', name: 'Fuel injector', sub: 'Low-side solenoid', brandSub: 'Fuel injector circuit',
+  lib: { name: 'Fuel injector (port)', type: '2-wire solenoid · low-side driver', codes: 'P0201 · P0261 · P0262 · P0301' },
+  svg: INJ_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'scope',
+  readLabels: ['Pin · driver off', 'Driver check', 'Cyl 1 fuel'],
+  faults: [['coil', 'Open', 'Injector coil'], ['feedLo', 'Open', 'B+ feed'], ['shortG', 'Short', 'Control to ground'], ['shortB', 'Short', 'Control to B+'], ['inter', 'Intermittent', 'Loose terminal'], ['clog', 'Mechanical', 'Clogged injector']],
+  slider: { key: 'hiRes', label: 'High resistance · C1 B+ feed', max: 20, step: 0.5, fmt: v => v ? '+' + v.toFixed(1) + ' Ω' : 'None' },
+  opens: ['feedUp', 'feedLo', 'ctrlUp', 'ctrlLo'],
+  excl: [['shortG', 'shortB']],
+  names: { feedUp: 'B+ feed open (fuse side)', feedLo: 'B+ feed open (injector side)', ctrlUp: 'control open (ECM side)', ctrlLo: 'control open (injector side)', coil: 'injector coil open', shortG: 'control shorted to ground', shortB: 'control shorted to B+', inter: 'loose terminal at C1', clog: 'clogged injector', hiRes: v => `+${v.toFixed(1)} Ω on B+ feed at C1` },
+  faultDefaults: () => ({ feedUp: false, feedLo: false, ctrlUp: false, ctrlLo: false, coil: false, shortG: false, shortB: false, inter: false, clog: false, hiRes: 0 }),
+  initPhys: () => ({ rpmT: 700, rpmB: 0, rpm: 0, dip: 0, cyc: 0, pw: 2.8, evN: 0, missN: 0, missTot: 0, log: [], fa: 1, last: null, seenN: 0, fl: 0, fs: 1, burn: 0, mx: 0 }),
+  grads: { gBI: ['VBI', 'CP'], gHR: ['FA', 'FX'], gCO: ['HC', 'FC'] },
+  flows: [['fFeed', I => I.fup], ['fCoil', I => I.coil], ['fClo', I => I.clo], ['fCup', I => I.cup], ['fSG', I => I.sg], ['fSB', I => I.sb]],
+  solve() {
+    const f = S.f, p = S.p, o = on(), run = S.key === 'run', glitch = f.inter && S.glitch.open;
+    const base = [
+      ['IGN', 'FB', o ? 0.05 : OPEN, 'fuse'], ['FB', 'FA', f.feedUp ? OPEN : WIRE, 'fup'], ['FA', 'FX', 0.02 + f.hiRes, 'hr'], ['FX', 'FC', f.feedLo ? OPEN : WIRE, 'flo'],
+      ['FC', 'HC', f.coil ? OPEN : INJ_R, 'coil'], ['HC', 'CX', f.ctrlLo ? OPEN : WIRE, 'clo'], ['CX', 'CA', glitch ? OPEN : 0.02, 'c1'], ['CA', 'CP', f.ctrlUp ? OPEN : WIRE, 'cup'],
+      ['VBI', 'CP', o ? 20e3 : OPEN, 'bias'], ['CX', 'G', f.shortG ? WIRE : OPEN, 'sg'], ['BAT', 'CX', f.shortB ? WIRE : OPEN, 'sb'],
+    ];
+    const nodes = ['FB', 'FA', 'FX', 'FC', 'HC', 'CX', 'CA', 'CP'];
+    const fixed = { IGN: o ? S.batt : 0, BAT: S.batt, G: 0, VBI: o ? 3 : 0 };
+    const offS = nodal(nodes, base.concat([['CP', 'G', OPEN, 'drv']]), fixed);
+    const onS = nodal(nodes, base.concat([['CP', 'G', 0.15, 'drv']]), fixed);
+    const oc = Math.abs(onS.I.drv) > 4;                                        // driver protects itself: shuts off in microseconds
+    const duty = run && !oc ? clamp(p.pw / (120000 / Math.max(p.rpm, 1)), 0, 1) : 0;
+    S.v = avgMap(onS.v, offS.v, duty); S.I = avgMap(onS.I, offS.I, duty);   // average, the way a DMM reads it
+    const voff = offS.v.CP;
+    S.inj = { voff, von: oc ? voff : onS.v.CP, vonRaw: onS.v.CP, iOn: Math.abs(oc ? offS.I.coil : onS.I.coil), iOff: Math.abs(offS.I.coil), oc,
+      diag: voff < 1.5 ? 'low' : voff < 8 ? 'open' : oc ? 'high' : 'ok' };
+    S.vad = o ? voff : null;
+  },
+  physics(dt) {
+    const p = S.p, f = S.f, g = S.glitch, run = S.key === 'run';
+    let done = 0;
+    while (done < dt - 1e-9) {
+      const h = Math.min(0.01, dt - done); done += h;
+      const now = S.t - dt + done;
+      if (f.inter && on()) {
+        if (!g.open && now >= g.next) { g.open = true; g.until = now + 0.15 + Math.random() * 0.55; }
+        else if (g.open && now >= g.until) { g.open = false; g.next = now + 0.8 + Math.random() * 1.8; }
+      } else g.open = false;
+      p.rpmB += ((run ? p.rpmT : 0) - p.rpmB) * (1 - Math.exp(-h * 2));
+      p.dip *= Math.exp(-h / 0.3);
+      p.rpm = run ? Math.max(0, p.rpmB - p.dip) : 0;
+      p.pw = 2.8 + 1.2 * clamp((p.rpmB - 700) / 2800, 0, 1);
+      if (!run) continue;
+      const c0 = p.cyc; p.cyc += h * p.rpm / 120;                            // cylinder 1 fires once every 2 revolutions
+      if (Math.floor(p.cyc) > Math.floor(c0)) injEvent();
+    }
+  },
+  inputHTML: '<label for="rpmIn">Engine rpm</label><input type="range" id="rpmIn" min="700" max="3500" step="50" value="700" aria-label="Engine speed"><output id="rpmOut" for="rpmIn">700</output><button class="btn small" id="btnIdle">Idle</button><button class="btn small" id="btnCruise">2,500</button>',
+  bindInputs() {
+    const r = $('#rpmIn');
+    r.addEventListener('pointerdown', () => thrDrag = true);
+    addEventListener('pointerup', () => thrDrag = false);
+    r.addEventListener('input', e => { S.p.rpmT = +e.target.value; });
+    $('#btnIdle').addEventListener('click', () => setRpm(700));
+    $('#btnCruise').addEventListener('click', () => setRpm(2500));
+  },
+  syncInputs() {
+    const r = $('#rpmIn'); if (!r) return;
+    if (!thrDrag) r.value = S.p.rpmT;
+    $('#rpmOut').textContent = S.p.rpmT;
+  },
+  onStart() { const p = S.p; p.log = []; p.fa = 1; p.last = null; },
+  onClear() { S.p.missTot = 0; const m = S.M.P0301; m.ev0 = null; m.result = null; m.cat = false; },
+  monitors: [
+    injMon('P0201', 'Injector 1 control circuit open', 'open', 'reads open', 'Fails when the pin sits between 1.5 and 8 V with the driver off (no path to B+) for 2.0 s', pinOff),
+    injMon('P0261', 'Cylinder 1 injector control circuit low', 'low', 'is below 1.5 V', 'Fails when the pin is below 1.5 V with the driver off for 2.0 s', pinOff),
+    injMon('P0262', 'Cylinder 1 injector control circuit high', 'high', 'above 4 A', 'Fails when the driver trips on overcurrent (above 4 A) for 2.0 s',
+      () => S.inj.oc ? 'Driver tripping on overcurrent' : `Driver current ${S.inj.iOn.toFixed(2)} A`),
+    { code: 'P0301', name: 'Cylinder 1 misfire detected', kind: 'Continuous', trips: 2, mat: 0, labels: ['Enable', 'Count', 'Compare', 'Result'], bar: 1,
+      run(m) {
+        const p = S.p;
+        m.en = S.key === 'run' && S.run >= 5;
+        if (!m.en) { m.ev0 = null; return; }
+        if (m.ev0 == null) { m.ev0 = p.evN; m.miss0 = p.missN; }
+        m.revs = 2 * (p.evN - m.ev0);
+        if (m.revs < 200) return;
+        const n = m.result = p.missN - m.miss0;
+        m.ev0 = p.evN; m.miss0 = p.missN; m.revs = 0;
+        if (n >= 40) {                                                          // catalyst-damaging: one trip, MIL flashes
+          const was = m.mil; m.cat = true;
+          const t = m.trips; m.trips = 1; fail(m); m.trips = t;
+          if (!was) toast('Catalyst-damaging misfire. The MIL flashes while it continues.', 'bad');
+        } else if (n >= 10) { m.cat = false; fail(m); }
+        else { m.cat = false; m.failing = false; m.passedTrip = true; }
+      },
+      view(m) {
+        const crit = [['Engine running 5 s or more', S.key === 'run' && S.run >= 5], ['Counts cylinder 1 misfires in blocks of 200 revolutions', null], ['Fails at 10 or more misfires in a block', null], ['40 or more can damage the catalyst: one trip, MIL flashes', null]];
+        if (!m.en) return waitView(crit, S.key === 'run' ? 'Starts counting at 5 s of run time.' : 'Runs with the engine running.');
+        const n = S.p.missN - (m.miss0 ?? S.p.missN), frac = clamp((m.revs || 0) / 200, 0, 1), cnt = `${Math.round(m.revs || 0)}/200 revs, ${n} missed`;
+        if (m.failing) return { st: ['ok', 'run', 'bad', 'bad'], frac, pill: ['Failed', 'bad'], det: `Last block: ${m.result} misfires${m.cat ? ' (catalyst damage)' : ''} · now ${cnt}`, crit };
+        if (m.result != null) return { st: ['ok', 'run', 'ok', 'ok'], frac, pill: ['Passing', 'ok'], det: `Last block: ${m.result} misfires (under 10) · now ${cnt}`, crit };
+        return { st: ['ok', 'run', '', ''], frac, pill: ['Counting', 'run'], det: `Counting: ${cnt}`, crit };
+      } },
+  ],
+  visual(dt = 0) {
+    const p = S.p, s = S.inj, f = S.f, run = S.key === 'run', stuck = on() && s.iOff > 0.3;
+    if (p.evN !== p.seenN) {
+      p.seenN = p.evN; const l = p.last; p.fl = 1;
+      if (l) { p.burn = l.miss ? 0 : 1; p.mx = l.miss ? 1 : 0; p.fs = clamp(l.frac, 0, 1); }
+    }
+    p.fl = Math.max(0, p.fl - dt * 6); p.burn = Math.max(0, p.burn - dt * 4); p.mx = Math.max(0, p.mx - dt * 2.5);
+    const bl = $('#blade'), bd = run && !s.oc && p.fl > 0.55 ? 'M208 184 L208 156' : 'M208 184 L193 160';
+    bl.setAttribute('d', bd); if (bl._glow) bl._glow.setAttribute('d', bd);
+    $('#spray').style.opacity = stuck ? 0 : (p.fl * p.fs).toFixed(3);
+    $('#stream').style.opacity = stuck ? 0.9 : 0;
+    $('#burn').style.opacity = p.burn.toFixed(3);
+    $('#missX').style.opacity = p.mx.toFixed(3);
+    $('#g-stuck').style.display = stuck ? '' : 'none';
+    $('#om-coil').style.display = f.coil ? '' : 'none';
+    $('#g-clog').style.display = f.clog ? '' : 'none';
+    $('#interSpark').style.display = S.glitch.open ? '' : 'none';
+    $('#g-inter').classList.toggle('on', f.inter);
+    $('#g-shortg').classList.toggle('on', f.shortG);
+    $('#g-shortb').classList.toggle('on', f.shortB);
+  },
+  text() {
+    const v = S.v, s = S.inj, p = S.p, f = S.f, run = S.key === 'run', rate = injRate();
+    $('#tpCv').textContent = fmtV(v.CP); $('#tpFv').textContent = fmtV(v.FB);
+    $('#tpAv').textContent = fmtV(v.FC); $('#tpBv').textContent = fmtV(v.HC);
+    [['tpC', 'CP'], ['tpF', 'FB'], ['tpA', 'FC'], ['tpB', 'HC']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
+    $('#bpLbl').textContent = `B+ ${on() ? S.batt.toFixed(1) : '0.0'} V`;
+    $('#sbLbl').textContent = `B+ ${S.batt.toFixed(1)}`;
+    $('#pwLbl').textContent = `PW ${run ? p.pw.toFixed(1) : '0.0'} ms`;
+    $('#coilLbl').textContent = f.coil ? 'Coil open · ∞ Ω' : `${INJ_R.toFixed(1)} Ω · ` + (run && !s.oc && s.iOff < 0.3 ? s.iOn.toFixed(2) + ' A on' : '10 mH');
+    $('#hrLbl1').textContent = '+' + f.hiRes.toFixed(1) + ' Ω';
+    $('#hrLbl2').textContent = `DROP ${(s.iOn * f.hiRes).toFixed(1)} V ON`;
+    $('#cylLbl').textContent = !run ? 'OFF' : s.iOff > 0.3 ? 'FLOODED' : rate >= 0.05 ? 'MISFIRING' : 'FIRING';
+    $('#cylLbl').style.fill = run && (rate >= 0.05 || s.iOff > 0.3) ? '#FF8A80' : '';
+    $('#misLbl').textContent = run ? `Misfire ${Math.round(rate * 100)} % · last ${p.log.length}` : 'Engine off';
+    $('#portLbl').textContent = !on() ? 'Key off' : s.iOff > 0.3 ? 'Fuel pouring in' : run ? `Fuel ${Math.round(clamp(p.fa, 0, 2) * 100)} %` : 'No fuel';
+    for (let i = 0; i < 24; i++) { const e = p.log[i]; $('#lg' + i).style.fill = e == null ? '#18212B' : e ? '#FF5A4E' : 'rgba(61,220,151,.75)'; }
+  },
+  chart: {
+    trig: { ms: 12, t0: 2.5, aMax: 1.6, aTicks: [0, 0.4, 0.8, 1.2, 1.6] },
+    vMax: 72, yTicks: [0, 20, 40, 60],
+    hi: [72, ''], lo: [1.5, ''], band: [1.5, 8, ''],
+    tabs: { curve: 'Current', scope: 'Voltage' }, first: 'scope',
+    titles: { scope: 'Control pin · one injection', curve: 'Coil current · amp probe' },
+    trace: injTrace, annot: injAnnot,
+    curve: () => [], readX: () => 0, actualX: () => 0,
+  },
+  readouts() {
+    const o = on(), s = S.inj, p = S.p, run = S.key === 'run', rate = injRate();
+    if (!o) return [{ v: '—', s: 'Module asleep', cls: '' }, { v: '—', s: '—', cls: '' }, { v: '—', s: '—', cls: '' }];
+    const d = s.diag, bad = d !== 'ok';
+    const r1 = { ok: ['OK', run ? 'Coil present, current normal' : 'Coil present · not pulsing'], open: ['OPEN', 'No path to B+ through the coil'], low: ['SHORT LO', 'Pin grounded with driver off'], high: ['SHORT HI', 'Overcurrent · driver shut down'] }[d];
+    const stuck = s.iOff > 0.3;
+    const r2 = !run ? { v: stuck ? 'LEAKING' : '—', s: stuck ? 'Injector open with engine off' : 'Engine not running', cls: stuck ? 'alert' : '' }
+      : { v: stuck ? 'FLOODED' : Math.round(clamp(p.fa, 0, 2) * 100) + ' %', s: stuck ? 'Injector stuck open' : rate >= 0.05 ? `Misfiring ${Math.round(rate * 100)} %` : 'Firing normally', cls: stuck ? 'alert' : rate >= 0.05 ? 'subst' : '' };
+    return [
+      { v: fmtV(s.voff), s: d === 'low' ? 'Pulled to ground · should be B+' : d === 'open' ? 'Only the ECM bias · no coil' : 'B+ through the coil', cls: d === 'low' || d === 'open' ? 'alert' : '' },
+      { v: r1[0], s: r1[1], cls: bad ? 'alert' : '' },
+      r2,
+    ];
+  },
+  dataRows() {
+    const s = S.inj, p = S.p, run = S.key === 'run', cur = injCur();
+    return [
+      ['Injector 1 pulse width', (run ? p.pw : 0).toFixed(2) + ' ms', ''], ['Inj 1 control circuit', INJ_ST[s.diag], s.diag !== 'ok' ? 'bad' : ''],
+      ['Cyl 1 misfire current', String(cur), cur >= 10 ? 'bad' : cur ? 'flag' : ''], ['Cyl 1 misfire history', String(p.missTot), p.missTot ? 'flag' : ''],
+      ['Engine speed', Math.round(p.rpm) + ' rpm', ''], ['Engine run time', mmss(S.run), ''], ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
+    ];
+  },
+  ffRows: () => [['Inj 1 pulse width', S.p.pw.toFixed(2) + ' ms'], ['Inj 1 circuit', INJ_ST[S.inj.diag]], ['Engine speed', Math.round(S.p.rpm) + ' rpm'], ['Cyl 1 misfires', String(S.M.P0301.result ?? injCur())], ['Run time', mmss(S.run)], ['Ignition V', S.batt.toFixed(1) + ' V']],
+  dash: {
+    lo: '0', hi: '4k', hot: null,
+    frac: () => on() ? clamp(S.p.rpm / 4000, 0, 1) : null,
+    text: () => on() ? Math.round(S.p.rpm) + ' rpm' : '—',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" d="M1 11h4.2l1.9-5.5 3.3 12 3-8.5 1.8 3.2H23v2.2h-8.9l-.9-1.6-3.2 9.1L6.7 10.3 6 13.2H1z"/></svg>',
+    t2on: () => S.key === 'run' && (injRate() >= 0.05 || S.inj.iOff > 0.3),
+    t2text: () => S.key !== 'run' ? 'Engine off' : injRate() >= 0.05 || S.inj.iOff > 0.3 ? 'Rough running' : 'Smooth running',
+    milFlash: () => S.key === 'run' && injRate() >= 0.4 && S.M.P0301.mil,
+  },
+};
+INJ.lesson = [
+  { title: 'Meet the injector circuit',
+    body: 'A fuel injector is a <b>solenoid</b>: a coil around a spring-loaded valve. It gets <b>B+</b> from a fused ignition feed whenever the key is on. The ECM controls the <b>ground side</b>. Its <b>low-side driver</b>, a transistor switch, grounds the control wire for a few milliseconds each engine cycle. That on-time is the <b>pulse width</b>, and it sets how much fuel goes in.',
+    setup() { fullReset(); setRpm(700); setSpeed(1); setChart('scope'); }, spot: ['g-fuse', 'g-driver', 'g-inj'] },
+  { title: 'Read the pattern',
+    body: 'The scope triggers on each injection, like a lab scope. At rest the pin sits at <b>B+</b> through the coil. When the driver turns on, it drops to near <b>0 V</b> for the pulse width. When it turns off, the collapsing magnetic field makes a <b>voltage spike</b>, clamped by the ECM at about 62 V. Now open the <b>Current</b> tab to see what an amp probe shows.',
+    setup() { setChart('scope'); }, spot: ['chartBox'],
+    goal: { text: 'Open the Current tab', test: () => S.chart === 'curve' } },
+  { title: 'How the ECM checks its driver',
+    body: 'The current ramps up, and dips slightly where the valve (<b>pintle</b>) snaps open. Between pulses, with the driver <b>off</b>, the ECM reads its own pin. A good circuit pulls it to <b>B+</b> through the coil. A weak <b>3 V bias</b> lets the ECM tell faults apart: about <b>3 V</b> means open, near <b>0 V</b> means grounded. With the driver <b>on</b>, it watches for overcurrent.',
+    setup() { setChart('scope'); }, spot: ['g-bias', 'read0', 'zones'] },
+  { title: 'Predict: the coil opens',
+    body: 'The winding inside the injector has burned open. Think about where the pin gets its voltage while the driver is off.',
+    ask: { q: 'With the driver off, what will the ECM see on its control pin?', opts: ['About 0 V', 'About 3 V', 'About 14 V'], ans: 1,
+      why: 'With the coil open there\'s no path from B+ to the pin. Only the ECM\'s own weak bias is left, so the pin sits near 3 V, inside the open-circuit band.',
+      apply() { setFault('coil', true); } },
+    spot: ['tpC', 'read0'] },
+  { title: 'Two codes, one failure',
+    body: 'The scope shows a clean square wave with <b>no spike</b>, because no current flowed in the coil. <b>P0201</b> matures and is stored as <b>pending</b>. Cylinder 1 gets no fuel, and the <b>misfire monitor</b> catches every missed firing through crankshaft speed. That much misfire can overheat the catalytic converter, so <b>P0301</b> sets on the first trip and the <b>MIL flashes</b>.',
+    setup() { if (!S.f.coil) setFault('coil', true); setSpeed(10); }, spot: ['mon-P0201', 'mon-P0301', 'dash'],
+    goal: { text: 'P0201 pending and the MIL flashing for P0301', test: () => (S.M.P0201.pending || S.M.P0201.confirmed) && S.M.P0301.mil } },
+  { title: 'Predict: control wire to ground',
+    body: 'We replaced the injector and cleared the codes. Now the control wire rubs through and touches ground between the ECM and the injector.',
+    setup() { clearFaults(); clearDTCs(true); setSpeed(1); setChart('scope'); },
+    ask: { q: 'What happens to the injector?', opts: ['It never opens', 'It stays open', 'Nothing changes'], ans: 1,
+      why: 'The ECM only switches the ground side. A wire that finds its own ground completes the circuit without the driver, so the injector stays on, even with the key on and the engine off. The ECM can\'t shut it off.',
+      apply() { setFault('shortG', true); } },
+    spot: ['g-spray', 'g-driver'] },
+  { title: 'Stuck open: P0261',
+    body: 'Watch the nozzle: fuel is pouring into the port, and cylinder 1 floods and misfires from too <b>much</b> fuel. With the driver off, the pin reads <b>0 V</b> instead of B+, so <b>P0261 (control circuit low)</b> matures. Look at the driver switch in the ECM: it\'s open, and the injector is on anyway.',
+    setup() { if (!S.f.shortG) setFault('shortG', true); setSpeed(10); }, spot: ['g-shortg', 'mon-P0261', 'g-spray'],
+    goal: { text: 'P0261 stored as pending', test: () => S.M.P0261.pending || S.M.P0261.confirmed } },
+  { title: 'Short to voltage: P0262',
+    body: 'Now the control wire rubs on a <b>B+</b> wire. With the driver off, the pin reads B+, which looks normal. But when the driver turns on, it shorts B+ straight to ground. It sees <b>overcurrent</b> and shuts itself off in microseconds. The scope shows only a tiny notch, the injector never opens, and <b>P0262 (control circuit high)</b> sets.',
+    setup() { clearFaults(); clearDTCs(true); setFault('shortB', true); setSpeed(10); setChart('scope'); }, spot: ['g-shortb', 'mon-P0262', 'chartBox'],
+    goal: { text: 'P0262 stored as pending', test: () => S.M.P0262.pending || S.M.P0262.confirmed } },
+  { title: 'A fault the driver can\'t see',
+    body: 'The B+ terminal at C1 is corroded (<b>+6 Ω</b>). With the driver off no current flows, so there\'s no voltage drop and the pin still reads full B+. The driver check <b>passes</b>. Under load the corrosion drops about 5 V. The current ramp is lower and reaches opening current late, so the injector opens late and runs lean. No circuit code sets, only <b>P0301</b>.',
+    setup() { clearFaults(); clearDTCs(true); S.f.hiRes = 6; syncFaultUI(); setRpm(700); setSpeed(10); setChart('curve'); }, spot: ['g-hr', 'chartBox', 'mon-P0301'],
+    goal: { text: 'P0301 stored as pending', test: () => S.M.P0301.pending || S.M.P0301.confirmed } },
+  { title: 'Reading an injector circuit',
+    body: 'The ECM judges a low-side injector circuit by its control pin. <b>B+</b> with the driver off is good, <b>bias voltage</b> is open, <b>0 V</b> is a short to ground, and <b>overcurrent</b> is a short to voltage. Resistance and clogging can pass every circuit test and still misfire. In Explore, try <b>Clogged injector</b>: the pattern looks perfect, but the cylinder doesn\'t fire right.',
     final: true, alt: { label: '◂ Back to ECT', go() { switchSensor('ect'); } } },
 ];
 
-const SENSORS = { ect: ECT, tps: TPS, o2: O2 };
+const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ };
 const PLANNED = [
-  { name: 'Fuel injector', type: 'Low-side driver · output monitoring', codes: 'P0201 · P0261 · P0262' },
   { name: 'CAN network', type: 'Serial data · message timeouts', codes: 'U0100 · U0140 · U0073' },
 ];
 
@@ -1683,7 +2167,9 @@ function setChart(v) {
   $('#gridCurve').style.display = v === 'curve' ? '' : 'none';
   $('#scopeG').style.display = v === 'scope' ? '' : 'none';
   $('#gridScope').style.display = v === 'scope' ? '' : 'none';
-  $('#chartTitle').textContent = v === 'curve' ? 'Signal voltage vs reading' : 'Signal voltage · last 6 s';
+  const T = D.chart.titles;
+  $('#chartTitle').textContent = T ? T[v] : v === 'curve' ? 'Signal voltage vs reading' : 'Signal voltage · last 6 s';
+  $('#zones').style.display = D.chart.trig && v === 'curve' ? 'none' : '';
 }
 function setThrottle(x) { const p = S.p; p.sweep = null; p.snap = null; p.target = x; p.pos = x; }
 function setFault(k, val) {
@@ -1744,7 +2230,7 @@ let wireEls = [], flowEls = [];
 function show(el, vis) { el.style.display = vis ? '' : 'none'; if (el._glow) el._glow.style.display = vis ? '' : 'none'; }
 function renderCircuit(dtReal) {
   const v = S.v;
-  D.visual?.();
+  D.visual?.(dtReal);
   wireEls.forEach(el => { if (el.dataset.n) el.style.stroke = vColor((v[el.dataset.n] || 0) * (+el.dataset.k || 1)); });
   for (const id in D.grads) {
     const [a, b, k = 1] = D.grads[id];
@@ -1767,39 +2253,61 @@ function renderCircuit(dtReal) {
 /* chart */
 const CH = { x0: 34, x1: 350, y0: 12, y1: 170, vMax: 5.2 };
 const cy = v => CH.y1 - v / CH.vMax * (CH.y1 - CH.y0);
+const ay = a => CH.y1 - a / (D.chart.trig ? D.chart.trig.aMax : 1) * (CH.y1 - CH.y0);   // amps axis (triggered current view)
 let cx = f => f;
+/* Two chart styles: a transfer curve + rolling 6 s scope (sensors), or a triggered one-event capture in ms (actuators, chart.trig) */
 function buildChart() {
-  const c = D.chart;
-  cx = f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0);
+  const c = D.chart, tg = c.trig;
+  cx = tg ? (ms => CH.x0 + ms / tg.ms * (CH.x1 - CH.x0)) : (f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0));
   CH.vMax = c.vMax ?? 5.2;
-  let yg = '';
-  for (const v of c.yTicks ?? [0, 1, 2, 3, 4, 5]) yg += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${cy(v)}" y2="${cy(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${cy(v) + 3}" text-anchor="end">${Number.isInteger(v) ? v : v.toFixed(1)}</text>`;
-  yg += `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">V</text>`;
-  let g = yg;
-  c.ticks.forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
-  g += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">${c.xLabel}</text>`;
-  $('#gridCurve').innerHTML = g;
-  let s = yg;
-  for (let t = 0; t <= 6; t++) { const x = CH.x1 - t / 6 * (CH.x1 - CH.x0); s += `<line x1="${x}" x2="${x}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${x}" y="${CH.y1 + 12}" text-anchor="middle">${t ? '−' + t + ' s' : 'now'}</text>`; }
-  $('#gridScope').innerHTML = s;
+  const yAxis = (ticks, y, unit) => ticks.map(v => `<line x1="${CH.x0}" x2="${CH.x1}" y1="${y(v)}" y2="${y(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${y(v) + 3}" text-anchor="end">${Number.isInteger(v) ? v : v.toFixed(1)}</text>`).join('') +
+    `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">${unit}</text>`;
+  const yg = yAxis(c.yTicks ?? [0, 1, 2, 3, 4, 5], cy, 'V');
+  if (tg) {
+    let xs = '';
+    for (let t = 0; t <= tg.ms; t += 2) xs += `<line x1="${cx(t)}" x2="${cx(t)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(t)}" y="${CH.y1 + 12}" text-anchor="middle">${t}</text>`;
+    xs += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">ms · triggered on driver turn-on</text>`;
+    $('#gridScope').innerHTML = yg + xs;
+    $('#gridCurve').innerHTML = yAxis(tg.aTicks, ay, 'A') + xs;
+  } else {
+    let g = yg;
+    c.ticks.forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
+    g += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">${c.xLabel}</text>`;
+    $('#gridCurve').innerHTML = g;
+    let s = yg;
+    for (let t = 0; t <= 6; t++) { const x = CH.x1 - t / 6 * (CH.x1 - CH.x0); s += `<line x1="${x}" x2="${x}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${x}" y="${CH.y1 + 12}" text-anchor="middle">${t ? '−' + t + ' s' : 'now'}</text>`; }
+    $('#gridScope').innerHTML = s;
+  }
   const set = (id, a) => Object.entries(a).forEach(([k, val]) => $('#' + id).setAttribute(k, val));
-  const [hv, ht] = c.hi, [lv, lt] = c.lo;
+  const [hv, ht] = c.hi, [lv, lt] = c.lo, zw = (tg ? cx(tg.t0) : CH.x1) - CH.x0;   // triggered view: shade only the off-state window the ECM checks
+  ['zHi', 'lHi', 'tHi', 'lLo'].forEach(id => $('#' + id).style.display = tg ? 'none' : '');
   set('zHi', { x: CH.x0, y: cy(CH.vMax), width: CH.x1 - CH.x0, height: cy(hv) - cy(CH.vMax) });
   $('#zBand').style.display = $('#tBand').style.display = c.band ? '' : 'none';
   if (c.band) {
-    set('zBand', { x: CH.x0, y: cy(c.band[1]), width: CH.x1 - CH.x0, height: cy(c.band[0]) - cy(c.band[1]) });
+    set('zBand', { x: CH.x0, y: cy(c.band[1]), width: zw, height: cy(c.band[0]) - cy(c.band[1]) });
     set('tBand', { x: CH.x1 - 4, y: cy(c.band[1]) - 3 }); $('#tBand').textContent = c.band[2];
   }
-  set('zLo', { x: CH.x0, y: cy(lv), width: CH.x1 - CH.x0, height: cy(0) - cy(lv) });
+  set('zLo', { x: CH.x0, y: cy(lv), width: zw, height: cy(0) - cy(lv) });
   set('lHi', { x1: CH.x0, x2: CH.x1, y1: cy(hv), y2: cy(hv) });
   set('lLo', { x1: CH.x0, x2: CH.x1, y1: cy(lv), y2: cy(lv) });
   set('tHi', { x: CH.x1 - 4, y: cy(hv) + 11 }); $('#tHi').textContent = ht;
   set('tLo', { x: CH.x0 + 6, y: cy(lv) - 5 }); $('#tLo').textContent = lt;
-  const d = c.curve().map(([x, v], i) => (i ? 'L' : 'M') + cx(x).toFixed(1) + ' ' + cy(v).toFixed(1)).join('');
+  $('#actual').style.display = $('#marker').style.display = tg ? 'none' : '';
+  $('#curve').style.stroke = tg ? '#FFC766' : ''; $('#curveGlow').style.stroke = tg ? '#FFB224' : '';
+  const d = tg ? '' : c.curve().map(([x, v], i) => (i ? 'L' : 'M') + cx(x).toFixed(1) + ' ' + cy(v).toFixed(1)).join('');
   $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d);
+  setHTML($('#trigAnn'), '');
 }
 function renderChart() {
   const o = on(), c = D.chart;
+  if (c.trig) {
+    const cur = S.chart === 'curve', yf = cur ? ay : (v => cy(clamp(v, 0, CH.vMax)));
+    const d = c.trace(cur ? 'a' : 'v').map(([t, y], i) => (i ? 'L' : 'M') + cx(t).toFixed(1) + ' ' + yf(y).toFixed(1)).join('');
+    if (cur) { $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d); }
+    else { $('#scopePath').setAttribute('d', d); $('#scopeGlow').setAttribute('d', d); $('#scopeDot').style.display = 'none'; }
+    setHTML($('#trigAnn'), c.annot(S.chart));
+    return;
+  }
   if (S.chart === 'curve') {
     $('#marker').style.display = o ? '' : 'none';
     const ax = cx(clamp(c.actualX(), c.xMin, c.xMax));
@@ -1870,7 +2378,9 @@ function renderMonitors() {
 /* readouts, scan tool, dash, bar */
 function renderReadouts() {
   D.readouts().forEach((r, i) => {
-    $('#rv' + i).textContent = r.v; $('#rs' + i).textContent = r.s;
+    const b = $('#rv' + i);
+    b.textContent = r.v; $('#rs' + i).textContent = r.s;
+    b.style.fontSize = r.v.length > 8 ? Math.max(14, Math.floor(21 * 8.5 / r.v.length)) + 'px' : '';
     const el = i === 2 ? $('#ecmUsed') : $('#read' + i);
     el.classList.toggle('alert', r.cls === 'alert'); el.classList.toggle('subst', r.cls === 'subst');
   });
@@ -1911,9 +2421,10 @@ function renderDash() {
   const a = Math.PI - (frac ?? 0) * Math.PI;
   $('#needle').setAttribute('x2', 60 + 38 * Math.cos(a)); $('#needle').setAttribute('y2', 64 - 38 * Math.sin(a));
   $('#gTxt').textContent = g.text();
-  const mil = on() && S.mons.some(m => m.mil);
+  const mil = on() && S.mons.some(m => m.mil), flash = mil && !!g.milFlash?.();
   $('#milTell').classList.toggle('on', mil);
-  $('#milTxt').textContent = mil ? 'MIL on · check engine' : 'MIL off';
+  $('#milTell').classList.toggle('flash', flash);
+  $('#milTxt').textContent = flash ? 'MIL flashing · misfire' : mil ? 'MIL on · check engine' : 'MIL off';
   $('#t2Tell').classList.toggle('on', !!g.t2on());
   $('#t2Txt').textContent = g.t2text();
 }
@@ -1971,6 +2482,11 @@ function buildSensorUI() {
   ir.innerHTML = D.inputHTML || '';
   D.bindInputs?.();
   buildFaultDock(); buildMonitors(); buildChart(); setChart(S.chart);
+  const tabs = D.chart.tabs || { curve: 'Transfer curve', scope: 'Scope' };
+  $$('[data-chart]').forEach(b => { b.textContent = tabs[b.dataset.chart]; b.style.order = D.chart.first === b.dataset.chart ? '-1' : ''; });
+  $('#chart').setAttribute('aria-label', D.chart.trig ? 'Triggered scope capture of one injection: control pin voltage or coil current' : 'Signal voltage chart with circuit low and circuit high fault zones');
+  const RL = D.readLabels || ['Signal pin', 'Converts to', 'ECM is using'];
+  ['#read0', '#read1', '#ecmUsed'].forEach((id, i) => { $(id + ' label').textContent = RL[i]; });
   $('#t2Ico').innerHTML = D.dash.icon;
   $('#gLo').textContent = D.dash.lo; $('#gHi').textContent = D.dash.hi;
   $('#pickName').textContent = D.name; $('#pickSub').textContent = D.sub;
@@ -2116,7 +2632,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__dtc = { get S() { return S; }, get D() { return D; }, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
+window.__dtc = { get S() { return S; }, get D() { return D; }, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
 })();
 </script>
 
