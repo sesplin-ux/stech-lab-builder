@@ -39,7 +39,7 @@ button{font:inherit;color:inherit}
 .grp{display:flex;align-items:center;gap:7px}
 .grp>label{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 .seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
-.seg button{all:unset;cursor:pointer;padding:7px 11px;border-radius:7px;font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 11px;border-radius:7px;font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
 .seg button:hover{color:var(--fg)}
 .seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -432,6 +432,8 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
             <g id="scopeG">
               <path id="scopeGlow" fill="none" stroke="#5FD4FF" stroke-width="6" opacity=".12" stroke-linejoin="round"/>
               <path id="scopePath" fill="none" stroke="#5FD4FF" stroke-width="1.8" stroke-linejoin="round"/>
+              <path id="scope2Glow" fill="none" stroke="#5FD4FF" stroke-width="6" opacity=".12" stroke-linejoin="round" style="display:none"/>
+              <path id="scope2" fill="none" stroke="#5FD4FF" stroke-width="1.8" stroke-linejoin="round" style="display:none"/>
               <circle id="scopeDot" r="3.5" fill="#EAFBFF"/>
             </g>
             <g id="trigAnn"></g>
@@ -468,6 +470,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
         <div class="sbody">
           <div><h4>Data list</h4><div id="data"></div></div>
           <div><h4>Trouble codes <button class="btn small" id="clr">Clear DTCs</button></h4><div class="dtcs" id="dtcBox"></div></div>
+          <div id="extraWrap" hidden><h4 id="extraHead"></h4><div id="extraBox"></div></div>
           <div id="ffWrap"><h4 id="ffHead">Freeze frame</h4><div id="ffBox"></div></div>
         </div>
       </div>
@@ -2080,13 +2083,495 @@ INJ.lesson = [
     goal: { text: 'P0301 stored as pending', test: () => S.M.P0301.pending || S.M.P0301.confirmed } },
   { title: 'Reading an injector circuit',
     body: 'The ECM judges a low-side injector circuit by its control pin. <b>B+</b> with the driver off is good, <b>bias voltage</b> is open, <b>0 V</b> is a short to ground, and <b>overcurrent</b> is a short to voltage. Resistance and clogging can pass every circuit test and still misfire. In Explore, try <b>Clogged injector</b>: the pattern looks perfect, but the cylinder doesn\'t fire right.',
+    final: true, alt: { label: 'CAN network lesson ▸', go() { switchSensor('can'); } } },
+];
+
+/* ================= CAN network: high-speed CAN, 2-wire twisted pair, 120 Ω each end ================= */
+const CAN_MODS = ['ECM', 'ABS', 'BCM', 'IPC'];
+const CAN_N = { ECM: ['EH', 'EL'], ABS: ['AH', 'AL'], BCM: ['BH', 'BL'], IPC: ['IH', 'IL'] };
+const CAN_PER = { ECM: 0.01, ABS: 0.02, BCM: 0.1, IPC: 0.1 };                  // message period, s
+const CAN_ID = { ECM: 0x0C9, ABS: 0x1E9, BCM: 0x1F1, IPC: 0x3F1 };
+const CAN_DATA = { ECM: 0x5A, ABS: 0x2D, BCM: 0x81, IPC: 0x14 };
+const CAN_LOST = { ECM: 'U0100', ABS: 'U0121', BCM: 'U0140', IPC: 'U0155' };
+const CAN_NAME = { ABS: 'ABS module', BCM: 'Body control module', IPC: 'Instrument cluster' };
+const CAN_BIT = 2;                                                              // µs per bit at 500 kbps
+const canPow = k => on() && !(k === 'BCM' && S.f.bcmOff);
+const canQ = (vd, vr) => clamp((vd - 0.7) / 0.4, 0, 1) * clamp((0.7 - vr) / 0.4, 0, 1);   // receiver: dominant above 0.9 V, recessive below 0.5 V
+const canAge = (r, t) => S.t - S.p.mods[r].heard[t];
+const canHears = (r, t) => canPow(r) && !S.p.mods[r].busOff && canAge(r, t) < 0.5;
+const canEcmOff = () => { const e = S.p.mods.ECM; return on() && (e.busOff || S.t - e.lastOff < 1); };
+const canEn = () => on() && S.batt >= 10 && S.p.keyT >= 3 && !canEcmOff();
+const canReach = k => canPow(k) && !S.p.mods[k].busOff && !!S.can?.q[k] && S.can.q[k].DLC > 0.5;
+const canState = x => x.busOff || x.tec > 255 ? 'Bus off' : x.tec >= 128 ? 'Error passive' : 'Error active';
+const canHeardN = () => ['ABS', 'BCM', 'IPC'].filter(k => canHears('ECM', k)).length;
+const canMod = () => ({ tec: 0, rec: 0, busOff: false, offT: 0, lastOff: -99, offN: 0, acc: 0, heard: { ECM: 0, ABS: 0, BCM: 0, IPC: 0 }, codes: [], tmr: {} });
+function canReset(now) {
+  for (const k of CAN_MODS) {
+    const x = S.p.mods[k];
+    Object.assign(x, { tec: 0, rec: 0, busOff: false, offT: 0, lastOff: -99, offN: 0, acc: Math.random() * CAN_PER[k], tmr: {} });
+    for (const j of CAN_MODS) x.heard[j] = now;
+  }
+}
+/* One message from module t: bit errors at the sender, delivery to each receiver, ACK */
+function canSend(t, now) {
+  const s = S.can, M = S.p.mods, x = M[t];
+  if (Math.random() > s.qs[t]) x.tec += 8;                                       // sender reads back the wrong level: bit error
+  else {
+    let ack = false;
+    for (const r of CAN_MODS) {
+      if (r === t || !canPow(r) || M[r].busOff) continue;
+      const q = s.q[t][r];
+      if (Math.random() < q) { M[r].heard[t] = now; M[r].rec = Math.max(0, M[r].rec - 1); ack = true; }
+      else if (q > 0.05) M[r].rec = Math.min(255, M[r].rec + 1);
+    }
+    if (ack) x.tec = Math.max(0, x.tec - 1);
+    else if (x.tec < 128) x.tec = Math.min(128, x.tec + 8);                      // no ACK: counts up, but stops at error passive
+  }
+  if (x.tec > 255) { x.busOff = true; x.offT = 0.2; x.lastOff = now; x.offN++; }
+}
+/* Codes the other modules store (read with the network scan) */
+function canOtherCodes(dt) {
+  if (S.p.keyT < 3) return;
+  for (const k of ['ABS', 'BCM', 'IPC']) {
+    if (!canPow(k)) continue;
+    const x = S.p.mods[k], busy = x.busOff || S.t - x.lastOff < 1;
+    const tick = (code, bad) => { x.tmr[code] = bad ? (x.tmr[code] || 0) + dt : 0; if (x.tmr[code] >= 2 && !x.codes.includes(code)) x.codes.push(code); };
+    tick('U0073', busy);
+    for (const w of k === 'IPC' ? ['ECM', 'ABS', 'BCM'] : ['ECM']) tick(CAN_LOST[w], !busy && S.t - x.heard[w] > 0.5);
+  }
+}
+/* Real frame bits: SOF, 11-bit ID, RTR/IDE/r0, DLC = 1, one data byte, CRC-15, with bit stuffing */
+function canBits(id, data) {
+  const raw = [0];
+  for (let i = 10; i >= 0; i--) raw.push((id >> i) & 1);
+  raw.push(0, 0, 0, 0, 0, 0, 1);
+  for (let i = 7; i >= 0; i--) raw.push((data >> i) & 1);
+  let crc = 0;
+  for (const b of raw) { const n = b ^ ((crc >> 14) & 1); crc = (crc << 1) & 0x7FFF; if (n) crc ^= 0x4599; }
+  for (let i = 14; i >= 0; i--) raw.push((crc >> i) & 1);
+  const out = []; let run = 0, last = -1;
+  for (const b of raw) { out.push(b); run = b === last ? run + 1 : 1; last = b; if (run === 5) { out.push(1 - b); last = 1 - b; run = 1; } }
+  return out;
+}
+/* Triggered capture at the DLC (pins 6 and 14) of the next frame on the bus */
+function canWave() {
+  const T = CAN.chart.trig, sc = S.can?.scope;
+  if (!on() || !sc) return { H: [[0, 0], [T.ms, 0]], L: [[0, 0], [T.ms, 0]], D: [[0, 0], [T.ms, 0]], ack: -1, err: -1 };
+  let bits = [1, 1, 1], ack = -1, err = -1;
+  const fr = canBits(CAN_ID[sc.tx], CAN_DATA[sc.tx]);
+  if (sc.bitErr) { bits.push(0); err = bits.length; bits.push(0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1); }
+  else {
+    bits.push(...fr, 1); ack = bits.length; bits.push(sc.acked ? 0 : 1, 1);
+    if (sc.acked) bits.push(1, 1, 1, 1, 1, 1, 1);
+    else { err = bits.length; bits.push(0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1); }
+  }
+  const H = [], L = [], Dd = [];
+  let h = sc.Hr, l = sc.Lr, sh = h, sl = l, t0 = -9, prev = 1;
+  for (let t = 0; t <= T.ms + 1e-9; t += 0.25) {
+    const b = bits[Math.floor(t / CAN_BIT)] ?? 1;
+    if (b !== prev) { sh = h; sl = l; t0 = Math.floor(t / CAN_BIT) * CAN_BIT; prev = b; }
+    const th = b ? sc.Hr : sc.Hd, tl = b ? sc.Lr : sc.Ld, u = t - t0, k = Math.exp(-u / 0.12);
+    const ring = sc.ring * Math.exp(-u / 0.6) * Math.sin(2 * Math.PI * u / 0.4);
+    h = th + (sh - th) * k + ring * (th - sh); l = tl + (sl - tl) * k + ring * (tl - sl);
+    H.push([t, h]); L.push([t, l]); Dd.push([t, h - l]);
+  }
+  return { H, L, D: Dd, ack, err };
+}
+function canAnnot(mode) {
+  if (!on()) return '';
+  const sc = S.can.scope, w = canWave(), CH_ = CH;
+  const tx = (x, y, str, fill, a = 'start') => `<text class="ann" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" style="fill:${fill}">${str}</text>`;
+  const RED = '#FF8A80', DIM = '#8A98A8', BLU = '#8CCBF3', YEL = '#FFC766', GRN = '#7BE3B4';
+  const xb = i => cx(i * CAN_BIT + CAN_BIT / 2);
+  let h = '';
+  if (mode === 'scope') {
+    h += tx(CH_.x1 - 4, CH_.y0 + 9, 'CAN-H', YEL, 'end') + tx(CH_.x1 - 4, CH_.y0 + 20, 'CAN-L', BLU, 'end');
+    h += tx(cx(6) + 2, CH_.y0 + 9, `${sc.tx} FRAME · ID ${CAN_ID[sc.tx].toString(16).toUpperCase().padStart(3, '0')}`, DIM);
+    if (sc.tx !== 'ECM') h += tx(cx(6) + 2, CH_.y0 + 20, 'NO ECM FRAMES REACH THE DLC', RED);
+    if (sc.Ld > 5.2 || sc.Lr > 5.2) h += tx(cx(65), cy(4.4), `CAN-L PINNED AT ${Math.max(sc.Ld, sc.Lr).toFixed(1)} V (OFF SCALE)`, RED, 'middle');
+    if (sc.Hd - sc.Ld < 0.5) h += tx(cx(65), cy(0.35), 'BUS CAN\'T GO DOMINANT', RED, 'middle');
+  } else {
+    const y9 = ay(0.9), y5 = ay(0.5);
+    h += `<rect x="${CH_.x0}" y="${y9}" width="${CH_.x1 - CH_.x0}" height="${y5 - y9}" fill="rgba(255,178,36,.12)"/>`;
+    h += `<line x1="${CH_.x0}" x2="${CH_.x1}" y1="${y9}" y2="${y9}" stroke="#FFB224" stroke-dasharray="3 3" stroke-width="1" opacity=".7"/><line x1="${CH_.x0}" x2="${CH_.x1}" y1="${y5}" y2="${y5}" stroke="#FFB224" stroke-dasharray="3 3" stroke-width="1" opacity=".7"/>`;
+    h += tx(CH_.x1 - 4, y9 - 4, 'DOMINANT > 0.9 V', YEL, 'end') + tx(CH_.x1 - 4, y5 + 10, 'RECESSIVE < 0.5 V', YEL, 'end');
+    if (sc.ring > 0.05) h += tx(cx(4), ay(3.1), 'RINGING AT EVERY EDGE · CHECK TERMINATION', RED);
+  }
+  if (w.ack >= 0) { const x = xb(w.ack); h += `<line x1="${x}" x2="${x}" y1="${CH_.y0 + 26}" y2="${CH_.y1}" stroke="${sc.acked ? GRN : RED}" stroke-dasharray="2 3" stroke-width="1"/>` + tx(x, CH_.y0 + 34, sc.acked ? 'ACK' : 'NO ACK', sc.acked ? GRN : RED, 'middle'); }
+  if (w.err >= 0) h += tx(xb(w.err) + 4, CH_.y0 + 46, sc.bitErr ? 'BIT ERROR → ERROR FRAME' : 'ERROR FRAME', RED);
+  return h;
+}
+
+const CAN_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gTE" gradientUnits="userSpaceOnUse" x1="220" y1="160" x2="280" y2="160"><stop offset="0" id="gTE0" stop-color="#2c3e50"/><stop offset="1" id="gTE1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gTI" gradientUnits="userSpaceOnUse" x1="220" y1="514" x2="280" y2="514"><stop offset="0" id="gTI0" stop-color="#2c3e50"/><stop offset="1" id="gTI1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="280" y1="318" x2="280" y2="348"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="320" height="200" rx="14" class="ecm"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<rect x="36" y="60" width="134" height="46" rx="7" class="blk"/>
+<text x="46" y="78" class="t-blk">CAN CONTROLLER</text>
+<text x="46" y="96" class="t-mono" id="tecLbl" style="font-size:10px">TEC 0 · REC 0</text>
+<path d="M170 83 H190" stroke="#3a4a5c" stroke-width="1.5"/>
+<rect x="190" y="60" width="120" height="46" rx="7" class="blk"/>
+<text x="250" y="80" class="t-blk" text-anchor="middle">TRANSCEIVER</text>
+<text x="250" y="95" class="t-tiny" text-anchor="middle">500 kbps</text>
+<text x="40" y="134" class="t-tiny">BUS STATE</text>
+<text x="40" y="150" class="t-mono" id="busLbl" style="font-size:11px">ERROR ACTIVE</text>
+<g id="g-term-e"><text x="212" y="164" class="t-tiny" text-anchor="end">TERM 120 Ω</text></g>
+<text x="212" y="204" class="t-pin" text-anchor="end">CAN-H</text>
+<text x="288" y="204" class="t-pin">CAN-L</text>
+<rect x="180" y="318" width="140" height="30" rx="8" class="conn"/>
+<text x="328" y="337" class="t-blk">C1</text>
+<g id="g-dlc">
+  <rect x="26" y="352" width="124" height="62" rx="10" class="blk"/>
+  <text x="38" y="370" class="t-blk">DLC</text>
+  <text x="70" y="370" class="t-tiny">OBD-II PORT</text>
+  <text x="38" y="387" class="t-mono" id="dlcV" style="font-size:10px">6: 0.0 · 14: 0.0 V</text>
+  <text x="38" y="403" class="t-mono" id="dlcR" style="font-size:9px">6–14: 60 Ω key off</text>
+</g>
+<g id="g-legend">
+  <rect x="26" y="426" width="124" height="74" rx="10" fill="#0E151C" stroke="#1D2732"/>
+  <text x="36" y="442" class="t-tiny">BUS LEVELS</text>
+  <text x="36" y="458" class="t-tiny" style="fill:#8A98A8">RECESSIVE (1)</text>
+  <text x="36" y="470" class="t-mono" style="font-size:10px">H 2.5 · L 2.5 V</text>
+  <text x="36" y="484" class="t-tiny" style="fill:#8A98A8">DOMINANT (0)</text>
+  <text x="36" y="496" class="t-mono" style="font-size:10px">H 3.5 · L 1.5 V</text>
+</g>
+<g id="g-abs">
+  <rect x="350" y="356" width="150" height="52" rx="10" class="blk"/>
+  <text x="362" y="374" class="t-blk">ABS</text>
+  <text x="392" y="374" class="t-tiny">WHEEL SPEED · 20 ms</text>
+  <text x="362" y="397" class="t-mono" id="absLbl" style="font-size:10px">OK</text>
+</g>
+<g id="g-bcm">
+  <rect x="350" y="420" width="150" height="52" rx="10" class="blk"/>
+  <text x="362" y="438" class="t-blk">BCM</text>
+  <text x="394" y="438" class="t-tiny">BODY · 100 ms</text>
+  <text x="362" y="461" class="t-mono" id="bcmLbl" style="font-size:10px">OK</text>
+</g>
+<g id="g-ipc">
+  <rect x="170" y="488" width="160" height="56" rx="12" class="sensor"/>
+  <text x="180" y="505" class="t-blk">IPC</text>
+  <text x="292" y="505" class="t-tiny">120 Ω</text>
+  <text x="180" y="536" class="t-mono" id="ipcLbl" style="font-size:10px">Speed 0 mph</text>
+</g>
+<g>
+  <path class="w" data-n="EH" d="M220 106 V262"/>
+  <path class="w" data-n="EL" d="M280 106 V262"/>
+  <path class="w" data-g="gTE" d="M220 160 H228 L232 153 L238 167 L244 153 L250 167 L256 153 L262 167 L268 153 L272 160 H280"/>
+  <path class="w" data-n="EH" id="br-hUp" d="M220 262 V270"/>
+  <path class="w" data-n="EL" id="br-lUp" d="M280 262 V270"/>
+  <path class="w" data-n="XH" d="M220 270 V348"/>
+  <path class="w" data-n="XL" d="M280 270 V318"/>
+  <path class="w" data-g="gHR" id="c1s" d="M280 318 V348"/>
+  <path class="w" data-g="gHR" id="c1z" d="M280 318 V322 L272 325 L288 330 L272 335 L288 340 L280 343 V348"/>
+  <path class="w" data-n="YH" d="M220 348 V470"/>
+  <path class="w" data-n="YL" d="M280 348 V470"/>
+  <path class="w" data-n="YH" id="br-hLo" d="M220 470 V478"/>
+  <path class="w" data-n="YL" id="br-lLo" d="M280 470 V478"/>
+  <path class="w" data-n="IH" d="M220 478 V514"/>
+  <path class="w" data-n="IL" d="M280 478 V514"/>
+  <path class="w" data-g="gTI" d="M220 514 H228 L232 507 L238 521 L244 507 L250 521 L256 507 L262 521 L268 507 L272 514 H280"/>
+  <path class="w" data-n="YH" d="M220 372 H150"/>
+  <path class="w" data-n="YL" d="M280 392 H226 a6 6 0 0 0 -12 0 H150"/>
+  <path class="w" data-n="YH" d="M220 372 H274 a6 6 0 0 1 12 0 H350"/>
+  <path class="w" data-n="YL" d="M280 392 H350"/>
+  <path class="w" data-n="YH" d="M220 436 H274 a6 6 0 0 1 12 0 H350"/>
+  <path class="w" data-n="YL" d="M280 452 H350"/>
+</g>
+<circle cx="220" cy="160" r="2.8" class="jdot"/><circle cx="280" cy="160" r="2.8" class="jdot"/>
+<circle cx="220" cy="372" r="3" class="jdot"/><circle cx="280" cy="392" r="3" class="jdot"/><circle cx="220" cy="436" r="3" class="jdot"/><circle cx="280" cy="452" r="3" class="jdot"/>
+<rect x="214" y="210" width="12" height="12" rx="2" class="pinbox"/><rect x="274" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<g id="g-hr" class="jump">
+  <circle class="corr" cx="272" cy="321" r="2.2"/><circle class="corr" cx="289" cy="326" r="1.6"/><circle class="corr" cx="286" cy="344" r="2"/><circle class="corr" cx="271" cy="340" r="1.4"/>
+  <text x="264" y="331" class="t-mono" text-anchor="end" id="hrLbl1" style="fill:#FFB3AC">+0 Ω</text>
+  <text x="264" y="344" class="t-tiny" text-anchor="end">CAN-L</text>
+</g>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="XH" d="M220 290 H180 V300"/>
+  <path class="gnd" d="M168 300 H192 M172 305 H188 M176 310 H184"/>
+  <circle cx="220" cy="290" r="5" class="chafe"/>
+  <text x="170" y="286" class="t-tiny" text-anchor="end" style="fill:#FF8A80">CAN-H TO GROUND</text>
+</g>
+<g id="g-shortb" class="jump">
+  <path class="w" data-n="BAT" d="M334 291 H280"/>
+  <rect x="334" y="280" width="52" height="22" rx="6" class="btag"/>
+  <text x="360" y="295" class="t-blk" text-anchor="middle" style="fill:#FFB08E" id="sbLbl">B+</text>
+  <circle cx="280" cy="291" r="5" class="chafe"/>
+  <text x="394" y="295" class="t-tiny" style="fill:#FFB08E">CAN-L TO B+</text>
+</g>
+<g id="g-shorthl" class="jump">
+  <path class="w" data-n="XH" d="M220 305 H280"/>
+  <circle cx="220" cy="305" r="5" class="chafe"/><circle cx="280" cy="305" r="5" class="chafe"/>
+  <text x="212" y="309" class="t-tiny" text-anchor="end" style="fill:#FF8A80">H SHORTED TO L</text>
+</g>
+<text x="360" y="487" class="t-tiny" id="bcmOff" style="fill:#FF8A80;display:none">NO GROUND · MODULE DEAD</text>
+<path class="flow" id="fTE" d="M220 160 H280"/>
+<path class="flow" id="fTI" d="M220 514 H280"/>
+<path class="flow" id="fSG" d="M220 290 H180 V300"/>
+<path class="flow" id="fSB" d="M334 291 H280"/>
+<path class="flow" id="fHL" d="M220 305 H280"/>
+<g class="openpill" id="om-hUp" style="display:none"><path class="spark" d="M212 262 l-5 -3 M212 270 l-5 3 M228 262 l5 -3 M228 270 l5 3"/><rect x="158" y="258" width="44" height="16" rx="8"/><text x="180" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-lUp" style="display:none"><path class="spark" d="M272 262 l-5 -3 M272 270 l-5 3 M288 262 l5 -3 M288 270 l5 3"/><rect x="298" y="258" width="44" height="16" rx="8"/><text x="320" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-hLo" style="display:none"><path class="spark" d="M212 470 l-5 -3 M212 478 l-5 3 M228 470 l5 -3 M228 478 l5 3"/><rect x="158" y="466" width="44" height="16" rx="8"/><text x="180" y="477.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-lLo" style="display:none"><path class="spark" d="M272 470 l-5 -3 M272 478 l-5 3 M288 470 l5 -3 M288 478 l5 3"/><rect x="298" y="466" width="44" height="16" rx="8"/><text x="320" y="477.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-term" style="display:none"><rect x="286" y="509" width="42" height="15" rx="7.5"/><text x="307" y="520" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tpH"><title>ECM CAN-H pin (average, as a DMM reads it)</title><circle class="tpdot" cx="220" cy="236" r="4.5"/><rect x="124" y="225" width="88" height="22" rx="6"/><text x="132" y="239.5" class="lbl">H</text><text x="204" y="240" text-anchor="end" id="tpHv">0.00 V</text></g>
+<g class="badge" id="tpL"><title>ECM CAN-L pin (average, as a DMM reads it)</title><circle class="tpdot" cx="280" cy="236" r="4.5"/><rect x="288" y="225" width="88" height="22" rx="6"/><text x="296" y="239.5" class="lbl">L</text><text x="368" y="240" text-anchor="end" id="tpLv">0.00 V</text></g>
+<path class="hit" data-open="hUp" d="M220 250 V316"><title>Click to open or repair CAN-H (ECM side)</title></path>
+<path class="hit" data-open="lUp" d="M280 250 V316"><title>Click to open or repair CAN-L (ECM side)</title></path>
+<path class="hit" data-open="hLo" d="M220 458 V486"><title>Click to open or repair CAN-H to the cluster</title></path>
+<path class="hit" data-open="lLo" d="M280 458 V486"><title>Click to open or repair CAN-L to the cluster</title></path>`;
+
+const canLost = (code, name, mod) => ({ code, name, kind: 'Continuous', trips: 1, noMil: true, mat: 2, labels: ['Enable', 'Listen', 'Mature', 'Result'], bar: 2,
+  run(m, dt) { const en = canEn(); circ(m, en, en && canAge('ECM', mod) > 0.5, dt); },
+  view(m) {
+    const crit = [['Ignition on 3 s or more', on() && S.p.keyT >= 3], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['ECM not bus-off (U0073 not failing)', on() && !canEcmOff()],
+      [`Fails when no ${mod} message arrives for 0.5 s, for 2.0 s in a row`, null], ['Network code: stored right away, no MIL', null]];
+    if (!m.en) return on() && canEcmOff() ? { st: ['bad', '', '', ''], frac: 0, pill: ['Suspended', ''], det: 'Suspended: the ECM itself is bus-off.', crit } : waitView(crit, on() ? 'Waits 3 s after key on.' : 'Ignition off. Test not running.');
+    const a = canAge('ECM', mod), age = a > 99 ? 'over 99 s' : a.toFixed(1) + ' s';
+    if (m.failing) return { st: ['ok', 'bad', 'bad', 'bad'], frac: 1, pill: ['Failed', 'bad'], det: `No ${mod} message for ${age}. Test failed.`, crit };
+    if (m.timer > 0) return { st: ['ok', 'act', 'act', ''], frac: m.timer / m.mat, pill: ['Maturing', 'act'], det: `No ${mod} message for ${age} · ${m.timer.toFixed(1)} of 2.0 s`, crit };
+    return { st: ['ok', 'ok', '', m.good > 1 ? 'ok' : ''], frac: 0, pill: ['Passing', 'ok'], det: `${mod} messages arriving every ${Math.round(CAN_PER[mod] * 1000)} ms.`, crit };
+  } });
+
+const CAN = {
+  id: 'can', name: 'CAN network', sub: 'High-speed CAN bus', brandSub: 'CAN network circuit',
+  lib: { name: 'CAN network (high speed)', type: '2-wire twisted pair · 120 Ω terminated', codes: 'U0073 · U0100 · U0121 · U0140 · U0155' },
+  svg: CAN_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'scope',
+  readLabels: ['Bus at ECM pins', 'Error counter', 'Modules heard'],
+  faults: [['hUp', 'Open', 'CAN-H at ECM'], ['shortHG', 'Short', 'CAN-H to ground'], ['shortLB', 'Short', 'CAN-L to B+'], ['shortHL', 'Short', 'CAN-H to CAN-L'], ['termOpen', 'Open', 'Terminator in IPC'], ['bcmOff', 'Power', 'BCM loses ground']],
+  slider: { key: 'hiRes', label: 'High resistance · C1 CAN-L', max: 300, step: 10, fmt: v => v ? '+' + v + ' Ω' : 'None' },
+  opens: ['hUp', 'lUp', 'hLo', 'lLo'],
+  excl: [['shortHG', 'shortLB', 'shortHL']],
+  names: { hUp: 'CAN-H open (ECM side)', lUp: 'CAN-L open (ECM side)', hLo: 'CAN-H open to the cluster', lLo: 'CAN-L open to the cluster', shortHG: 'CAN-H shorted to ground', shortLB: 'CAN-L shorted to B+', shortHL: 'CAN-H shorted to CAN-L', termOpen: 'terminator open in the cluster', bcmOff: 'BCM ground open', hiRes: v => `+${v} Ω on CAN-L at C1` },
+  faultDefaults: () => ({ hUp: false, lUp: false, hLo: false, lLo: false, shortHG: false, shortLB: false, shortHL: false, termOpen: false, bcmOff: false, hiRes: 0 }),
+  initPhys: () => ({ keyT: 0, spd: 0, spdT: 0, mods: Object.fromEntries(CAN_MODS.map(k => [k, canMod()])) }),
+  grads: { gTE: ['EH', 'EL'], gTI: ['IH', 'IL'], gHR: ['XL', 'YL'] },
+  flows: [['fTE', I => I.te], ['fTI', I => I.ti], ['fSG', I => I.sg], ['fSB', I => I.sb], ['fHL', I => I.hl]],
+  solve() {
+    const f = S.f, o = on(), M = S.p.mods;
+    const base = [
+      ['EH', 'EL', 120, 'te'], ['EH', 'XH', f.hUp ? OPEN : WIRE, 'hup'], ['EL', 'XL', f.lUp ? OPEN : WIRE, 'lup'],
+      ['XH', 'YH', 0.02, 'c1h'], ['XL', 'YL', 0.02 + f.hiRes, 'hr'],
+      ['YH', 'IH', f.hLo ? OPEN : WIRE, 'hlo'], ['YL', 'IL', f.lLo ? OPEN : WIRE, 'llo'], ['IH', 'IL', f.termOpen ? OPEN : 120, 'ti'],
+      ['YH', 'DH', WIRE, 'dh'], ['YL', 'DL', WIRE, 'dl'], ['YH', 'AH', WIRE, 'ah'], ['YL', 'AL', WIRE, 'al'], ['YH', 'BH', WIRE, 'bh'], ['YL', 'BL', WIRE, 'bl'],
+      ['XH', 'G', f.shortHG ? WIRE : OPEN, 'sg'], ['BAT', 'XL', f.shortLB ? WIRE : OPEN, 'sb'], ['XH', 'XL', f.shortHL ? WIRE : OPEN, 'hl'],
+    ];
+    const nodes = ['EH', 'EL', 'XH', 'XL', 'YH', 'YL', 'IH', 'IL', 'DH', 'DL', 'AH', 'AL', 'BH', 'BL'];
+    const fixed = { G: 0, BAT: S.batt, V25: 2.5, VDH: 4, VDL: 1 };
+    const tr = t => {                                        // t = transmitting module (drives dominant), others sit at their 2.5 V bias
+      const E = base.slice();
+      for (const k of CAN_MODS) {
+        if (!canPow(k)) continue;
+        const [h, l] = CAN_N[k];
+        if (k === t) E.push([h, 'VDH', 20, 'dh' + k], [l, 'VDL', 20, 'dl' + k]);
+        else E.push([h, 'V25', 25e3, 'b' + k + 'h'], [l, 'V25', 25e3, 'b' + k + 'l']);
+      }
+      return nodal(nodes, E, fixed);
+    };
+    const rec = tr(null), dom = {}, q = {}, qs = {};
+    for (const k of CAN_MODS) if (canPow(k)) dom[k] = tr(k);
+    const vd = (sol, [h, l]) => sol.v[h] - sol.v[l];
+    for (const t in dom) {
+      qs[t] = canQ(vd(dom[t], CAN_N[t]), vd(rec, CAN_N[t]));
+      q[t] = { DLC: canQ(vd(dom[t], ['DH', 'DL']), vd(rec, ['DH', 'DL'])) };
+      for (const r of CAN_MODS) if (r !== t) q[t][r] = canQ(vd(dom[t], CAN_N[r]), vd(rec, CAN_N[r]));
+    }
+    // DMM view: about 20 % of bit time is dominant while traffic flows
+    const live = CAN_MODS.find(k => dom[k] && !M[k].busOff);
+    S.v = live ? avgMap(dom[live].v, rec.v, 0.2) : rec.v; S.I = live ? avgMap(dom[live].I, rec.I, 0.2) : rec.I;
+    // Scope at the DLC shows the next frame on the bus
+    const tx = CAN_MODS.find(k => dom[k] && !M[k].busOff && q[k].DLC > 0.3) || (dom.ECM ? 'ECM' : CAN_MODS.find(k => dom[k]));
+    // Ohmmeter across DLC 6–14, key off: wires and terminators only
+    const rE = base.filter(e => e[0] !== 'BAT' && e[1] !== 'G');
+    const rs = nodal(nodes.filter(n => n !== 'DH' && n !== 'DL'), rE, { DH: 1, DL: 0, G: 0 });
+    const R = WIRE / Math.max(1e-12, 1 - rs.v.YH);
+    S.can = { rec, dom, q, qs, R, scope: null };
+    if (tx) {
+      const d = dom[tx];
+      S.can.scope = { tx, Hd: d.v.DH, Ld: d.v.DL, Hr: rec.v.DH, Lr: rec.v.DL, bitErr: qs[tx] < 0.5,
+        acked: CAN_MODS.some(r => r !== tx && dom[r] && !M[r].busOff && q[tx][r] > 0.5), ring: 0.35 * clamp((R - 70) / 60, 0, 1) };
+    }
+    S.vad = o ? S.v.EH : null;
+  },
+  physics(dt) {
+    const p = S.p;
+    if (!on()) { p.keyT = 0; return; }
+    if (p.keyT === 0) canReset(S.t - dt);
+    p.spd += clamp(p.spdT - p.spd, -8 * dt, 8 * dt);
+    let done = 0;
+    while (done < dt - 1e-9) {
+      const h = Math.min(0.01, dt - done); done += h; p.keyT += h;
+      const now = S.t - dt + done;
+      for (const k of CAN_MODS) {
+        const x = p.mods[k];
+        if (!canPow(k)) continue;
+        if (x.busOff) { x.offT -= h; if (x.offT <= 0) { x.busOff = false; x.tec = 0; } continue; }   // bus-off recovery, then try again
+        x.acc += h;
+        while (x.acc >= CAN_PER[k] && !x.busOff) { x.acc -= CAN_PER[k]; canSend(k, now); }
+      }
+    }
+    canOtherCodes(dt);
+  },
+  inputHTML: '<label for="spdIn">Vehicle speed</label><input type="range" id="spdIn" min="0" max="80" step="5" value="0" aria-label="Vehicle speed"><output id="spdOut" for="spdIn">0</output><button class="btn small" id="btnStop">Stop</button><button class="btn small" id="btn45">45 mph</button>',
+  bindInputs() {
+    const r = $('#spdIn');
+    r.addEventListener('pointerdown', () => thrDrag = true);
+    addEventListener('pointerup', () => thrDrag = false);
+    r.addEventListener('input', e => { S.p.spdT = +e.target.value; });
+    $('#btnStop').addEventListener('click', () => { S.p.spdT = 0; });
+    $('#btn45').addEventListener('click', () => { S.p.spdT = 45; });
+  },
+  syncInputs() {
+    const r = $('#spdIn'); if (!r) return;
+    if (!thrDrag) r.value = S.p.spdT;
+    $('#spdOut').textContent = S.p.spdT;
+  },
+  onOff() { S.p.keyT = 0; },
+  onClear() { for (const k of ['ABS', 'BCM', 'IPC']) if (canReach(k)) { S.p.mods[k].codes = []; S.p.mods[k].tmr = {}; } },
+  scanLink: () => canReach('ECM'),
+  scanExtra() {
+    const html = ['ABS', 'BCM', 'IPC'].map(k => {
+      const ok = canReach(k), c = S.p.mods[k].codes;
+      return `<div class="row ${!ok ? 'bad' : c.length ? 'flag' : ''}"><span>${CAN_NAME[k]}</span><b>${!ok ? 'No response' : c.length ? c.join(' · ') : 'No DTCs'}</b></div>`;
+    }).join('');
+    return { head: 'Other modules · network scan', html };
+  },
+  monitors: [
+    { code: 'U0073', name: 'Control module communication bus A off', kind: 'Continuous', trips: 1, mat: 2, labels: ['Enable', 'Count', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10; circ(m, en, en && canEcmOff(), dt); },
+      view(m) {
+        const e = S.p.mods.ECM;
+        const crit = [['Ignition on', on()], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Each transmit error adds 8 to the error counter, each good frame takes away 1', null], ['Over 255 the ECM goes bus-off. Fails when bus-off lasts or repeats for 2.0 s', null]];
+        if (!on()) return waitView(crit, 'Ignition off. Test not running.');
+        if (m.failing) return { st: ['ok', 'bad', 'bad', 'bad'], frac: 1, pill: ['Failed', 'bad'], det: `Bus-off ${e.offN} times. Test failed.`, crit };
+        if (m.timer > 0) return { st: ['ok', 'bad', 'act', ''], frac: m.timer / m.mat, pill: ['Maturing', 'act'], det: `Bus-off · ${m.timer.toFixed(1)} of 2.0 s`, crit };
+        return { st: ['ok', e.tec > 0 ? 'act' : 'ok', '', m.good > 1 ? 'ok' : ''], frac: 0, pill: ['Passing', 'ok'], det: `TEC ${e.tec} · ${canState(e).toLowerCase()}.`, crit };
+      } },
+    canLost('U0121', 'Lost communication with ABS module', 'ABS'),
+    canLost('U0140', 'Lost communication with body control module', 'BCM'),
+    canLost('U0155', 'Lost communication with instrument cluster', 'IPC'),
+  ],
+  visual() {
+    const f = S.f;
+    $('#g-bcm').style.opacity = f.bcmOff ? 0.45 : 1;
+    $('#bcmOff').style.display = f.bcmOff ? '' : 'none';
+    $('#om-term').style.display = f.termOpen ? '' : 'none';
+    $('#g-shortg').classList.toggle('on', f.shortHG);
+    $('#g-shortb').classList.toggle('on', f.shortLB);
+    $('#g-shorthl').classList.toggle('on', f.shortHL);
+  },
+  text() {
+    const v = S.v, M = S.p.mods, o = on(), e = M.ECM, R = S.can.R;
+    $('#tpHv').textContent = fmtV(v.EH); $('#tpLv').textContent = fmtV(v.EL);
+    [['tpH', 'EH'], ['tpL', 'EL']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
+    $('#dlcV').textContent = `6: ${(v.DH || 0).toFixed(1)} · 14: ${(v.DL || 0).toFixed(1)} V`;
+    $('#dlcR').textContent = `6–14: ${R > 1e6 ? 'OL' : R < 1 ? R.toFixed(1) + ' Ω' : Math.round(R) + ' Ω'} key off`;
+    $('#dlcR').style.fill = R > 70 || R < 50 ? '#FF8A80' : '';
+    $('#tecLbl').textContent = o ? `TEC ${Math.min(e.tec, 255)} · REC ${e.rec}` : 'TEC — · REC —';
+    $('#busLbl').textContent = !o ? 'ASLEEP' : canState(e).toUpperCase();
+    $('#busLbl').style.fill = o && canState(e) !== 'Error active' ? '#FF8A80' : '';
+    const st = k => !canPow(k) ? (o ? 'NO POWER' : 'Asleep') : M[k].busOff || S.t - M[k].lastOff < 1 ? 'BUS OFF' : !canHears(k, 'ECM') ? 'NO ECM DATA' : `OK · TEC ${M[k].tec}`;
+    $('#absLbl').textContent = st('ABS'); $('#bcmLbl').textContent = st('BCM');
+    $('#ipcLbl').textContent = !o ? 'Asleep' : canHears('IPC', 'ABS') ? `Speed ${Math.round(S.p.spd)} mph · ${st('IPC')}` : `NO ABS DATA · ${st('IPC')}`;
+    ['absLbl', 'bcmLbl', 'ipcLbl'].forEach(id => { const t = $('#' + id).textContent; $('#' + id).style.fill = o && !/^OK|^Speed .*OK/.test(t) ? '#FF8A80' : ''; });
+    $('#hrLbl1').textContent = '+' + S.f.hiRes + ' Ω';
+    $('#sbLbl').textContent = `B+ ${S.batt.toFixed(1)}`;
+  },
+  chart: {
+    trig: { ms: 130, t0: 0, step: 20, xLabel: 'µs · 500 kbps · triggered at the DLC', aMin: -1, aMax: 3.5, aTicks: [-1, 0, 1, 2, 3], aUnit: 'V', noZones: true, col1: '#FFC766' },
+    dual: true, vMax: 5.2, yTicks: [0, 1, 2, 3, 4, 5],
+    hi: [5.2, ''], lo: [0, ''],
+    tabs: { curve: 'Differential', scope: 'H / L' }, first: 'scope',
+    titles: { scope: 'CAN-H and CAN-L at the DLC', curve: 'Differential (H − L)' },
+    trace: k => { const w = canWave(); return k === 'v' ? w.H : k === 'v2' ? w.L : w.D; }, annot: canAnnot,
+    curve: () => [], readX: () => 0, actualX: () => 0,
+  },
+  readouts() {
+    const o = on(), e = S.p.mods.ECM, v = S.v;
+    if (!o) return [{ v: '—', s: 'Bus asleep', cls: '' }, { v: '—', s: '—', cls: '' }, { v: '—', s: '—', cls: '' }];
+    const H = v.EH, L = v.EL, ok = H > 2.4 && H < 3.0 && L > 2.0 && L < 2.6, n = canHeardN(), miss = ['ABS', 'BCM', 'IPC'].filter(k => !canHears('ECM', k));
+    const stt = canState(e);
+    return [
+      { v: `${H.toFixed(1)} / ${L.toFixed(1)}`, s: ok ? 'CAN-H / CAN-L · normal' : 'CAN-H / CAN-L · out of range', cls: ok ? '' : 'alert' },
+      { v: `TEC ${Math.min(e.tec, 255)}`, s: stt, cls: stt === 'Error active' ? '' : 'alert' },
+      { v: `${n} of 3`, s: miss.length ? 'Missing: ' + miss.join(', ') : 'ABS, BCM and IPC all heard', cls: miss.length ? 'subst' : '' },
+    ];
+  },
+  dataRows() {
+    const e = S.p.mods.ECM, stt = canState(e), row = k => [`${k} messages`, canHears('ECM', k) ? 'OK' : 'Lost', canHears('ECM', k) ? '' : 'bad'];
+    return [
+      ['ECM CAN bus state', stt, stt === 'Error active' ? '' : 'bad'], ['Transmit error counter', String(Math.min(e.tec, 255)), e.tec ? 'flag' : ''], ['Receive error counter', String(e.rec), e.rec ? 'flag' : ''],
+      row('ABS'), row('BCM'), row('IPC'),
+      ['Vehicle speed (from ABS)', canHears('ECM', 'ABS') ? Math.round(S.p.spd) + ' mph' : 'No data', canHears('ECM', 'ABS') ? '' : 'flag'], ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
+    ];
+  },
+  ffRows: () => [['ECM bus state', canState(S.p.mods.ECM)], ['Transmit errors', String(Math.min(S.p.mods.ECM.tec, 255))], ['Modules heard', canHeardN() + ' of 3'], ['Vehicle speed', canHears('ECM', 'ABS') ? Math.round(S.p.spd) + ' mph' : 'No data'], ['Key-on time', mmss(S.p.keyT)], ['Ignition V', S.batt.toFixed(1) + ' V']],
+  dash: {
+    lo: '0', hi: '100', hot: null,
+    frac: () => on() ? (canHears('IPC', 'ABS') ? clamp(S.p.spd / 100, 0, 1) : 0) : null,
+    text: () => !on() ? '—' : canHears('IPC', 'ABS') ? Math.round(S.p.spd) + ' mph' : '-- mph',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" d="M3 4h7v5H3zM14 4h7v5h-7zM8.5 16h7v5h-7zM6 9h1.2v3h9.6V9H18v4.2h-5.4V16h-1.2v-2.8H6z"/></svg>',
+    t2on: () => on() && S.p.keyT >= 1 && ['ECM', 'ABS', 'BCM'].some(k => !canHears('IPC', k)),
+    t2text: () => !on() ? 'Network asleep' : S.p.keyT >= 1 && ['ECM', 'ABS', 'BCM'].some(k => !canHears('IPC', k)) ? 'Comm fault · service' : 'Network OK',
+  },
+};
+CAN.lesson = [
+  { title: 'Meet the network',
+    body: 'Modules share information over one pair of wires, <b>CAN-H</b> and <b>CAN-L</b>. Every module hears every message, and each one takes only what it needs. The ECM sends engine data every 10 ms, and the ABS sends wheel speed every 20 ms. A <b>120 Ω terminating resistor</b> sits at each end of the bus, one in the ECM and one in the cluster (IPC).',
+    setup() { fullReset(); setSpeed(1); setChart('scope'); S.p.spdT = 45; }, spot: ['g-term-e', 'g-ipc', 'g-dlc'] },
+  { title: 'Read a frame',
+    body: 'The scope shows one ECM message at the DLC. At rest both wires sit near <b>2.5 V</b>: that\'s a <b>recessive</b> bit (1). For a <b>dominant</b> bit (0), CAN-H rises to about 3.5 V and CAN-L drops to about 1.5 V, a mirror image. The green <b>ACK</b> mark is where the other modules confirm they got it. Open the <b>Differential</b> tab: receivers only look at H minus L.',
+    setup() { setChart('scope'); }, spot: ['chartBox'],
+    goal: { text: 'Open the Differential tab', test: () => S.chart === 'curve' } },
+  { title: 'Predict: a terminator fails',
+    body: 'With the key off, an ohmmeter across DLC pins <b>6 and 14</b> reads the two 120 Ω terminators in parallel: <b>60 Ω</b>. That\'s the first check on any CAN problem.',
+    ask: { q: 'If the terminator inside the cluster opens, what will the meter read?', opts: ['0 Ω', '60 Ω', '120 Ω'], ans: 2,
+      why: 'Only the ECM\'s 120 Ω is left across the bus, so the meter reads 120 Ω. 60 Ω means both terminators are there, and near 0 Ω means CAN-H is shorted to CAN-L.',
+      apply() { setFault('termOpen', true); setChart('curve'); } },
+    spot: ['g-dlc', 'g-ipc'] },
+  { title: 'Still talking, but ringing',
+    body: 'The DLC now reads <b>120 Ω</b>, and the network still works: every module is heard and <b>no code sets</b>. Look at the differential waveform, though. Without the far-end terminator, each edge <b>rings</b> as the signal reflects. On a longer bus or a noisy day that turns into errors. It\'s a fault you find with a meter or a scope, not a code.',
+    setup() { if (!S.f.termOpen) setFault('termOpen', true); setChart('curve'); }, spot: ['g-dlc', 'chartBox'] },
+  { title: 'Predict: CAN-H shorted to ground',
+    body: 'We replaced the terminator. Now CAN-H rubs through to ground between the ECM and the rest of the bus.',
+    setup() { clearFaults(); clearDTCs(true); setChart('scope'); },
+    ask: { q: 'What happens?', opts: ['One module drops off', 'The whole bus goes down', 'No effect'], ans: 1,
+      why: 'All modules share the same two wires. With CAN-H stuck at 0 V, no module can send a dominant bit, so every sender reads back the wrong level.',
+      apply() { setFault('shortHG', true); } },
+    spot: ['g-shortg', 'read1'] },
+  { title: 'Bus off: U0073',
+    body: 'Watch the ECM\'s <b>transmit error counter</b>: +8 for each failed frame. Past 255 the ECM goes <b>bus-off</b>, waits, retries, and fails again, so <b>U0073</b> sets. Now look at the scan tool: it talks over the same bus, so it <b>can\'t reach the ECM at all</b>. With a dead bus, you diagnose at the DLC with a meter.',
+    setup() { if (!S.f.shortHG) setFault('shortHG', true); setSpeed(1); }, spot: ['read1', 'mon-U0073', 'dtcBox'],
+    goal: { text: 'U0073 sets in the ECM', test: () => S.M.U0073.confirmed } },
+  { title: 'Predict: one module goes dead',
+    body: 'We repaired the short and cleared the codes. Now the <b>BCM loses its ground</b>. The bus wiring is fine.',
+    setup() { clearFaults(); clearDTCs(true); setSpeed(1); },
+    ask: { q: 'Which module stores a code?', opts: ['The BCM', 'The modules that stop hearing it', 'None'], ans: 1,
+      why: 'A dead module can\'t store or send anything. The others notice its messages have stopped and each sets "lost communication with BCM." The code is stored in the listener, and it names the missing module.',
+      apply() { setFault('bcmOff', true); } },
+    spot: ['g-bcm'] },
+  { title: 'Lost communication: U0140',
+    body: 'The ECM expects a BCM message every 100 ms. After 0.5 s of silence the test starts maturing, and <b>U0140</b> is stored as a <b>current</b> code. Notice there\'s <b>no MIL</b>: most network codes aren\'t emissions faults. In the scan tool\'s network scan the BCM shows <b>No response</b>, and the cluster has its own U0140.',
+    setup() { if (!S.f.bcmOff) setFault('bcmOff', true); }, spot: ['mon-U0140', 'extraWrap', 'g-bcm'],
+    goal: { text: 'U0140 stored in the ECM', test: () => S.M.U0140.confirmed } },
+  { title: 'Cut off from the bus',
+    body: 'Now CAN-H is <b>open at the ECM</b>. The ECM keeps sending, but nobody answers, so there\'s no ACK. Its counter climbs only to <b>128</b> (error passive) and stops, so it never goes bus-off. The ECM sets U0121, U0140 and U0155, and every other module sets <b>U0100</b>, lost communication with the ECM. The scan tool can\'t reach the ECM.',
+    setup() { clearFaults(); clearDTCs(true); setFault('hUp', true); setSpeed(1); }, spot: ['om-hUp', 'read1', 'extraWrap'],
+    goal: { text: 'The ABS stores U0100', test: () => S.p.mods.ABS.codes.includes('U0100') } },
+  { title: 'Reading a network fault',
+    body: 'Start with the pattern. <b>One module missing</b> points to that module\'s power, ground or connector. <b>Everyone missing one module</b>, with U0100 in all the others, points at the ECM\'s side. <b>Everything down</b> and U0073 points to the bus itself: check 60 Ω across DLC pins 6 and 14, then about 2.6 V on CAN-H and 2.4 V on CAN-L.',
     final: true, alt: { label: '◂ Back to ECT', go() { switchSensor('ect'); } } },
 ];
 
-const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ };
-const PLANNED = [
-  { name: 'CAN network', type: 'Serial data · message timeouts', codes: 'U0100 · U0140 · U0073' },
-];
+const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN };
+const PLANNED = [];
 
 /* ================= simulation core ================= */
 let D, S, MODE = 'explore', thrDrag = false;
@@ -2106,10 +2591,10 @@ function solve() { S.batt = S.key === 'run' ? 14.2 : 12.6; D.solve(); }
 function fail(m) {
   m.failing = true; m.failedTrip = true; m.passTrips = 0;
   if (m.confirmed) {
-    if (!m.mil) { m.mil = true; toast(`${m.code} failed again. MIL back on.`, 'bad'); }
+    if (!m.mil && !m.noMil) { m.mil = true; toast(`${m.code} failed again. MIL back on.`, 'bad'); }
   } else if (m.trips === 1) {
-    m.confirmed = true; m.pending = false; m.mil = true; m.ff = capture(m); S.sel = m.code;
-    toast(`${m.code} is a one-trip code. Confirmed, MIL on right away.`, 'bad');
+    m.confirmed = true; m.pending = false; m.mil = !m.noMil; m.ff = capture(m); S.sel = m.code;
+    toast(m.noMil ? `${m.code} stored as a current code. No MIL: most network codes don't light it.` : `${m.code} is a one-trip code. Confirmed, MIL on right away.`, 'bad');
   } else if (m.pending && m.pendingTrip < S.trip) {
     m.confirmed = true; m.pending = false; m.mil = true; m.ff = capture(m); S.sel = m.code;
     toast(`${m.code} failed on a 2nd trip. Confirmed, MIL on.`, 'bad');
@@ -2138,6 +2623,7 @@ function setKey(k) {
     S.tripOpen = false; S.ranThisTrip = false; S.run = 0;
     S.mons.forEach(m => Object.assign(m, { timer: 0, good: 0, failing: false, jumps: [], lastF: null }));
     S.glitch.open = false;
+    D.onOff?.();
   }
   S.key = k;
   if (k === 'run') {
@@ -2169,7 +2655,7 @@ function setChart(v) {
   $('#gridScope').style.display = v === 'scope' ? '' : 'none';
   const T = D.chart.titles;
   $('#chartTitle').textContent = T ? T[v] : v === 'curve' ? 'Signal voltage vs reading' : 'Signal voltage · last 6 s';
-  $('#zones').style.display = D.chart.trig && v === 'curve' ? 'none' : '';
+  $('#zones').style.display = D.chart.trig && (v === 'curve' || D.chart.trig.noZones) ? 'none' : '';
 }
 function setThrottle(x) { const p = S.p; p.sweep = null; p.snap = null; p.target = x; p.pos = x; }
 function setFault(k, val) {
@@ -2253,22 +2739,22 @@ function renderCircuit(dtReal) {
 /* chart */
 const CH = { x0: 34, x1: 350, y0: 12, y1: 170, vMax: 5.2 };
 const cy = v => CH.y1 - v / CH.vMax * (CH.y1 - CH.y0);
-const ay = a => CH.y1 - a / (D.chart.trig ? D.chart.trig.aMax : 1) * (CH.y1 - CH.y0);   // amps axis (triggered current view)
+const ay = a => { const t = D.chart.trig, lo = t?.aMin ?? 0, hi = t ? t.aMax : 1; return CH.y1 - (a - lo) / (hi - lo) * (CH.y1 - CH.y0); };   // 2nd axis (triggered curve view: amps, or differential volts)
 let cx = f => f;
 /* Two chart styles: a transfer curve + rolling 6 s scope (sensors), or a triggered one-event capture in ms (actuators, chart.trig) */
 function buildChart() {
   const c = D.chart, tg = c.trig;
   cx = tg ? (ms => CH.x0 + ms / tg.ms * (CH.x1 - CH.x0)) : (f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0));
   CH.vMax = c.vMax ?? 5.2;
-  const yAxis = (ticks, y, unit) => ticks.map(v => `<line x1="${CH.x0}" x2="${CH.x1}" y1="${y(v)}" y2="${y(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${y(v) + 3}" text-anchor="end">${Number.isInteger(v) ? v : v.toFixed(1)}</text>`).join('') +
+  const yAxis = (ticks, y, unit) => ticks.map(v => `<line x1="${CH.x0}" x2="${CH.x1}" y1="${y(v)}" y2="${y(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${y(v) + 3}" text-anchor="end">${(Number.isInteger(v) ? String(v) : v.toFixed(1)).replace('-', '−')}</text>`).join('') +
     `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">${unit}</text>`;
   const yg = yAxis(c.yTicks ?? [0, 1, 2, 3, 4, 5], cy, 'V');
   if (tg) {
     let xs = '';
-    for (let t = 0; t <= tg.ms; t += 2) xs += `<line x1="${cx(t)}" x2="${cx(t)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(t)}" y="${CH.y1 + 12}" text-anchor="middle">${t}</text>`;
-    xs += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">ms · triggered on driver turn-on</text>`;
+    for (let t = 0; t <= tg.ms + 1e-9; t += tg.step || 2) xs += `<line x1="${cx(t)}" x2="${cx(t)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(t)}" y="${CH.y1 + 12}" text-anchor="middle">${t}</text>`;
+    xs += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">${tg.xLabel || 'ms · triggered on driver turn-on'}</text>`;
     $('#gridScope').innerHTML = yg + xs;
-    $('#gridCurve').innerHTML = yAxis(tg.aTicks, ay, 'A') + xs;
+    $('#gridCurve').innerHTML = yAxis(tg.aTicks, ay, tg.aUnit || 'A') + xs;
   } else {
     let g = yg;
     c.ticks.forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
@@ -2296,6 +2782,8 @@ function buildChart() {
   $('#curve').style.stroke = tg ? '#FFC766' : ''; $('#curveGlow').style.stroke = tg ? '#FFB224' : '';
   const d = tg ? '' : c.curve().map(([x, v], i) => (i ? 'L' : 'M') + cx(x).toFixed(1) + ' ' + cy(v).toFixed(1)).join('');
   $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d);
+  $('#scopePath').style.stroke = tg?.col1 || ''; $('#scopeGlow').style.stroke = tg?.col1 || '';
+  $('#scope2').style.display = $('#scope2Glow').style.display = c.dual ? '' : 'none';
   setHTML($('#trigAnn'), '');
 }
 function renderChart() {
@@ -2304,7 +2792,10 @@ function renderChart() {
     const cur = S.chart === 'curve', yf = cur ? ay : (v => cy(clamp(v, 0, CH.vMax)));
     const d = c.trace(cur ? 'a' : 'v').map(([t, y], i) => (i ? 'L' : 'M') + cx(t).toFixed(1) + ' ' + yf(y).toFixed(1)).join('');
     if (cur) { $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d); }
-    else { $('#scopePath').setAttribute('d', d); $('#scopeGlow').setAttribute('d', d); $('#scopeDot').style.display = 'none'; }
+    else {
+      $('#scopePath').setAttribute('d', d); $('#scopeGlow').setAttribute('d', d); $('#scopeDot').style.display = 'none';
+      if (c.dual) { const d2 = c.trace('v2').map(([t, y], i) => (i ? 'L' : 'M') + cx(t).toFixed(1) + ' ' + yf(y).toFixed(1)).join(''); $('#scope2').setAttribute('d', d2); $('#scope2Glow').setAttribute('d', d2); }
+    }
     setHTML($('#trigAnn'), c.annot(S.chart));
     return;
   }
@@ -2357,7 +2848,8 @@ function flagChips(m) {
   if (m.failing) h += '<span class="chip live">Failing now</span>';
   if (m.pending) h += '<span class="chip pend">Pending</span>';
   if (m.confirmed && m.mil) h += '<span class="chip conf">Confirmed · MIL</span>';
-  if (m.confirmed && !m.mil) h += '<span class="chip hist">History</span>';
+  if (m.confirmed && m.noMil) h += m.failing ? '<span class="chip pend">Current · no MIL</span>' : '<span class="chip hist">History</span>';
+  else if (m.confirmed && !m.mil) h += '<span class="chip hist">History</span>';
   return h;
 }
 function renderMonitors() {
@@ -2380,15 +2872,24 @@ function renderReadouts() {
   D.readouts().forEach((r, i) => {
     const b = $('#rv' + i);
     b.textContent = r.v; $('#rs' + i).textContent = r.s;
-    b.style.fontSize = r.v.length > 8 ? Math.max(14, Math.floor(21 * 8.5 / r.v.length)) + 'px' : '';
+    b.style.fontSize = r.v.length > 8 ? Math.max(14, Math.floor(21 * 8 / r.v.length)) + 'px' : '';
     const el = i === 2 ? $('#ecmUsed') : $('#read' + i);
     el.classList.toggle('alert', r.cls === 'alert'); el.classList.toggle('subst', r.cls === 'subst');
   });
 }
 function renderScan() {
-  const o = on();
-  $('#led').classList.toggle('on', o);
-  $('#clr').disabled = !o;
+  const o = on(), link = !D.scanLink || D.scanLink();
+  $('#led').classList.toggle('on', o && link);
+  $('#clr').disabled = !o || !link;
+  const ex = D.scanExtra && o ? D.scanExtra() : null;
+  $('#extraWrap').hidden = !ex;
+  if (ex) { $('#extraHead').textContent = ex.head; setHTML($('#extraBox'), ex.html); }
+  if (o && !link) {
+    const nc = '<div class="empty">No communication with the ECM. The scan tool reaches every module over the same CAN bus, so it can’t read the ECM’s data or codes until the bus is repaired.</div>';
+    setHTML($('#data'), nc); setHTML($('#dtcBox'), '<div class="empty">Can’t read codes: ECM not responding.</div>');
+    $('#ffHead').textContent = 'Freeze frame'; setHTML($('#ffBox'), '<div class="empty">Not available without communication.</div>');
+    return;
+  }
   if (!o) setHTML($('#data'), '<div class="empty">Ignition off. Turn the key on to talk to the ECM.</div>');
   else setHTML($('#data'), D.dataRows().map(([k, v, c]) => `<div class="row ${c}"><span>${k}</span><b>${v}</b></div>`).join(''));
   const stored = S.mons.filter(m => m.pending || m.confirmed);
@@ -2397,7 +2898,7 @@ function renderScan() {
   else {
     if (!stored.find(m => m.code === S.sel)) S.sel = stored[0].code;
     setHTML($('#dtcBox'), stored.map(m => {
-      const note = m.pending ? 'Fails again next trip → MIL on' : m.mil ? (m.passTrips ? `${m.passTrips} of 3 good trips to turn MIL off` : 'MIL on') : 'MIL off after 3 good trips';
+      const note = m.noMil ? 'Network code · no MIL' : m.pending ? 'Fails again next trip → MIL on' : m.mil ? (m.passTrips ? `${m.passTrips} of 3 good trips to turn MIL off` : 'MIL on') : 'MIL off after 3 good trips';
       return `<button class="dtc ${m.code === S.sel ? 'sel' : ''}" data-code="${m.code}"><span class="dc">${m.code}</span><span class="dn">${m.name}</span><span class="dx">${flagChips(m)}<span>${note}</span></span></button>`;
     }).join(''));
   }
