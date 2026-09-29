@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Interactive ECT circuit: inject a fault and watch how the ECM sets a trouble code.">
+<meta name="description" content="Interactive sensor circuits: inject a fault and watch how the ECM sets a trouble code.">
 <title>DTC Code-Setting Visualizer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,6 +43,8 @@ button{font:inherit;color:inherit}
 .seg button:hover{color:var(--fg)}
 .seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg.mini{padding:2px;border-radius:8px}
+.seg.mini button{padding:5px 8px;font-size:10px;border-radius:6px}
 .seg .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
 .seg button[aria-pressed="true"] .dot.run{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .seg button[aria-pressed="true"] .dot.on{background:var(--warn)}
@@ -59,11 +61,35 @@ button{font:inherit;color:inherit}
 /* ---------- bench ---------- */
 .bench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.14fr) minmax(0,1fr) minmax(0,.86fr);gap:10px}
 .panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
-.phead{display:flex;align-items:baseline;gap:10px;padding:12px 16px 6px;flex-wrap:wrap}
+.phead{display:flex;align-items:center;gap:10px;padding:10px 14px 6px;flex-wrap:wrap}
 .phead h2{margin:0;font:600 12.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
-.phead span{font-size:12.5px;color:var(--dim)}
+.phead>span{font-size:12.5px;color:var(--dim)}
 .legend{margin-left:auto;display:flex;align-items:center;gap:6px;font:500 10.5px/1 var(--f-mono);color:var(--faint)}
-.legend i{display:block;width:74px;height:5px;border-radius:3px;background:linear-gradient(90deg,rgb(44,62,80),rgb(40,110,150) 12%,rgb(95,212,255) 40%,rgb(255,122,69))}
+.legend i{display:block;width:64px;height:5px;border-radius:3px;background:linear-gradient(90deg,rgb(44,62,80),rgb(40,110,150) 12%,rgb(95,212,255) 40%,rgb(255,122,69))}
+
+/* ---------- circuit picker ---------- */
+#pickBtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:6px 10px 6px 11px;border-radius:9px;border:1px solid rgba(47,155,224,.45);background:linear-gradient(180deg,#132030,#0f1822);min-width:0;transition:border-color .15s}
+#pickBtn:hover{border-color:var(--accent)}
+#pickBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#pickName{font:600 13.5px/1 var(--f-label);letter-spacing:.03em;white-space:nowrap}
+#pickSub{font-size:12px;color:var(--dim);white-space:nowrap}
+#pickBtn svg{color:var(--accent);flex:none}
+.pop{position:fixed;z-index:30;padding:12px;border-radius:14px;background:rgba(13,18,24,.98);border:1px solid var(--line-2);box-shadow:0 30px 70px -20px rgba(0,0,0,.95);display:grid;gap:10px}
+.pop h4{margin:0;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between}
+.pop h4 span{letter-spacing:.04em;text-transform:none;font:500 11.5px var(--f-ui)}
+.lib{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.card{all:unset;cursor:pointer;min-width:0;padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise);display:grid;gap:4px;align-content:start;transition:border-color .15s,background .15s}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.card.cur{border-color:var(--accent);background:linear-gradient(180deg,#132232,#101820)}
+.card .ct{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card b{font:600 14.5px/1.15 var(--f-label);letter-spacing:.02em}
+.card span{font-size:12px;color:var(--dim)}
+.card code{font:500 10.5px/1.3 var(--f-mono);color:var(--faint)}
+.card[aria-disabled="true"]{cursor:default;opacity:.5}
+.card[aria-disabled="true"]:hover{border-color:var(--line)}
+.tag{font:700 8.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;padding:3px 6px;border-radius:5px;color:var(--dim);background:#18212B;white-space:nowrap}
+.tag.now{color:#fff;background:var(--accent)}
 
 /* ---------- circuit ---------- */
 .cwrap{flex:1;min-height:0;padding:0 2px;display:flex}
@@ -101,6 +127,12 @@ button{font:inherit;color:inherit}
 .hit:hover{stroke:rgba(255,255,255,.05)}
 .corr{fill:#7FB77E;opacity:.75}
 .coolant{fill:none;stroke:#2F9BE0;stroke-width:1.5;opacity:.55;stroke-linecap:round}
+
+/* ---------- driver input row ---------- */
+.inrow{display:flex;align-items:center;gap:10px;margin:0 10px 8px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:var(--raise)}
+.inrow label{font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.inrow input{flex:1;min-width:60px}
+.inrow output{font:500 12px/1 var(--f-mono);width:44px;text-align:right;font-variant-numeric:tabular-nums}
 
 /* ---------- docks (faults / lesson) ---------- */
 .dock{border-top:1px solid var(--line);padding:8px 10px 9px;background:rgba(6,9,12,.55)}
@@ -142,7 +174,8 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .why{font-size:13px;color:var(--soft);border-left:2px solid var(--ok);padding-left:10px}
 .l-goal{font:500 11.5px/1.3 var(--f-mono);color:var(--dim)}
 .l-goal.done{color:var(--ok)}
-.l-nav{display:flex;justify-content:space-between;gap:8px}
+.l-nav{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.l-nav .r{display:flex;gap:8px}
 
 /* ---------- inside the ECM ---------- */
 .scroll{overflow:auto;min-height:0;flex:1;padding:0 14px 12px;display:flex;flex-direction:column;gap:10px}
@@ -156,7 +189,9 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .read.subst{border-color:rgba(255,178,36,.5)}
 .read.subst b,.read.subst small{color:var(--warn)}
 .chartbox{border-radius:12px;background:#0A0F14;border:1px solid var(--line);padding:6px 6px 2px}
-#chart{width:100%;height:auto;max-height:168px;display:block}
+.ctabs{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 2px 4px 6px}
+.ctabs span{font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+#chart{width:100%;height:auto;max-height:160px;display:block}
 #chart text{font-family:var(--f-mono);font-size:9px;fill:var(--faint)}
 #chart .zl{font-family:var(--f-label);font-weight:700;letter-spacing:.12em;font-size:8.5px;fill:#FF8A80}
 .sec{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px}
@@ -213,14 +248,14 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .tell svg{flex:none;transition:filter .3s}
 .tell.on{color:var(--warn)}
 .tell.on svg{filter:drop-shadow(0 0 7px rgba(255,178,36,.9))}
-.tell.fan.on{color:#8CCBF3}
-.tell.fan.on svg{filter:drop-shadow(0 0 6px rgba(47,155,224,.8))}
+.tell.t2.on{color:#8CCBF3}
+.tell.t2.on svg{filter:drop-shadow(0 0 6px rgba(47,155,224,.8))}
 .milpath{fill:#2A2419;transition:fill .3s}
 .tell.on .milpath{fill:var(--warn)}
-.fanpath{fill:#1f2a35;transition:fill .3s}
-.tell.fan.on .fanpath{fill:#8CCBF3}
+.ic{fill:#1f2a35;transition:fill .3s}
+.tell.t2.on .ic{fill:#8CCBF3}
 .fanrot{transform-origin:12px 12px}
-.tell.fan.on .fanrot{animation:spin .6s linear infinite}
+.tell.t2.on .fanrot{animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .scan{flex:1;min-height:0;margin:0 12px 12px;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;background:#06090C;border:1px solid var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 .shead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font:700 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase}
@@ -245,7 +280,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .ff{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 14px}
 
 /* ---------- toasts ---------- */
-.toasts{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:grid;gap:6px;z-index:10;pointer-events:none;width:min(440px,calc(100% - 32px))}
+.toasts{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:grid;gap:6px;z-index:40;pointer-events:none;width:min(460px,calc(100% - 32px))}
 .toast{padding:9px 14px;border-radius:10px;background:rgba(14,19,25,.94);border:1px solid var(--line-2);box-shadow:0 14px 40px -12px rgba(0,0,0,.8);font-size:13px;display:flex;gap:9px;align-items:center;animation:tin .25s ease-out}
 .toast i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--accent)}
 .toast.warn i{background:var(--warn)} .toast.bad i{background:var(--fail)} .toast.ok i{background:var(--ok)}
@@ -274,9 +309,11 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   .reads{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .read:last-child{grid-column:1/-1}
   .brand h1{white-space:normal}
+  .lib{grid-template-columns:minmax(0,1fr)}
+  #pickSub{display:none}
 }
 @media (prefers-reduced-motion:reduce){
-  .spot,#circuit .spot,#chart .spot,.tell.fan.on .fanrot{animation:none}
+  .spot,#circuit .spot,#chart .spot,.tell.t2.on .fanrot{animation:none}
   .toast{animation:none}
 }
 </style>
@@ -291,7 +328,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
       </div>
       <div style="min-width:0">
         <h1>DTC Code-Setting Visualizer</h1>
-        <p>ECT sensor circuit · STECH Automotive</p>
+        <p id="brandSub">ECT sensor circuit · STECH Automotive</p>
       </div>
     </div>
     <div class="seg modes" role="group" aria-label="Mode">
@@ -326,146 +363,21 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   <main class="bench">
     <!-- ======================= CIRCUIT ======================= -->
     <section class="panel" id="circuitPanel">
-      <div class="phead"><h2>Circuit</h2><span>Engine coolant temperature sensor · 2-wire thermistor</span>
+      <div class="phead"><h2>Circuit</h2>
+        <button id="pickBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="pop" title="Switch circuits">
+          <span id="pickName">ECT sensor</span><span id="pickSub">2-wire thermistor</span>
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <div class="legend" aria-label="Wire color shows voltage"><span>0 V</span><i></i><span>5 V</span><span>B+</span></div>
       </div>
       <div class="cwrap">
-        <svg id="circuit" viewBox="14 10 506 542" preserveAspectRatio="xMidYMid meet" role="img" aria-label="ECT sensor circuit: ECM 5 volt reference through a pull-up resistor to the signal wire, connector C1, the thermistor, and back on the low reference wire">
-          <defs>
-            <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
-            <linearGradient id="gPU" gradientUnits="userSpaceOnUse" x1="180" y1="110" x2="260" y2="110"><stop offset="0" id="gPU0" stop-color="#2c3e50"/><stop offset="1" id="gPU1" stop-color="#2c3e50"/></linearGradient>
-            <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="380" y1="318" x2="380" y2="348"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
-            <linearGradient id="gTH" gradientUnits="userSpaceOnUse" x1="330" y1="482" x2="200" y2="482"><stop offset="0" id="gTH0" stop-color="#2c3e50"/><stop offset="1" id="gTH1" stop-color="#2c3e50"/></linearGradient>
-            <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9A8350"/><stop offset="1" stop-color="#4A3D20"/></linearGradient>
-          </defs>
-          <rect width="520" height="552" fill="url(#dots)"/>
-
-          <!-- ECM -->
-          <rect x="20" y="16" width="480" height="200" rx="14" class="ecm"/>
-          <rect x="30" y="74" width="460" height="132" rx="9" class="ecm-in"/>
-          <text x="40" y="45" class="t-title">ECM</text>
-          <text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
-          <rect x="44" y="90" width="78" height="40" rx="7" class="blk"/>
-          <text x="83" y="114" class="t-blk" text-anchor="middle">5 V REF</text>
-          <rect x="410" y="90" width="70" height="40" rx="7" class="blk"/>
-          <text x="445" y="109" class="t-blk" text-anchor="middle">A/D</text>
-          <text x="445" y="122" class="t-tiny" text-anchor="middle">TO LOGIC ▸</text>
-          <text x="372" y="204" class="t-pin" text-anchor="end">ECT SIGNAL</text>
-          <text x="158" y="204" class="t-pin">LOW REFERENCE</text>
-          <path class="gnd" d="M80 186 H104 M84 191 H100 M88 196 H96"/>
-
-          <!-- Connector C1 and sensor body (under wires) -->
-          <rect x="118" y="318" width="294" height="30" rx="8" class="conn"/>
-          <text x="128" y="337" class="t-blk">C1</text>
-          <text x="162" y="337" class="t-tiny">B</text>
-          <text x="388" y="337" class="t-tiny">A</text>
-          <g id="g-sensor">
-            <rect x="110" y="440" width="310" height="78" rx="14" class="sensor"/>
-            <rect x="236" y="518" width="58" height="16" rx="4" fill="url(#brass)"/>
-            <path class="coolant" d="M200 540 q8 -4 16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0"/>
-            <path class="coolant" d="M208 547 q8 -4 16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0"/>
-            <text x="124" y="508" class="t-sub">ECT SENSOR</text>
-            <text x="406" y="508" class="t-mono" text-anchor="end" id="rVal">3.52 kΩ</text>
-            <path d="M238 500 L270 464 M262 465 L270 464 L269 472" fill="none" stroke="#8A98A8" stroke-width="1.3" stroke-linecap="round"/>
-            <text x="273" y="468" class="t-tiny">−t°</text>
-            <text x="192" y="540" class="t-mono" text-anchor="end" id="coolLbl" style="fill:#8CCBF3">Coolant 68 °F</text>
-          </g>
-
-          <!-- Wires: data-n = circuit node the wire sits at; data-g = gradient across a resistor -->
-          <g id="wires">
-            <path class="w" data-n="V5" d="M122 110 H180"/>
-            <g id="g-pullup">
-              <path class="w" data-g="gPU" d="M180 110 L185 102 L195 118 L205 102 L215 118 L225 102 L235 118 L245 102 L255 118 L260 110"/>
-              <text x="220" y="94" class="t-tiny" text-anchor="middle">PULL-UP 2.49 kΩ</text>
-            </g>
-            <path class="w" data-n="P" d="M260 110 H410"/>
-            <path class="w" data-n="P" d="M380 110 V262"/>
-            <path class="w" data-n="P" id="br-sigUp" d="M380 262 V270"/>
-            <path class="w" data-n="A" d="M380 270 V318"/>
-            <path class="w" data-g="gHR" id="c1s" d="M380 318 V348"/>
-            <path class="w" data-g="gHR" id="c1z" d="M380 318 V322 L372 325 L388 330 L372 335 L388 340 L380 343 V348"/>
-            <path class="w" data-n="X" d="M380 348 V424"/>
-            <path class="w" data-n="X" id="br-sigLo" d="M380 424 V432"/>
-            <path class="w" data-n="SA" d="M380 432 V482 H330"/>
-            <path class="w" data-g="gTH" d="M330 482 L322 474 L306 490 L290 474 L274 490 L258 474 L242 490 L226 474 L210 490 L200 482"/>
-            <path class="w" data-n="SB" d="M200 482 H150 V398"/>
-            <path class="w" data-n="SB" id="br-refLo" d="M150 398 V390"/>
-            <path class="w" data-n="RB" d="M150 390 V270"/>
-            <path class="w" data-n="RB" id="br-refUp" d="M150 270 V262"/>
-            <path class="w" data-n="L" d="M150 262 V176 H92 V186"/>
-          </g>
-          <circle cx="380" cy="110" r="3.2" class="jdot"/>
-          <rect x="374" y="210" width="12" height="12" rx="2" class="pinbox"/>
-          <rect x="144" y="210" width="12" height="12" rx="2" class="pinbox"/>
-          <text x="392" y="300" class="t-tiny">SIGNAL · YE</text>
-          <text x="138" y="300" class="t-tiny" text-anchor="end">LOW REF · BK</text>
-
-          <!-- Faults -->
-          <g id="g-hr" class="jump">
-            <circle class="corr" cx="372" cy="321" r="2.2"/><circle class="corr" cx="389" cy="326" r="1.6"/><circle class="corr" cx="386" cy="344" r="2"/><circle class="corr" cx="371" cy="340" r="1.4"/>
-            <text x="420" y="331" class="t-mono" id="hrLbl1" style="fill:#FFB3AC">+1.0 kΩ</text>
-            <text x="420" y="344" class="t-tiny" id="hrLbl2">DROP 0.00 V</text>
-          </g>
-          <g id="g-inter" class="jump">
-            <text x="300" y="337" class="t-tiny" text-anchor="middle" style="fill:#FFD48A">LOOSE TERMINAL</text>
-            <g id="interSpark"><path class="spark" d="M360 326 l5 5 M366 324 v5 M370 329 l-4 3 M358 334 l6 -2"/></g>
-          </g>
-          <g id="g-shortb" class="jump">
-            <path class="w" data-n="BP" d="M488 282 V372 H380"/>
-            <rect x="462" y="258" width="52" height="24" rx="6" class="btag"/>
-            <text x="488" y="274" class="t-blk" text-anchor="middle" style="fill:#FFB08E" id="bpLbl">B+</text>
-            <circle cx="380" cy="372" r="5" class="chafe"/>
-            <text x="392" y="366" class="t-tiny" style="fill:#FFB08E">CHAFED TO B+</text>
-          </g>
-          <g id="g-shortg" class="jump">
-            <path class="w" data-n="X" d="M380 408 H470 V420"/>
-            <path class="gnd" d="M458 420 H482 M462 425 H478 M466 430 H474"/>
-            <circle cx="380" cy="408" r="5" class="chafe"/>
-            <text x="392" y="402" class="t-tiny" style="fill:#FF8A80">CHAFED TO GROUND</text>
-          </g>
-
-          <!-- Current flow overlays -->
-          <path class="flow" id="fMain" d="M122 110 H180 L185 102 L195 118 L205 102 L215 118 L225 102 L235 118 L245 102 L255 118 L260 110 H380 V318"/>
-          <path class="flow" id="fC1" d="M380 318 V372"/>
-          <path class="flow" id="fX" d="M380 372 V408"/>
-          <path class="flow" id="fSens" d="M380 408 V482 H330 L322 474 L306 490 L290 474 L274 490 L258 474 L242 490 L226 474 L210 490 L200 482 H150 V176 H92 V186"/>
-          <path class="flow" id="fBP" d="M488 282 V372 H380"/>
-          <path class="flow" id="fG" d="M380 408 H470 V420"/>
-
-          <!-- Open-circuit markers -->
-          <g class="openpill" id="om-sigUp" style="display:none"><path class="spark" d="M372 262 l-5 -3 M372 270 l-5 3 M388 262 l5 -3 M388 270 l5 3"/><rect x="396" y="258" width="44" height="16" rx="8"/><text x="418" y="269.5" text-anchor="middle">OPEN</text></g>
-          <g class="openpill" id="om-sigLo" style="display:none"><path class="spark" d="M372 424 l-5 -3 M372 432 l-5 3 M388 424 l5 -3 M388 432 l5 3"/><rect x="396" y="420" width="44" height="16" rx="8"/><text x="418" y="431.5" text-anchor="middle">OPEN</text></g>
-          <g class="openpill" id="om-refUp" style="display:none"><path class="spark" d="M142 262 l-5 -3 M142 270 l-5 3 M158 262 l5 -3 M158 270 l5 3"/><rect x="88" y="258" width="44" height="16" rx="8"/><text x="110" y="269.5" text-anchor="middle">OPEN</text></g>
-          <g class="openpill" id="om-refLo" style="display:none"><path class="spark" d="M142 390 l-5 -3 M142 398 l-5 3 M158 390 l5 -3 M158 398 l5 3"/><rect x="88" y="386" width="44" height="16" rx="8"/><text x="110" y="397.5" text-anchor="middle">OPEN</text></g>
-
-          <!-- Test points -->
-          <g class="badge" id="tp1"><title>ECM signal pin (back-probe)</title><circle class="tpdot" cx="380" cy="236" r="4.5"/><rect x="390" y="225" width="84" height="22" rx="6"/><text x="398" y="239.5" class="lbl">PIN</text><text x="466" y="240" text-anchor="end" id="tp1v">0.00 V</text></g>
-          <g class="badge" id="tp4"><title>ECM low reference pin</title><circle class="tpdot" cx="150" cy="236" r="4.5"/><rect x="56" y="225" width="84" height="22" rx="6"/><text x="64" y="239.5" class="lbl">REF</text><text x="132" y="240" text-anchor="end" id="tp4v">0.00 V</text></g>
-          <g class="badge" id="tp2"><title>Sensor terminal A (signal)</title><circle class="tpdot" cx="380" cy="452" r="4.5"/><rect x="288" y="447" width="84" height="22" rx="6"/><text x="296" y="461.5" class="lbl">SIG</text><text x="364" y="462" text-anchor="end" id="tp2v">0.00 V</text></g>
-          <g class="badge" id="tp3"><title>Sensor terminal B (low reference)</title><circle class="tpdot" cx="150" cy="452" r="4.5"/><rect x="160" y="447" width="84" height="22" rx="6"/><text x="168" y="461.5" class="lbl">GND</text><text x="236" y="462" text-anchor="end" id="tp3v">0.00 V</text></g>
-
-          <!-- Click targets: open a harness wire -->
-          <path class="hit" data-open="sigUp" d="M380 222 V316"><title>Click to open or repair the signal wire (ECM side)</title></path>
-          <path class="hit" data-open="sigLo" d="M380 350 V440"><title>Click to open or repair the signal wire (sensor side)</title></path>
-          <path class="hit" data-open="refUp" d="M150 222 V316"><title>Click to open or repair the low reference wire (ECM side)</title></path>
-          <path class="hit" data-open="refLo" d="M150 350 V440"><title>Click to open or repair the low reference wire (sensor side)</title></path>
-        </svg>
+        <svg id="circuit" viewBox="14 10 506 542" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Circuit schematic"></svg>
       </div>
+      <div class="inrow" id="inputRow" hidden></div>
 
       <div class="dock" id="faultDock">
         <h3 class="dh">Inject a fault <span>Tip: click any harness wire to open it</span></h3>
-        <div class="faults">
-          <button class="fchip" data-fault="sigUp" aria-pressed="false"><small>Open</small><b>Signal wire</b></button>
-          <button class="fchip" data-fault="refLo" aria-pressed="false"><small>Open</small><b>Low reference</b></button>
-          <button class="fchip" data-fault="shortG" aria-pressed="false"><small>Short</small><b>Signal to ground</b></button>
-          <button class="fchip" data-fault="shortB" aria-pressed="false"><small>Short</small><b>Signal to B+</b></button>
-          <button class="fchip" data-fault="inter" aria-pressed="false"><small>Intermittent</small><b>Loose terminal</b></button>
-          <button class="fchip" data-fault="thermo" aria-pressed="false"><small>Mechanical</small><b>Thermostat stuck open</b></button>
-          <div class="hrbox" id="hrBox">
-            <div class="top"><small>High resistance · C1 terminal A</small><output id="hrOut" for="hr">0 Ω</output></div>
-            <input type="range" id="hr" min="0" max="3000" step="50" value="0" aria-label="Added resistance at connector C1">
-          </div>
-        </div>
+        <div class="faults" id="faults"></div>
         <div class="dfoot"><span id="faultSummary">Circuit is healthy.</span><button class="btn small" id="clearFaults">Repair all</button></div>
       </div>
 
@@ -476,7 +388,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
           <div class="l-body" id="lBody"></div>
           <div class="l-ask" id="lAsk" hidden></div>
           <div class="l-goal" id="lGoal" hidden></div>
-          <div class="l-nav"><button class="btn" id="lBack">Back</button><button class="btn primary" id="lNext">Next</button></div>
+          <div class="l-nav"><button class="btn" id="lBack">Back</button><div class="r"><button class="btn" id="lAlt" hidden></button><button class="btn primary" id="lNext">Next</button></div></div>
         </div>
       </div>
     </section>
@@ -486,23 +398,36 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
       <div class="phead"><h2>Inside the ECM</h2><span>What the module sees, and what it decides</span></div>
       <div class="scroll">
         <div class="reads">
-          <div class="read" id="readV"><label>Signal pin</label><b id="rV">—</b><small id="rVs">A/D input</small></div>
-          <div class="read" id="readT"><label>Converts to</label><b id="rT">—</b><small id="rTs">Lookup table</small></div>
-          <div class="read" id="ecmUsed"><label>ECM is using</label><b id="rU">—</b><small id="rUs">Sensor value</small></div>
+          <div class="read" id="read0"><label>Signal pin</label><b id="rv0">—</b><small id="rs0">A/D input</small></div>
+          <div class="read" id="read1"><label>Converts to</label><b id="rv1">—</b><small id="rs1"></small></div>
+          <div class="read" id="ecmUsed"><label>ECM is using</label><b id="rv2">—</b><small id="rs2"></small></div>
         </div>
         <div class="chartbox" id="chartBox">
-          <svg id="chart" viewBox="0 0 360 196" role="img" aria-label="Sensor transfer curve: signal voltage versus temperature, with circuit low and circuit high fault zones">
-            <g id="cGrid"></g>
+          <div class="ctabs"><span id="chartTitle">Signal voltage</span>
+            <div class="seg mini" role="group" aria-label="Chart view">
+              <button data-chart="curve" aria-pressed="true">Transfer curve</button>
+              <button data-chart="scope" aria-pressed="false">Scope</button>
+            </div>
+          </div>
+          <svg id="chart" viewBox="0 0 360 196" role="img" aria-label="Signal voltage chart with circuit low and circuit high fault zones">
+            <g id="gridCurve"></g><g id="gridScope"></g>
             <g id="zones">
               <rect id="zHi" fill="rgba(255,90,78,.22)"/><rect id="zLo" fill="rgba(255,90,78,.22)"/>
               <line id="lHi" stroke="#FF5A4E" stroke-dasharray="3 3" stroke-width="1"/><line id="lLo" stroke="#FF5A4E" stroke-dasharray="3 3" stroke-width="1"/>
-              <text id="tHi" class="zl" text-anchor="end">CIRCUIT HIGH · P0118 · &gt; 4.95 V</text>
-              <text id="tLo" class="zl">CIRCUIT LOW · P0117 · &lt; 0.10 V</text>
+              <text id="tHi" class="zl" text-anchor="end"></text>
+              <text id="tLo" class="zl"></text>
             </g>
-            <path id="curve" fill="none" stroke="#2F9BE0" stroke-width="2" stroke-linecap="round"/>
-            <path id="curveGlow" fill="none" stroke="#2F9BE0" stroke-width="7" opacity=".12" stroke-linecap="round"/>
-            <g id="actual"><line id="aLine" stroke="#8CCBF3" stroke-dasharray="2 3" stroke-width="1"/><text id="aTxt" style="fill:#8CCBF3">actual</text></g>
-            <g id="marker"><circle id="mHalo" r="10" fill="#EAFBFF" opacity=".14"/><circle id="mDot" r="4.8" fill="#EAFBFF" stroke="#080B0F" stroke-width="1.5"/></g>
+            <g id="curveG">
+              <path id="curveGlow" fill="none" stroke="#2F9BE0" stroke-width="7" opacity=".12" stroke-linecap="round"/>
+              <path id="curve" fill="none" stroke="#2F9BE0" stroke-width="2" stroke-linecap="round"/>
+              <g id="actual"><line id="aLine" stroke="#8CCBF3" stroke-dasharray="2 3" stroke-width="1"/><text id="aTxt" style="fill:#8CCBF3">actual</text></g>
+              <g id="marker"><circle id="mHalo" r="10" fill="#EAFBFF" opacity=".14"/><circle id="mDot" r="4.8" fill="#EAFBFF" stroke="#080B0F" stroke-width="1.5"/></g>
+            </g>
+            <g id="scopeG">
+              <path id="scopeGlow" fill="none" stroke="#5FD4FF" stroke-width="6" opacity=".12" stroke-linejoin="round"/>
+              <path id="scopePath" fill="none" stroke="#5FD4FF" stroke-width="1.8" stroke-linejoin="round"/>
+              <circle id="scopeDot" r="3.5" fill="#EAFBFF"/>
+            </g>
           </svg>
         </div>
         <div class="sec"><h3>Diagnostic monitors</h3><span>Click a monitor to see its enable criteria</span></div>
@@ -514,13 +439,13 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
     <!-- ======================= SCAN TOOL ======================= -->
     <section class="panel" id="scanPanel">
       <div class="dash" id="dash">
-        <svg class="gauge" viewBox="0 0 120 74" aria-label="Coolant temperature gauge">
+        <svg class="gauge" viewBox="0 0 120 74" aria-label="Gauge">
           <path d="M14 64 A46 46 0 0 1 106 64" fill="none" stroke="#1D2732" stroke-width="7" stroke-linecap="round"/>
           <path id="gHot" fill="none" stroke="#FF5A4E" stroke-width="7" opacity=".55"/>
           <path id="gArc" fill="none" stroke="#2F9BE0" stroke-width="3" stroke-linecap="round"/>
           <line id="needle" x1="60" y1="64" x2="60" y2="24" stroke="#EAFBFF" stroke-width="2.2" stroke-linecap="round"/>
           <circle cx="60" cy="64" r="4.5" fill="#1D2732" stroke="#8A98A8"/>
-          <text x="10" y="74">C</text><text x="104" y="74">H</text>
+          <text x="10" y="74" id="gLo">C</text><text x="110" y="74" id="gHi" text-anchor="end">H</text>
           <text x="60" y="48" text-anchor="middle" id="gTxt" style="font-family:var(--f-mono);font-size:11px;fill:#C5CFD9">—</text>
         </svg>
         <div class="tells">
@@ -528,10 +453,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
             <svg width="30" height="22" viewBox="0 0 32 24" aria-hidden="true"><path class="milpath" d="M9 4h9v2.5h-3.2V9h5l3 3h2V9h3.2v11H24.8v-3.2h-2L19.6 21H10.4L7.3 18H5v3H1.8V9.6H5v3.2h2.2V9H9.8V6.5H9z"/></svg>
             <span id="milTxt">MIL off</span>
           </div>
-          <div class="tell fan" id="fanTell">
-            <svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><g class="fanrot"><path class="fanpath" d="M12 12c-1-4 0-8 3-9 2 2 1 6-3 9zM12 12c4-1 8 0 9 3-2 2-6 1-9-3zM12 12c1 4 0 8-3 9-2-2-1-6 3-9zM12 12c-4 1-8 0-9-3 2-2 6-1 9 3z"/></g><circle cx="12" cy="12" r="1.6" fill="#0E1319"/></svg>
-            <span id="fanTxt">Cooling fan off</span>
-          </div>
+          <div class="tell t2" id="t2Tell"><span id="t2Ico"></span><span id="t2Txt"></span></div>
         </div>
       </div>
       <div class="scan">
@@ -545,6 +467,11 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
     </section>
   </main>
 </div>
+
+<div class="pop" id="pop" role="dialog" aria-label="Circuit library" hidden>
+  <h4>Circuit library <span>Each circuit keeps its own faults and codes</span></h4>
+  <div class="lib" id="lib"></div>
+</div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script>
@@ -553,56 +480,29 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const OPEN = 1e12, WIRE = 0.05, AMB = 20;
 
-/* ---------- physics ---------- */
-const RPU = 2490, R0 = 3520, T0 = 293.15, BETA = 3950, AMB = 20, MAT = 5;
-const OPEN = 1e12, WIRE = 0.05;
-const rTherm = c => R0 * Math.exp(BETA * (1 / (c + 273.15) - 1 / T0));
+/* ================= shared helpers ================= */
 const cToF = c => c * 9 / 5 + 32;
-function vToC(v) {
-  if (v >= 4.985) return -40;
-  if (v <= 0.012) return 150;
-  const r = RPU * v / (5 - v);
-  return clamp(1 / (1 / T0 + Math.log(r / R0) / BETA) - 273.15, -40, 150);
-}
+const fmtR = r => r >= 1e6 ? '∞' : r >= 1000 ? (r / 1000).toFixed(r >= 10000 ? 1 : 2) + ' kΩ' : Math.round(r) + ' Ω';
+const fmtV = v => v == null ? '—' : (Math.abs(v) < 0.005 ? 0 : v).toFixed(2) + ' V';
+const F = c => Math.round(cToF(c)) + ' °F';
+const Ff = f => Math.round(f) + ' °F';
+const mmss = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const on = () => S.key !== 'off';
 
-const S = {
-  mode: 'explore', key: 'off', speed: 10, paused: false,
-  t: 0, run: 0, trip: 1, hadTrip: false, tripOpen: false, ranThisTrip: false,
-  coolant: AMB, model: AMB, thermoStuck: false, batt: 12.6,
-  f: { sigUp: false, sigLo: false, refUp: false, refLo: false, shortG: false, shortB: false, hiRes: 0, inter: false },
-  glitch: { open: false, next: 1, until: 0 },
-  v: {}, I: {}, vad: null, readC: null, readF: null, sel: null, slowmo: false,
-};
-
-const NODES = ['P', 'A', 'X', 'SA', 'SB', 'RB', 'L'];
-function solve() {
-  const on = S.key !== 'off';
-  S.batt = S.key === 'run' ? 14.2 : 12.6;
-  const fixed = { V5: on ? 5 : 0, G: 0, BP: S.batt };
-  const glitch = S.f.inter && S.glitch.open;
-  const E = [
-    ['V5', 'P', RPU, 'pu'],
-    ['P', 'A', S.f.sigUp ? OPEN : WIRE, 'up'],
-    ['A', 'X', (glitch ? OPEN : 0.02) + S.f.hiRes, 'hr'],
-    ['X', 'SA', S.f.sigLo ? OPEN : WIRE, 'lo'],
-    ['SA', 'SB', rTherm(S.coolant), 'th'],
-    ['SB', 'RB', S.f.refLo ? OPEN : WIRE, 'rlo'],
-    ['RB', 'L', S.f.refUp ? OPEN : WIRE, 'rup'],
-    ['L', 'G', 0.1, 'lg'],
-    ['BP', 'X', S.f.shortB ? WIRE : OPEN, 'bp'],
-    ['X', 'G', S.f.shortG ? WIRE : OPEN, 'g'],
-  ];
-  NODES.forEach(n => E.push([n, 'G', 1e10, 'leak']));
-  const n = NODES.length;
+/* Nodal analysis. E = [nodeA, nodeB, ohms, name]; fixed = known node voltages. */
+function nodal(nodes, E, fixed) {
+  const all = E.concat(nodes.map(n => [n, 'G', 1e10, 'leak']));
+  const n = nodes.length, idx = Object.fromEntries(nodes.map((k, i) => [k, i]));
   const M = Array.from({ length: n }, () => new Float64Array(n + 1));
-  for (const [a, b, r] of E) {
-    const g = 1 / r, ia = NODES.indexOf(a), ib = NODES.indexOf(b);
-    if (ia >= 0) M[ia][ia] += g;
-    if (ib >= 0) M[ib][ib] += g;
-    if (ia >= 0 && ib >= 0) { M[ia][ib] -= g; M[ib][ia] -= g; }
-    else if (ia >= 0) M[ia][n] += g * fixed[b];
-    else if (ib >= 0) M[ib][n] += g * fixed[a];
+  for (const [a, b, r] of all) {
+    const g = 1 / r, ia = idx[a], ib = idx[b];
+    if (ia != null) M[ia][ia] += g;
+    if (ib != null) M[ib][ib] += g;
+    if (ia != null && ib != null) { M[ia][ib] -= g; M[ib][ia] -= g; }
+    else if (ia != null) M[ia][n] += g * fixed[b];
+    else if (ib != null) M[ib][n] += g * fixed[a];
   }
   for (let c = 0; c < n; c++) {
     let p = c;
@@ -615,515 +515,323 @@ function solve() {
     }
   }
   const v = { ...fixed };
-  NODES.forEach((k, i) => v[k] = M[i][n] / M[i][i]);
+  nodes.forEach((k, i) => v[k] = M[i][n] / M[i][i]);
   const I = {};
-  for (const [a, b, r, name] of E) if (name !== 'leak') I[name] = (v[a] - v[b]) / r;
-  S.v = v; S.I = I;
-  S.vad = on ? clamp(v.P, 0, 5) : null;
-  S.readC = on ? vToC(S.vad) : null;
-  S.readF = on ? cToF(S.readC) : null;
+  for (const [a, b, r, name] of all) if (name !== 'leak') I[name] = (v[a] - v[b]) / r;
+  return { v, I };
 }
 
-/* ---------- monitors ---------- */
-const MON = [
-  { code: 'P0117', name: 'ECT sensor circuit low', kind: 'Continuous', labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2 },
-  { code: 'P0118', name: 'ECT sensor circuit high', kind: 'Continuous', labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2 },
-  { code: 'P0119', name: 'ECT sensor circuit intermittent', kind: 'Continuous', labels: ['Enable', 'Watch', 'Count', 'Result'], bar: 2 },
-  { code: 'P0128', name: 'Coolant below thermostat regulating temp', kind: 'Once per trip', labels: ['Enable', 'Model', 'Compare', 'Result'], bar: 1 },
-];
-const fresh = () => ({ timer: 0, good: 0, en: false, failing: false, failedTrip: false, passedTrip: false, pending: false, pendingTrip: 0, confirmed: false, mil: false, passTrips: 0, ff: null, jumps: [], lastF: null, sAcc: 0, phase: 'idle', reason: '', cold: false, startModel: AMB, result: null });
-MON.forEach(m => Object.assign(m, fresh()));
-const M = Object.fromEntries(MON.map(m => [m.code, m]));
-const circuitFailing = () => M.P0117.failing || M.P0118.failing || M.P0119.failing;
-
-function capture(m) {
-  return { code: m.code, trip: S.trip, ect: S.readF, volts: S.vad, rpm: S.key === 'run' ? 700 : 0, run: S.run, batt: S.batt, iat: cToF(AMB), fan: fanOn() };
-}
-function fail(m) {
-  m.failing = true; m.failedTrip = true; m.passTrips = 0;
-  if (m.confirmed) {
-    if (!m.mil) { m.mil = true; toast(`${m.code} failed again. MIL back on.`, 'bad'); }
-  } else if (m.pending && m.pendingTrip < S.trip) {
-    m.confirmed = true; m.pending = false; m.mil = true; m.ff = capture(m); S.sel = m.code;
-    toast(`${m.code} failed on a 2nd trip. Confirmed, MIL on.`, 'bad');
-  } else if (!m.pending) {
-    m.pending = true; m.pendingTrip = S.trip; m.ff = capture(m); S.sel = m.code;
-    toast(`${m.code} test failed. Stored as pending, freeze frame saved.`, 'warn');
-  }
-}
+/* Generic continuous monitor: bad for m.mat seconds in a row -> fail. */
 function circ(m, en, bad, dt) {
   m.en = en;
   if (!en) { m.timer = 0; m.good = 0; return; }
   if (bad) {
     m.good = 0;
-    if (!m.failing) { m.timer += dt; if (m.timer >= MAT) { m.timer = MAT; fail(m); } }
+    if (!m.failing) { m.timer += dt; if (m.timer >= m.mat) { m.timer = m.mat; fail(m); } }
   } else {
     m.timer = 0; m.good += dt;
     if (m.good > 1 && m.failing) m.failing = false;
     if (m.good > 2 && S.key === 'run') m.passedTrip = true;
   }
 }
-function runMonitors(dt) {
-  const en = S.key !== 'off' && S.batt >= 10;
-  circ(M.P0117, en, en && S.vad < 0.10, dt);
-  circ(M.P0118, en, en && S.vad > 4.95, dt);
-  const m = M.P0119;
-  m.en = en && !M.P0117.failing && !M.P0118.failing;
-  if (!m.en) { m.jumps = []; m.lastF = null; m.good = 0; }
+function circView(m, bad, lim, val, crit) {
+  let st = ['', '', '', ''], frac = 0, pill = ['Off', ''], det = '';
+  if (!m.en) det = 'Ignition off. Test not running.';
   else {
-    m.sAcc += dt;
-    if (m.sAcc >= 0.1) {
-      m.sAcc = 0;
-      if (m.lastF != null && Math.abs(S.readF - m.lastF) > 45) m.jumps.push(S.t);
-      m.lastF = S.readF;
-    }
-    m.jumps = m.jumps.filter(t => S.t - t <= 10);
-    if (m.jumps.length >= 4 && !m.failing) fail(m);
-    if (m.jumps.length === 0) {
-      m.good += dt;
-      if (m.good > 1 && m.failing) m.failing = false;
-      if (m.good > 2 && S.key === 'run') m.passedTrip = true;
-    } else m.good = 0;
-  }
-  p128();
-}
-function p128() {
-  const m = M.P0128;
-  if (m.phase === 'pass' || m.phase === 'fail') return;
-  if (S.key !== 'run') { m.phase = 'idle'; return; }
-  if (m.phase === 'idle') return;
-  if (!m.cold) { m.phase = 'blocked'; m.reason = 'Engine started warm. The test waits for a cold start.'; return; }
-  if (circuitFailing()) { m.phase = 'blocked'; m.reason = 'Suspended: an ECT circuit fault is active.'; return; }
-  m.phase = 'running';
-  if (S.model >= 85) {
-    m.result = S.readF;
-    if (S.readC >= 71) { m.phase = 'pass'; m.passedTrip = true; }
-    else { m.phase = 'fail'; fail(m); }
-  }
-}
-function armP0128() {
-  const m = M.P0128;
-  if (m.phase === 'pass' || m.phase === 'fail') return;
-  m.cold = S.readC != null && S.readC < 71 && !circuitFailing();
-  S.model = (S.readC != null && S.readC > -39 && S.readC < 149) ? S.readC : AMB;
-  m.startModel = S.model;
-  m.phase = 'armed';
-}
-function endTrip() {
-  MON.forEach(m => {
-    if (!m.failedTrip && m.passedTrip) {
-      if (m.pending && !m.confirmed) { m.pending = false; toast(`${m.code} passed this trip. Pending code cleared.`, 'ok'); }
-      else if (m.confirmed && m.mil) {
-        m.passTrips++;
-        if (m.passTrips >= 3) { m.mil = false; toast(`${m.code} passed 3 trips in a row. MIL off, code kept as history.`, 'ok'); }
-      }
-    }
-    m.failedTrip = false; m.passedTrip = false; m.failing = false; m.timer = 0; m.good = 0; m.jumps = []; m.lastF = null;
-    m.phase = 'idle';
-  });
-}
-
-/* ---------- controls ---------- */
-function setKey(k) {
-  if (k === S.key) return;
-  if (k === 'off') {
-    if (S.tripOpen && S.ranThisTrip) endTrip();
-    S.tripOpen = false; S.ranThisTrip = false; S.run = 0;
-    MON.forEach(m => { m.timer = 0; m.good = 0; m.failing = false; m.jumps = []; m.lastF = null; });
-    S.glitch.open = false;
-  }
-  S.key = k;
-  if (k === 'run') {
-    if (!S.tripOpen) {
-      if (S.hadTrip) S.trip++;
-      S.hadTrip = true; S.tripOpen = true;
-      M.P0128.phase = 'idle';
-    }
-    S.run = 0;
-    solve();
-    armP0128();
-  }
-  solve();
-  $$('[data-key]').forEach(b => b.setAttribute('aria-pressed', b.dataset.key === S.key));
-}
-function nextTrip() {
-  setKey('off');
-  S.coolant = AMB; S.model = AMB;
-  setKey('on'); setKey('run');
-  toast(`Trip ${S.trip}: overnight soak, cold start.`);
-}
-function setSpeed(x) {
-  S.speed = x; S.paused = false;
-  $$('[data-speed]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.speed === x));
-  syncPause();
-}
-function syncPause() {
-  $('#pause').setAttribute('aria-pressed', S.paused);
-  $('#pause').setAttribute('aria-label', S.paused ? 'Play' : 'Pause');
-  $('#pauseIco').innerHTML = S.paused ? '<path d="M2 1l7 4-7 4z" fill="currentColor"/>' : '<path d="M2 1h2v8H2zM6 1h2v8H6z" fill="currentColor"/>';
-}
-function setFault(k, val) {
-  if (k === 'thermo') { S.thermoStuck = val; syncFaultUI(); return; }
-  if (k === 'shortG' && val) S.f.shortB = false;
-  if (k === 'shortB' && val) S.f.shortG = false;
-  S.f[k] = val;
-  if (k === 'inter') { S.glitch.open = false; S.glitch.next = S.t + 0.8; }
-  solve(); syncFaultUI();
-}
-function clearFaults() {
-  S.f = { sigUp: false, sigLo: false, refUp: false, refLo: false, shortG: false, shortB: false, hiRes: 0, inter: false };
-  S.thermoStuck = false; S.glitch.open = false;
-  solve(); syncFaultUI();
-}
-function clearDTCs(silent) {
-  MON.forEach(m => Object.assign(m, { pending: false, confirmed: false, mil: false, passTrips: 0, ff: null, failing: false, timer: 0, good: 0, jumps: [], lastF: null, failedTrip: false, passedTrip: false, phase: 'idle' }));
-  S.sel = null;
-  if (S.key === 'run') armP0128();
-  if (!silent) toast('DTCs cleared. P0128 reruns on the next cold start.');
-}
-function fullReset() {
-  clearFaults();
-  MON.forEach(m => Object.assign(m, fresh()));
-  Object.assign(S, { key: 'off', t: 0, run: 0, trip: 1, hadTrip: false, tripOpen: false, ranThisTrip: false, coolant: AMB, model: AMB, sel: null });
-  setKey('run');
-}
-function syncFaultUI() {
-  $$('[data-fault]').forEach(b => {
-    const k = b.dataset.fault;
-    b.setAttribute('aria-pressed', k === 'thermo' ? S.thermoStuck : !!S.f[k]);
-  });
-  const hr = $('#hr'); if (+hr.value !== S.f.hiRes) hr.value = S.f.hiRes;
-  $('#hrOut').textContent = fmtR(S.f.hiRes);
-  $('#hrBox').classList.toggle('on', S.f.hiRes > 0);
-  const list = [];
-  if (S.f.sigUp) list.push('signal open (ECM side)');
-  if (S.f.sigLo) list.push('signal open (sensor side)');
-  if (S.f.refUp) list.push('low ref open (ECM side)');
-  if (S.f.refLo) list.push('low ref open (sensor side)');
-  if (S.f.shortG) list.push('signal shorted to ground');
-  if (S.f.shortB) list.push('signal shorted to B+');
-  if (S.f.inter) list.push('loose terminal');
-  if (S.f.hiRes) list.push(`+${fmtR(S.f.hiRes)} at C1`);
-  if (S.thermoStuck) list.push('thermostat stuck open');
-  $('#faultSummary').textContent = list.length ? 'Active: ' + list.join(', ') + '.' : 'Circuit is healthy.';
-}
-
-/* ---------- sim loop ---------- */
-function anyMaturing() {
-  return (M.P0117.en && M.P0117.timer > 0 && !M.P0117.failing) ||
-         (M.P0118.en && M.P0118.timer > 0 && !M.P0118.failing) ||
-         (M.P0119.en && M.P0119.jumps.length > 0 && !M.P0119.failing);
-}
-function step(dt) {
-  S.t += dt;
-  if (S.key === 'run') {
-    S.run += dt; S.ranThisTrip = true;
-    const tgt = S.thermoStuck ? 60 : 91, rate = S.thermoStuck ? 0.085 : 0.15;
-    S.coolant += rate * clamp((tgt - S.coolant) / 6, -1, 1) * dt;
-    S.model += 0.15 * clamp((91 - S.model) / 6, -1, 1) * dt;
-  } else {
-    S.coolant += (AMB - S.coolant) * (1 - Math.exp(-0.0008 * dt));
-  }
-  const g = S.glitch;
-  if (S.f.inter && S.key !== 'off') {
-    if (!g.open && S.t >= g.next) { g.open = true; g.until = S.t + 0.15 + Math.random() * 0.55; }
-    else if (g.open && S.t >= g.until) { g.open = false; g.next = S.t + 0.8 + Math.random() * 1.8; }
-  } else g.open = false;
-  solve();
-  runMonitors(dt);
-}
-function tick(dtReal) {
-  const mat = anyMaturing();
-  S.slowmo = mat && S.speed > 1 && !S.paused;
-  const sp = S.paused ? 0 : (mat ? Math.min(S.speed, 1) : S.speed);
-  let dt = dtReal * sp;
-  while (dt > 0) { const d = Math.min(dt, 0.25); step(d); dt -= d; }
-}
-
-/* ---------- rendering: circuit ---------- */
-const STOPS = [[0, [44, 62, 80]], [0.6, [40, 110, 150]], [5, [95, 212, 255]], [14.5, [255, 122, 69]]];
-function vColor(v) {
-  v = clamp(v, 0, 14.5);
-  for (let i = 1; i < STOPS.length; i++) {
-    const [v1, c1] = STOPS[i];
-    if (v <= v1) {
-      const [v0, c0] = STOPS[i - 1], k = (v - v0) / (v1 - v0);
-      return `rgb(${c0.map((c, j) => Math.round(c + (c1[j] - c) * k)).join(',')})`;
-    }
-  }
-  return 'rgb(255,122,69)';
-}
-const fmtR = r => r >= 1e6 ? '∞' : r >= 1000 ? (r / 1000).toFixed(r >= 10000 ? 1 : 2) + ' kΩ' : Math.round(r) + ' Ω';
-const fmtV = v => (Math.abs(v) < 0.005 ? 0 : v).toFixed(2) + ' V';
-
-// glow underlays for every wire
-$$('#circuit .w').forEach(w => {
-  const g = w.cloneNode(); g.setAttribute('class', 'glow'); g.removeAttribute('id');
-  w.parentNode.insertBefore(g, w); w._glow = g;
-});
-const wireEls = $$('#circuit [data-n], #circuit [data-g]');
-const GRADS = { gPU: ['V5', 'P'], gHR: ['A', 'X'], gTH: ['SA', 'SB'] };
-const flows = ['fMain', 'fC1', 'fX', 'fSens', 'fBP', 'fG'].map(id => ({ el: $('#' + id), off: 0 }));
-function show(el, on) { el.style.display = on ? '' : 'none'; if (el._glow) el._glow.style.display = on ? '' : 'none'; }
-function flowCurrent(i) {
-  const I = S.I;
-  return [I.pu, I.hr, I.hr + I.bp, I.th, I.bp, I.g][i];
-}
-function renderCircuit(dtReal) {
-  const v = S.v;
-  wireEls.forEach(el => {
-    if (el.dataset.n) { const c = vColor(v[el.dataset.n] ?? 0); el.style.stroke = c; }
-    else el.style.stroke = `url(#${el.dataset.g})`;
-  });
-  for (const id in GRADS) {
-    $('#' + id + '0').setAttribute('stop-color', vColor(v[GRADS[id][0]]));
-    $('#' + id + '1').setAttribute('stop-color', vColor(v[GRADS[id][1]]));
-  }
-  ['sigUp', 'sigLo', 'refUp', 'refLo'].forEach(k => { show($('#br-' + k), !S.f[k]); $('#om-' + k).style.display = S.f[k] ? '' : 'none'; });
-  show($('#c1s'), S.f.hiRes === 0);
-  show($('#c1z'), S.f.hiRes > 0);
-  $('#g-hr').classList.toggle('on', S.f.hiRes > 0);
-  $('#g-inter').classList.toggle('on', S.f.inter);
-  $('#interSpark').style.display = S.glitch.open ? '' : 'none';
-  $('#g-shortb').classList.toggle('on', S.f.shortB);
-  $('#g-shortg').classList.toggle('on', S.f.shortG);
-  flows.forEach((f, i) => {
-    const I = flowCurrent(i) || 0, a = Math.abs(I) * 1000;
-    const speed = a < 0.002 ? 0 : Math.sign(I) * (14 + 22 * Math.log2(1 + a));
-    f.el.style.opacity = a < 0.002 ? 0 : clamp(0.35 + 0.22 * Math.log2(1 + a), 0.35, 1);
-    if (!reduceMotion) { f.off -= speed * dtReal; f.el.style.strokeDashoffset = f.off.toFixed(2); }
-  });
-}
-function renderCircuitText() {
-  const v = S.v;
-  $('#tp1v').textContent = fmtV(v.P);
-  $('#tp2v').textContent = fmtV(v.SA);
-  $('#tp3v').textContent = fmtV(v.SB);
-  $('#tp4v').textContent = fmtV(v.L);
-  [['tp1', 'P'], ['tp2', 'SA'], ['tp3', 'SB'], ['tp4', 'L']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
-  $('#rVal').textContent = 'R ' + fmtR(rTherm(S.coolant));
-  $('#coolLbl').textContent = `Coolant ${Math.round(cToF(S.coolant))} °F`;
-  $('#hrLbl1').textContent = '+' + fmtR(S.f.hiRes);
-  $('#hrLbl2').textContent = 'DROP ' + fmtV(v.A - v.X);
-  $('#bpLbl').textContent = `B+ ${S.batt.toFixed(1)}`;
-}
-
-/* ---------- rendering: chart ---------- */
-const CH = { x0: 34, x1: 350, y0: 12, y1: 170, tMin: -40, tMax: 302, vMax: 5.2 };
-const cx = f => CH.x0 + (f - CH.tMin) / (CH.tMax - CH.tMin) * (CH.x1 - CH.x0);
-const cy = v => CH.y1 - v / CH.vMax * (CH.y1 - CH.y0);
-(function buildChart() {
-  let g = '';
-  for (let v = 0; v <= 5; v++) g += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${cy(v)}" y2="${cy(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${cy(v) + 3}" text-anchor="end">${v}</text>`;
-  [-40, 0, 100, 200, 300].forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
-  g += `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">V</text><text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">reading °F</text>`;
-  $('#cGrid').innerHTML = g;
-  const set = (id, a) => Object.entries(a).forEach(([k, val]) => $('#' + id).setAttribute(k, val));
-  set('zHi', { x: CH.x0, y: cy(5.2), width: CH.x1 - CH.x0, height: cy(4.95) - cy(5.2) });
-  set('zLo', { x: CH.x0, y: cy(0.10), width: CH.x1 - CH.x0, height: cy(0) - cy(0.10) });
-  set('lHi', { x1: CH.x0, x2: CH.x1, y1: cy(4.95), y2: cy(4.95) });
-  set('lLo', { x1: CH.x0, x2: CH.x1, y1: cy(0.10), y2: cy(0.10) });
-  set('tHi', { x: CH.x1 - 4, y: cy(4.95) + 11 });
-  set('tLo', { x: CH.x0 + 6, y: cy(0.10) - 5 });
-  let d = '';
-  for (let c = -40; c <= 150; c += 2) { const r = rTherm(c), v = 5 * r / (RPU + r); d += (d ? 'L' : 'M') + cx(cToF(c)).toFixed(1) + ' ' + cy(v).toFixed(1); }
-  $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d);
-})();
-function renderChart() {
-  const on = S.key !== 'off';
-  $('#marker').style.display = on ? '' : 'none';
-  const af = cToF(S.coolant);
-  $('#aLine').setAttribute('x1', cx(af)); $('#aLine').setAttribute('x2', cx(af));
-  $('#aLine').setAttribute('y1', CH.y0); $('#aLine').setAttribute('y2', CH.y1);
-  $('#aTxt').setAttribute('x', cx(af) + 4); $('#aTxt').setAttribute('y', CH.y0 + 20);
-  if (!on) return;
-  const x = cx(clamp(S.readF, -40, 302)), y = cy(S.vad);
-  const bad = S.vad > 4.95 || S.vad < 0.10;
-  ['mHalo', 'mDot'].forEach(id => { $('#' + id).setAttribute('cx', x); $('#' + id).setAttribute('cy', y); });
-  $('#mDot').setAttribute('fill', bad ? '#FF5A4E' : '#EAFBFF');
-  $('#mHalo').setAttribute('fill', bad ? '#FF5A4E' : '#EAFBFF');
-}
-
-/* ---------- rendering: monitors ---------- */
-const setHTML = (el, h) => { if (el._h !== h) { el.innerHTML = h; el._h = h; } };
-MON.forEach(m => {
-  const d = document.createElement('div');
-  d.className = 'mon'; d.id = 'mon-' + m.code; d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-expanded', 'false');
-  d.innerHTML = `<div class="mtop"><span class="code">${m.code}</span><span class="mname">${m.name}</span><span class="kind">${m.kind}</span><span class="pill">Off</span></div>
-    <div class="pipe">${m.labels.map(l => `<div class="stg"><i class="fill"></i><span>${l}</span></div>`).join('')}</div>
-    <div class="mdet"></div>
-    <div class="mfoot"><div class="flags"></div><span class="more">Criteria ▾</span></div>
-    <ul class="crit"></ul>`;
-  const toggle = () => { d.classList.toggle('open'); d.setAttribute('aria-expanded', d.classList.contains('open')); };
-  d.addEventListener('click', toggle);
-  d.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-  Object.assign(m, { el: d, pill: d.querySelector('.pill'), stg: [...d.querySelectorAll('.stg')], det: d.querySelector('.mdet'), flags: d.querySelector('.flags'), crit: d.querySelector('.crit') });
-  m.fillEl = m.stg[m.bar].querySelector('.fill');
-  $('#mons').appendChild(d);
-});
-const F = c => Math.round(cToF(c)) + ' °F';
-const Ff = f => Math.round(f) + ' °F';
-function monView(m) {
-  let st = ['', '', '', ''], frac = 0, pill = ['Off', ''], det = '', crit = [];
-  const on = S.key !== 'off';
-  if (m.code === 'P0117' || m.code === 'P0118') {
-    const hi = m.code === 'P0118', lim = hi ? '> 4.95 V' : '< 0.10 V';
-    crit = [['Ignition on', on], ['Ignition voltage at least 10 V', on && S.batt >= 10], [`Fails when signal is ${lim} for ${MAT.toFixed(1)} s in a row`, null]];
-    if (!m.en) det = 'Ignition off. Test not running.';
-    else {
-      const bad = hi ? S.vad > 4.95 : S.vad < 0.10;
-      st[0] = 'ok'; st[1] = bad ? 'act' : 'ok';
-      if (m.failing) { st = ['ok', 'bad', 'bad', 'bad']; frac = 1; pill = ['Failed', 'bad']; det = `Signal ${fmtV(S.vad)}, ${lim} for 5.0 s. Test failed.`; }
-      else if (m.timer > 0) { st[2] = 'act'; frac = m.timer / MAT; pill = ['Maturing', 'act']; det = `Signal ${fmtV(S.vad)} ${lim} · ${m.timer.toFixed(1)} of 5.0 s`; }
-      else { st[3] = m.good > 1 ? 'ok' : ''; pill = ['Passing', 'ok']; det = `Signal ${fmtV(S.vad)} is in range.`; }
-    }
-  } else if (m.code === 'P0119') {
-    crit = [['Ignition on', on], ['P0117 and P0118 not failing', on && !M.P0117.failing && !M.P0118.failing], ['Fails on 4 jumps of more than 45 °F within 10 s', null]];
-    if (!on) det = 'Ignition off. Test not running.';
-    else if (!m.en) { st[0] = 'bad'; pill = ['Suspended', '']; det = 'Suspended while a hard circuit fault is active.'; }
-    else {
-      const n = m.jumps.length; st[0] = 'ok';
-      if (m.failing) { st = ['ok', 'bad', 'bad', 'bad']; frac = 1; pill = ['Failed', 'bad']; det = `Reading jumped ${Math.max(n, 4)} times in 10 s. Test failed.`; }
-      else if (n > 0) { st[1] = 'act'; st[2] = 'act'; frac = n / 4; pill = ['Counting', 'act']; det = `Sudden jumps: ${n} of 4 in the last 10 s`; }
-      else { st[1] = 'ok'; st[3] = m.good > 1 ? 'ok' : ''; pill = ['Passing', 'ok']; det = 'Reading is steady.'; }
-    }
-  } else {
-    crit = [['Engine running', S.key === 'run'], ['Cold start: ECT below 160 °F at start', S.key === 'run' && m.cold], ['Intake air above 20 °F', true], ['No ECT circuit fault active', !circuitFailing()], ['Fails if ECT is below 160 °F when the model reaches 185 °F', null]];
-    switch (m.phase) {
-      case 'idle': case 'armed': det = S.key === 'run' ? 'Checking enable criteria.' : 'Runs once per trip, after a cold start.'; pill = ['Waiting', '']; break;
-      case 'blocked': st[0] = 'bad'; pill = ['Not enabled', '']; det = m.reason; break;
-      case 'running': st[0] = 'ok'; st[1] = 'run'; frac = clamp((S.model - m.startModel) / (85 - m.startModel), 0, 1); pill = ['Running', 'run']; det = `Model ${F(S.model)} → 185 °F · sensor ${Ff(S.readF)}`; break;
-      case 'pass': st = ['ok', 'ok', 'ok', 'ok']; frac = 1; pill = ['Passed', 'ok']; det = `Sensor read ${Ff(m.result)} (160 °F or more) when the model hit 185 °F.`; break;
-      case 'fail': st = ['ok', 'ok', 'bad', 'bad']; frac = 1; pill = ['Failed', 'bad']; det = `Sensor read ${Ff(m.result)}, under 160 °F, when the model hit 185 °F.`; break;
-    }
+    st[0] = 'ok'; st[1] = bad ? 'act' : 'ok';
+    if (m.failing) { st = ['ok', 'bad', 'bad', 'bad']; frac = 1; pill = ['Failed', 'bad']; det = `${val}, ${lim} for ${m.mat.toFixed(1)} s. Test failed.`; }
+    else if (m.timer > 0) { st[2] = 'act'; frac = m.timer / m.mat; pill = ['Maturing', 'act']; det = `${val} ${lim} · ${m.timer.toFixed(1)} of ${m.mat.toFixed(1)} s`; }
+    else { st[3] = m.good > 1 ? 'ok' : ''; pill = ['Passing', 'ok']; det = `${val} is in range.`; }
   }
   return { st, frac, pill, det, crit };
 }
-function flagChips(m) {
-  let h = '';
-  if (m.failing) h += '<span class="chip live">Failing now</span>';
-  if (m.pending) h += '<span class="chip pend">Pending</span>';
-  if (m.confirmed && m.mil) h += '<span class="chip conf">Confirmed · MIL</span>';
-  if (m.confirmed && !m.mil) h += '<span class="chip hist">History</span>';
-  return h;
-}
-function renderMonitors() {
-  MON.forEach(m => {
-    const { st, frac, pill, det, crit } = monView(m);
-    m.stg.forEach((s, i) => { const c = 'stg ' + st[i]; if (s.className !== c) s.className = c; });
-    m.fillEl.style.transform = `scaleX(${frac})`;
-    if (m.pill.textContent !== pill[0]) m.pill.textContent = pill[0];
-    m.pill.className = 'pill ' + pill[1];
-    if (m.det.textContent !== det) m.det.textContent = det;
-    setHTML(m.flags, flagChips(m));
-    setHTML(m.crit, crit.map(([t, ok]) => `<li class="${ok === null ? '' : ok ? 'y' : 'n'}"><i>${ok === null ? '·' : ok ? '✓' : '✕'}</i>${t}</li>`).join(''));
-    m.el.classList.toggle('bad', pill[1] === 'bad');
-    m.el.classList.toggle('act', pill[1] === 'act');
-  });
-}
+const critBasic = () => [['Ignition on', on()], ['Ignition voltage at least 10 V', on() && S.batt >= 10]];
 
-/* ---------- rendering: readouts, scan tool, dash ---------- */
-const ecmTempC = () => {
-  if (S.key === 'off') return null;
-  if (circuitFailing()) return S.key === 'run' ? S.model : AMB;
-  return S.readC;
-};
-const fanOn = () => S.key !== 'off' && (circuitFailing() || (ecmTempC() ?? 0) >= 104);
-function renderReadouts() {
-  const on = S.key !== 'off';
-  const bad = on && (S.vad > 4.95 || S.vad < 0.10);
-  $('#rV').textContent = on ? fmtV(S.vad) : '—';
-  $('#rVs').textContent = !on ? 'Module asleep' : S.v.P > 5.05 ? `Pin at ${S.v.P.toFixed(1)} V · input clamped` : bad ? 'Outside the valid window' : 'Inside the valid window';
-  $('#rT').textContent = on ? Ff(S.readF) : '—';
-  $('#rTs').textContent = on ? `${Math.round(S.readC)} °C · from lookup table` : '—';
-  $('#readV').classList.toggle('alert', bad);
-  $('#readT').classList.toggle('alert', bad);
-  const u = ecmTempC(), sub = on && circuitFailing();
-  $('#rU').textContent = u == null ? '—' : F(u);
-  $('#rUs').textContent = !on ? '—' : sub ? 'Substitute value · fans on' : 'Sensor value';
-  $('#ecmUsed').classList.toggle('subst', sub);
+/* ================= ECT: 2-wire thermistor, pull-up ================= */
+const ECT_RPU = 2490, ECT_R0 = 3520, ECT_T0 = 293.15, ECT_B = 3950;
+const rTherm = c => ECT_R0 * Math.exp(ECT_B * (1 / (c + 273.15) - 1 / ECT_T0));
+function vToC(v) {
+  if (v >= 4.985) return -40;
+  if (v <= 0.012) return 150;
+  const r = ECT_RPU * v / (5 - v);
+  return clamp(1 / (1 / ECT_T0 + Math.log(r / ECT_R0) / ECT_B) - 273.15, -40, 150);
 }
-const mmss = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-function renderScan() {
-  const on = S.key !== 'off';
-  $('#led').classList.toggle('on', on);
-  $('#clr').disabled = !on;
-  if (!on) {
-    setHTML($('#data'), '<div class="empty">Ignition off. Turn the key on to talk to the ECM.</div>');
-  } else {
-    const sub = circuitFailing(), bad = S.vad > 4.95 || S.vad < 0.10;
-    const rows = [
-      ['ECT sensor', Ff(S.readF), bad ? 'bad' : ''],
-      ['ECT sensor voltage', fmtV(S.vad), bad ? 'bad' : ''],
-      ['ECT used by ECM', F(ecmTempC()) + (sub ? ' (sub)' : ''), sub ? 'flag' : ''],
-      ['Intake air temp', F(AMB), ''],
+const ectFail = () => S.M.P0117.failing || S.M.P0118.failing || S.M.P0119.failing;
+const ectUsedC = () => !on() ? null : ectFail() ? (S.key === 'run' ? S.p.model : AMB) : S.readC;
+const ectFan = () => on() && (ectFail() || (ectUsedC() ?? 0) >= 104);
+
+const ECT_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gPU" gradientUnits="userSpaceOnUse" x1="180" y1="110" x2="260" y2="110"><stop offset="0" id="gPU0" stop-color="#2c3e50"/><stop offset="1" id="gPU1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="380" y1="318" x2="380" y2="348"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gTH" gradientUnits="userSpaceOnUse" x1="330" y1="482" x2="200" y2="482"><stop offset="0" id="gTH0" stop-color="#2c3e50"/><stop offset="1" id="gTH1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9A8350"/><stop offset="1" stop-color="#4A3D20"/></linearGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="480" height="200" rx="14" class="ecm"/>
+<rect x="30" y="74" width="460" height="132" rx="9" class="ecm-in"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<rect x="44" y="90" width="78" height="40" rx="7" class="blk"/>
+<text x="83" y="114" class="t-blk" text-anchor="middle">5 V REF</text>
+<rect x="410" y="90" width="70" height="40" rx="7" class="blk"/>
+<text x="445" y="109" class="t-blk" text-anchor="middle">A/D</text>
+<text x="445" y="122" class="t-tiny" text-anchor="middle">TO LOGIC ▸</text>
+<text x="372" y="204" class="t-pin" text-anchor="end">ECT SIGNAL</text>
+<text x="158" y="204" class="t-pin">LOW REFERENCE</text>
+<path class="gnd" d="M80 186 H104 M84 191 H100 M88 196 H96"/>
+<rect x="118" y="318" width="294" height="30" rx="8" class="conn"/>
+<text x="128" y="337" class="t-blk">C1</text>
+<text x="162" y="337" class="t-tiny">B</text>
+<text x="388" y="337" class="t-tiny">A</text>
+<g id="g-sensor">
+  <rect x="110" y="440" width="310" height="78" rx="14" class="sensor"/>
+  <rect x="236" y="518" width="58" height="16" rx="4" fill="url(#brass)"/>
+  <path class="coolant" d="M200 540 q8 -4 16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0"/>
+  <path class="coolant" d="M208 547 q8 -4 16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0"/>
+  <text x="124" y="508" class="t-sub">ECT SENSOR</text>
+  <text x="406" y="508" class="t-mono" text-anchor="end" id="rVal">3.52 kΩ</text>
+  <path d="M238 500 L270 464 M262 465 L270 464 L269 472" fill="none" stroke="#8A98A8" stroke-width="1.3" stroke-linecap="round"/>
+  <text x="273" y="468" class="t-tiny">−t°</text>
+  <text x="192" y="540" class="t-mono" text-anchor="end" id="coolLbl" style="fill:#8CCBF3">Coolant 68 °F</text>
+</g>
+<g>
+  <path class="w" data-n="V5" d="M122 110 H180"/>
+  <g id="g-pullup">
+    <path class="w" data-g="gPU" d="M180 110 L185 102 L195 118 L205 102 L215 118 L225 102 L235 118 L245 102 L255 118 L260 110"/>
+    <text x="220" y="94" class="t-tiny" text-anchor="middle">PULL-UP 2.49 kΩ</text>
+  </g>
+  <path class="w" data-n="P" d="M260 110 H410"/>
+  <path class="w" data-n="P" d="M380 110 V262"/>
+  <path class="w" data-n="P" id="br-sigUp" d="M380 262 V270"/>
+  <path class="w" data-n="A" d="M380 270 V318"/>
+  <path class="w" data-g="gHR" id="c1s" d="M380 318 V348"/>
+  <path class="w" data-g="gHR" id="c1z" d="M380 318 V322 L372 325 L388 330 L372 335 L388 340 L380 343 V348"/>
+  <path class="w" data-n="X" d="M380 348 V424"/>
+  <path class="w" data-n="X" id="br-sigLo" d="M380 424 V432"/>
+  <path class="w" data-n="SA" d="M380 432 V482 H330"/>
+  <path class="w" data-g="gTH" d="M330 482 L322 474 L306 490 L290 474 L274 490 L258 474 L242 490 L226 474 L210 490 L200 482"/>
+  <path class="w" data-n="SB" d="M200 482 H150 V398"/>
+  <path class="w" data-n="SB" id="br-refLo" d="M150 398 V390"/>
+  <path class="w" data-n="RB" d="M150 390 V270"/>
+  <path class="w" data-n="RB" id="br-refUp" d="M150 270 V262"/>
+  <path class="w" data-n="L" d="M150 262 V176 H92 V186"/>
+</g>
+<circle cx="380" cy="110" r="3.2" class="jdot"/>
+<rect x="374" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<rect x="144" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<text x="392" y="300" class="t-tiny">SIGNAL · YE</text>
+<text x="138" y="300" class="t-tiny" text-anchor="end">LOW REF · BK</text>
+<g id="g-hr" class="jump">
+  <circle class="corr" cx="372" cy="321" r="2.2"/><circle class="corr" cx="389" cy="326" r="1.6"/><circle class="corr" cx="386" cy="344" r="2"/><circle class="corr" cx="371" cy="340" r="1.4"/>
+  <text x="420" y="331" class="t-mono" id="hrLbl1" style="fill:#FFB3AC">+1.0 kΩ</text>
+  <text x="420" y="344" class="t-tiny" id="hrLbl2">DROP 0.00 V</text>
+</g>
+<g id="g-inter" class="jump">
+  <text x="300" y="337" class="t-tiny" text-anchor="middle" style="fill:#FFD48A">LOOSE TERMINAL</text>
+  <g id="interSpark"><path class="spark" d="M360 326 l5 5 M366 324 v5 M370 329 l-4 3 M358 334 l6 -2"/></g>
+</g>
+<g id="g-shortb" class="jump">
+  <path class="w" data-n="BP" d="M488 282 V372 H380"/>
+  <rect x="462" y="258" width="52" height="24" rx="6" class="btag"/>
+  <text x="488" y="274" class="t-blk" text-anchor="middle" style="fill:#FFB08E" id="bpLbl">B+</text>
+  <circle cx="380" cy="372" r="5" class="chafe"/>
+  <text x="392" y="366" class="t-tiny" style="fill:#FFB08E">CHAFED TO B+</text>
+</g>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="X" d="M380 408 H470 V420"/>
+  <path class="gnd" d="M458 420 H482 M462 425 H478 M466 430 H474"/>
+  <circle cx="380" cy="408" r="5" class="chafe"/>
+  <text x="392" y="402" class="t-tiny" style="fill:#FF8A80">CHAFED TO GROUND</text>
+</g>
+<path class="flow" id="fMain" d="M122 110 H180 L185 102 L195 118 L205 102 L215 118 L225 102 L235 118 L245 102 L255 118 L260 110 H380 V318"/>
+<path class="flow" id="fC1" d="M380 318 V372"/>
+<path class="flow" id="fX" d="M380 372 V408"/>
+<path class="flow" id="fSens" d="M380 408 V482 H330 L322 474 L306 490 L290 474 L274 490 L258 474 L242 490 L226 474 L210 490 L200 482 H150 V176 H92 V186"/>
+<path class="flow" id="fBP" d="M488 282 V372 H380"/>
+<path class="flow" id="fG" d="M380 408 H470 V420"/>
+<g class="openpill" id="om-sigUp" style="display:none"><path class="spark" d="M372 262 l-5 -3 M372 270 l-5 3 M388 262 l5 -3 M388 270 l5 3"/><rect x="396" y="258" width="44" height="16" rx="8"/><text x="418" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-sigLo" style="display:none"><path class="spark" d="M372 424 l-5 -3 M372 432 l-5 3 M388 424 l5 -3 M388 432 l5 3"/><rect x="396" y="420" width="44" height="16" rx="8"/><text x="418" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-refUp" style="display:none"><path class="spark" d="M142 262 l-5 -3 M142 270 l-5 3 M158 262 l5 -3 M158 270 l5 3"/><rect x="88" y="258" width="44" height="16" rx="8"/><text x="110" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-refLo" style="display:none"><path class="spark" d="M142 390 l-5 -3 M142 398 l-5 3 M158 390 l5 -3 M158 398 l5 3"/><rect x="88" y="386" width="44" height="16" rx="8"/><text x="110" y="397.5" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tp1"><title>ECM signal pin (back-probe)</title><circle class="tpdot" cx="380" cy="236" r="4.5"/><rect x="390" y="225" width="84" height="22" rx="6"/><text x="398" y="239.5" class="lbl">PIN</text><text x="466" y="240" text-anchor="end" id="tp1v">0.00 V</text></g>
+<g class="badge" id="tp4"><title>ECM low reference pin</title><circle class="tpdot" cx="150" cy="236" r="4.5"/><rect x="56" y="225" width="84" height="22" rx="6"/><text x="64" y="239.5" class="lbl">REF</text><text x="132" y="240" text-anchor="end" id="tp4v">0.00 V</text></g>
+<g class="badge" id="tp2"><title>Sensor terminal A (signal)</title><circle class="tpdot" cx="380" cy="452" r="4.5"/><rect x="288" y="447" width="84" height="22" rx="6"/><text x="296" y="461.5" class="lbl">SIG</text><text x="364" y="462" text-anchor="end" id="tp2v">0.00 V</text></g>
+<g class="badge" id="tp3"><title>Sensor terminal B (low reference)</title><circle class="tpdot" cx="150" cy="452" r="4.5"/><rect x="160" y="447" width="84" height="22" rx="6"/><text x="168" y="461.5" class="lbl">GND</text><text x="236" y="462" text-anchor="end" id="tp3v">0.00 V</text></g>
+<path class="hit" data-open="sigUp" d="M380 222 V316"><title>Click to open or repair the signal wire (ECM side)</title></path>
+<path class="hit" data-open="sigLo" d="M380 350 V440"><title>Click to open or repair the signal wire (sensor side)</title></path>
+<path class="hit" data-open="refUp" d="M150 222 V316"><title>Click to open or repair the low reference wire (ECM side)</title></path>
+<path class="hit" data-open="refLo" d="M150 350 V440"><title>Click to open or repair the low reference wire (sensor side)</title></path>`;
+
+const ECT = {
+  id: 'ect', name: 'ECT sensor', sub: '2-wire thermistor', brandSub: 'ECT sensor circuit',
+  lib: { name: 'Engine coolant temperature (ECT)', type: '2-wire thermistor · pull-up', codes: 'P0117 · P0118 · P0119 · P0128' },
+  svg: ECT_SVG, viewBox: '14 10 506 542', defaultSpeed: 10, chartDefault: 'curve',
+  faults: [['sigUp', 'Open', 'Signal wire'], ['refLo', 'Open', 'Low reference'], ['shortG', 'Short', 'Signal to ground'], ['shortB', 'Short', 'Signal to B+'], ['inter', 'Intermittent', 'Loose terminal'], ['thermo', 'Mechanical', 'Thermostat stuck open']],
+  slider: { key: 'hiRes', label: 'High resistance · C1 terminal A', max: 3000, step: 50 },
+  opens: ['sigUp', 'sigLo', 'refUp', 'refLo'],
+  excl: [['shortG', 'shortB']],
+  names: { sigUp: 'signal open (ECM side)', sigLo: 'signal open (sensor side)', refUp: 'low ref open (ECM side)', refLo: 'low ref open (sensor side)', shortG: 'signal shorted to ground', shortB: 'signal shorted to B+', inter: 'loose terminal', thermo: 'thermostat stuck open', hiRes: v => `+${fmtR(v)} at C1` },
+  faultDefaults: () => ({ sigUp: false, sigLo: false, refUp: false, refLo: false, shortG: false, shortB: false, hiRes: 0, inter: false, thermo: false }),
+  initPhys: () => ({ coolant: AMB, model: AMB }),
+  grads: { gPU: ['V5', 'P'], gHR: ['A', 'X'], gTH: ['SA', 'SB'] },
+  flows: [['fMain', I => I.pu], ['fC1', I => I.hr], ['fX', I => I.hr + I.bp], ['fSens', I => I.th], ['fBP', I => I.bp], ['fG', I => I.g]],
+  solve() {
+    const f = S.f, glitch = f.inter && S.glitch.open;
+    const E = [
+      ['V5', 'P', ECT_RPU, 'pu'], ['P', 'A', f.sigUp ? OPEN : WIRE, 'up'], ['A', 'X', (glitch ? OPEN : 0.02) + f.hiRes, 'hr'],
+      ['X', 'SA', f.sigLo ? OPEN : WIRE, 'lo'], ['SA', 'SB', rTherm(S.p.coolant), 'th'], ['SB', 'RB', f.refLo ? OPEN : WIRE, 'rlo'],
+      ['RB', 'L', f.refUp ? OPEN : WIRE, 'rup'], ['L', 'G', 0.1, 'lg'], ['BP', 'X', f.shortB ? WIRE : OPEN, 'bp'], ['X', 'G', f.shortG ? WIRE : OPEN, 'g'],
+    ];
+    const { v, I } = nodal(['P', 'A', 'X', 'SA', 'SB', 'RB', 'L'], E, { V5: on() ? 5 : 0, G: 0, BP: S.batt });
+    S.v = v; S.I = I;
+    S.vad = on() ? clamp(v.P, 0, 5) : null;
+    S.readC = on() ? vToC(S.vad) : null;
+    S.readF = on() ? cToF(S.readC) : null;
+  },
+  physics(dt) {
+    const p = S.p, f = S.f;
+    if (S.key === 'run') {
+      const tgt = f.thermo ? 60 : 91, rate = f.thermo ? 0.085 : 0.15;
+      p.coolant += rate * clamp((tgt - p.coolant) / 6, -1, 1) * dt;
+      p.model += 0.15 * clamp((91 - p.model) / 6, -1, 1) * dt;
+    } else p.coolant += (AMB - p.coolant) * (1 - Math.exp(-0.0008 * dt));
+    const g = S.glitch;
+    if (f.inter && on()) {
+      if (!g.open && S.t >= g.next) { g.open = true; g.until = S.t + 0.15 + Math.random() * 0.55; }
+      else if (g.open && S.t >= g.until) { g.open = false; g.next = S.t + 0.8 + Math.random() * 1.8; }
+    } else g.open = false;
+  },
+  soak() { S.p.coolant = AMB; S.p.model = AMB; },
+  onStart() {
+    const m = S.M.P0128;
+    if (m.phase === 'pass' || m.phase === 'fail') return;
+    m.cold = S.readC != null && S.readC < 71 && !ectFail();
+    S.p.model = (S.readC != null && S.readC > -39 && S.readC < 149) ? S.readC : AMB;
+    m.startModel = S.p.model;
+    m.phase = 'armed';
+  },
+  monitors: [
+    { code: 'P0117', name: 'ECT sensor circuit low', kind: 'Continuous', trips: 2, mat: 5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10; circ(m, en, en && S.vad < 0.10, dt); },
+      view(m) { return circView(m, S.vad < 0.10, '< 0.10 V', `Signal ${fmtV(S.vad)}`, [...critBasic(), ['Fails when signal is < 0.10 V for 5.0 s in a row', null]]); } },
+    { code: 'P0118', name: 'ECT sensor circuit high', kind: 'Continuous', trips: 2, mat: 5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10; circ(m, en, en && S.vad > 4.95, dt); },
+      view(m) { return circView(m, S.vad > 4.95, '> 4.95 V', `Signal ${fmtV(S.vad)}`, [...critBasic(), ['Fails when signal is > 4.95 V for 5.0 s in a row', null]]); } },
+    { code: 'P0119', name: 'ECT sensor circuit intermittent', kind: 'Continuous', trips: 2, mat: 10, labels: ['Enable', 'Watch', 'Count', 'Result'], bar: 2,
+      run(m, dt) {
+        m.en = on() && S.batt >= 10 && !S.M.P0117.failing && !S.M.P0118.failing;
+        if (!m.en) { m.jumps = []; m.lastF = null; m.good = 0; return; }
+        m.sAcc += dt;
+        if (m.sAcc >= 0.1) {
+          m.sAcc = 0;
+          if (m.lastF != null && Math.abs(S.readF - m.lastF) > 45) m.jumps.push(S.t);
+          m.lastF = S.readF;
+        }
+        m.jumps = m.jumps.filter(t => S.t - t <= 10);
+        if (m.jumps.length >= 4 && !m.failing) fail(m);
+        if (m.jumps.length === 0) {
+          m.good += dt;
+          if (m.good > 1 && m.failing) m.failing = false;
+          if (m.good > 2 && S.key === 'run') m.passedTrip = true;
+        } else m.good = 0;
+      },
+      view(m) {
+        let st = ['', '', '', ''], frac = 0, pill = ['Off', ''], det = '';
+        const crit = [['Ignition on', on()], ['P0117 and P0118 not failing', on() && !S.M.P0117.failing && !S.M.P0118.failing], ['Fails on 4 jumps of more than 45 °F within 10 s', null]];
+        if (!on()) det = 'Ignition off. Test not running.';
+        else if (!m.en) { st[0] = 'bad'; pill = ['Suspended', '']; det = 'Suspended while a hard circuit fault is active.'; }
+        else {
+          const n = m.jumps.length; st[0] = 'ok';
+          if (m.failing) { st = ['ok', 'bad', 'bad', 'bad']; frac = 1; pill = ['Failed', 'bad']; det = `Reading jumped ${Math.max(n, 4)} times in 10 s. Test failed.`; }
+          else if (n > 0) { st[1] = 'act'; st[2] = 'act'; frac = n / 4; pill = ['Counting', 'act']; det = `Sudden jumps: ${n} of 4 in the last 10 s`; }
+          else { st[1] = 'ok'; st[3] = m.good > 1 ? 'ok' : ''; pill = ['Passing', 'ok']; det = 'Reading is steady.'; }
+        }
+        return { st, frac, pill, det, crit };
+      } },
+    { code: 'P0128', name: 'Coolant below thermostat regulating temp', kind: 'Once per trip', trips: 2, mat: 0, labels: ['Enable', 'Model', 'Compare', 'Result'], bar: 1,
+      run(m) {
+        if (m.phase === 'pass' || m.phase === 'fail') return;
+        if (S.key !== 'run') { m.phase = 'idle'; return; }
+        if (m.phase === 'idle') return;
+        if (!m.cold) { m.phase = 'blocked'; m.reason = 'Engine started warm. The test waits for a cold start.'; return; }
+        if (ectFail()) { m.phase = 'blocked'; m.reason = 'Suspended: an ECT circuit fault is active.'; return; }
+        m.phase = 'running';
+        if (S.p.model >= 85) {
+          m.result = S.readF;
+          if (S.readC >= 71) { m.phase = 'pass'; m.passedTrip = true; }
+          else { m.phase = 'fail'; fail(m); }
+        }
+      },
+      view(m) {
+        let st = ['', '', '', ''], frac = 0, pill = ['Waiting', ''], det = '';
+        const crit = [['Engine running', S.key === 'run'], ['Cold start: ECT below 160 °F at start', S.key === 'run' && m.cold], ['Intake air above 20 °F', true], ['No ECT circuit fault active', !ectFail()], ['Fails if ECT is below 160 °F when the model reaches 185 °F', null]];
+        switch (m.phase) {
+          case 'idle': case 'armed': det = S.key === 'run' ? 'Checking enable criteria.' : 'Runs once per trip, after a cold start.'; break;
+          case 'blocked': st[0] = 'bad'; pill = ['Not enabled', '']; det = m.reason; break;
+          case 'running': st[0] = 'ok'; st[1] = 'run'; frac = clamp((S.p.model - m.startModel) / (85 - m.startModel), 0, 1); pill = ['Running', 'run']; det = `Model ${F(S.p.model)} → 185 °F · sensor ${Ff(S.readF)}`; break;
+          case 'pass': st = ['ok', 'ok', 'ok', 'ok']; frac = 1; pill = ['Passed', 'ok']; det = `Sensor read ${Ff(m.result)} (160 °F or more) when the model hit 185 °F.`; break;
+          case 'fail': st = ['ok', 'ok', 'bad', 'bad']; frac = 1; pill = ['Failed', 'bad']; det = `Sensor read ${Ff(m.result)}, under 160 °F, when the model hit 185 °F.`; break;
+        }
+        return { st, frac, pill, det, crit };
+      } },
+  ],
+  visual() {
+    $('#interSpark').style.display = S.glitch.open ? '' : 'none';
+    $('#g-inter').classList.toggle('on', S.f.inter);
+    $('#g-shortb').classList.toggle('on', S.f.shortB);
+    $('#g-shortg').classList.toggle('on', S.f.shortG);
+  },
+  text() {
+    const v = S.v;
+    $('#tp1v').textContent = fmtV(v.P); $('#tp2v').textContent = fmtV(v.SA);
+    $('#tp3v').textContent = fmtV(v.SB); $('#tp4v').textContent = fmtV(v.L);
+    [['tp1', 'P'], ['tp2', 'SA'], ['tp3', 'SB'], ['tp4', 'L']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
+    $('#rVal').textContent = 'R ' + fmtR(rTherm(S.p.coolant));
+    $('#coolLbl').textContent = `Coolant ${Math.round(cToF(S.p.coolant))} °F`;
+    $('#hrLbl1').textContent = '+' + fmtR(S.f.hiRes);
+    $('#hrLbl2').textContent = 'DROP ' + fmtV(v.A - v.X);
+    $('#bpLbl').textContent = `B+ ${S.batt.toFixed(1)}`;
+  },
+  chart: {
+    xMin: -40, xMax: 302, ticks: [-40, 0, 100, 200, 300], xLabel: 'reading °F',
+    hi: [4.95, 'CIRCUIT HIGH · P0118 · > 4.95 V'], lo: [0.10, 'CIRCUIT LOW · P0117 · < 0.10 V'],
+    curve() { const pts = []; for (let c = -40; c <= 150; c += 2) { const r = rTherm(c); pts.push([cToF(c), 5 * r / (ECT_RPU + r)]); } return pts; },
+    readX: () => S.readF, actualX: () => cToF(S.p.coolant),
+  },
+  readouts() {
+    const o = on(), bad = o && (S.vad > 4.95 || S.vad < 0.10), u = ectUsedC(), sub = o && ectFail();
+    return [
+      { v: o ? fmtV(S.vad) : '—', s: !o ? 'Module asleep' : S.v.P > 5.05 ? `Pin at ${S.v.P.toFixed(1)} V · input clamped` : bad ? 'Outside the valid window' : 'Inside the valid window', cls: bad ? 'alert' : '' },
+      { v: o ? Ff(S.readF) : '—', s: o ? `${Math.round(S.readC)} °C · from lookup table` : '—', cls: bad ? 'alert' : '' },
+      { v: u == null ? '—' : F(u), s: !o ? '—' : sub ? 'Substitute value · fans on' : 'Sensor value', cls: sub ? 'subst' : '' },
+    ];
+  },
+  dataRows() {
+    const sub = ectFail(), bad = S.vad > 4.95 || S.vad < 0.10;
+    return [
+      ['ECT sensor', Ff(S.readF), bad ? 'bad' : ''], ['ECT sensor voltage', fmtV(S.vad), bad ? 'bad' : ''],
+      ['ECT used by ECM', F(ectUsedC()) + (sub ? ' (sub)' : ''), sub ? 'flag' : ''], ['Intake air temp', F(AMB), ''],
       ['Engine speed', S.key === 'run' ? (700 + Math.round(Math.sin(S.t * 3) * 8)) + ' rpm' : '0 rpm', ''],
-      ['Engine run time', mmss(S.run), ''],
-      ['Cooling fan command', fanOn() ? 'ON' : 'OFF', fanOn() && sub ? 'flag' : ''],
+      ['Engine run time', mmss(S.run), ''], ['Cooling fan command', ectFan() ? 'ON' : 'OFF', ectFan() && sub ? 'flag' : ''],
       ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
     ];
-    setHTML($('#data'), rows.map(([k, v, c]) => `<div class="row ${c}"><span>${k}</span><b>${v}</b></div>`).join(''));
-  }
-  const stored = MON.filter(m => m.pending || m.confirmed);
-  if (!on) setHTML($('#dtcBox'), '<div class="empty">Codes are stored in the ECM. Turn the key on to read them.</div>');
-  else if (!stored.length) setHTML($('#dtcBox'), '<div class="empty">No DTCs stored.</div>');
-  else {
-    if (!stored.find(m => m.code === S.sel)) S.sel = stored[0].code;
-    setHTML($('#dtcBox'), stored.map(m => {
-      let note = m.pending ? 'Fails again next trip → MIL on' : m.mil ? (m.passTrips ? `${m.passTrips} of 3 good trips to turn MIL off` : 'MIL on') : 'MIL off after 3 good trips';
-      return `<button class="dtc ${m.code === S.sel ? 'sel' : ''}" data-code="${m.code}"><span class="dc">${m.code}</span><span class="dn">${m.name}</span><span class="dx">${flagChips(m)}<span>${note}</span></span></button>`;
-    }).join(''));
-  }
-  const m = on && M[S.sel];
-  if (m && m.ff) {
-    const f = m.ff;
-    $('#ffHead').textContent = `Freeze frame · ${f.code}`;
-    const rows = [['Trip', f.trip], ['ECT sensor', Ff(f.ect)], ['ECT voltage', fmtV(f.volts)], ['Engine speed', f.rpm + ' rpm'], ['Run time', mmss(f.run)], ['Ignition V', f.batt.toFixed(1) + ' V'], ['Intake air', Ff(f.iat)], ['Fan command', f.fan ? 'ON' : 'OFF']];
-    setHTML($('#ffBox'), '<div class="ff">' + rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('') + '</div>');
-  } else {
-    $('#ffHead').textContent = 'Freeze frame';
-    setHTML($('#ffBox'), '<div class="empty">The ECM saves a snapshot of engine data the moment a test fails.</div>');
-  }
-}
-function renderDash() {
-  const u = ecmTempC();
-  const frac = u == null ? 0 : clamp((cToF(u) - 100) / 160, 0, 1);
-  const pt = f => { const a = Math.PI - f * Math.PI; return [60 + 46 * Math.cos(a), 64 - 46 * Math.sin(a)]; };
-  const [hx0, hy0] = pt(0.82), [hx1, hy1] = pt(1);
-  $('#gHot').setAttribute('d', `M${hx0} ${hy0} A46 46 0 0 1 ${hx1} ${hy1}`);
-  const [ax, ay] = pt(Math.max(frac, 0.001));
-  $('#gArc').setAttribute('d', `M14 64 A46 46 0 0 1 ${ax.toFixed(2)} ${ay.toFixed(2)}`);
-  $('#gArc').style.display = u == null ? 'none' : '';
-  const a = Math.PI - frac * Math.PI;
-  $('#needle').setAttribute('x2', 60 + 38 * Math.cos(a)); $('#needle').setAttribute('y2', 64 - 38 * Math.sin(a));
-  $('#gTxt').textContent = u == null ? '—' : F(u);
-  const mil = S.key !== 'off' && MON.some(m => m.mil);
-  $('#milTell').classList.toggle('on', mil);
-  $('#milTxt').textContent = S.key === 'off' ? 'MIL off' : mil ? 'MIL on · check engine' : 'MIL off';
-  $('#fanTell').classList.toggle('on', fanOn());
-  $('#fanTxt').textContent = fanOn() ? (circuitFailing() ? 'Fan on · failsafe' : 'Cooling fan on') : 'Cooling fan off';
-}
-function renderBar() {
-  $('#clock').textContent = `Trip ${S.trip} · ` + (S.key === 'run' ? 'Engine ' + mmss(S.run) : S.key === 'on' ? 'Key on, engine off' : 'Ignition off');
-  $('#slow').hidden = !S.slowmo;
-}
-
-/* ---------- toasts ---------- */
-function toast(msg, tone = '') {
-  const el = document.createElement('div');
-  el.className = 'toast ' + tone; el.innerHTML = '<i></i><span></span>';
-  el.lastChild.textContent = msg;
-  const box = $('#toasts'); box.appendChild(el);
-  while (box.children.length > 3) box.firstChild.remove();
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 3600);
-}
-
-/* ---------- guided lesson ---------- */
-const L = { i: 0, answered: {} };
-const LESSON = [
+  },
+  ffRows: () => [['ECT sensor', Ff(S.readF)], ['ECT voltage', fmtV(S.vad)], ['Engine speed', (S.key === 'run' ? 700 : 0) + ' rpm'], ['Run time', mmss(S.run)], ['Ignition V', S.batt.toFixed(1) + ' V'], ['Intake air', F(AMB)], ['Fan command', ectFan() ? 'ON' : 'OFF']],
+  dash: {
+    lo: 'C', hi: 'H', hot: 0.82,
+    frac() { const u = ectUsedC(); return u == null ? null : clamp((cToF(u) - 100) / 160, 0, 1); },
+    text() { const u = ectUsedC(); return u == null ? '—' : F(u); },
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><g class="fanrot"><path class="ic" d="M12 12c-1-4 0-8 3-9 2 2 1 6-3 9zM12 12c4-1 8 0 9 3-2 2-6 1-9-3zM12 12c1 4 0 8-3 9-2-2-1-6 3-9zM12 12c-4 1-8 0-9-3 2-2 6-1 9 3z"/></g><circle cx="12" cy="12" r="1.6" fill="#0E1319"/></svg>',
+    t2on: () => ectFan(),
+    t2text: () => ectFan() ? (ectFail() ? 'Fan on · failsafe' : 'Cooling fan on') : 'Cooling fan off',
+  },
+};
+ECT.lesson = [
   { title: 'Meet the circuit',
     body: 'The ECM sends <b>5 volts</b> through a fixed resistor inside the module, called the <b>pull-up</b>. The ECT sensor is a <b>thermistor</b>: its resistance drops as coolant heats up. The two resistors form a voltage divider, and the ECM reads the voltage between them on the signal wire.',
-    setup() { fullReset(); setSpeed(10); }, spot: ['g-pullup', 'g-sensor'] },
+    setup() { fullReset(); setSpeed(10); setChart('curve'); }, spot: ['g-pullup', 'g-sensor'] },
   { title: 'Watch it warm up',
     body: 'The engine is running at 60× speed. As coolant warms, sensor resistance falls and the signal voltage drops from about <b>2.9 V</b> toward <b>0.5 V</b>. The ECM turns that voltage into a temperature with a lookup table, shown as the blue curve.',
     setup() { setSpeed(60); }, spot: ['chartBox', 'tp1'],
@@ -1140,15 +848,15 @@ const LESSON = [
   { title: 'Fault maturation',
     body: 'The ECM doesn\'t set a code the instant it sees a bad value. The condition has to <b>last</b>. Here the fault must hold for <b>5 seconds in a row</b>. The sim drops to real time so you can watch the timer fill. A glitch that clears before the timer finishes is ignored.',
     setup() { if (!S.f.sigUp) setFault('sigUp', true); }, spot: ['mon-P0118'],
-    goal: { text: 'P0118 test fails', test: () => M.P0118.failing || M.P0118.pending || M.P0118.confirmed } },
+    goal: { text: 'P0118 test fails', test: () => S.M.P0118.failing || S.M.P0118.pending || S.M.P0118.confirmed } },
   { title: 'Pending code, no MIL yet',
     body: 'The test failed on this trip, so P0118 is stored as <b>Pending</b> and a <b>freeze frame</b> was saved. Look at the dash: the check engine light is still off. Most emissions-related codes are <b>two-trip</b>, so the MIL waits for the test to fail again on the next trip.',
     spot: ['dtcBox', 'ffWrap', 'dash'],
-    goal: { text: 'P0118 stored as pending', test: () => M.P0118.pending || M.P0118.confirmed } },
+    goal: { text: 'P0118 stored as pending', test: () => S.M.P0118.pending || S.M.P0118.confirmed } },
   { title: 'The second trip',
     body: 'Click <b>Next trip</b> in the top bar. That ends this trip (key off), soaks the engine overnight, and starts it again. The fault is still there, so the test fails again. P0118 becomes <b>Confirmed</b> and the MIL turns on.',
     setup() { if (!S.f.sigUp) setFault('sigUp', true); }, spot: ['btnNext', 'dash'],
-    goal: { text: 'P0118 confirmed and MIL on', test: () => M.P0118.confirmed && M.P0118.mil } },
+    goal: { text: 'P0118 confirmed and MIL on', test: () => S.M.P0118.confirmed && S.M.P0118.mil } },
   { title: 'Predict: a different wire',
     body: 'We repaired the signal wire and cleared the codes. Now the <b>low reference</b> wire is about to break instead.',
     setup() { clearFaults(); clearDTCs(true); },
@@ -1159,33 +867,773 @@ const LESSON = [
   { title: 'Short to ground',
     body: 'Now the signal wire has rubbed through and touches ground. The pin is pulled to <b>0 V</b>, which reads as over 300 °F, another impossible value. Watch P0117 mature. Then look at what the ECM does to protect the engine: it switches to a <b>substitute temperature</b> and turns the <b>cooling fan on</b>.',
     setup() { clearFaults(); clearDTCs(true); setFault('shortG', true); setSpeed(10); }, spot: ['g-shortg', 'mon-P0117', 'ecmUsed'],
-    goal: { text: 'P0117 fails and the fan comes on', test: () => M.P0117.failing } },
+    goal: { text: 'P0117 fails and the fan comes on', test: () => S.M.P0117.failing } },
   { title: 'A fault inside the window',
     body: 'A corroded terminal at C1 adds <b>1,000 Ω</b>. The voltage stays inside the valid window, so <b>no circuit code can set</b>. But the reading is too cold. Compare the white dot to the dashed "actual" line. P0128 checks the sensor against the ECM\'s own warm-up model: when the model says 185 °F, the sensor must read at least 160 °F.',
-    setup() { clearFaults(); clearDTCs(true); S.f.hiRes = 1000; syncFaultUI(); setKey('off'); S.coolant = AMB; S.model = AMB; setKey('on'); setKey('run'); setSpeed(60); },
+    setup() { clearFaults(); clearDTCs(true); S.f.hiRes = 1000; syncFaultUI(); setKey('off'); ECT.soak(); setKey('on'); setKey('run'); setSpeed(60); setChart('curve'); },
     spot: ['g-hr', 'chartBox', 'mon-P0128'],
-    goal: { text: 'P0128 test fails', test: () => M.P0128.phase === 'fail' } },
+    goal: { text: 'P0128 test fails', test: () => S.M.P0128.phase === 'fail' } },
   { title: 'What a code really tells you',
-    body: 'A DTC tells you <b>which test failed</b> and <b>what the module saw</b>. It doesn\'t name the part to replace. Circuit high and low codes point at the circuit. A rationality code like P0128 can come from wiring or from a real mechanical fault. In Explore, try <b>Thermostat stuck open</b> and compare. Your job is to prove the cause with testing.',
-    final: true },
+    body: 'A DTC tells you <b>which test failed</b> and <b>what the module saw</b>. It doesn\'t name the part to replace. Circuit high and low codes point at the circuit. A rationality code like P0128 can come from wiring or from a real mechanical fault. In Explore, try <b>Thermostat stuck open</b> and compare. Next, see how a <b>3-wire</b> sensor behaves differently.',
+    final: true, alt: { label: 'TPS lesson ▸', go() { switchSensor('tps'); } } },
 ];
+
+/* ================= TPS: 3-wire potentiometer, 5 V reference ================= */
+const TPS_RT = 5000, TPS_PD = 1e6;
+const tpsFail = () => S.M.P0122.failing || S.M.P0123.failing || S.M.P0642.failing;
+const tpsUsed = () => !on() ? null : tpsFail() ? (S.M.P0642.failing ? 0 : (S.pred ?? 0)) : S.pct;
+const wiperX = pos => 390 - (0.1 + 0.8 * pos) * 240;
+const TPS_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="130" y1="318" x2="130" y2="348"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gTR" gradientUnits="userSpaceOnUse" x1="150" y1="488" x2="390" y2="488"><stop offset="0" id="gTR0" stop-color="#2c3e50"/><stop offset="1" id="gTR1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gPD" gradientUnits="userSpaceOnUse" x1="320" y1="156" x2="320" y2="186"><stop offset="0" id="gPD0" stop-color="#2c3e50"/><stop offset="1" id="gPD1" stop-color="#2c3e50"/></linearGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="480" height="200" rx="14" class="ecm"/>
+<rect x="30" y="74" width="460" height="132" rx="9" class="ecm-in"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<g id="g-ref5"><rect x="91" y="84" width="78" height="36" rx="7" class="blk"/><text x="130" y="106" class="t-blk" text-anchor="middle">5 V REF A</text></g>
+<text x="140" y="166" class="t-tiny">◂ REF MONITOR</text>
+<text x="44" y="162" class="t-tiny">SHARED · MAP</text>
+<rect x="300" y="90" width="70" height="40" rx="7" class="blk"/>
+<text x="335" y="109" class="t-blk" text-anchor="middle">A/D</text>
+<text x="335" y="122" class="t-tiny" text-anchor="middle">TO LOGIC ▸</text>
+<text x="138" y="204" class="t-pin">5 V REF</text>
+<text x="262" y="204" class="t-pin" text-anchor="end">TPS SIGNAL</text>
+<text x="402" y="204" class="t-pin" text-anchor="end">LOW REF</text>
+<path class="gnd" d="M308 186 H332 M312 191 H328 M316 196 H324"/>
+<path class="gnd" d="M440 186 H464 M444 191 H460 M448 196 H456"/>
+<text x="332" y="168" class="t-tiny">PULL-DOWN 1 MΩ</text>
+<rect x="100" y="318" width="340" height="30" rx="8" class="conn"/>
+<text x="448" y="337" class="t-blk">C1</text>
+<g id="g-sensor">
+  <rect x="100" y="440" width="330" height="80" rx="14" class="sensor"/>
+  <text x="114" y="512" class="t-sub">TPS · 3-WIRE</text>
+  <text x="270" y="512" class="t-tiny" text-anchor="middle">TRACK 5 kΩ</text>
+  <text x="416" y="512" class="t-mono" text-anchor="end" id="thrLbl">Throttle 0 %</text>
+</g>
+<rect id="worn" x="321" y="480" width="14" height="16" rx="3" fill="rgba(255,138,80,.22)" stroke="#FF8A50" stroke-dasharray="2 2" style="display:none"/>
+<g id="g-plate">
+  <path d="M205 526 H325 M205 548 H325" stroke="#3B4756" stroke-width="2" fill="none"/>
+  <line id="plate" x1="265" y1="527" x2="265" y2="547" stroke="#C5CFD9" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="265" cy="537" r="2" fill="#8A98A8"/>
+  <text x="199" y="541" class="t-tiny" text-anchor="end">THROTTLE PLATE</text>
+</g>
+<g>
+  <path class="w" data-n="R5" d="M130 120 V262"/>
+  <path class="w" data-n="R5" d="M130 146 H62"/>
+  <path class="w" data-n="R5" id="br-refUp" d="M130 262 V270"/>
+  <path class="w" data-n="RA" d="M130 270 V318"/>
+  <path class="w" data-g="gHR" id="c1s" d="M130 318 V348"/>
+  <path class="w" data-g="gHR" id="c1z" d="M130 318 V322 L122 325 L138 330 L122 335 L138 340 L130 343 V348"/>
+  <path class="w" data-n="RB" d="M130 348 V424"/>
+  <path class="w" data-n="RB" id="br-refLo" d="M130 424 V432"/>
+  <path class="w" data-n="TA" d="M130 432 V488 H150"/>
+  <path class="w" data-g="gTR" d="M150 488 L156 481 L168 495 L180 481 L192 495 L204 481 L216 495 L228 481 L240 495 L252 481 L264 495 L276 481 L288 495 L300 481 L312 495 L324 481 L336 495 L348 481 L360 495 L372 481 L384 495 L390 488"/>
+  <path class="w" data-n="TC" d="M390 488 H410 V432"/>
+  <path class="w" data-n="GC" id="br-gndLo" d="M410 432 V424"/>
+  <path class="w" data-n="GC" d="M410 424 V270"/>
+  <path class="w" data-n="L" id="br-gndUp" d="M410 270 V262"/>
+  <path class="w" data-n="L" d="M410 262 V176 H452 V186"/>
+  <path class="w" data-n="P" d="M270 262 V110 H300"/>
+  <g id="g-pd">
+    <path class="w" data-n="P" d="M270 150 H320 V156"/>
+    <path class="w" data-g="gPD" d="M320 156 L327 159 L313 164 L327 169 L313 174 L327 179 L320 182 V186"/>
+  </g>
+  <path class="w" data-n="P" id="br-sigUp" d="M270 262 V270"/>
+  <path class="w" data-n="SX" d="M270 270 V424"/>
+  <path class="w" data-n="SX" id="br-sigLo" d="M270 424 V432"/>
+  <path class="w" data-n="W" id="wiper" d="M270 432 V468 H366 V478"/>
+</g>
+<path id="wiperHead" d="M361.5 473 L366 480 L370.5 473 Z" fill="#5FD4FF"/>
+<circle cx="130" cy="146" r="3" class="jdot"/>
+<circle cx="270" cy="150" r="3" class="jdot"/>
+<rect x="124" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<rect x="264" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<rect x="404" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<text x="138" y="300" class="t-tiny">5 V REF · GY</text>
+<text x="278" y="300" class="t-tiny">SIGNAL · DK BU</text>
+<text x="418" y="300" class="t-tiny">LOW REF · BK</text>
+<g id="g-hr" class="jump">
+  <circle class="corr" cx="122" cy="321" r="2.2"/><circle class="corr" cx="139" cy="326" r="1.6"/><circle class="corr" cx="136" cy="344" r="2"/><circle class="corr" cx="121" cy="340" r="1.4"/>
+  <text x="94" y="331" class="t-mono" text-anchor="end" id="hrLbl1" style="fill:#FFB3AC">+1.0 kΩ</text>
+  <text x="94" y="344" class="t-tiny" text-anchor="end" id="hrLbl2">DROP 0.00 V</text>
+</g>
+<g id="g-shortr" class="jump">
+  <path class="w" data-n="RA" d="M130 296 H72 V306"/>
+  <path class="gnd" d="M60 306 H84 M64 311 H80 M68 316 H76"/>
+  <circle cx="130" cy="296" r="5" class="chafe"/>
+  <text x="40" y="286" class="t-tiny" style="fill:#FF8A80">REF CHAFED</text>
+</g>
+<g id="g-shorts5" class="jump">
+  <path class="w" data-n="RB" d="M130 372 H270"/>
+  <circle cx="130" cy="372" r="5" class="chafe"/><circle cx="270" cy="372" r="5" class="chafe"/>
+  <text x="200" y="366" class="t-tiny" text-anchor="middle" style="fill:#FF8A80">SIGNAL RUBBING 5 V REF</text>
+</g>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="SX" d="M270 392 H330 V404"/>
+  <path class="gnd" d="M318 404 H342 M322 409 H338 M326 414 H334"/>
+  <circle cx="270" cy="392" r="5" class="chafe"/>
+  <text x="282" y="386" class="t-tiny" style="fill:#FF8A80">CHAFED TO GROUND</text>
+</g>
+<path class="flow" id="fRef" d="M130 120 V318"/>
+<path class="flow" id="fMap" d="M130 146 H62"/>
+<path class="flow" id="fRefLo" d="M130 318 V488 H150"/>
+<path class="flow" id="fTT" d="M150 488 H366"/>
+<path class="flow" id="fTB" d="M366 488 H390"/>
+<path class="flow" id="fGnd" d="M390 488 H410 V176 H452 V186"/>
+<path class="flow" id="fWip" d="M366 478 V468 H270 V372"/>
+<path class="flow" id="fSG" d="M270 392 H330 V404"/>
+<path class="flow" id="fS5" d="M130 372 H270"/>
+<path class="flow" id="fRG" d="M130 296 H72 V306"/>
+<g class="openpill" id="om-refUp" style="display:none"><path class="spark" d="M122 262 l-5 -3 M122 270 l-5 3 M138 262 l5 -3 M138 270 l5 3"/><rect x="72" y="258" width="44" height="16" rx="8"/><text x="94" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-refLo" style="display:none"><path class="spark" d="M122 424 l-5 -3 M122 432 l-5 3 M138 424 l5 -3 M138 432 l5 3"/><rect x="72" y="420" width="44" height="16" rx="8"/><text x="94" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-sigUp" style="display:none"><path class="spark" d="M262 262 l-5 -3 M262 270 l-5 3 M278 262 l5 -3 M278 270 l5 3"/><rect x="284" y="258" width="44" height="16" rx="8"/><text x="306" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-sigLo" style="display:none"><path class="spark" d="M262 424 l-5 -3 M262 432 l-5 3 M278 424 l5 -3 M278 432 l5 3"/><rect x="284" y="420" width="44" height="16" rx="8"/><text x="306" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-gndUp" style="display:none"><path class="spark" d="M402 262 l-5 -3 M402 270 l-5 3 M418 262 l5 -3 M418 270 l5 3"/><rect x="424" y="258" width="44" height="16" rx="8"/><text x="446" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-gndLo" style="display:none"><path class="spark" d="M402 424 l-5 -3 M402 432 l-5 3 M418 424 l5 -3 M418 432 l5 3"/><rect x="424" y="420" width="44" height="16" rx="8"/><text x="446" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tpR"><title>ECM 5 V reference pin</title><circle class="tpdot" cx="130" cy="236" r="4.5"/><rect x="38" y="225" width="84" height="22" rx="6"/><text x="46" y="239.5" class="lbl">5V</text><text x="114" y="240" text-anchor="end" id="tpRv">0.00 V</text></g>
+<g class="badge" id="tpS"><title>ECM signal pin</title><circle class="tpdot" cx="270" cy="236" r="4.5"/><rect x="280" y="225" width="84" height="22" rx="6"/><text x="288" y="239.5" class="lbl">SIG</text><text x="356" y="240" text-anchor="end" id="tpSv">0.00 V</text></g>
+<g class="badge" id="tpG"><title>ECM low reference pin</title><circle class="tpdot" cx="410" cy="236" r="4.5"/><rect x="420" y="225" width="84" height="22" rx="6"/><text x="428" y="239.5" class="lbl">GND</text><text x="496" y="240" text-anchor="end" id="tpGv">0.00 V</text></g>
+<g class="badge" id="tpT"><title>TPS terminal A (5 V reference at the sensor)</title><circle class="tpdot" cx="130" cy="452" r="4.5"/><rect x="140" y="441" width="98" height="22" rx="6"/><text x="148" y="455.5" class="lbl">TPS A</text><text x="230" y="456" text-anchor="end" id="tpTv">0.00 V</text></g>
+<path class="hit" data-open="refUp" d="M130 222 V316"><title>Click to open or repair the 5 V reference (ECM side)</title></path>
+<path class="hit" data-open="refLo" d="M130 350 V440"><title>Click to open or repair the 5 V reference (sensor side)</title></path>
+<path class="hit" data-open="sigUp" d="M270 222 V316"><title>Click to open or repair the signal wire (ECM side)</title></path>
+<path class="hit" data-open="sigLo" d="M270 350 V432"><title>Click to open or repair the signal wire (sensor side)</title></path>
+<path class="hit" data-open="gndUp" d="M410 222 V316"><title>Click to open or repair the low reference (ECM side)</title></path>
+<path class="hit" data-open="gndLo" d="M410 350 V440"><title>Click to open or repair the low reference (sensor side)</title></path>`;
+
+const TPS = {
+  id: 'tps', name: 'TPS', sub: '3-wire potentiometer', brandSub: 'TPS circuit',
+  lib: { name: 'Throttle position (TPS)', type: '3-wire potentiometer · 5 V reference', codes: 'P0121 · P0122 · P0123 · P0642' },
+  svg: TPS_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'scope',
+  faults: [['refLo', 'Open', '5 V reference'], ['gndLo', 'Open', 'Low reference'], ['shortG', 'Short', 'Signal to ground'], ['shortS5', 'Short', 'Signal to 5 V ref'], ['shortR', 'Short', '5 V ref to ground'], ['worn', 'Worn track', 'Dead spot near 20 %']],
+  slider: { key: 'hiRes', label: 'High resistance · C1 5 V ref', max: 3000, step: 50 },
+  opens: ['refUp', 'refLo', 'sigUp', 'sigLo', 'gndUp', 'gndLo'],
+  excl: [['shortG', 'shortS5']],
+  names: { refUp: '5 V ref open (ECM side)', refLo: '5 V ref open (sensor side)', sigUp: 'signal open (ECM side)', sigLo: 'signal open (sensor side)', gndUp: 'low ref open (ECM side)', gndLo: 'low ref open (sensor side)', shortG: 'signal shorted to ground', shortS5: 'signal shorted to 5 V ref', shortR: '5 V ref shorted to ground', worn: 'worn spot on the track', hiRes: v => `+${fmtR(v)} on 5 V ref at C1` },
+  faultDefaults: () => ({ refUp: false, refLo: false, sigUp: false, sigLo: false, gndUp: false, gndLo: false, shortG: false, shortS5: false, shortR: false, worn: false, hiRes: 0 }),
+  initPhys: () => ({ pos: 0, target: 0, sweep: null, snap: null, rpm: 0, map: 100, peak: 0, sawGlitch: false }),
+  grads: { gHR: ['RA', 'RB'], gTR: ['TA', 'TC'], gPD: ['P', 'G'] },
+  flows: [['fRef', I => I.rup], ['fMap', I => I.map], ['fRefLo', I => I.hr], ['fTT', I => I.tt], ['fTB', I => I.tb], ['fGnd', I => I.glo], ['fWip', I => I.wip], ['fSG', I => I.sg], ['fS5', I => I.s5], ['fRG', I => I.rg]],
+  solve() {
+    const f = S.f, p = S.p, k = 0.1 + 0.8 * p.pos;
+    const inSpot = f.worn && p.pos >= 0.17 && p.pos <= 0.23;
+    const E = [
+      ['V5', 'R5', 10, 'reg'], ['R5', 'G', 2500, 'map'], ['R5', 'RA', f.refUp ? OPEN : WIRE, 'rup'], ['RA', 'RB', 0.02 + f.hiRes, 'hr'],
+      ['RB', 'TA', f.refLo ? OPEN : WIRE, 'rlo'], ['TA', 'Wt', TPS_RT * (1 - k) + 1, 'tt'], ['Wt', 'TC', TPS_RT * k + 1, 'tb'],
+      ['Wt', 'W', inSpot ? OPEN : 2, 'wip'], ['W', 'SX', f.sigLo ? OPEN : WIRE, 'slo'], ['SX', 'P', f.sigUp ? OPEN : WIRE, 'sup'], ['P', 'G', TPS_PD, 'pd'],
+      ['TC', 'GC', f.gndLo ? OPEN : WIRE, 'glo'], ['GC', 'L', f.gndUp ? OPEN : WIRE, 'gup'], ['L', 'G', 0.1, 'lg'],
+      ['SX', 'G', f.shortG ? WIRE : OPEN, 'sg'], ['RB', 'SX', f.shortS5 ? WIRE : OPEN, 's5'], ['RA', 'G', f.shortR ? WIRE : OPEN, 'rg'],
+    ];
+    const { v, I } = nodal(['R5', 'RA', 'RB', 'TA', 'Wt', 'W', 'SX', 'P', 'TC', 'GC', 'L'], E, { V5: on() ? 5 : 0, G: 0 });
+    S.v = v; S.I = I;
+    const o = on();
+    S.vad = o ? clamp(v.P, 0, 5) : null;
+    S.vref = o ? v.R5 : null;
+    S.pct = o ? clamp((S.vad - 0.5) / 4 * 100, 0, 100) : null;
+    S.mapV = o ? (v.R5 / 5) * (0.1 + 4.6 * p.map / 100) : null;
+    S.mapRead = o ? clamp((S.mapV - 0.1) / 4.6 * 100, 0, 105) : null;
+    S.pred = S.key === 'run' ? Math.pow(clamp((S.mapRead - 28) / 72, 0, 1), 1 / 0.7) * 100 : null;
+    if (o && inSpot) p.sawGlitch = true;
+    if (o) p.peak = Math.max(p.peak, S.pct);
+  },
+  input(dt) {
+    const p = S.p, T = 2.5;
+    if (p.sweep != null) {
+      p.sweep += dt;
+      if (p.sweep < T) p.target = p.sweep / T;
+      else if (p.sweep < 2 * T) p.target = 1 - (p.sweep - T) / T;
+      else { p.sweep = null; p.target = 0; }
+    }
+    if (p.snap != null) {
+      p.snap += dt;
+      if (p.snap < 0.7) p.target = 1; else { p.snap = null; p.target = 0; }
+    }
+    p.pos += clamp(p.target - p.pos, -2.5 * dt, 2.5 * dt);
+  },
+  inputHTML: '<label for="thr">Throttle</label><input type="range" id="thr" min="0" max="100" step="1" value="0" aria-label="Throttle position"><output id="thrOut" for="thr">0 %</output><button class="btn small" id="btnSweep">Sweep</button><button class="btn small" id="btnSnap">Snap</button>',
+  bindInputs() {
+    const t = $('#thr');
+    t.addEventListener('pointerdown', () => thrDrag = true);
+    addEventListener('pointerup', () => thrDrag = false);
+    t.addEventListener('input', e => { const p = S.p; p.sweep = null; p.snap = null; p.target = e.target.value / 100; });
+    $('#btnSweep').addEventListener('click', () => { S.p.snap = null; S.p.sweep = 0; });
+    $('#btnSnap').addEventListener('click', () => { S.p.sweep = null; S.p.snap = 0; });
+  },
+  syncInputs() {
+    const t = $('#thr'); if (!t) return;
+    if (!thrDrag) t.value = Math.round(S.p.target * 100);
+    $('#thrOut').textContent = Math.round(S.p.pos * 100) + ' %';
+  },
+  physics(dt) {
+    const p = S.p, run = S.key === 'run';
+    let rt = run ? 700 + 2800 * p.pos : 0;
+    if (run && tpsFail()) rt = Math.min(rt, 1400);
+    p.rpm += (rt - p.rpm) * (1 - Math.exp(-dt * 3));
+    const mt = run ? 28 + 72 * Math.pow(p.pos, 0.7) : 100;
+    p.map += (mt - p.map) * (1 - Math.exp(-dt * 6));
+  },
+  monitors: [
+    { code: 'P0122', name: 'TP sensor circuit low', kind: 'Continuous', trips: 1, mat: 2, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10; circ(m, en, en && S.vad < 0.25, dt); },
+      view(m) { return circView(m, S.vad < 0.25, '< 0.25 V', `Signal ${fmtV(S.vad)}`, [...critBasic(), ['Fails when signal is < 0.25 V for 2.0 s in a row', null], ['One-trip code: MIL on at the first failure', null]]); } },
+    { code: 'P0123', name: 'TP sensor circuit high', kind: 'Continuous', trips: 1, mat: 2, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10; circ(m, en, en && S.vad > 4.75, dt); },
+      view(m) { return circView(m, S.vad > 4.75, '> 4.75 V', `Signal ${fmtV(S.vad)}`, [...critBasic(), ['Fails when signal is > 4.75 V for 2.0 s in a row', null], ['One-trip code: MIL on at the first failure', null]]); } },
+    { code: 'P0642', name: 'Sensor reference A circuit low', kind: 'Continuous', trips: 1, mat: 0.5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10; circ(m, en, en && S.vref < 4.5, dt); },
+      view(m) { return circView(m, S.vref < 4.5, '< 4.5 V', `Reference ${fmtV(S.vref)}`, [...critBasic(), ['Fails when reference A is below 4.5 V for 0.5 s', null], ['Reference A also feeds the MAP sensor', null]]); } },
+    { code: 'P0121', name: 'TP sensor range/performance', kind: 'Continuous', trips: 2, mat: 2, labels: ['Enable', 'Compare', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = S.key === 'run' && !tpsFail(); circ(m, en, en && Math.abs(S.pct - S.pred) > 15, dt); },
+      view(m) {
+        const crit = [['Engine running', S.key === 'run'], ['No TPS or reference circuit fault active', !tpsFail()], ['Fails when TPS and airflow (MAP) disagree by more than 15 % for 2.0 s', null]];
+        if (!m.en) return { st: [S.key === 'run' ? 'bad' : '', '', '', ''], frac: 0, pill: [S.key === 'run' ? 'Suspended' : 'Waiting', ''], det: S.key === 'run' ? 'Suspended while a TPS circuit fault is active.' : 'Runs only with the engine running.', crit };
+        return circView(m, Math.abs(S.pct - S.pred) > 15, 'more than 15 % apart', `TPS ${Math.round(S.pct)} % vs airflow ${Math.round(S.pred)} %`, crit);
+      } },
+  ],
+  visual() {
+    const p = S.p, wx = wiperX(p.pos).toFixed(1);
+    const setD = (id, d) => { const e = $('#' + id); e.setAttribute('d', d); if (e._glow) e._glow.setAttribute('d', d); };
+    setD('wiper', `M270 432 V468 H${wx} V478`);
+    $('#wiperHead').setAttribute('d', `M${wx - 4.5} 473 L${wx} 480 L${+wx + 4.5} 473 Z`);
+    $('#wiperHead').style.fill = vColor(S.v.W);
+    setD('fTT', `M150 488 H${wx}`); setD('fTB', `M${wx} 488 H390`); setD('fWip', `M${wx} 478 V468 H270 V372`);
+    const a = p.pos * 85 * Math.PI / 180, dx = 10 * Math.sin(a), dy = 10 * Math.cos(a);
+    const pl = $('#plate');
+    pl.setAttribute('x1', 265 - dx); pl.setAttribute('y1', 537 - dy); pl.setAttribute('x2', 265 + dx); pl.setAttribute('y2', 537 + dy);
+    $('#worn').style.display = S.f.worn ? '' : 'none';
+    $('#g-shortr').classList.toggle('on', S.f.shortR);
+    $('#g-shorts5').classList.toggle('on', S.f.shortS5);
+    $('#g-shortg').classList.toggle('on', S.f.shortG);
+  },
+  text() {
+    const v = S.v;
+    $('#tpRv').textContent = fmtV(v.R5); $('#tpSv').textContent = fmtV(v.P);
+    $('#tpGv').textContent = fmtV(v.L); $('#tpTv').textContent = fmtV(v.TA);
+    [['tpR', 'R5'], ['tpS', 'P'], ['tpG', 'L'], ['tpT', 'TA']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
+    $('#thrLbl').textContent = `Throttle ${Math.round(S.p.pos * 100)} %`;
+    $('#hrLbl1').textContent = '+' + fmtR(S.f.hiRes);
+    $('#hrLbl2').textContent = 'DROP ' + fmtV(v.RA - v.RB);
+  },
+  chart: {
+    xMin: 0, xMax: 100, ticks: [0, 25, 50, 75, 100], xLabel: 'reading %',
+    hi: [4.75, 'CIRCUIT HIGH · P0123 · > 4.75 V'], lo: [0.25, 'CIRCUIT LOW · P0122 · < 0.25 V'],
+    curve: () => [[0, 0.5], [100, 4.5]],
+    readX: () => S.pct, actualX: () => S.p.pos * 100,
+  },
+  readouts() {
+    const o = on(), bad = o && (S.vad > 4.75 || S.vad < 0.25), fs = o && tpsFail(), u = tpsUsed();
+    return [
+      { v: o ? fmtV(S.vad) : '—', s: !o ? 'Module asleep' : bad ? 'Outside the valid window' : 'Inside the valid window', cls: bad ? 'alert' : '' },
+      { v: o ? Math.round(S.pct) + ' %' : '—', s: o ? 'Throttle position' : '—', cls: bad ? 'alert' : '' },
+      { v: u == null ? '—' : Math.round(u) + ' %', s: !o ? '—' : fs ? (S.M.P0642.failing ? 'Default value · reduced power' : 'Estimated from MAP · reduced power') : 'Sensor value', cls: fs ? 'subst' : '' },
+    ];
+  },
+  dataRows() {
+    const bad = S.vad > 4.75 || S.vad < 0.25, fs = tpsFail(), refBad = S.vref < 4.5;
+    return [
+      ['TP sensor', Math.round(S.pct) + ' %', bad ? 'bad' : ''], ['TP sensor voltage', fmtV(S.vad), bad ? 'bad' : ''],
+      ['5 V reference A', fmtV(S.vref), refBad ? 'bad' : ''], ['Throttle used by ECM', Math.round(tpsUsed()) + ' %' + (fs ? ' (sub)' : ''), fs ? 'flag' : ''],
+      ['MAP sensor', Math.round(S.mapRead) + ' kPa', refBad ? 'bad' : ''], ['MAP sensor voltage', fmtV(S.mapV), refBad ? 'bad' : ''],
+      ['Engine speed', Math.round(S.p.rpm) + ' rpm', ''], ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
+    ];
+  },
+  ffRows: () => [['TP sensor', Math.round(S.pct) + ' %'], ['TP voltage', fmtV(S.vad)], ['5 V ref A', fmtV(S.vref)], ['MAP sensor', Math.round(S.mapRead) + ' kPa'], ['Engine speed', Math.round(S.p.rpm) + ' rpm'], ['Run time', mmss(S.run)], ['Ignition V', S.batt.toFixed(1) + ' V']],
+  dash: {
+    lo: '0', hi: '7k', hot: 6 / 7,
+    frac: () => on() ? clamp(S.p.rpm / 7000, 0, 1) : null,
+    text: () => on() ? Math.round(S.p.rpm) + ' rpm' : '—',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" fill-rule="evenodd" d="M12 2.5L22.5 20.5H1.5ZM11 9h2v6h-2zM11 16.5h2v2h-2z"/></svg>',
+    t2on: () => on() && tpsFail(),
+    t2text: () => on() && tpsFail() ? 'Reduced power' : 'Power normal',
+  },
+};
+TPS.lesson = [
+  { title: 'Meet a 3-wire sensor',
+    body: 'The ECM sends a <b>5 V reference</b> to one end of the TPS track and grounds the other end through the <b>low reference</b>. The wiper rides along the track and sends the <b>signal</b> back to the ECM. Inside the ECM, a <b>pull-down</b> resistor holds the signal at 0 V whenever nothing is driving it.',
+    setup() { fullReset(); setThrottle(0); setChart('scope'); }, spot: ['g-sensor', 'g-pd'] },
+  { title: 'Sweep the throttle',
+    body: 'Press <b>Sweep</b> under the circuit. The wiper travels the track and the signal climbs from about <b>0.5 V</b> closed to <b>4.5 V</b> wide open, then back down. Watch the scope: a smooth, unbroken ramp is what a good TPS looks like.',
+    setup() { S.p.peak = 0; setChart('scope'); }, spot: ['btnSweep', 'chartBox'],
+    goal: { text: 'Throttle reading reaches 95 %', test: () => S.p.peak >= 95 } },
+  { title: 'Predict: the 5 V reference opens',
+    body: 'Think about where the wiper gets its voltage from.',
+    setup() { setThrottle(0.15); },
+    ask: { q: 'If the 5 V reference wire breaks, what does the signal do?', opts: ['Drops to about 0 V', 'Stays where it was', 'Rises to about 5 V'], ans: 0,
+      why: 'With no voltage on the track, the wiper has nothing to pick up. The pull-down resistor in the ECM holds the signal at 0 V, so the ECM sees circuit low.',
+      apply() { setFault('refLo', true); } },
+    spot: ['tpS', 'tpT'] },
+  { title: 'A one-trip code',
+    body: 'P0122 needs the fault for 2 seconds. When it fails, check the scan tool: it goes straight to <b>Confirmed</b> and the MIL turns on right away. Some codes are <b>one-trip</b> because the fault affects how the engine runs right now. Notice the <b>Reduced power</b> light too: the ECM stops trusting the TPS and limits engine speed.',
+    setup() { if (!S.f.refLo) setFault('refLo', true); }, spot: ['mon-P0122', 'dash', 'dtcBox'],
+    goal: { text: 'P0122 confirmed with the MIL on', test: () => S.M.P0122.confirmed && S.M.P0122.mil } },
+  { title: 'Predict: the ground opens',
+    body: 'We repaired the reference and cleared the codes. Now the <b>low reference</b> (ground) wire is about to break.',
+    setup() { clearFaults(); clearDTCs(true); setThrottle(0.15); },
+    ask: { q: 'With the low reference open, which code sets?', opts: ['P0122 circuit low', 'P0123 circuit high', 'No code'], ans: 1,
+      why: 'No current flows through the track, so no voltage is dropped anywhere along it. The whole track sits at 5 V, and so does the wiper. On the 2-wire ECT every open read high. On a 3-wire sensor, which wire opens decides the code.',
+      apply() { setFault('gndLo', true); } },
+    spot: ['mon-P0123', 'tpS'] },
+  { title: 'One short, several codes',
+    body: 'The 5 V reference wire has rubbed through to ground. The reference collapses, so <b>P0642</b> sets almost at once, followed by <b>P0122</b>. Check the data list: the <b>MAP sensor</b> shares reference A, so its reading drops out too. When several sensors on the same reference fail together, test the shared reference first.',
+    setup() { clearFaults(); clearDTCs(true); setFault('shortR', true); }, spot: ['g-shortr', 'mon-P0642', 'data'],
+    goal: { text: 'P0642 sets on the shared reference', test: () => S.M.P0642.failing } },
+  { title: 'A fault with no code',
+    body: 'This TPS has a <b>worn spot</b> on its track near 20 % throttle. Press <b>Sweep</b> and watch the scope: the signal drops to 0 V for an instant as the wiper crosses the spot. It\'s too short to mature a code, but the driver feels a stumble. That\'s why technicians sweep a TPS on a scope. If you park the throttle right on the spot, the dropout lasts long enough to set P0122.',
+    setup() { clearFaults(); clearDTCs(true); setFault('worn', true); setThrottle(0); setChart('scope'); S.p.sawGlitch = false; }, spot: ['btnSweep', 'chartBox', 'worn'],
+    goal: { text: 'Scope catches the dropout', test: () => S.p.sawGlitch } },
+  { title: 'Inside the window again',
+    body: 'Now the 5 V reference terminal at C1 is corroded (<b>+1.5 kΩ</b>). The track only gets about <b>3.9 V</b>, so every reading is scaled down, but the signal stays inside the valid window and no circuit code sets. At 60 % throttle the TPS reads about 43 % while airflow (MAP) says 60 %. <b>P0121</b> catches the disagreement.',
+    setup() { clearFaults(); clearDTCs(true); S.f.hiRes = 1500; syncFaultUI(); setThrottle(0.6); setChart('curve'); }, spot: ['g-hr', 'tpT', 'mon-P0121'],
+    goal: { text: 'P0121 fails and is stored as pending', test: () => S.M.P0121.pending || S.M.P0121.confirmed } },
+  { title: 'Reading a 3-wire circuit',
+    body: 'On a 3-wire sensor, an open <b>5 V reference</b> or <b>signal</b> reads low, and an open <b>ground</b> reads high. A shorted reference sets codes on <b>every sensor that shares it</b>. Some faults set one-trip codes, and some set no code at all and only show up on a scope. The code points you to a test, not a part.',
+    final: true, alt: { label: '◂ ECT lesson', go() { switchSensor('ect'); } } },
+];
+
+const SENSORS = { ect: ECT, tps: TPS };
+const PLANNED = [
+  { name: 'Fuel injector', type: 'Low-side driver · output monitoring', codes: 'P0201 · P0261 · P0262' },
+  { name: 'O2 sensor heater', type: 'PWM low-side driver · current monitor', codes: 'P0030 · P0031 · P0032' },
+  { name: 'CAN network', type: 'Serial data · message timeouts', codes: 'U0100 · U0140 · U0073' },
+];
+
+/* ================= simulation core ================= */
+let D, S, MODE = 'explore', thrDrag = false;
+const STATES = {};
+const fresh = () => ({ timer: 0, good: 0, en: false, failing: false, failedTrip: false, passedTrip: false, pending: false, pendingTrip: 0, confirmed: false, mil: false, passTrips: 0, ff: null, jumps: [], lastF: null, sAcc: 0, phase: 'idle', reason: '', cold: false, startModel: AMB, result: null });
+function makeState(def) {
+  const s = {
+    key: 'off', speed: def.defaultSpeed, paused: false, t: 0, run: 0, trip: 1, hadTrip: false, tripOpen: false, ranThisTrip: false, batt: 12.6,
+    f: def.faultDefaults(), p: def.initPhys(), glitch: { open: false, next: 1, until: 0 },
+    v: {}, I: {}, vad: null, sel: null, slowmo: false, chart: def.chartDefault, scope: [], clock: 0,
+  };
+  s.mons = def.monitors.map(m => ({ ...m, ...fresh() }));
+  s.M = Object.fromEntries(s.mons.map(m => [m.code, m]));
+  return s;
+}
+function solve() { S.batt = S.key === 'run' ? 14.2 : 12.6; D.solve(); }
+function fail(m) {
+  m.failing = true; m.failedTrip = true; m.passTrips = 0;
+  if (m.confirmed) {
+    if (!m.mil) { m.mil = true; toast(`${m.code} failed again. MIL back on.`, 'bad'); }
+  } else if (m.trips === 1) {
+    m.confirmed = true; m.pending = false; m.mil = true; m.ff = capture(m); S.sel = m.code;
+    toast(`${m.code} is a one-trip code. Confirmed, MIL on right away.`, 'bad');
+  } else if (m.pending && m.pendingTrip < S.trip) {
+    m.confirmed = true; m.pending = false; m.mil = true; m.ff = capture(m); S.sel = m.code;
+    toast(`${m.code} failed on a 2nd trip. Confirmed, MIL on.`, 'bad');
+  } else if (!m.pending) {
+    m.pending = true; m.pendingTrip = S.trip; m.ff = capture(m); S.sel = m.code;
+    toast(`${m.code} test failed. Stored as pending, freeze frame saved.`, 'warn');
+  }
+}
+const capture = m => ({ code: m.code, rows: [['Trip', S.trip], ...D.ffRows()] });
+function endTrip() {
+  S.mons.forEach(m => {
+    if (!m.failedTrip && m.passedTrip) {
+      if (m.pending && !m.confirmed) { m.pending = false; toast(`${m.code} passed this trip. Pending code cleared.`, 'ok'); }
+      else if (m.confirmed && m.mil) {
+        m.passTrips++;
+        if (m.passTrips >= 3) { m.mil = false; toast(`${m.code} passed 3 trips in a row. MIL off, code kept as history.`, 'ok'); }
+      }
+    }
+    Object.assign(m, { failedTrip: false, passedTrip: false, failing: false, timer: 0, good: 0, jumps: [], lastF: null, phase: 'idle' });
+  });
+}
+function setKey(k) {
+  if (k === S.key) return;
+  if (k === 'off') {
+    if (S.tripOpen && S.ranThisTrip) endTrip();
+    S.tripOpen = false; S.ranThisTrip = false; S.run = 0;
+    S.mons.forEach(m => Object.assign(m, { timer: 0, good: 0, failing: false, jumps: [], lastF: null }));
+    S.glitch.open = false;
+  }
+  S.key = k;
+  if (k === 'run') {
+    if (!S.tripOpen) {
+      if (S.hadTrip) S.trip++;
+      S.hadTrip = true; S.tripOpen = true;
+      S.mons.forEach(m => m.phase = 'idle');
+    }
+    S.run = 0;
+    solve();
+    D.onStart?.();
+  }
+  solve();
+  syncTop();
+}
+function nextTrip() {
+  setKey('off'); D.soak?.();
+  setKey('on'); setKey('run');
+  toast(`Trip ${S.trip}: key off, overnight soak, restart.`);
+}
+function setSpeed(x) { S.speed = x; S.paused = false; syncTop(); }
+function setChart(v) {
+  S.chart = v;
+  $$('[data-chart]').forEach(b => b.setAttribute('aria-pressed', b.dataset.chart === v));
+  $('#curveG').style.display = v === 'curve' ? '' : 'none';
+  $('#gridCurve').style.display = v === 'curve' ? '' : 'none';
+  $('#scopeG').style.display = v === 'scope' ? '' : 'none';
+  $('#gridScope').style.display = v === 'scope' ? '' : 'none';
+  $('#chartTitle').textContent = v === 'curve' ? 'Signal voltage vs reading' : 'Signal voltage · last 6 s';
+}
+function setThrottle(x) { const p = S.p; p.sweep = null; p.snap = null; p.target = x; p.pos = x; }
+function setFault(k, val) {
+  (D.excl || []).forEach(g => { if (val && g.includes(k)) g.forEach(o => { if (o !== k) S.f[o] = false; }); });
+  S.f[k] = val;
+  if (k === 'inter') { S.glitch.open = false; S.glitch.next = S.t + 0.8; }
+  solve(); syncFaultUI();
+}
+function clearFaults() { S.f = D.faultDefaults(); S.glitch.open = false; solve(); syncFaultUI(); }
+function clearDTCs(silent) {
+  S.mons.forEach(m => Object.assign(m, { pending: false, confirmed: false, mil: false, passTrips: 0, ff: null, failing: false, timer: 0, good: 0, jumps: [], lastF: null, failedTrip: false, passedTrip: false, phase: 'idle' }));
+  S.sel = null;
+  if (S.key === 'run') D.onStart?.();
+  if (!silent) toast('DTCs cleared. Once-per-trip tests rerun on the next cold start.');
+}
+function fullReset() {
+  S = STATES[D.id] = makeState(D);
+  buildMonitors(); syncFaultUI(); setChart(S.chart);
+  setKey('run');
+}
+function anyMaturing() { return S.mons.some(m => m.en && !m.failing && (m.timer > 0 || m.jumps.length > 0)); }
+function step(dt) {
+  S.t += dt;
+  if (S.key === 'run') { S.run += dt; S.ranThisTrip = true; }
+  D.physics(dt);
+  solve();
+  S.mons.forEach(m => m.run(m, dt));
+}
+function tick(dtReal) {
+  if (!S.paused) D.input?.(dtReal);
+  const mat = anyMaturing();
+  S.slowmo = mat && S.speed > 1 && !S.paused;
+  let dt = dtReal * (S.paused ? 0 : (mat ? Math.min(S.speed, 1) : S.speed));
+  if (!dt) solve();
+  while (dt > 0) { const d = Math.min(dt, 0.25); step(d); dt -= d; }
+  if (!S.paused) {
+    S.clock += dtReal;
+    S.scope.push([S.clock, S.vad]);
+    while (S.scope.length && S.clock - S.scope[0][0] > 6.2) S.scope.shift();
+  }
+}
+
+/* ================= rendering ================= */
+const STOPS = [[0, [44, 62, 80]], [0.6, [40, 110, 150]], [5, [95, 212, 255]], [14.5, [255, 122, 69]]];
+function vColor(v) {
+  v = clamp(v || 0, 0, 14.5);
+  for (let i = 1; i < STOPS.length; i++) {
+    const [v1, c1] = STOPS[i];
+    if (v <= v1) {
+      const [v0, c0] = STOPS[i - 1], k = (v - v0) / (v1 - v0);
+      return `rgb(${c0.map((c, j) => Math.round(c + (c1[j] - c) * k)).join(',')})`;
+    }
+  }
+  return 'rgb(255,122,69)';
+}
+let wireEls = [], flowEls = [];
+function show(el, vis) { el.style.display = vis ? '' : 'none'; if (el._glow) el._glow.style.display = vis ? '' : 'none'; }
+function renderCircuit(dtReal) {
+  const v = S.v;
+  D.visual?.();
+  wireEls.forEach(el => { if (el.dataset.n) el.style.stroke = vColor(v[el.dataset.n]); });
+  for (const id in D.grads) {
+    $('#' + id + '0').setAttribute('stop-color', vColor(v[D.grads[id][0]]));
+    $('#' + id + '1').setAttribute('stop-color', vColor(v[D.grads[id][1]]));
+  }
+  D.opens.forEach(k => { show($('#br-' + k), !S.f[k]); $('#om-' + k).style.display = S.f[k] ? '' : 'none'; });
+  show($('#c1s'), !S.f.hiRes); show($('#c1z'), S.f.hiRes > 0);
+  $('#g-hr').classList.toggle('on', S.f.hiRes > 0);
+  flowEls.forEach(f => {
+    const I = f.fn(S.I) || 0, a = Math.abs(I) * 1000;
+    f.el.style.opacity = a < 0.002 ? 0 : clamp(0.35 + 0.22 * Math.log2(1 + a), 0.35, 1);
+    if (!reduceMotion && !S.paused) {
+      const speed = a < 0.002 ? 0 : Math.sign(I) * (14 + 22 * Math.log2(1 + a));
+      f.off -= speed * dtReal; f.el.style.strokeDashoffset = f.off.toFixed(2);
+    }
+  });
+}
+
+/* chart */
+const CH = { x0: 34, x1: 350, y0: 12, y1: 170, vMax: 5.2 };
+const cy = v => CH.y1 - v / CH.vMax * (CH.y1 - CH.y0);
+let cx = f => f;
+function buildChart() {
+  const c = D.chart;
+  cx = f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0);
+  let yg = '';
+  for (let v = 0; v <= 5; v++) yg += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${cy(v)}" y2="${cy(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${cy(v) + 3}" text-anchor="end">${v}</text>`;
+  yg += `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">V</text>`;
+  let g = yg;
+  c.ticks.forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
+  g += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">${c.xLabel}</text>`;
+  $('#gridCurve').innerHTML = g;
+  let s = yg;
+  for (let t = 0; t <= 6; t++) { const x = CH.x1 - t / 6 * (CH.x1 - CH.x0); s += `<line x1="${x}" x2="${x}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${x}" y="${CH.y1 + 12}" text-anchor="middle">${t ? '−' + t + ' s' : 'now'}</text>`; }
+  $('#gridScope').innerHTML = s;
+  const set = (id, a) => Object.entries(a).forEach(([k, val]) => $('#' + id).setAttribute(k, val));
+  const [hv, ht] = c.hi, [lv, lt] = c.lo;
+  set('zHi', { x: CH.x0, y: cy(5.2), width: CH.x1 - CH.x0, height: cy(hv) - cy(5.2) });
+  set('zLo', { x: CH.x0, y: cy(lv), width: CH.x1 - CH.x0, height: cy(0) - cy(lv) });
+  set('lHi', { x1: CH.x0, x2: CH.x1, y1: cy(hv), y2: cy(hv) });
+  set('lLo', { x1: CH.x0, x2: CH.x1, y1: cy(lv), y2: cy(lv) });
+  set('tHi', { x: CH.x1 - 4, y: cy(hv) + 11 }); $('#tHi').textContent = ht;
+  set('tLo', { x: CH.x0 + 6, y: cy(lv) - 5 }); $('#tLo').textContent = lt;
+  const d = c.curve().map(([x, v], i) => (i ? 'L' : 'M') + cx(x).toFixed(1) + ' ' + cy(v).toFixed(1)).join('');
+  $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d);
+}
+function renderChart() {
+  const o = on(), c = D.chart;
+  if (S.chart === 'curve') {
+    $('#marker').style.display = o ? '' : 'none';
+    const ax = cx(clamp(c.actualX(), c.xMin, c.xMax));
+    ['x1', 'x2'].forEach(k => $('#aLine').setAttribute(k, ax));
+    $('#aLine').setAttribute('y1', CH.y0); $('#aLine').setAttribute('y2', CH.y1);
+    $('#aTxt').setAttribute('x', ax + 4); $('#aTxt').setAttribute('y', CH.y0 + 20);
+    if (!o) return;
+    const x = cx(clamp(c.readX(), c.xMin, c.xMax)), y = cy(S.vad), bad = S.vad > c.hi[0] || S.vad < c.lo[0];
+    ['mHalo', 'mDot'].forEach(id => { $('#' + id).setAttribute('cx', x); $('#' + id).setAttribute('cy', y); $('#' + id).setAttribute('fill', bad ? '#FF5A4E' : '#EAFBFF'); });
+  } else {
+    let d = '', pen = false, last = null;
+    for (const [t, v] of S.scope) {
+      if (v == null) { pen = false; continue; }
+      const x = CH.x1 - (S.clock - t) / 6 * (CH.x1 - CH.x0);
+      if (x < CH.x0) continue;
+      d += (pen ? 'L' : 'M') + x.toFixed(1) + ' ' + cy(v).toFixed(1); pen = true; last = [x, cy(v)];
+    }
+    $('#scopePath').setAttribute('d', d); $('#scopeGlow').setAttribute('d', d);
+    $('#scopeDot').style.display = last ? '' : 'none';
+    if (last) { $('#scopeDot').setAttribute('cx', last[0]); $('#scopeDot').setAttribute('cy', last[1]); }
+  }
+}
+
+/* monitors */
+const setHTML = (el, h) => { if (el._h !== h) { el.innerHTML = h; el._h = h; } };
+function buildMonitors() {
+  const box = $('#mons'); box.innerHTML = '';
+  S.mons.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'mon'; d.id = 'mon-' + m.code; d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-expanded', 'false');
+    d.innerHTML = `<div class="mtop"><span class="code">${m.code}</span><span class="mname">${m.name}</span><span class="kind">${m.kind} · ${m.trips}-trip</span><span class="pill">Off</span></div>
+      <div class="pipe">${m.labels.map(l => `<div class="stg"><i class="fill"></i><span>${l}</span></div>`).join('')}</div>
+      <div class="mdet"></div>
+      <div class="mfoot"><div class="flags"></div><span class="more">Criteria ▾</span></div>
+      <ul class="crit"></ul>`;
+    const toggle = () => { d.classList.toggle('open'); d.setAttribute('aria-expanded', d.classList.contains('open')); };
+    d.addEventListener('click', toggle);
+    d.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    Object.assign(m, { el: d, pillEl: d.querySelector('.pill'), stg: [...d.querySelectorAll('.stg')], det: d.querySelector('.mdet'), flagsEl: d.querySelector('.flags'), critEl: d.querySelector('.crit') });
+    m.fillEl = m.stg[m.bar].querySelector('.fill');
+    box.appendChild(d);
+  });
+}
+function flagChips(m) {
+  let h = '';
+  if (m.failing) h += '<span class="chip live">Failing now</span>';
+  if (m.pending) h += '<span class="chip pend">Pending</span>';
+  if (m.confirmed && m.mil) h += '<span class="chip conf">Confirmed · MIL</span>';
+  if (m.confirmed && !m.mil) h += '<span class="chip hist">History</span>';
+  return h;
+}
+function renderMonitors() {
+  S.mons.forEach(m => {
+    const { st, frac, pill, det, crit } = m.view(m);
+    m.stg.forEach((s, i) => { const c = 'stg ' + st[i]; if (s.className !== c) s.className = c; });
+    m.fillEl.style.transform = `scaleX(${frac})`;
+    if (m.pillEl.textContent !== pill[0]) m.pillEl.textContent = pill[0];
+    m.pillEl.className = 'pill ' + pill[1];
+    if (m.det.textContent !== det) m.det.textContent = det;
+    setHTML(m.flagsEl, flagChips(m));
+    setHTML(m.critEl, crit.map(([t, ok]) => `<li class="${ok === null ? '' : ok ? 'y' : 'n'}"><i>${ok === null ? '·' : ok ? '✓' : '✕'}</i>${t}</li>`).join(''));
+    m.el.classList.toggle('bad', pill[1] === 'bad');
+    m.el.classList.toggle('act', pill[1] === 'act');
+  });
+}
+
+/* readouts, scan tool, dash, bar */
+function renderReadouts() {
+  D.readouts().forEach((r, i) => {
+    $('#rv' + i).textContent = r.v; $('#rs' + i).textContent = r.s;
+    const el = i === 2 ? $('#ecmUsed') : $('#read' + i);
+    el.classList.toggle('alert', r.cls === 'alert'); el.classList.toggle('subst', r.cls === 'subst');
+  });
+}
+function renderScan() {
+  const o = on();
+  $('#led').classList.toggle('on', o);
+  $('#clr').disabled = !o;
+  if (!o) setHTML($('#data'), '<div class="empty">Ignition off. Turn the key on to talk to the ECM.</div>');
+  else setHTML($('#data'), D.dataRows().map(([k, v, c]) => `<div class="row ${c}"><span>${k}</span><b>${v}</b></div>`).join(''));
+  const stored = S.mons.filter(m => m.pending || m.confirmed);
+  if (!o) setHTML($('#dtcBox'), '<div class="empty">Codes are stored in the ECM. Turn the key on to read them.</div>');
+  else if (!stored.length) setHTML($('#dtcBox'), '<div class="empty">No DTCs stored.</div>');
+  else {
+    if (!stored.find(m => m.code === S.sel)) S.sel = stored[0].code;
+    setHTML($('#dtcBox'), stored.map(m => {
+      const note = m.pending ? 'Fails again next trip → MIL on' : m.mil ? (m.passTrips ? `${m.passTrips} of 3 good trips to turn MIL off` : 'MIL on') : 'MIL off after 3 good trips';
+      return `<button class="dtc ${m.code === S.sel ? 'sel' : ''}" data-code="${m.code}"><span class="dc">${m.code}</span><span class="dn">${m.name}</span><span class="dx">${flagChips(m)}<span>${note}</span></span></button>`;
+    }).join(''));
+  }
+  const m = o && S.M[S.sel];
+  if (m && m.ff) {
+    $('#ffHead').textContent = `Freeze frame · ${m.ff.code}`;
+    setHTML($('#ffBox'), '<div class="ff">' + m.ff.rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('') + '</div>');
+  } else {
+    $('#ffHead').textContent = 'Freeze frame';
+    setHTML($('#ffBox'), '<div class="empty">The ECM saves a snapshot of engine data the moment a test fails.</div>');
+  }
+}
+function renderDash() {
+  const g = D.dash, frac = g.frac();
+  const pt = f => { const a = Math.PI - f * Math.PI; return [60 + 46 * Math.cos(a), 64 - 46 * Math.sin(a)]; };
+  const [hx0, hy0] = pt(g.hot), [hx1, hy1] = pt(1);
+  $('#gHot').setAttribute('d', `M${hx0} ${hy0} A46 46 0 0 1 ${hx1} ${hy1}`);
+  const [ax, ay] = pt(Math.max(frac ?? 0, 0.001));
+  $('#gArc').setAttribute('d', `M14 64 A46 46 0 0 1 ${ax.toFixed(2)} ${ay.toFixed(2)}`);
+  $('#gArc').style.display = frac == null ? 'none' : '';
+  const a = Math.PI - (frac ?? 0) * Math.PI;
+  $('#needle').setAttribute('x2', 60 + 38 * Math.cos(a)); $('#needle').setAttribute('y2', 64 - 38 * Math.sin(a));
+  $('#gTxt').textContent = g.text();
+  const mil = on() && S.mons.some(m => m.mil);
+  $('#milTell').classList.toggle('on', mil);
+  $('#milTxt').textContent = mil ? 'MIL on · check engine' : 'MIL off';
+  $('#t2Tell').classList.toggle('on', !!g.t2on());
+  $('#t2Txt').textContent = g.t2text();
+}
+function renderBar() {
+  $('#clock').textContent = `Trip ${S.trip} · ` + (S.key === 'run' ? 'Engine ' + mmss(S.run) : S.key === 'on' ? 'Key on, engine off' : 'Ignition off');
+  $('#slow').hidden = !S.slowmo;
+}
+function syncTop() {
+  $$('[data-key]').forEach(b => b.setAttribute('aria-pressed', b.dataset.key === S.key));
+  $$('[data-speed]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.speed === S.speed && !S.paused));
+  $('#pause').setAttribute('aria-pressed', S.paused);
+  $('#pause').setAttribute('aria-label', S.paused ? 'Play' : 'Pause');
+  $('#pauseIco').innerHTML = S.paused ? '<path d="M2 1l7 4-7 4z" fill="currentColor"/>' : '<path d="M2 1h2v8H2zM6 1h2v8H6z" fill="currentColor"/>';
+}
+function renderAll() {
+  D.text(); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
+  D.syncInputs?.();
+  if (MODE === 'lesson') renderGoal();
+}
+
+/* faults dock */
+function buildFaultDock() {
+  const sl = D.slider;
+  $('#faults').innerHTML = D.faults.map(([k, s, b]) => `<button class="fchip" data-fault="${k}" aria-pressed="false"><small>${s}</small><b>${b}</b></button>`).join('') +
+    `<div class="hrbox" id="hrBox"><div class="top"><small>${sl.label}</small><output id="hrOut" for="hr">0 Ω</output></div><input type="range" id="hr" min="0" max="${sl.max}" step="${sl.step}" value="0" aria-label="${sl.label}"></div>`;
+  $$('[data-fault]').forEach(b => b.addEventListener('click', () => setFault(b.dataset.fault, !S.f[b.dataset.fault])));
+  $('#hr').addEventListener('input', e => { S.f[sl.key] = +e.target.value; solve(); syncFaultUI(); });
+}
+function syncFaultUI() {
+  $$('[data-fault]').forEach(b => b.setAttribute('aria-pressed', !!S.f[b.dataset.fault]));
+  const sl = D.slider, val = S.f[sl.key], hr = $('#hr');
+  if (+hr.value !== val) hr.value = val;
+  $('#hrOut').textContent = fmtR(val);
+  $('#hrBox').classList.toggle('on', val > 0);
+  const list = Object.entries(D.names).filter(([k]) => S.f[k]).map(([k, n]) => typeof n === 'function' ? n(S.f[k]) : n);
+  $('#faultSummary').textContent = list.length ? 'Active: ' + list.join(', ') + '.' : 'Circuit is healthy.';
+}
+
+/* ================= switching circuits ================= */
+function buildSensorUI() {
+  const svg = $('#circuit');
+  svg.setAttribute('viewBox', D.viewBox);
+  svg.setAttribute('aria-label', D.lib.name + ' circuit schematic, ' + D.lib.type);
+  svg.innerHTML = D.svg;
+  svg.querySelectorAll('.w').forEach(w => {
+    const g = w.cloneNode(); g.setAttribute('class', 'glow'); g.removeAttribute('id');
+    w.parentNode.insertBefore(g, w); w._glow = g;
+  });
+  wireEls = [...svg.querySelectorAll('[data-n], [data-g]')];
+  wireEls.forEach(el => { if (el.dataset.g) el.style.stroke = `url(#${el.dataset.g})`; });
+  flowEls = D.flows.map(([id, fn]) => ({ el: $('#' + id), fn, off: 0 }));
+  svg.querySelectorAll('.hit').forEach(h => h.addEventListener('click', () => { const k = h.dataset.open; setFault(k, !S.f[k]); }));
+  const ir = $('#inputRow');
+  ir.hidden = !D.inputHTML;
+  ir.innerHTML = D.inputHTML || '';
+  D.bindInputs?.();
+  buildFaultDock(); buildMonitors(); buildChart(); setChart(S.chart);
+  $('#t2Ico').innerHTML = D.dash.icon;
+  $('#gLo').textContent = D.dash.lo; $('#gHi').textContent = D.dash.hi;
+  $('#pickName').textContent = D.name; $('#pickSub').textContent = D.sub;
+  $('#brandSub').textContent = D.brandSub + ' · STECH Automotive';
+  $('#btnNext').title = D.soak ? 'Key off, overnight soak, cold start' : 'Key off, then restart';
+  buildLibrary();
+  syncFaultUI(); syncTop();
+}
+function switchSensor(id) {
+  if (!SENSORS[id]) return;
+  if (D && D.id === id) { closePop(); return; }
+  D = SENSORS[id];
+  const first = !STATES[id];
+  S = STATES[id] || (STATES[id] = makeState(D));
+  buildSensorUI();
+  if (first) setKey('run');
+  try { history.replaceState(null, '', '#' + id); } catch (e) {}
+  closePop();
+  if (MODE === 'lesson') { L.answered = {}; goStep(0); }
+  renderAll();
+}
+
+/* circuit library popover */
+function buildLibrary() {
+  const cards = Object.values(SENSORS).map(s => `<button class="card ${s.id === D.id ? 'cur' : ''}" data-sensor="${s.id}"><div class="ct"><b>${s.lib.name}</b>${s.id === D.id ? '<span class="tag now">Viewing</span>' : ''}</div><span>${s.lib.type}</span><code>${s.lib.codes}</code></button>`).join('') +
+    PLANNED.map(p => `<div class="card" aria-disabled="true"><div class="ct"><b>${p.name}</b><span class="tag">Planned</span></div><span>${p.type}</span><code>${p.codes}</code></div>`).join('');
+  $('#lib').innerHTML = cards;
+  $$('[data-sensor]').forEach(b => b.addEventListener('click', () => switchSensor(b.dataset.sensor)));
+}
+function openPop() {
+  const pop = $('#pop'), r = $('#pickBtn').getBoundingClientRect();
+  const w = Math.min(540, innerWidth - 32);
+  pop.style.width = w + 'px';
+  pop.style.left = clamp(r.left, 16, innerWidth - w - 16) + 'px';
+  pop.style.top = (r.bottom + 8) + 'px';
+  pop.hidden = false;
+  $('#pickBtn').setAttribute('aria-expanded', 'true');
+  (pop.querySelector('.card.cur') || pop.querySelector('.card')).focus();
+}
+function closePop() { $('#pop').hidden = true; $('#pickBtn').setAttribute('aria-expanded', 'false'); }
+$('#pickBtn').addEventListener('click', e => { e.stopPropagation(); $('#pop').hidden ? openPop() : closePop(); });
+document.addEventListener('click', e => { if (!$('#pop').hidden && !e.target.closest('#pop')) closePop(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pop').hidden) { closePop(); $('#pickBtn').focus(); } });
+addEventListener('resize', closePop);
+
+/* ================= toasts ================= */
+function toast(msg, tone = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + tone; el.innerHTML = '<i></i><span></span>';
+  el.lastChild.textContent = msg;
+  const box = $('#toasts'); box.appendChild(el);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 3600);
+}
+
+/* ================= guided lesson ================= */
+const L = { i: 0, answered: {} };
 function setMode(mode) {
-  S.mode = mode;
+  MODE = mode;
   $('#mExplore').setAttribute('aria-pressed', mode === 'explore');
   $('#mLesson').setAttribute('aria-pressed', mode === 'lesson');
   $('#faultDock').hidden = mode !== 'explore';
   $('#lessonDock').hidden = mode !== 'lesson';
   clearSpots();
-  if (mode === 'lesson') goStep(0);
+  if (mode === 'lesson') { L.answered = {}; goStep(0); }
 }
 function clearSpots() { $$('.spot').forEach(e => e.classList.remove('spot')); }
 function goStep(i) {
+  const LESSON = D.lesson;
   L.i = clamp(i, 0, LESSON.length - 1);
   const s = LESSON[L.i];
   clearSpots();
   if (s.setup) s.setup();
   (s.spot || []).forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('spot'); });
-  $('#lStep').textContent = `Step ${L.i + 1} of ${LESSON.length}`;
+  $('#lStep').textContent = `${D.name} · Step ${L.i + 1} of ${LESSON.length}`;
   $('#lDots').innerHTML = LESSON.map((_, k) => `<i class="${k <= L.i ? 'on' : ''}"></i>`).join('');
   $('#lTitle').textContent = s.title;
   $('#lBody').innerHTML = s.body;
@@ -1197,10 +1645,12 @@ function goStep(i) {
   }
   $('#lBack').disabled = L.i === 0;
   $('#lNext').textContent = s.final ? 'Explore on my own' : 'Next';
-  renderGoal();
+  $('#lAlt').hidden = !s.alt;
+  if (s.alt) $('#lAlt').textContent = s.alt.label;
+  renderAll();
 }
 function answer(k) {
-  const s = LESSON[L.i], ask = $('#lAsk');
+  const s = D.lesson[L.i], ask = $('#lAsk');
   if (L.answered[L.i] != null) return;
   L.answered[L.i] = k;
   ask.querySelectorAll('.opt').forEach(b => {
@@ -1213,56 +1663,48 @@ function answer(k) {
   s.ask.apply();
 }
 function renderGoal() {
-  const s = LESSON[L.i], g = $('#lGoal');
+  const s = D.lesson[L.i], g = $('#lGoal');
   g.hidden = !s.goal;
   if (!s.goal) return;
-  const done = s.goal.test();
+  const done = !!s.goal.test();
   g.classList.toggle('done', done);
   g.textContent = (done ? '✓ ' : 'Watch for: ') + s.goal.text;
 }
 $('#lNext').addEventListener('click', () => {
-  const s = LESSON[L.i];
+  const s = D.lesson[L.i];
   if (s.final) { setMode('explore'); return; }
   if (s.ask && L.answered[L.i] == null) s.ask.apply();
   goStep(L.i + 1);
 });
 $('#lBack').addEventListener('click', () => { delete L.answered[L.i - 1]; goStep(L.i - 1); });
+$('#lAlt').addEventListener('click', () => { const s = D.lesson[L.i]; if (s.alt) s.alt.go(); });
 
-/* ---------- wiring ---------- */
+/* ================= wiring ================= */
 $('#mExplore').addEventListener('click', () => setMode('explore'));
-$('#mLesson').addEventListener('click', () => { L.answered = {}; setMode('lesson'); });
+$('#mLesson').addEventListener('click', () => setMode('lesson'));
 $$('[data-key]').forEach(b => b.addEventListener('click', () => setKey(b.dataset.key)));
 $$('[data-speed]').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
-$('#pause').addEventListener('click', () => { S.paused = !S.paused; syncPause(); });
+$$('[data-chart]').forEach(b => b.addEventListener('click', () => setChart(b.dataset.chart)));
+$('#pause').addEventListener('click', () => { S.paused = !S.paused; syncTop(); });
 $('#btnNext').addEventListener('click', nextTrip);
-$$('[data-fault]').forEach(b => b.addEventListener('click', () => {
-  const k = b.dataset.fault;
-  setFault(k, !(k === 'thermo' ? S.thermoStuck : S.f[k]));
-}));
-$('#hr').addEventListener('input', e => { S.f.hiRes = +e.target.value; solve(); syncFaultUI(); });
-$$('.hit').forEach(h => h.addEventListener('click', () => { const k = h.dataset.open; setFault(k, !S.f[k]); }));
 $('#clearFaults').addEventListener('click', clearFaults);
 $('#clr').addEventListener('click', () => clearDTCs());
 $('#dtcBox').addEventListener('click', e => { const b = e.target.closest('.dtc'); if (b) { S.sel = b.dataset.code; renderScan(); } });
 
-/* ---------- boot ---------- */
-setKey('run');
-syncFaultUI(); syncPause();
+/* ================= boot ================= */
+const start = (location.hash || '').slice(1);
+switchSensor(SENSORS[start] ? start : 'ect');
 let last = performance.now(), acc = 1;
 function frame(now) {
   const dtReal = Math.min(0.05, (now - last) / 1000); last = now;
   tick(dtReal);
   renderCircuit(dtReal);
   acc += dtReal;
-  if (acc >= 0.1) {
-    acc = 0;
-    renderCircuitText(); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
-    if (S.mode === 'lesson') renderGoal();
-  }
+  if (acc >= 0.1) { acc = 0; renderAll(); }
   requestAnimationFrame(frame);
 }
-renderCircuitText(); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
 requestAnimationFrame(frame);
+window.__dtc = { get S() { return S; }, get D() { return D; }, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip };
 })();
 </script>
 
