@@ -133,6 +133,7 @@ button{font:inherit;color:inherit}
 .inrow label{font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 .inrow input{flex:1;min-width:60px}
 .inrow output{font:500 12px/1 var(--f-mono);width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.inrow .inval{flex:1;min-width:0;font:500 12px/1.2 var(--f-mono);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- docks (faults / lesson) ---------- */
 .dock{border-top:1px solid var(--line);padding:8px 10px 9px;background:rgba(6,9,12,.55)}
@@ -416,6 +417,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
               <line id="lHi" stroke="#FF5A4E" stroke-dasharray="3 3" stroke-width="1"/><line id="lLo" stroke="#FF5A4E" stroke-dasharray="3 3" stroke-width="1"/>
               <text id="tHi" class="zl" text-anchor="end"></text>
               <text id="tLo" class="zl"></text>
+              <rect id="zBand" fill="rgba(255,178,36,.13)"/><text id="tBand" class="zl" text-anchor="end" style="fill:#FFC766"></text>
             </g>
             <g id="curveG">
               <path id="curveGlow" fill="none" stroke="#2F9BE0" stroke-width="7" opacity=".12" stroke-linecap="round"/>
@@ -491,8 +493,9 @@ const Ff = f => Math.round(f) + ' °F';
 const mmss = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const on = () => S.key !== 'off';
 
-/* Nodal analysis. E = [nodeA, nodeB, ohms, name]; fixed = known node voltages. */
-function nodal(nodes, E, fixed) {
+/* Nodal analysis. E = [nodeA, nodeB, ohms, name]; fixed = known node voltages;
+   J = [from, to, amps] current sources (a series EMF + resistance becomes a Norton source). */
+function nodal(nodes, E, fixed, J = []) {
   const all = E.concat(nodes.map(n => [n, 'G', 1e10, 'leak']));
   const n = nodes.length, idx = Object.fromEntries(nodes.map((k, i) => [k, i]));
   const M = Array.from({ length: n }, () => new Float64Array(n + 1));
@@ -504,6 +507,7 @@ function nodal(nodes, E, fixed) {
     else if (ia != null) M[ia][n] += g * fixed[b];
     else if (ib != null) M[ib][n] += g * fixed[a];
   }
+  for (const [a, b, amps] of J) { if (idx[b] != null) M[idx[b]][n] += amps; if (idx[a] != null) M[idx[a]][n] -= amps; }
   for (let c = 0; c < n; c++) {
     let p = c;
     for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
@@ -1192,13 +1196,411 @@ TPS.lesson = [
     goal: { text: 'P0121 fails and is stored as pending', test: () => S.M.P0121.pending || S.M.P0121.confirmed } },
   { title: 'Reading a 3-wire circuit',
     body: 'On a 3-wire sensor, an open <b>5 V reference</b> or <b>signal</b> reads low, and an open <b>ground</b> reads high. A shorted reference sets codes on <b>every sensor that shares it</b>. Some faults set one-trip codes, and some set no code at all and only show up on a scope. The code points you to a test, not a part.',
-    final: true, alt: { label: '◂ ECT lesson', go() { switchSensor('ect'); } } },
+    final: true, alt: { label: 'O2 sensor lesson ▸', go() { switchSensor('o2'); } } },
 ];
 
-const SENSORS = { ect: ECT, tps: TPS };
+/* ================= O2: 4-wire heated zirconia sensor (HO2S B1S1) ================= */
+const O2_RB = 1e6, O2_XTH = 22;
+const o2Ri = T => clamp(2e3 * Math.exp((550 - T) / 30), 800, 5e8);
+const o2Emf = lam => 0.45 + 0.42 * Math.tanh((1 - lam) * 40);
+const o2CircFail = () => S.M.P0131.failing || S.M.P0132.failing || S.M.P0134.failing;
+const fmtPct = x => (x >= 0 ? '+' : '−') + Math.abs(Math.round(x * 100)) + ' %';
+const o2Loop = () => S.key !== 'run' ? 'off' : S.p.loop === 'closed' ? 'closed' : o2CircFail() ? 'fault' : 'warm';
+const O2_LOOP_TXT = { closed: 'Closed loop', fault: 'Open loop (fault)', warm: 'Open loop', off: 'Open loop' };
+function avgMap(a, b, d) { const o = {}; for (const k in a) o[k] = d * a[k] + (1 - d) * (b[k] ?? 0); return o; }
+const waitView = (crit, det, pill = 'Waiting') => ({ st: ['', '', '', ''], frac: 0, pill: [pill, ''], det, crit });
+
+/* One 10 ms tick of heater, exhaust, sensor and the ECM's fuel control loop */
+function o2Tick(h) {
+  const p = S.p, f = S.f, run = S.key === 'run';
+  p.clk += h;
+  p.duty = run ? clamp((700 - p.Ts) / 100 + 0.5, 0.2, 1) : 0;            // ECM heater PWM: full on while cold, then regulate
+  p.Ts += ((run ? 250 : AMB) + 520 * (S.htrFrac || 0) - p.Ts) * (1 - Math.exp(-h / 20));
+  const force = p.force ? (p.force.kind === 'rich' ? -0.10 : 0.10) : 0;
+  p.noise = clamp(p.noise + (Math.random() - 0.5) * 0.002, -0.006, 0.006);
+  const trim = (p.loop === 'closed' ? p.stft : 0) + p.ltft;
+  const base = p.loop === 'closed' ? 1 : 0.96;                            // open loop runs slightly rich (warm-up / default fuel)
+  p.lam = run ? clamp(base / (1 + trim) + force + p.noise, 0.6, 1.4) : 1.4;
+  p.hist.push(p.lam); if (p.hist.length > 20) p.hist.shift();            // ~200 ms exhaust transport delay
+  p.seen = p.hist[0] + (run ? 0.25 * f.leak / 100 : 0);                     // a leak ahead of the sensor adds outside air
+  const tau = f.lazy ? 0.6 : 0.07;
+  p.emf += (o2Emf(p.seen) - p.emf) * (1 - Math.exp(-h / tau));
+  O2.solve();
+  if (!run) { p.loop = 'open'; p.stft = 0; p.active = false; return; }
+  if (!p.active && S.run > 3 && (S.vad > 0.6 || S.vad < 0.3)) p.active = true;
+  const closed = p.active && S.run > 5 && !o2CircFail();
+  if (closed && p.loop !== 'closed') p.lastRich = S.vad > 0.45;
+  p.loop = closed ? 'closed' : 'open';
+  p.closedFor = closed ? (p.closedFor || 0) + h : 0;
+  if (closed) {
+    const rich = S.vad > 0.45;
+    if (rich !== p.lastRich) { p.stft += rich ? -0.02 : 0.02; p.xcount++; p.lastRich = rich; }
+    p.stft = clamp(p.stft + (rich ? -1 : 1) * 0.08 * h, -0.25, 0.25);
+    p.ltft = clamp(p.ltft + p.stft * 0.08 * h, -0.25, 0.25);
+  } else p.stft *= Math.exp(-h * 2);
+}
+
+const O2_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gBR" gradientUnits="userSpaceOnUse" x1="120" y1="84" x2="120" y2="120"><stop offset="0" id="gBR0" stop-color="#2c3e50"/><stop offset="1" id="gBR1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gCL" gradientUnits="userSpaceOnUse" x1="154" y1="476" x2="186" y2="476"><stop offset="0" id="gCL0" stop-color="#2c3e50"/><stop offset="1" id="gCL1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gHT" gradientUnits="userSpaceOnUse" x1="410" y1="476" x2="330" y2="476"><stop offset="0" id="gHT0" stop-color="#2c3e50"/><stop offset="1" id="gHT1" stop-color="#2c3e50"/></linearGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="322" height="200" rx="14" class="ecm"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<g id="g-bias">
+  <rect x="74" y="52" width="92" height="24" rx="6" class="blk"/>
+  <text x="120" y="68" class="t-blk" text-anchor="middle">BIAS 450 mV</text>
+  <text x="132" y="104" class="t-tiny">1 MΩ</text>
+</g>
+<rect x="150" y="120" width="72" height="40" rx="7" class="blk"/>
+<text x="186" y="138" class="t-blk" text-anchor="middle">A/D</text>
+<text x="186" y="151" class="t-tiny" text-anchor="middle">TO LOGIC ▸</text>
+<text x="232" y="112" class="t-tiny">LOW-SIDE DRIVER</text>
+<text x="232" y="128" class="t-mono" id="pwmLbl" style="font-size:10px">PWM 0 %</text>
+<path class="gnd" d="M224 186 H248 M228 191 H244 M232 196 H240"/>
+<path class="gnd" d="M314 140 H338 M318 145 H334 M322 150 H330"/>
+<text x="112" y="204" class="t-pin" text-anchor="end">O2 SIG +</text>
+<text x="192" y="204" class="t-pin" text-anchor="end">SIG LOW</text>
+<text x="292" y="204" class="t-pin" text-anchor="end">HTR CTRL</text>
+<rect x="372" y="36" width="128" height="72" rx="10" class="blk"/>
+<text x="386" y="58" class="t-blk">FUSE 10 A</text>
+<text x="386" y="72" class="t-tiny">IGNITION FEED</text>
+<text x="386" y="94" class="t-mono" id="bpLbl">B+ 0.0 V</text>
+<text x="356" y="150" class="t-tiny">SIGNAL WIRES:</text>
+<text x="356" y="162" class="t-tiny">COLOR SCALE ×5</text>
+<rect x="90" y="318" width="380" height="30" rx="8" class="conn"/>
+<text x="478" y="337" class="t-blk">C1</text>
+<rect x="30" y="518" width="470" height="30" rx="15" fill="#10161d" stroke="#2c3643"/>
+<rect id="exh" x="30" y="518" width="470" height="30" rx="15" fill="rgba(0,0,0,0)"/>
+<text x="46" y="537" class="t-tiny" style="fill:#8A98A8">EXHAUST ▸</text>
+<text x="488" y="537" class="t-mono" text-anchor="end" id="exhLbl">Engine off</text>
+<g id="g-sensor">
+  <rect x="80" y="436" width="400" height="70" rx="14" class="sensor"/>
+  <text x="250" y="454" class="t-sub" text-anchor="middle">HO2S B1S1</text>
+  <text x="160" y="454" class="t-tiny" text-anchor="middle">ZIRCONIA CELL</text>
+  <text x="370" y="454" class="t-tiny" text-anchor="middle">HEATER</text>
+  <text x="160" y="498" class="t-mono" text-anchor="middle" id="emfLbl" style="font-size:10px">EMF 0.00 V</text>
+  <text x="370" y="498" class="t-mono" text-anchor="middle" id="htrLbl" style="font-size:10px">3.0 Ω · 0.0 A</text>
+  <path d="M136 464 V488" stroke="#C5CFD9" stroke-width="2.4"/>
+  <path d="M144 469 V483" stroke="#C5CFD9" stroke-width="2.4"/>
+  <text x="128" y="466" class="t-tiny">+</text>
+</g>
+<rect id="tip" x="236" y="506" width="28" height="30" rx="6" fill="#3a3530" stroke="#5a5040"/>
+<g id="g-soot" style="display:none"><circle cx="243" cy="520" r="2.4" fill="#0b0b0b"/><circle cx="256" cy="526" r="2" fill="#0b0b0b"/><circle cx="247" cy="531" r="2.2" fill="#0b0b0b"/><circle cx="258" cy="514" r="1.6" fill="#0b0b0b"/></g>
+<text x="272" y="532" class="t-mono" id="tipLbl" style="font-size:10px">Tip 68 °F</text>
+<g id="g-leak" class="jump">
+  <path d="M64 518 l5 6 l-4 4 l5 6" fill="none" stroke="#FF8A80" stroke-width="1.6"/>
+  <circle cx="74" cy="512" r="2" fill="#8CCBF3"/><circle cx="80" cy="507" r="1.5" fill="#8CCBF3"/>
+  <text x="34" y="512" class="t-tiny" style="fill:#FF8A80">AIR LEAK</text>
+</g>
+<g>
+  <path class="w" data-n="VB" data-k="5" d="M120 76 V84"/>
+  <path class="w" data-g="gBR" d="M120 84 L127 87 L113 92 L127 97 L113 102 L127 107 L113 112 L127 117 L120 120"/>
+  <path class="w" data-n="P" data-k="5" d="M120 120 V262"/>
+  <path class="w" data-n="P" data-k="5" d="M120 140 H150"/>
+  <path class="w" data-n="P" data-k="5" id="br-sigUp" d="M120 262 V270"/>
+  <path class="w" data-n="SX" data-k="5" d="M120 270 V424"/>
+  <path class="w" data-n="SX" data-k="5" id="br-sigLo" d="M120 424 V432"/>
+  <path class="w" data-n="SP" data-k="5" d="M120 432 V476 H136"/>
+  <path class="w" data-g="gCL" d="M144 476 H154 L158 470 L166 482 L174 470 L182 482 L186 476"/>
+  <path class="w" data-n="SM" data-k="5" d="M186 476 H200 V432"/>
+  <path class="w" data-n="RX" data-k="5" id="br-refLo" d="M200 432 V424"/>
+  <path class="w" data-n="RX" data-k="5" d="M200 424 V270"/>
+  <path class="w" data-n="L" data-k="5" id="br-refUp" d="M200 270 V262"/>
+  <path class="w" data-n="L" data-k="5" d="M200 262 V176 H236 V186"/>
+  <path class="w" data-n="FB" d="M440 108 V262"/>
+  <path class="w" data-n="FB" id="br-feedUp" d="M440 262 V270"/>
+  <path class="w" data-n="FX" d="M440 270 V424"/>
+  <path class="w" data-n="FX" id="br-feedLo" d="M440 424 V432"/>
+  <path class="w" data-n="FC" d="M440 432 V476 H410"/>
+  <path class="w" data-g="gHT" d="M410 476 L404 469 L392 483 L380 469 L368 483 L356 469 L344 483 L336 476 L330 476"/>
+  <path class="w" data-n="HC" d="M330 476 H300 V432"/>
+  <path class="w" data-n="CX" id="br-ctrlLo" d="M300 432 V424"/>
+  <path class="w" data-n="CX" d="M300 424 V270"/>
+  <path class="w" data-n="CP" id="br-ctrlUp" d="M300 270 V262"/>
+  <path class="w" data-n="CP" d="M300 262 V178"/>
+  <path class="w" data-n="CP" id="blade" d="M300 178 L315 154"/>
+  <path class="w" data-n="G" d="M300 150 V132 H326 V140"/>
+</g>
+<rect x="435" y="112" width="10" height="14" rx="2" class="pinbox"/>
+<circle cx="120" cy="140" r="3" class="jdot"/>
+<circle cx="300" cy="178" r="3" class="jdot"/><circle cx="300" cy="150" r="2.5" class="jdot"/>
+<rect x="114" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<rect x="194" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<rect x="294" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<text x="112" y="300" class="t-tiny" text-anchor="end">SIG + · PU</text>
+<text x="208" y="300" class="t-tiny">SIG LOW · TN</text>
+<text x="308" y="300" class="t-tiny">HTR CTRL · WH</text>
+<text x="448" y="300" class="t-tiny">HTR B+ · PK</text>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="SX" data-k="5" d="M120 380 H70 V392"/>
+  <path class="gnd" d="M58 392 H82 M62 397 H78 M66 402 H74"/>
+  <circle cx="120" cy="380" r="5" class="chafe"/>
+  <text x="28" y="372" class="t-tiny" style="fill:#FF8A80">CHAFED TO GND</text>
+</g>
+<g id="g-shortb" class="jump">
+  <path class="w" data-n="FX" d="M120 404 H194 a6 6 0 0 1 12 0 H294 a6 6 0 0 1 12 0 H440"/>
+  <circle cx="120" cy="404" r="5" class="chafe"/><circle cx="440" cy="404" r="5" class="chafe"/>
+  <text x="28" y="420" class="t-tiny" style="fill:#FFB08E">MELTED:</text>
+  <text x="28" y="430" class="t-tiny" style="fill:#FFB08E">SIG TO B+</text>
+</g>
+<g class="openpill" id="om-htr" style="display:none"><rect x="348" y="460" width="44" height="16" rx="8"/><text x="370" y="471.5" text-anchor="middle">OPEN</text></g>
+<path class="flow" id="fSG" d="M120 380 H70 V392"/>
+<path class="flow" id="fSB" d="M440 404 H306 a6 6 0 0 0 -12 0 H206 a6 6 0 0 0 -12 0 H120"/>
+<path class="flow" id="fCell" d="M120 404 V476 H136 M144 476 H154 L158 470 L166 482 L174 470 L182 482 L186 476 H200 V176 H236 V186"/>
+<path class="flow" id="fFeed" d="M440 108 V476 H410"/>
+<path class="flow" id="fHtr" d="M410 476 H330"/>
+<path class="flow" id="fCtrl" d="M330 476 H300 V150 V132 H326 V140"/>
+<g class="openpill" id="om-sigUp" style="display:none"><path class="spark" d="M112 262 l-5 -3 M112 270 l-5 3 M128 262 l5 -3 M128 270 l5 3"/><rect x="132" y="258" width="44" height="16" rx="8"/><text x="154" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-sigLo" style="display:none"><path class="spark" d="M112 424 l-5 -3 M112 432 l-5 3 M128 424 l5 -3 M128 432 l5 3"/><rect x="132" y="420" width="44" height="16" rx="8"/><text x="154" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-refUp" style="display:none"><path class="spark" d="M192 262 l-5 -3 M192 270 l-5 3 M208 262 l5 -3 M208 270 l5 3"/><rect x="212" y="258" width="44" height="16" rx="8"/><text x="234" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-refLo" style="display:none"><path class="spark" d="M192 424 l-5 -3 M192 432 l-5 3 M208 424 l5 -3 M208 432 l5 3"/><rect x="212" y="420" width="44" height="16" rx="8"/><text x="234" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-ctrlUp" style="display:none"><path class="spark" d="M292 262 l-5 -3 M292 270 l-5 3 M308 262 l5 -3 M308 270 l5 3"/><rect x="312" y="258" width="44" height="16" rx="8"/><text x="334" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-ctrlLo" style="display:none"><path class="spark" d="M292 424 l-5 -3 M292 432 l-5 3 M308 424 l5 -3 M308 432 l5 3"/><rect x="312" y="420" width="44" height="16" rx="8"/><text x="334" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-feedUp" style="display:none"><path class="spark" d="M432 262 l-5 -3 M432 270 l-5 3 M448 262 l5 -3 M448 270 l5 3"/><rect x="386" y="258" width="44" height="16" rx="8"/><text x="408" y="269.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-feedLo" style="display:none"><path class="spark" d="M432 424 l-5 -3 M432 432 l-5 3 M448 424 l5 -3 M448 432 l5 3"/><rect x="386" y="420" width="44" height="16" rx="8"/><text x="408" y="431.5" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tpS"><title>ECM O2 signal pin</title><circle class="tpdot" cx="120" cy="236" r="4.5"/><rect x="22" y="225" width="90" height="22" rx="6"/><text x="30" y="239.5" class="lbl">SIG</text><text x="104" y="240" text-anchor="end" id="tpSv">0.00 V</text></g>
+<g class="badge" id="tpL"><title>ECM O2 signal low pin</title><circle class="tpdot" cx="200" cy="236" r="4.5"/><rect x="210" y="225" width="84" height="22" rx="6"/><text x="218" y="239.5" class="lbl">LOW</text><text x="286" y="240" text-anchor="end" id="tpLv">0.00 V</text></g>
+<g class="badge" id="tpC"><title>ECM heater control pin (average, as a DMM reads it)</title><circle class="tpdot" cx="300" cy="236" r="4.5"/><rect x="310" y="225" width="92" height="22" rx="6"/><text x="318" y="239.5" class="lbl">CTRL</text><text x="394" y="240" text-anchor="end" id="tpCv">0.00 V</text></g>
+<g class="badge" id="tpF"><title>Heater B+ feed (after the fuse)</title><circle class="tpdot" cx="440" cy="182" r="4.5"/><rect x="344" y="171" width="90" height="22" rx="6"/><text x="352" y="185.5" class="lbl">FEED</text><text x="426" y="186" text-anchor="end" id="tpFv">0.00 V</text></g>
+<path class="hit" data-open="sigUp" d="M120 222 V316"><title>Click to open or repair the O2 signal wire (ECM side)</title></path>
+<path class="hit" data-open="sigLo" d="M120 350 V432"><title>Click to open or repair the O2 signal wire (sensor side)</title></path>
+<path class="hit" data-open="refUp" d="M200 222 V316"><title>Click to open or repair the signal low wire (ECM side)</title></path>
+<path class="hit" data-open="refLo" d="M200 350 V432"><title>Click to open or repair the signal low wire (sensor side)</title></path>
+<path class="hit" data-open="ctrlUp" d="M300 222 V316"><title>Click to open or repair the heater control wire (ECM side)</title></path>
+<path class="hit" data-open="ctrlLo" d="M300 350 V432"><title>Click to open or repair the heater control wire (sensor side)</title></path>
+<path class="hit" data-open="feedUp" d="M440 222 V316"><title>Click to open or repair the heater B+ feed (fuse side)</title></path>
+<path class="hit" data-open="feedLo" d="M440 350 V432"><title>Click to open or repair the heater B+ feed (sensor side)</title></path>`;
+
+const O2 = {
+  id: 'o2', name: 'O2 sensor', sub: '4-wire heated zirconia', brandSub: 'Heated O2 sensor circuit',
+  lib: { name: 'Heated oxygen sensor (HO2S)', type: '4-wire zirconia · bias voltage + heater driver', codes: 'P0031 · P0131–P0134 · P0171' },
+  svg: O2_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'scope',
+  faults: [['sigUp', 'Open', 'Signal wire'], ['refLo', 'Open', 'Signal low'], ['shortG', 'Short', 'Signal to ground'], ['shortB', 'Short', 'Signal to heater B+'], ['htrOpen', 'Open', 'Heater element'], ['lazy', 'Contaminated', 'Slow sensor']],
+  slider: { key: 'leak', label: 'Exhaust leak ahead of sensor', max: 100, step: 5, fmt: v => v ? v + ' %' : 'None' },
+  opens: ['sigUp', 'sigLo', 'refUp', 'refLo', 'ctrlUp', 'ctrlLo', 'feedUp', 'feedLo'],
+  excl: [['shortG', 'shortB']],
+  names: { sigUp: 'signal open (ECM side)', sigLo: 'signal open (sensor side)', refUp: 'signal low open (ECM side)', refLo: 'signal low open (sensor side)', ctrlUp: 'heater control open (ECM side)', ctrlLo: 'heater control open (sensor side)', feedUp: 'heater feed open (fuse side)', feedLo: 'heater feed open (sensor side)', shortG: 'signal shorted to ground', shortB: 'signal shorted to heater B+', htrOpen: 'heater element open', lazy: 'contaminated (slow) sensor', leak: v => `exhaust leak (${v} %)` },
+  faultDefaults: () => ({ sigUp: false, sigLo: false, refUp: false, refLo: false, ctrlUp: false, ctrlLo: false, feedUp: false, feedLo: false, shortG: false, shortB: false, htrOpen: false, lazy: false, leak: 0 }),
+  initPhys: () => ({ Ts: AMB, emf: 0.45, lam: 1.4, seen: 1.4, hist: [], stft: 0, ltft: 0, loop: 'open', active: false, lastRich: false, xcount: 0, duty: 0, noise: 0, clk: 0, force: null, forced: false }),
+  grads: { gBR: ['VB', 'P', 5], gCL: ['SP', 'SM', 5], gHT: ['FC', 'HC'] },
+  flows: [['fSG', I => I.sg], ['fSB', I => I.sb], ['fCell', I => I.cell], ['fFeed', I => I.fup], ['fHtr', I => I.htr], ['fCtrl', I => I.drv]],
+  solve() {
+    const f = S.f, p = S.p, o = on();
+    const Ri = o2Ri(p.Ts), emf = p.emf * clamp((p.Ts - 250) / 150, 0, 1);
+    const Rh = f.htrOpen ? OPEN : 3 + 3 * clamp(p.Ts / 700, 0, 1);
+    const base = [
+      ['VB', 'P', O2_RB, 'rb'], ['P', 'SX', f.sigUp ? OPEN : WIRE, 'sup'], ['SX', 'SP', f.sigLo ? OPEN : WIRE, 'slo'],
+      ['SP', 'SM', Ri, 'ri'], ['SM', 'RX', f.refLo ? OPEN : WIRE, 'rlo'], ['RX', 'L', f.refUp ? OPEN : WIRE, 'rup'], ['L', 'G', 0.1, 'lg'],
+      ['BP', 'FB', 0.05, 'fuse'], ['FB', 'FX', f.feedUp ? OPEN : WIRE, 'fup'], ['FX', 'FC', f.feedLo ? OPEN : WIRE, 'flo'], ['FC', 'HC', Rh, 'htr'],
+      ['HC', 'CX', f.ctrlLo ? OPEN : WIRE, 'clo'], ['CX', 'CP', f.ctrlUp ? OPEN : WIRE, 'cup'], ['CP', 'G', 47e3, 'sense'],
+      ['SX', 'G', f.shortG ? WIRE : OPEN, 'sg'], ['FX', 'SX', f.shortB ? WIRE : OPEN, 'sb'],
+    ];
+    const nodes = ['P', 'SX', 'SP', 'SM', 'RX', 'L', 'FB', 'FX', 'FC', 'HC', 'CX', 'CP'];
+    const fixed = { VB: o ? 0.45 : 0, G: 0, BP: o ? S.batt : 0 };
+    const J = [['SM', 'SP', emf / Ri]];
+    const onS = nodal(nodes, base.concat([['CP', 'G', 0.08, 'drv']]), fixed, J);
+    const offS = nodal(nodes, base.concat([['CP', 'G', OPEN, 'drv']]), fixed, J);
+    const d = p.duty;
+    S.v = avgMap(onS.v, offS.v, d); S.I = avgMap(onS.I, offS.I, d);        // average, the way a DMM reads a PWM circuit
+    S.I.cell = (S.v.SP - S.v.SM) / Ri - emf / Ri;
+    S.vOffCP = offS.v.CP; S.iOn = Math.abs(onS.I.htr);
+    S.htrFrac = Rh >= OPEN ? 0 : d * clamp(onS.I.htr * onS.I.htr * Rh / 33.6, 0, 1.3);
+    S.o2 = { Ri, emf, Rh };
+    S.vad = o ? clamp(S.v.P, 0, 5) : null;
+  },
+  physics(dt) { let t = dt; while (t > 1e-9) { const h = Math.min(0.01, t); o2Tick(h); t -= h; } },
+  input(dt) { const p = S.p; if (p.force) { p.force.t += dt; if (p.force.t > 3) p.force = null; } },
+  inputHTML: '<label>Mixture test</label><span class="inval" id="lamOut">λ —</span><button class="btn small" id="btnRich" title="Add propane at the intake for 3 seconds">Propane (rich)</button><button class="btn small" id="btnLean" title="Open a vacuum leak for 3 seconds">Vacuum leak (lean)</button>',
+  bindInputs() {
+    $('#btnRich').addEventListener('click', () => { S.p.force = { kind: 'rich', t: 0 }; S.p.forced = true; });
+    $('#btnLean').addEventListener('click', () => { S.p.force = { kind: 'lean', t: 0 }; S.p.forced = true; });
+  },
+  syncInputs() {
+    const p = S.p, el = $('#lamOut'); if (!el) return;
+    el.textContent = S.key !== 'run' ? 'Start the engine to test' : `Actual λ ${p.lam.toFixed(2)}` + (p.force ? ` · forcing ${p.force.kind} ${(3 - p.force.t).toFixed(1)} s` : '');
+  },
+  soak() { S.p.Ts = AMB; S.p.hist = []; },
+  onStart() { const p = S.p; p.active = false; p.loop = 'open'; p.stft = 0; },
+  onClear() { S.p.ltft = 0; },
+  monitors: [
+    { code: 'P0131', name: 'O2 sensor circuit low voltage (B1S1)', kind: 'Continuous', trips: 2, mat: 5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = S.key === 'run' && S.run >= 20 && S.batt >= 10; circ(m, en, en && S.vad < 0.05, dt); },
+      view(m) {
+        const crit = [['Engine running 20 s or more (sensor warm)', S.key === 'run' && S.run >= 30], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Fails when signal is below 0.05 V for 5.0 s', null]];
+        if (!m.en) return waitView(crit, S.key === 'run' ? `Waiting for sensor warm-up · ${Math.max(0, Math.ceil(20 - S.run))} s` : 'Runs with the engine running.');
+        return circView(m, S.vad < 0.05, '< 0.05 V', `Signal ${fmtV(S.vad)}`, crit);
+      } },
+    { code: 'P0132', name: 'O2 sensor circuit high voltage (B1S1)', kind: 'Continuous', trips: 2, mat: 5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = S.key === 'run' && S.run >= 20 && S.batt >= 10; circ(m, en, en && S.vad > 1.05, dt); },
+      view(m) {
+        const crit = [['Engine running 20 s or more (sensor warm)', S.key === 'run' && S.run >= 30], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Fails when signal is above 1.05 V for 5.0 s', null]];
+        if (!m.en) return waitView(crit, S.key === 'run' ? `Waiting for sensor warm-up · ${Math.max(0, Math.ceil(20 - S.run))} s` : 'Runs with the engine running.');
+        return circView(m, S.vad > 1.05, '> 1.05 V', `Signal ${fmtV(S.vad)}`, crit);
+      } },
+    { code: 'P0133', name: 'O2 sensor slow response (B1S1)', kind: 'Once per trip', trips: 2, mat: 0, labels: ['Enable', 'Collect', 'Compare', 'Result'], bar: 1,
+      run(m, dt) {
+        if (m.phase === 'pass' || m.phase === 'fail') return;
+        if (S.key !== 'run') { m.phase = 'idle'; return; }
+        const p = S.p;
+        if (p.loop !== 'closed' || p.force || p.closedFor < 5 || S.run < 30) { m.phase = 'waiting'; return; }
+        if (m.phase !== 'collect') { m.phase = 'collect'; m.winT = 0; m.x0 = p.xcount; }
+        m.winT += dt; m.result = p.xcount - m.x0;
+        if (m.winT >= 10) { if (m.result >= O2_XTH) { m.phase = 'pass'; m.passedTrip = true; } else { m.phase = 'fail'; fail(m); } }
+      },
+      view(m) {
+        const crit = [['Engine running', S.key === 'run'], ['Engine running 30 s or more', S.key === 'run' && S.run >= 30], ['Stable closed loop for 5 s', S.p.loop === 'closed' && (S.p.closedFor || 0) >= 5], ['No mixture test in progress', !S.p.force], [`Fails if the signal switches fewer than ${O2_XTH} times in 10 s`, null]];
+        switch (m.phase) {
+          case 'collect': return { st: ['ok', 'run', '', ''], frac: clamp(m.winT / 10, 0, 1), pill: ['Collecting', 'run'], det: `Switches: ${m.result} in ${m.winT.toFixed(1)} s · needs ${O2_XTH}+ in 10 s`, crit };
+          case 'pass': return { st: ['ok', 'ok', 'ok', 'ok'], frac: 1, pill: ['Passed', 'ok'], det: `Switched ${m.result} times in 10 s (${O2_XTH}+ needed).`, crit };
+          case 'fail': return { st: ['ok', 'ok', 'bad', 'bad'], frac: 1, pill: ['Failed', 'bad'], det: `Switched only ${m.result} times in 10 s (${O2_XTH}+ needed).`, crit };
+          default: return waitView(crit, S.key === 'run' ? 'Waits for closed loop.' : 'Runs once per trip in closed loop.');
+        }
+      } },
+    { code: 'P0134', name: 'O2 sensor no activity detected (B1S1)', kind: 'Continuous', trips: 2, mat: 10, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = S.key === 'run' && S.run >= 60 && !S.M.P0131.failing && !S.M.P0132.failing; circ(m, en, en && S.vad >= 0.40 && S.vad <= 0.50, dt); },
+      view(m) {
+        const crit = [['Engine running 60 s or more', S.key === 'run' && S.run >= 60], ['P0131 and P0132 not failing', !S.M.P0131.failing && !S.M.P0132.failing], ['Fails when signal stays between 0.40 and 0.50 V for 10 s', null]];
+        if (!m.en) return waitView(crit, S.key === 'run' ? (S.run < 60 ? `Enables at 60 s of run time · ${Math.max(0, Math.ceil(60 - S.run))} s` : 'Suspended while a circuit high/low fault is active.') : 'Runs with the engine running.');
+        return circView(m, S.vad >= 0.40 && S.vad <= 0.50, 'stuck near 0.45 V', `Signal ${fmtV(S.vad)}`, crit);
+      } },
+    { code: 'P0031', name: 'O2 heater control circuit low (B1S1)', kind: 'Continuous', trips: 2, mat: 5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = S.key === 'run' && S.batt >= 10; circ(m, en, en && (S.vOffCP < 3 || (S.p.duty > 0 && S.iOn < 0.3)), dt); },
+      view(m) {
+        const crit = [['Engine running (heater commanded)', S.key === 'run'], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Driver off: control pin should sit near B+ through the heater', null], ['Driver on: heater current should flow', null]];
+        if (!m.en) return waitView(crit, 'Runs while the heater is commanded.');
+        return circView(m, S.vOffCP < 3 || (S.p.duty > 0 && S.iOn < 0.3), 'reads low', `Ctrl ${S.vOffCP.toFixed(1)} V off · ${S.iOn.toFixed(1)} A on`, crit);
+      } },
+    { code: 'P0171', name: 'System too lean (bank 1)', kind: 'Continuous', trips: 2, mat: 10, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) {
+        const busy = S.mons.some(x => ['P0131', 'P0132', 'P0134'].includes(x.code) && (x.failing || x.timer > 0.25));
+        const en = S.key === 'run' && S.run >= 60 && S.p.loop === 'closed' && !busy;
+        circ(m, en, en && S.p.stft + S.p.ltft > 0.25, dt);
+      },
+      view(m) {
+        const crit = [['Engine running 60 s or more', S.key === 'run' && S.run >= 60], ['Closed loop fuel control', S.p.loop === 'closed'], ['No O2 circuit fault active', !o2CircFail()], ['Fails when total fuel trim is above +25 % for 10 s', null]];
+        if (!m.en) return waitView(crit, S.key === 'run' ? 'Runs in closed loop with no O2 circuit fault.' : 'Runs with the engine running.');
+        return circView(m, S.p.stft + S.p.ltft > 0.25, 'above +25 %', `Total trim ${fmtPct(S.p.stft + S.p.ltft)}`, crit);
+      } },
+  ],
+  visual() {
+    const p = S.p;
+    const closed = p.duty >= 1 || (p.duty > 0 && ((performance.now() / 1000 * 2) % 1) < p.duty);
+    const bl = $('#blade'), bd = closed ? 'M300 178 L300 150' : 'M300 178 L315 154';
+    bl.setAttribute('d', bd); if (bl._glow) bl._glow.setAttribute('d', bd);
+    let fill = 'rgba(0,0,0,0)';
+    if (S.key === 'run') {
+      const r = clamp((1 - p.lam) / 0.1, -1, 1);
+      fill = r >= 0 ? `rgba(255,150,60,${(0.1 + 0.4 * r).toFixed(3)})` : `rgba(80,160,255,${(0.1 + 0.4 * -r).toFixed(3)})`;
+    }
+    $('#exh').setAttribute('fill', fill);
+    const k = clamp((p.Ts - 250) / 450, 0, 1);
+    $('#tip').setAttribute('fill', `rgb(${Math.round(58 + 197 * k)},${Math.round(53 + 85 * k)},${Math.round(48 + 13 * k)})`);
+    $('#g-soot').style.display = S.f.lazy ? '' : 'none';
+    $('#g-leak').classList.toggle('on', S.f.leak > 0);
+    $('#om-htr').style.display = S.f.htrOpen ? '' : 'none';
+    $('#g-shortg').classList.toggle('on', S.f.shortG);
+    $('#g-shortb').classList.toggle('on', S.f.shortB);
+  },
+  text() {
+    const v = S.v, p = S.p, o2 = S.o2 || { emf: 0, Rh: 3 };
+    $('#tpSv').textContent = fmtV(v.P); $('#tpLv').textContent = fmtV(v.L);
+    $('#tpCv').textContent = fmtV(v.CP); $('#tpFv').textContent = fmtV(v.FB);
+    [['tpS', 'P', 5], ['tpL', 'L', 5], ['tpC', 'CP', 1], ['tpF', 'FB', 1]].forEach(([id, n, k]) => $('#' + id + ' .tpdot').style.fill = vColor((v[n] || 0) * k));
+    $('#emfLbl').textContent = `EMF ${o2.emf.toFixed(2)} V · Ri ${fmtR(o2.Ri || 5e8)}`;
+    $('#htrLbl').textContent = S.f.htrOpen ? 'Element open · 0.0 A' : `${fmtR(o2.Rh)} · ${(S.key === 'run' ? S.iOn * p.duty : 0).toFixed(1)} A avg`;
+    $('#tipLbl').textContent = `Tip ${Math.round(cToF(p.Ts)).toLocaleString()} °F`;
+    $('#exhLbl').textContent = S.key === 'run' ? `λ ${p.lam.toFixed(2)} · AFR ${(14.7 * p.lam).toFixed(1)}` : 'Engine off';
+    $('#pwmLbl').textContent = `PWM ${Math.round(p.duty * 100)} %`;
+    $('#bpLbl').textContent = `B+ ${on() ? S.batt.toFixed(1) : '0.0'} V`;
+  },
+  chart: {
+    xMin: 0.9, xMax: 1.1, ticks: [0.9, 0.95, 1, 1.05, 1.1], xLabel: 'λ at sensor', vMax: 1.2, yTicks: [0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2],
+    hi: [1.05, 'CIRCUIT HIGH · P0132 · > 1.05 V'], lo: [0.05, 'CIRCUIT LOW · P0131 · < 0.05 V'], band: [0.40, 0.50, 'NO ACTIVITY BAND · P0134'],
+    curve() { const pts = []; for (let l = 0.9; l <= 1.1001; l += 0.002) pts.push([l, o2Emf(l)]); return pts; },
+    readX: () => S.p.seen, actualX: () => S.p.lam,
+  },
+  readouts() {
+    const o = on(), p = S.p, v = S.vad, bad = o && (v > 1.05 || v < 0.05), idle = o && v >= 0.4 && v <= 0.5 && !p.active, lp = o2Loop();
+    const r2 = lp === 'closed' ? { v: 'STFT ' + fmtPct(p.stft), s: 'Closed loop · trimming fuel', cls: '' }
+      : lp === 'fault' ? { v: 'Default fuel', s: 'Open loop · failsafe', cls: 'subst' }
+      : lp === 'warm' ? { v: 'Base fuel', s: 'Open loop · waiting for O2 activity', cls: '' }
+      : { v: '—', s: o ? 'Engine not running' : '—', cls: '' };
+    return [
+      { v: o ? fmtV(v) : '—', s: !o ? 'Module asleep' : v > 1.05 ? 'Above the valid range' : v < 0.05 ? 'Below the valid range' : idle ? 'Sitting at the ECM bias voltage' : v > 0.45 ? 'Above the 0.45 V switch point' : 'Below the 0.45 V switch point', cls: bad ? 'alert' : '' },
+      { v: !o ? '—' : idle ? 'NO SIGNAL' : v > 0.45 ? 'RICH' : 'LEAN', s: !o ? '—' : idle ? 'Sensor cold, or circuit open' : 'Exhaust oxygen, as the ECM reads it', cls: bad ? 'alert' : '' },
+      r2,
+    ];
+  },
+  dataRows() {
+    const p = S.p, bad = S.vad > 1.05 || S.vad < 0.05, lp = o2Loop(), run = S.key === 'run';
+    return [
+      ['O2 sensor B1S1', fmtV(S.vad), bad ? 'bad' : ''], ['Fuel control', O2_LOOP_TXT[lp], lp === 'fault' ? 'flag' : ''],
+      ['Short term fuel trim', fmtPct(p.stft), Math.abs(p.stft) >= 0.2 ? 'flag' : ''], ['Long term fuel trim', fmtPct(p.ltft), Math.abs(p.ltft) >= 0.15 ? 'flag' : ''],
+      ['O2 heater command', run ? Math.round(p.duty * 100) + ' %' : 'OFF', ''], ['O2 heater current', (run ? S.iOn : 0).toFixed(1) + ' A', run && S.iOn < 0.3 ? 'bad' : ''],
+      ['Engine speed', run ? (700 + Math.round(Math.sin(S.t * 3) * 8)) + ' rpm' : '0 rpm', ''], ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
+    ];
+  },
+  ffRows: () => [['O2 sensor B1S1', fmtV(S.vad)], ['Fuel control', O2_LOOP_TXT[o2Loop()]], ['Short term FT', fmtPct(S.p.stft)], ['Long term FT', fmtPct(S.p.ltft)], ['Heater current', (S.key === 'run' ? S.iOn : 0).toFixed(1) + ' A'], ['Run time', mmss(S.run)], ['Engine speed', (S.key === 'run' ? 700 : 0) + ' rpm']],
+  dash: {
+    lo: '−25', hi: '+25', hot: null,
+    frac: () => S.key === 'run' ? clamp((S.p.stft + 0.25) / 0.5, 0, 1) : null,
+    text: () => S.key === 'run' ? 'STFT ' + fmtPct(S.p.stft) : '—',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" d="M12 3.5a8.5 8.5 0 0 1 7.9 5.3H22l-3.4 4-3.4-4h2.1A6 6 0 0 0 6.2 10L3.9 9.2A8.5 8.5 0 0 1 12 3.5zm-7.9 11.7H2l3.4-4 3.4 4H6.7a6 6 0 0 0 11.1 1l2.3.8A8.5 8.5 0 0 1 4.1 15.2z"/></svg>',
+    t2on: () => o2Loop() === 'fault',
+    t2text: () => ({ closed: 'Closed loop', fault: 'Open loop · failsafe', warm: 'Open loop · warming up', off: 'Engine off' })[o2Loop()],
+  },
+};
+O2.lesson = [
+  { title: 'Meet the heated O2 sensor',
+    body: 'This sensor has <b>four wires</b>. Two carry the signal from a <b>zirconia cell</b> that makes its own voltage: about <b>0.1 V lean</b> to <b>0.9 V rich</b>. The other two run a <b>heater</b>: B+ from a fuse, and a ground path through a <b>low-side driver</b> in the ECM. The ECM also puts a small <b>450 mV bias</b> on the signal wire, so it can tell a cold sensor from a dead circuit.',
+    setup() { fullReset(); setSpeed(1); setChart('scope'); }, spot: ['g-sensor', 'g-bias'] },
+  { title: 'Warm-up and closed loop',
+    body: 'The zirconia cell only works hot, above about <b>700 °F</b>. Until then the ECM sees its own 450 mV bias, so it runs <b>open loop</b> on base fuel. Watch the tip heat up. Once the signal starts swinging, the ECM switches to <b>closed loop</b> and the classic rich/lean switching appears on the scope.',
+    setup() { setChart('scope'); }, spot: ['chartBox', 'ecmUsed', 'g-sensor'],
+    goal: { text: 'ECM enters closed loop', test: () => S.p.loop === 'closed' } },
+  { title: 'Rich, lean, and fuel trim',
+    body: 'In closed loop the ECM chases the switch point. Above <b>0.45 V</b> it reads rich and takes fuel away (short-term fuel trim goes down). Below, it adds fuel. Use the <b>mixture test</b> buttons under the circuit: propane forces rich, a vacuum leak forces lean. A good sensor responds right away.',
+    setup() { setChart('scope'); }, spot: ['inputRow', 'data'],
+    goal: { text: 'Run a propane or vacuum leak test', test: () => S.p.forced } },
+  { title: 'Predict: signal shorted to ground',
+    body: 'The O2 signal wire rubs through and touches ground. Think about what 0 V means to the ECM.',
+    ask: { q: 'What will the ECM do with the fuel?', opts: ['Add fuel (thinks lean)', 'Take fuel away (thinks rich)', 'No change'], ans: 0,
+      why: 'Zero volts looks like extremely lean exhaust, so the ECM keeps adding fuel, all the way to its limit. The engine is actually running rich. The sensor reading is wrong, and the ECM believes it.',
+      apply() { setFault('shortG', true); setSpeed(10); } },
+    spot: ['ecmUsed', 'data'] },
+  { title: 'Circuit low: P0131',
+    body: 'Look at the exhaust in the pipe: it\'s <b>rich</b>, even though the ECM thinks it\'s lean. Once the sensor should be warm (20 s of run time) and the signal stays below <b>0.05 V</b> for 5 s, P0131 fails. The ECM then stops trusting the sensor and falls back to <b>open loop</b> default fueling.',
+    setup() { if (!S.f.shortG) setFault('shortG', true); setSpeed(10); }, spot: ['mon-P0131', 'dash'],
+    goal: { text: 'P0131 stored as pending', test: () => S.M.P0131.pending || S.M.P0131.confirmed } },
+  { title: 'Open signal: back to bias',
+    body: 'Now the signal wire is <b>open</b> instead. The ECM\'s pin sits at its own <b>450 mV bias</b>, neither rich nor lean. That\'s exactly what a cold sensor looks like, so the ECM waits, then sets <b>P0134 (no activity)</b> after 10 s stuck in the band. On the 2-wire ECT an open read high; on this biased circuit it reads the middle.',
+    setup() { clearFaults(); clearDTCs(true); setFault('sigUp', true); setSpeed(10); setChart('curve'); }, spot: ['mon-P0134', 'zones', 'tpS'],
+    goal: { text: 'P0134 test fails', test: () => S.M.P0134.failing || S.M.P0134.pending } },
+  { title: 'The heater circuit',
+    body: 'Fresh start with a <b>burned-open heater element</b>. The ECM checks its own driver: with the driver <b>off</b>, the control pin should sit near <b>B+</b> through the heater. It reads 0 V, and no current flows when it\'s on, so <b>P0031</b> sets. Then watch: with no heat, the tip never gets hot enough, the signal stays at bias, and <b>P0134</b> follows. One failure, two codes. Fix the heater first.',
+    setup() { clearFaults(); clearDTCs(true); setFault('htrOpen', true); coldStart(); setSpeed(10); setChart('scope'); }, spot: ['om-htr', 'tpC', 'mon-P0031', 'mon-P0134'],
+    goal: { text: 'P0031 sets, then P0134', test: () => (S.M.P0031.failing || S.M.P0031.pending) && (S.M.P0134.failing || S.M.P0134.pending) } },
+  { title: 'A lazy sensor',
+    body: 'This sensor is <b>contaminated</b> (look for the deposits on the tip). The voltage still switches inside the normal range, so no circuit code can set. But the switching is slow and rounded on the scope. <b>P0133</b> runs once per trip: it counts how often the signal switches during 10 s of closed loop. Compare this waveform to the healthy one from step 2.',
+    setup() { clearFaults(); clearDTCs(true); setFault('lazy', true); coldStart(); setSpeed(1); setChart('scope'); }, spot: ['chartBox', 'mon-P0133'],
+    goal: { text: 'P0133 test fails', test: () => S.M.P0133.phase === 'fail' } },
+  { title: 'An honest sensor, a wrong answer',
+    body: 'Now the sensor is fine, but there\'s an <b>exhaust leak</b> just ahead of it that pulls in outside air. The sensor correctly reports the oxygen it sees, which is too much. So the ECM adds fuel until the trims pass <b>+25 %</b> and <b>P0171 (system too lean)</b> sets, even though the engine is really running rich. A new O2 sensor wouldn\'t fix this.',
+    setup() { clearFaults(); clearDTCs(true); S.f.leak = 100; syncFaultUI(); setSpeed(10); setChart('curve'); }, spot: ['g-leak', 'data', 'mon-P0171'],
+    goal: { text: 'P0171 stored as pending', test: () => S.M.P0171.pending || S.M.P0171.confirmed } },
+  { title: 'Reading an O2 circuit',
+    body: 'An O2 sensor makes its own voltage, but only when it\'s hot, so the <b>heater circuit</b> matters as much as the signal. Stuck low or high points to the circuit. Stuck at the <b>bias voltage</b> means no activity: open signal, open ground, or a cold sensor. And fuel trim codes like P0171 can come from a perfectly good sensor telling the truth about a leak.',
+    final: true, alt: { label: '◂ Back to ECT', go() { switchSensor('ect'); } } },
+];
+
+const SENSORS = { ect: ECT, tps: TPS, o2: O2 };
 const PLANNED = [
   { name: 'Fuel injector', type: 'Low-side driver · output monitoring', codes: 'P0201 · P0261 · P0262' },
-  { name: 'O2 sensor heater', type: 'PWM low-side driver · current monitor', codes: 'P0030 · P0031 · P0032' },
   { name: 'CAN network', type: 'Serial data · message timeouts', codes: 'U0100 · U0140 · U0073' },
 ];
 
@@ -1267,6 +1669,7 @@ function setKey(k) {
   solve();
   syncTop();
 }
+function coldStart() { setKey('off'); D.soak?.(); setKey('on'); setKey('run'); }
 function nextTrip() {
   setKey('off'); D.soak?.();
   setKey('on'); setKey('run');
@@ -1293,6 +1696,7 @@ function clearFaults() { S.f = D.faultDefaults(); S.glitch.open = false; solve()
 function clearDTCs(silent) {
   S.mons.forEach(m => Object.assign(m, { pending: false, confirmed: false, mil: false, passTrips: 0, ff: null, failing: false, timer: 0, good: 0, jumps: [], lastF: null, failedTrip: false, passedTrip: false, phase: 'idle' }));
   S.sel = null;
+  D.onClear?.();
   if (S.key === 'run') D.onStart?.();
   if (!silent) toast('DTCs cleared. Once-per-trip tests rerun on the next cold start.');
 }
@@ -1301,7 +1705,7 @@ function fullReset() {
   buildMonitors(); syncFaultUI(); setChart(S.chart);
   setKey('run');
 }
-function anyMaturing() { return S.mons.some(m => m.en && !m.failing && (m.timer > 0 || m.jumps.length > 0)); }
+function anyMaturing() { return S.mons.some(m => m.en && !m.failing && (m.timer > 0.25 || m.jumps.length > 0)); }
 function step(dt) {
   S.t += dt;
   if (S.key === 'run') { S.run += dt; S.ranThisTrip = true; }
@@ -1341,14 +1745,15 @@ function show(el, vis) { el.style.display = vis ? '' : 'none'; if (el._glow) el.
 function renderCircuit(dtReal) {
   const v = S.v;
   D.visual?.();
-  wireEls.forEach(el => { if (el.dataset.n) el.style.stroke = vColor(v[el.dataset.n]); });
+  wireEls.forEach(el => { if (el.dataset.n) el.style.stroke = vColor((v[el.dataset.n] || 0) * (+el.dataset.k || 1)); });
   for (const id in D.grads) {
-    $('#' + id + '0').setAttribute('stop-color', vColor(v[D.grads[id][0]]));
-    $('#' + id + '1').setAttribute('stop-color', vColor(v[D.grads[id][1]]));
+    const [a, b, k = 1] = D.grads[id];
+    $('#' + id + '0').setAttribute('stop-color', vColor((v[a] || 0) * k));
+    $('#' + id + '1').setAttribute('stop-color', vColor((v[b] || 0) * k));
   }
   D.opens.forEach(k => { show($('#br-' + k), !S.f[k]); $('#om-' + k).style.display = S.f[k] ? '' : 'none'; });
-  show($('#c1s'), !S.f.hiRes); show($('#c1z'), S.f.hiRes > 0);
-  $('#g-hr').classList.toggle('on', S.f.hiRes > 0);
+  if ($('#c1s')) { show($('#c1s'), !S.f.hiRes); show($('#c1z'), S.f.hiRes > 0); }
+  if ($('#g-hr')) $('#g-hr').classList.toggle('on', S.f.hiRes > 0);
   flowEls.forEach(f => {
     const I = f.fn(S.I) || 0, a = Math.abs(I) * 1000;
     f.el.style.opacity = a < 0.002 ? 0 : clamp(0.35 + 0.22 * Math.log2(1 + a), 0.35, 1);
@@ -1366,8 +1771,9 @@ let cx = f => f;
 function buildChart() {
   const c = D.chart;
   cx = f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0);
+  CH.vMax = c.vMax ?? 5.2;
   let yg = '';
-  for (let v = 0; v <= 5; v++) yg += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${cy(v)}" y2="${cy(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${cy(v) + 3}" text-anchor="end">${v}</text>`;
+  for (const v of c.yTicks ?? [0, 1, 2, 3, 4, 5]) yg += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${cy(v)}" y2="${cy(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${cy(v) + 3}" text-anchor="end">${Number.isInteger(v) ? v : v.toFixed(1)}</text>`;
   yg += `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">V</text>`;
   let g = yg;
   c.ticks.forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
@@ -1378,7 +1784,12 @@ function buildChart() {
   $('#gridScope').innerHTML = s;
   const set = (id, a) => Object.entries(a).forEach(([k, val]) => $('#' + id).setAttribute(k, val));
   const [hv, ht] = c.hi, [lv, lt] = c.lo;
-  set('zHi', { x: CH.x0, y: cy(5.2), width: CH.x1 - CH.x0, height: cy(hv) - cy(5.2) });
+  set('zHi', { x: CH.x0, y: cy(CH.vMax), width: CH.x1 - CH.x0, height: cy(hv) - cy(CH.vMax) });
+  $('#zBand').style.display = $('#tBand').style.display = c.band ? '' : 'none';
+  if (c.band) {
+    set('zBand', { x: CH.x0, y: cy(c.band[1]), width: CH.x1 - CH.x0, height: cy(c.band[0]) - cy(c.band[1]) });
+    set('tBand', { x: CH.x1 - 4, y: cy(c.band[1]) - 3 }); $('#tBand').textContent = c.band[2];
+  }
   set('zLo', { x: CH.x0, y: cy(lv), width: CH.x1 - CH.x0, height: cy(0) - cy(lv) });
   set('lHi', { x1: CH.x0, x2: CH.x1, y1: cy(hv), y2: cy(hv) });
   set('lLo', { x1: CH.x0, x2: CH.x1, y1: cy(lv), y2: cy(lv) });
@@ -1396,7 +1807,7 @@ function renderChart() {
     $('#aLine').setAttribute('y1', CH.y0); $('#aLine').setAttribute('y2', CH.y1);
     $('#aTxt').setAttribute('x', ax + 4); $('#aTxt').setAttribute('y', CH.y0 + 20);
     if (!o) return;
-    const x = cx(clamp(c.readX(), c.xMin, c.xMax)), y = cy(S.vad), bad = S.vad > c.hi[0] || S.vad < c.lo[0];
+    const x = cx(clamp(c.readX(), c.xMin, c.xMax)), y = cy(Math.min(S.vad, CH.vMax)), bad = S.vad > c.hi[0] || S.vad < c.lo[0];
     ['mHalo', 'mDot'].forEach(id => { $('#' + id).setAttribute('cx', x); $('#' + id).setAttribute('cy', y); $('#' + id).setAttribute('fill', bad ? '#FF5A4E' : '#EAFBFF'); });
   } else {
     let d = '', pen = false, last = null;
@@ -1404,7 +1815,8 @@ function renderChart() {
       if (v == null) { pen = false; continue; }
       const x = CH.x1 - (S.clock - t) / 6 * (CH.x1 - CH.x0);
       if (x < CH.x0) continue;
-      d += (pen ? 'L' : 'M') + x.toFixed(1) + ' ' + cy(v).toFixed(1); pen = true; last = [x, cy(v)];
+      const yv = cy(Math.min(v, CH.vMax));
+      d += (pen ? 'L' : 'M') + x.toFixed(1) + ' ' + yv.toFixed(1); pen = true; last = [x, yv];
     }
     $('#scopePath').setAttribute('d', d); $('#scopeGlow').setAttribute('d', d);
     $('#scopeDot').style.display = last ? '' : 'none';
@@ -1491,8 +1903,8 @@ function renderScan() {
 function renderDash() {
   const g = D.dash, frac = g.frac();
   const pt = f => { const a = Math.PI - f * Math.PI; return [60 + 46 * Math.cos(a), 64 - 46 * Math.sin(a)]; };
-  const [hx0, hy0] = pt(g.hot), [hx1, hy1] = pt(1);
-  $('#gHot').setAttribute('d', `M${hx0} ${hy0} A46 46 0 0 1 ${hx1} ${hy1}`);
+  $('#gHot').style.display = g.hot == null ? 'none' : '';
+  if (g.hot != null) { const [hx0, hy0] = pt(g.hot), [hx1, hy1] = pt(1); $('#gHot').setAttribute('d', `M${hx0} ${hy0} A46 46 0 0 1 ${hx1} ${hy1}`); }
   const [ax, ay] = pt(Math.max(frac ?? 0, 0.001));
   $('#gArc').setAttribute('d', `M14 64 A46 46 0 0 1 ${ax.toFixed(2)} ${ay.toFixed(2)}`);
   $('#gArc').style.display = frac == null ? 'none' : '';
@@ -1526,7 +1938,7 @@ function renderAll() {
 function buildFaultDock() {
   const sl = D.slider;
   $('#faults').innerHTML = D.faults.map(([k, s, b]) => `<button class="fchip" data-fault="${k}" aria-pressed="false"><small>${s}</small><b>${b}</b></button>`).join('') +
-    `<div class="hrbox" id="hrBox"><div class="top"><small>${sl.label}</small><output id="hrOut" for="hr">0 Ω</output></div><input type="range" id="hr" min="0" max="${sl.max}" step="${sl.step}" value="0" aria-label="${sl.label}"></div>`;
+    `<div class="hrbox" id="hrBox"><div class="top"><small>${sl.label}</small><output id="hrOut" for="hr"></output></div><input type="range" id="hr" min="0" max="${sl.max}" step="${sl.step}" value="0" aria-label="${sl.label}"></div>`;
   $$('[data-fault]').forEach(b => b.addEventListener('click', () => setFault(b.dataset.fault, !S.f[b.dataset.fault])));
   $('#hr').addEventListener('input', e => { S.f[sl.key] = +e.target.value; solve(); syncFaultUI(); });
 }
@@ -1534,7 +1946,7 @@ function syncFaultUI() {
   $$('[data-fault]').forEach(b => b.setAttribute('aria-pressed', !!S.f[b.dataset.fault]));
   const sl = D.slider, val = S.f[sl.key], hr = $('#hr');
   if (+hr.value !== val) hr.value = val;
-  $('#hrOut').textContent = fmtR(val);
+  $('#hrOut').textContent = (sl.fmt || fmtR)(val);
   $('#hrBox').classList.toggle('on', val > 0);
   const list = Object.entries(D.names).filter(([k]) => S.f[k]).map(([k, n]) => typeof n === 'function' ? n(S.f[k]) : n);
   $('#faultSummary').textContent = list.length ? 'Active: ' + list.join(', ') + '.' : 'Circuit is healthy.';
@@ -1704,7 +2116,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__dtc = { get S() { return S; }, get D() { return D; }, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip };
+window.__dtc = { get S() { return S; }, get D() { return D; }, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
 })();
 </script>
 
