@@ -57,6 +57,7 @@ button{font:inherit;color:inherit}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn[disabled]{opacity:.4;cursor:not-allowed}
 .btn.small{padding:5px 9px;font-size:10.5px}
+.btn[aria-pressed="true"]{border-color:rgba(255,90,78,.65);background:rgba(255,90,78,.12);color:#FFB3AC}
 
 /* ---------- bench ---------- */
 .bench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.14fr) minmax(0,1fr) minmax(0,.86fr);gap:10px}
@@ -125,6 +126,8 @@ button{font:inherit;color:inherit}
 .tpdot{stroke:#080B0F;stroke-width:2}
 .hit{fill:none;stroke:transparent;stroke-width:20;cursor:pointer;pointer-events:stroke}
 .hit:hover{stroke:rgba(255,255,255,.05)}
+.hitr{fill:transparent;cursor:pointer}
+.hitr:hover{fill:rgba(255,255,255,.05)}
 .corr{fill:#7FB77E;opacity:.75}
 .coolant{fill:none;stroke:#2F9BE0;stroke-width:1.5;opacity:.55;stroke-linecap:round}
 
@@ -3565,10 +3568,358 @@ FP.lesson = [
     goal: { text: 'P0232 stored as pending', test: () => S.M.P0232.pending || S.M.P0232.confirmed } },
   { title: 'Reading a fuel pump circuit',
     body: 'Split it in half. <b>P0230</b> points to the control side: the coil, its feed or the control wire. <b>P0231</b> means the relay output has no voltage: the fuse, the contacts, or a short that blew the fuse. <b>No circuit code but low pressure</b> points past the splice: the pump, its connector or its ground. Measure current, and <b>voltage drop under load</b>.',
+    final: true, alt: { label: 'Shared 5 V ref lesson ▸', go() { switchSensor('ref5'); } } },
+];
+
+/* ================= Shared 5 V reference: MAP + TPS + APP 1 on Ref A (splice S101, shared low ref), APP 2 on Ref B ================= */
+const RF_S = [['m', 'MAP'], ['t', 'TPS'], ['a', 'APP 1']];
+const RF_COL = { ref: '#EAFBFF', m: '#8CCBF3', t: '#FFC766', a: '#7BE3B4' };
+const rfOut = (k, x) => k === 'm' ? clamp((0.2 + x * 0.045) / 5, 0.01, 0.99) : k === 't' ? 0.1 + 0.008 * x : 0.16 + 0.0064 * x;   // sensor output as a fraction of its reference
+const rfConv = { m: v => (v - 0.2) / 0.045, t: v => (v / 5 - 0.1) / 0.8 * 100, a: v => (v / 5 - 0.16) / 0.64 * 100, b: v => (v / 5 - 0.08) / 0.32 * 100 };   // what the ECM calculates, assuming a 5 V reference
+const rfFail = codes => codes.some(c => S.M[c].failing);
+const rfRefBad = () => rfFail(['P0642', 'P0643']);
+const rfReduced = () => on() && rfFail(['P0642', 'P0643', 'P0122', 'P0123', 'P2122', 'P2123']);
+const rfUnplug = k => { const key = { m: 'uMap', t: 'uTps', a: 'uApp' }[k]; setFault(key, !S.f[key]); };
+function rfStatus() {
+  if (!on()) return ['Engine off', false];
+  if (S.key !== 'run') return [rfReduced() ? 'Reduced power' : 'Key on · engine off', rfReduced()];
+  const r = S.rf;
+  if (rfReduced()) return [r.useApp2 ? 'Reduced power · APP 2' : 'Reduced power', true];
+  return ['Power normal', false];
+}
+function rfTrace() { return []; }
+function rfAnnot(mode) {
+  const p = S.p, r = S.rf;
+  const tx = (x, y, str, fill, a = 'start') => `<text class="ann" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" style="fill:${fill}">${str}</text>`;
+  const RED = '#FF8A80', DIM = '#8A98A8', GRN = '#7BE3B4';
+  let h = '';
+  if (mode === 'scope') {
+    h += `<rect x="${CH.x0}" y="${cy(5.5)}" width="${CH.x1 - CH.x0}" height="${cy(4.75) - cy(5.5)}" fill="rgba(255,90,78,.12)"/><rect x="${CH.x0}" y="${cy(0.25)}" width="${CH.x1 - CH.x0}" height="${cy(0) - cy(0.25)}" fill="rgba(255,90,78,.12)"/>`;
+    const X = t => CH.x0 + (10 - (S.clock - t)) / 10 * (CH.x1 - CH.x0);
+    ['ref', 'm', 't', 'a'].forEach((k, i) => {
+      let d = '';
+      for (const e of p.hist) { const x = X(e[0]); if (x < CH.x0) continue; d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + cy(clamp(e[i + 1], 0, 5.5)).toFixed(1); }
+      if (d) h += `<path d="${d}" fill="none" stroke="${RF_COL[k]}" stroke-width="${k === 'ref' ? 1.4 : 1.8}"${k === 'ref' ? ' stroke-dasharray="4 2"' : ''} stroke-linejoin="round"/>`;
+    });
+    [['ref', 'REF A'], ['m', 'MAP'], ['t', 'TPS'], ['a', 'APP 1']].forEach(([k, n], i) => { h += `<rect x="${CH.x0 + 4 + i * 52}" y="${CH.y0 + 3}" width="8" height="3" fill="${RF_COL[k]}"/>` + tx(CH.x0 + 15 + i * 52, CH.y0 + 8, n, RF_COL[k]); });
+    if (on() && r.vA > 5.5) h += tx(CH.x1 - 4, CH.y0 + 20, `REF A AT ${r.vA.toFixed(1)} V · OFF SCALE`, RED, 'end');
+  } else {
+    const bars = [['REF A', r.vA, 'ref'], ['MAP', r.sig.m, 's'], ['TPS', r.sig.t, 's'], ['APP 1', r.sig.a, 's'], ['REF B', r.vB, 'ref'], ['APP 2', r.sig.b, 's2']];
+    const w = (CH.x1 - CH.x0) / bars.length;
+    bars.forEach(([n, v, kind], i) => {
+      const x = CH.x0 + i * w + w * 0.24, bw = w * 0.52, [lo, hi] = kind === 'ref' ? [4.5, 5.5] : kind === 's2' ? [0.2, 2.4] : [0.25, 4.75];
+      const bad = on() && (v < lo || v > hi), vv = on() ? v : 0;
+      h += `<rect x="${(x - 3).toFixed(1)}" y="${ay(Math.min(hi, 5.5)).toFixed(1)}" width="${(bw + 6).toFixed(1)}" height="${(ay(lo) - ay(Math.min(hi, 5.5))).toFixed(1)}" fill="rgba(61,220,151,.09)" stroke="rgba(61,220,151,.25)" stroke-dasharray="2 2"/>`;
+      h += `<rect x="${x.toFixed(1)}" y="${ay(clamp(vv, 0, 5.5)).toFixed(1)}" width="${bw.toFixed(1)}" height="${(ay(0) - ay(clamp(vv, 0, 5.5))).toFixed(1)}" rx="2" fill="${bad ? '#FF5A4E' : kind === 'ref' ? '#C5CFD9' : '#2F9BE0'}" opacity=".85"/>`;
+      h += tx(x + bw / 2, ay(clamp(vv, 0, 5.5)) - 4, on() ? (v > 5.5 ? v.toFixed(1) + '▲' : v.toFixed(2)) : '—', bad ? RED : DIM, 'middle');
+      h += tx(x + bw / 2, CH.y1 + 12, n, i >= 4 ? DIM : '#C5CFD9', 'middle');
+    });
+    h += `<line x1="${CH.x0 + 4 * w}" x2="${CH.x0 + 4 * w}" y1="${CH.y0}" y2="${CH.y1}" stroke="#2A3644" stroke-dasharray="3 3"/>`;
+    h += tx(CH.x0 + 4, CH.y0 + 9, 'DASHED BOX = VALID WINDOW', GRN);
+  }
+  return h;
+}
+
+const RF_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="60" y1="244" x2="60" y2="274"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="486" height="200" rx="14" class="ecm"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<g id="g-refa"><rect x="32" y="58" width="100" height="40" rx="7" class="blk"/><text x="82" y="76" class="t-blk" text-anchor="middle">5 V REF A</text><text x="82" y="90" class="t-tiny" text-anchor="middle">MAP · TPS · APP 1</text></g>
+<text x="68" y="128" class="t-tiny">◂ REF A MONITOR</text>
+<text x="68" y="140" class="t-tiny">MEASURED AT THE ECM</text>
+<g id="g-ad"><rect x="176" y="58" width="322" height="30" rx="7" class="blk"/><text x="186" y="77" class="t-blk">A/D INPUTS</text><text x="262" y="77" class="t-tiny">1 MΩ PULL-DOWN ON EACH SIGNAL</text></g>
+<g id="g-refb"><rect x="416" y="112" width="48" height="30" rx="6" class="blk"/><text x="440" y="131" class="t-blk" text-anchor="middle">REF B</text></g>
+<path class="gnd" d="M134 186 H158 M138 191 H154 M142 196 H150"/>
+<path class="gnd" d="M482 186 H506 M486 191 H502 M490 196 H498"/>
+<text x="68" y="204" class="t-pin">REF A</text>
+<text x="154" y="204" class="t-pin">LOW</text>
+<text x="208" y="204" class="t-pin">MAP</text>
+<text x="308" y="204" class="t-pin">TPS</text>
+<text x="360" y="204" class="t-pin">APP1</text>
+<g id="g-bus"><text x="238" y="294" class="t-tiny">SPLICE S101 · SHARED REF A</text><text x="238" y="514" class="t-tiny">SPLICE S102 · SHARED LOW REF</text></g>
+${[['m', 160, 'MAP'], ['t', 260, 'TPS'], ['a', 360, 'APP']].map(([k, x, n]) => `
+<g id="g-c${k}"><rect x="${x + 4}" y="372" width="${k === 'a' ? 138 : 72}" height="18" rx="5" class="conn"/><text x="${x + 8}" y="385" class="t-tiny" id="cl${k}">${n} CONN</text>
+<g class="openpill" id="un${k}" style="display:none"><rect x="${x + 6}" y="352" width="68" height="15" rx="7.5"/><text x="${x + 40}" y="362.5" text-anchor="middle">UNPLUGGED</text></g></g>`).join('')}
+<g id="g-sm"><rect x="160" y="410" width="80" height="60" rx="10" class="sensor"/><text x="170" y="428" class="t-blk">MAP</text><text x="170" y="444" class="t-mono" id="rfmR" style="font-size:9.5px">REF —</text><text x="170" y="458" class="t-mono" id="rfmS" style="font-size:9.5px">SIG —</text></g>
+<g id="g-st"><rect x="260" y="410" width="80" height="60" rx="10" class="sensor"/><text x="270" y="428" class="t-blk">TPS</text><text x="270" y="444" class="t-mono" id="rftR" style="font-size:9.5px">REF —</text><text x="270" y="458" class="t-mono" id="rftS" style="font-size:9.5px">SIG —</text></g>
+<g id="g-sa"><rect x="360" y="410" width="146" height="60" rx="10" class="sensor"/><text x="370" y="428" class="t-blk">APP 1</text><text x="370" y="444" class="t-mono" id="rfaR" style="font-size:9.5px">REF —</text><text x="370" y="458" class="t-mono" id="rfaS" style="font-size:9.5px">SIG —</text>
+  <path d="M432 416 V464" stroke="#3B3525"/><text x="438" y="428" class="t-blk">APP 2</text><text x="438" y="444" class="t-mono" id="rfbR" style="font-size:9.5px">REF —</text><text x="438" y="458" class="t-mono" id="rfbS" style="font-size:9.5px">SIG —</text></g>
+<text x="433" y="486" class="t-tiny" text-anchor="middle">PEDAL · 2 TRACKS</text>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="RS" d="M120 300 V330"/><path class="gnd" d="M108 330 H132 M112 335 H128 M116 340 H124"/>
+  <circle cx="120" cy="300" r="5" class="chafe"/><text x="100" y="356" class="t-tiny" style="fill:#FF8A80">REF A CHAFED</text>
+</g>
+<g id="g-shortb" class="jump">
+  <path class="w" data-n="BAT" d="M250 322 V300"/><rect x="228" y="322" width="44" height="20" rx="5" class="btag"/><text x="250" y="336" class="t-blk" text-anchor="middle" style="fill:#FFB08E" id="sbLbl">B+</text>
+  <circle cx="250" cy="300" r="5" class="chafe"/>
+</g>
+<g id="g-mapg" class="jump">
+  <path class="w" data-n="MP" d="M200 330 H176 V340"/><path class="gnd" d="M164 340 H188 M168 345 H184 M172 350 H180"/>
+  <circle cx="200" cy="330" r="5" class="chafe"/>
+</g>
+<g id="g-ishort" style="display:none"><path id="ishortP" d="" stroke="#FF5A4E" stroke-width="2" stroke-dasharray="3 2" fill="none"/><text id="ishortT" class="t-tiny" style="fill:#FF8A80">INTERNAL SHORT</text></g>
+<g>
+  <path class="w" data-n="RP" d="M60 98 V244"/>
+  <path class="w" data-g="gHR" id="c1s" d="M60 244 V274"/>
+  <path class="w" data-g="gHR" id="c1z" d="M60 244 V248 L52 251 L68 256 L52 261 L68 266 L60 270 V274"/>
+  <path class="w" data-n="RX" d="M60 274 V282"/>
+  <path class="w" data-n="RX" id="br-refUp" d="M60 282 V290"/>
+  <path class="w" data-n="RS" d="M60 290 V300 H140 a6 6 0 0 1 12 0 H194 a6 6 0 0 1 12 0 H294 a6 6 0 0 1 12 0 H380"/>
+  <path class="w" data-n="RS" d="M180 300 V372"/><path class="w" data-n="mR" d="M180 390 V410"/>
+  <path class="w" data-n="RS" d="M280 300 V372"/><path class="w" data-n="tR" d="M280 390 V410"/>
+  <path class="w" data-n="RS" d="M380 300 V372"/><path class="w" data-n="aR" d="M380 390 V410"/>
+  <path class="w" data-n="LP" d="M146 186 V256"/>
+  <path class="w" data-n="LP" id="br-lowUp" d="M146 256 V264"/>
+  <path class="w" data-n="LB" d="M146 264 V500 H420"/>
+  <path class="w" data-n="mL" d="M220 470 V500"/><path class="w" data-n="tL" d="M320 470 V500"/><path class="w" data-n="aL" d="M420 470 V500"/>
+  <path class="w" data-n="MP" d="M200 88 V256"/><path class="w" data-n="MP" id="br-mapUp" d="M200 256 V264"/><path class="w" data-n="MP" d="M200 264 V372"/><path class="w" data-n="mW" d="M200 390 V410"/>
+  <path class="w" data-n="TP" d="M300 88 V256"/><path class="w" data-n="TP" id="br-tpsUp" d="M300 256 V264"/><path class="w" data-n="TP" d="M300 264 V372"/><path class="w" data-n="tW" d="M300 390 V410"/>
+  <path class="w" data-n="AP" d="M400 88 V256"/><path class="w" data-n="AP" id="br-appUp" d="M400 256 V264"/><path class="w" data-n="AP" d="M400 264 V372"/><path class="w" data-n="aW" d="M400 390 V410"/>
+  <path class="w" data-n="BP" d="M440 142 V372"/><path class="w" data-n="BP" d="M440 390 V410"/>
+  <path class="w" data-n="BS" d="M470 88 V372"/><path class="w" data-n="BS" d="M470 390 V410"/>
+  <path class="w" data-n="BL" d="M494 186 V372"/><path class="w" data-n="BL" d="M494 390 V410"/>
+</g>
+<circle cx="180" cy="300" r="3" class="jdot"/><circle cx="280" cy="300" r="3" class="jdot"/><circle cx="380" cy="300" r="3.4" class="jdot"/>
+<circle cx="220" cy="500" r="3" class="jdot"/><circle cx="320" cy="500" r="3" class="jdot"/><circle cx="420" cy="500" r="3.4" class="jdot"/>
+${[60, 146, 200, 300, 400, 440, 470, 494].map(x => `<rect x="${x - 6}" y="210" width="12" height="12" rx="2" class="pinbox"/>`).join('')}
+<g id="g-hr" class="jump"><circle class="corr" cx="53" cy="250" r="2"/><circle class="corr" cx="68" cy="262" r="1.6"/>
+  <text x="72" y="256" class="t-mono" id="hrLbl1" style="fill:#FFB3AC;font-size:10px">+0 Ω</text><text x="72" y="268" class="t-tiny" id="hrLbl2">DROP 0.00 V</text></g>
+<path class="flow" id="fRef" d="M60 98 V300 H380"/>
+<path class="flow" id="fLow" d="M420 500 H146 V186"/>
+<path class="flow" id="fSG" d="M120 300 V330"/>
+<g class="openpill" id="om-refUp" style="display:none"><path class="spark" d="M52 282 l-5 -3 M52 290 l-5 3 M68 282 l5 -3 M68 290 l5 3"/><rect x="72" y="278" width="44" height="16" rx="8"/><text x="94" y="289.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-lowUp" style="display:none"><path class="spark" d="M138 256 l-5 -3 M138 264 l-5 3 M154 256 l5 -3 M154 264 l5 3"/><rect x="92" y="252" width="44" height="16" rx="8"/><text x="114" y="263.5" text-anchor="middle">OPEN</text></g>
+${[['mapUp', 200], ['tpsUp', 300], ['appUp', 400]].map(([k, x]) => `<g class="openpill" id="om-${k}" style="display:none"><path class="spark" d="M${x - 8} 256 l-5 -3 M${x - 8} 264 l-5 3 M${x + 8} 256 l5 -3 M${x + 8} 264 l5 3"/><rect x="${x + 10}" y="252" width="44" height="16" rx="8"/><text x="${x + 32}" y="263.5" text-anchor="middle">OPEN</text></g>`).join('')}
+<g class="badge" id="tpR"><title>ECM 5 V reference A pin (what the ECM's monitor sees)</title><circle class="tpdot" cx="60" cy="226" r="4.5"/><rect x="66" y="215" width="72" height="22" rx="6"/><text x="72" y="229.5" class="lbl">REF</text><text x="132" y="230" text-anchor="end" id="tpRv">0.00 V</text></g>
+<path class="hit" data-open="refUp" d="M60 276 V296"><title>Click to open or repair 5 V ref A (between the ECM and the splice)</title></path>
+<path class="hit" data-open="lowUp" d="M146 222 V296"><title>Click to open or repair the shared low reference</title></path>
+<path class="hit" data-open="mapUp" d="M200 222 V296"><title>Click to open or repair the MAP signal</title></path>
+<path class="hit" data-open="tpsUp" d="M300 222 V296"><title>Click to open or repair the TPS signal</title></path>
+<path class="hit" data-open="appUp" d="M400 222 V296"><title>Click to open or repair the APP 1 signal</title></path>
+<rect class="hitr" data-unplug="m" x="164" y="372" width="72" height="18"><title>Click to unplug or reconnect the MAP sensor</title></rect>
+<rect class="hitr" data-unplug="t" x="264" y="372" width="72" height="18"><title>Click to unplug or reconnect the TPS</title></rect>
+<rect class="hitr" data-unplug="a" x="364" y="372" width="138" height="18"><title>Click to unplug or reconnect the pedal sensor</title></rect>`;
+
+const rfMon = (code, name, k, hi, trips, mat) => ({ code, name, kind: 'Continuous', trips, mat, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+  run(m, dt) { const en = on() && S.batt >= 10 && S.p.keyT >= 0.3, v = S.rf.sig[k]; circ(m, en, en && (hi ? v > (k === 'm' ? 4.8 : 4.75) : v < 0.25), dt); },
+  view(m) {
+    const v = S.rf.sig[k], lim = hi ? (k === 'm' ? 4.8 : 4.75) : 0.25, bad = hi ? v > lim : v < lim, n = RF_S.find(s => s[0] === k)[1];
+    const crit = [['Ignition on', on()], ['Ignition voltage at least 10 V', on() && S.batt >= 10], [`Fails when the ${n} signal is ${hi ? 'above' : 'below'} ${lim.toFixed(2)} V for ${mat.toFixed(1)} s`, null]];
+    if (!m.en) return waitView(crit, 'Ignition off. Test not running.');
+    return ckView(m, bad, `${n} signal ${fmtV(v)}`, `${n} signal ${fmtV(v)} is in range.`, crit);
+  } });
+const RF = {
+  id: 'ref5', name: 'Shared 5 V ref', sub: 'MAP + TPS + APP', brandSub: 'Shared 5 V reference',
+  lib: { name: 'Shared 5 V reference (MAP / TPS / APP)', type: 'One reference, three sensors · splice', codes: 'P0642 · P0643 · P0107 · P0122 · P2122' },
+  svg: RF_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'curve',
+  readLabels: ['Ref A at the ECM', 'Sensors on Ref A', 'ECM is using'],
+  faults: [['mapIn', 'Internal short', 'MAP sensor'], ['tpsIn', 'Internal short', 'TPS'], ['refG', 'Short to ground', '5 V ref A'], ['refB', 'Short to B+', '5 V ref A'], ['mapG', 'Short to ground', 'MAP signal'], ['lowUp', 'Open', 'Shared low ref']],
+  slider: { key: 'hiRes', label: 'High resistance · ref A', max: 400, step: 10, fmt: v => v ? '+' + v + ' Ω' : 'None' },
+  opens: ['refUp', 'lowUp', 'mapUp', 'tpsUp', 'appUp'],
+  excl: [['refG', 'refB']],
+  names: { refUp: 'ref A open', lowUp: 'shared low ref open', mapUp: 'MAP signal open', tpsUp: 'TPS signal open', appUp: 'APP 1 signal open', mapIn: 'MAP shorted inside', tpsIn: 'TPS shorted inside', refG: 'ref A shorted to ground', refB: 'ref A shorted to B+', mapG: 'MAP signal shorted to ground', uMap: 'MAP unplugged', uTps: 'TPS unplugged', uApp: 'pedal sensor unplugged', hiRes: v => `+${v} Ω on ref A` },
+  faultDefaults: () => ({ refUp: false, lowUp: false, mapUp: false, tpsUp: false, appUp: false, mapIn: false, tpsIn: false, refG: false, refB: false, mapG: false, uMap: false, uTps: false, uApp: false, hiRes: 0 }),
+  initPhys: () => ({ ped: 0, thr: 0, rpm: 0, keyT: 0, hist: [], hc: 0 }),
+  grads: { gHR: ['RP', 'RX'] },
+  flows: [['fRef', I => I.hr], ['fLow', I => I.lup], ['fSG', I => I.sg]],
+  solve() {
+    const f = S.f, p = S.p, o = on(), U = { m: f.uMap, t: f.uTps, a: f.uApp }, IS = { m: f.mapIn, t: f.tpsIn, a: false }, SO = { m: f.mapUp, t: f.tpsUp, a: f.appUp };
+    const kpa = 30 + 0.65 * p.thr, x = { m: kpa, t: p.thr, a: p.ped };
+    const E = [['RP', 'RX', 0.05 + f.hiRes, 'hr'], ['RX', 'RS', f.refUp ? OPEN : WIRE, 'rup'], ['RS', 'G', f.refG ? 0.05 : OPEN, 'sg'], ['BAT', 'RS', f.refB ? 0.05 : OPEN, 'sb'],
+      ['LB', 'LP', f.lowUp ? OPEN : WIRE, 'lup'], ['LP', 'G', 0.1, 'lg'], ['MP', 'G', f.mapG ? 0.05 : OPEN, 'mg']];
+    const nodes = ['RP', 'RX', 'RS', 'LB', 'LP'];
+    for (const [k] of RF_S) {
+      const r = rfOut(k, x[k]), u = U[k];
+      E.push(['RS', k + 'R', u ? OPEN : WIRE, k + 'c1'], [k + 'L', 'LB', u ? OPEN : WIRE, k + 'c3'], [k + 'R', k + 'W', 5000 * (1 - r), k + 't1'], [k + 'W', k + 'L', 5000 * r, k + 't2'],
+        [k + 'R', k + 'L', IS[k] ? 1 : OPEN, k + 'is'], [k + 'W', k.toUpperCase() + 'P', u || SO[k] ? OPEN : WIRE, k + 'c2'], [k.toUpperCase() + 'P', 'G', 1e6, k + 'pd']);
+      nodes.push(k + 'R', k + 'W', k + 'L', k.toUpperCase() + 'P');
+    }
+    E.push(['mR', 'mL', 1000, 'mq']);                                           // MAP electronics draw about 5 mA
+    const r2 = 0.08 + 0.0032 * p.ped, ub = f.uApp;                               // APP 2: separate Ref B and low
+    E.push(['V5B', 'BP', 1, 'regB'], ['BP', 'bR', ub ? OPEN : WIRE, 'bc1'], ['bR', 'bW', 5000 * (1 - r2), 'bt1'], ['bW', 'bL', 5000 * r2, 'bt2'], ['bL', 'BL', ub ? OPEN : WIRE, 'bc3'], ['BL', 'G', 0.1, 'blg'], ['bW', 'BS', ub ? OPEN : WIRE, 'bc2'], ['BS', 'G', 1e6, 'bpd']);
+    nodes.push('BP', 'bR', 'bW', 'bL', 'BL', 'BS');
+    const fx = { V5A: o ? 5 : 0, V5B: o ? 5 : 0, BAT: S.batt, G: 0 };
+    let { v, I } = nodal(nodes, E.concat([['V5A', 'RP', 1, 'reg']]), fx);
+    if (o && I.reg > 0.15) ({ v, I } = nodal(nodes, E, fx, [['G', 'RP', 0.15]]));   // overloaded: the regulator current-limits at 150 mA and its output collapses
+    S.v = v; S.I = I;
+    const ad = q => clamp(q, 0, 5);
+    S.rf = { vA: v.RP, vB: v.BP, sig: { m: ad(v.MP), t: ad(v.TP), a: ad(v.AP), b: ad(v.BS) }, atS: { m: v.mR - v.mL, t: v.tR - v.tL, a: v.aR - v.aL, b: v.bR - v.bL }, useApp2: !!p.app2 };
+    S.vad = o ? v.RP : null;
+  },
+  physics(dt) {
+    const p = S.p;
+    if (on()) p.keyT += dt;
+    const r = S.rf, conv = k => clamp(rfConv[k](r.sig[k]), 0, 100);
+    let cmd = 0;
+    p.app2 = false;
+    if (S.key === 'run') {
+      const appBad = rfFail(['P2122', 'P2123', 'P0642', 'P0643']), tpsBad = rfFail(['P0122', 'P0123', 'P0642', 'P0643']), b = r.sig.b;
+      p.app2 = r.useApp2 = !tpsBad && appBad && b > 0.2 && b < 2.4;
+      cmd = tpsBad ? 7 : appBad ? (r.useApp2 ? Math.min(conv('b'), 25) : 0) : conv('a');   // limp modes: default throttle, or APP 2 with limited opening
+    }
+    p.thr += (cmd - p.thr) * (1 - Math.exp(-dt * 6));
+    p.rpm = S.key === 'run' ? 700 + 25 * p.thr + Math.sin(S.t * 3) * 6 : 0;
+  },
+  inputHTML: '<label for="pedIn">Pedal</label><input type="range" id="pedIn" min="0" max="100" step="5" value="0" aria-label="Accelerator pedal"><output id="pedOut" for="pedIn">0 %</output><label>Unplug</label><button class="btn small" id="unM" aria-pressed="false">MAP</button><button class="btn small" id="unT" aria-pressed="false">TPS</button><button class="btn small" id="unA" aria-pressed="false">APP</button>',
+  bindInputs() {
+    const r = $('#pedIn');
+    r.addEventListener('pointerdown', () => thrDrag = true);
+    addEventListener('pointerup', () => thrDrag = false);
+    r.addEventListener('input', e => { S.p.ped = +e.target.value; });
+    $('#unM').addEventListener('click', () => rfUnplug('m')); $('#unT').addEventListener('click', () => rfUnplug('t')); $('#unA').addEventListener('click', () => rfUnplug('a'));
+    $$('[data-unplug]').forEach(h => h.addEventListener('click', () => rfUnplug(h.dataset.unplug)));
+  },
+  syncInputs() {
+    const r = $('#pedIn'); if (!r) return;
+    if (!thrDrag) r.value = S.p.ped;
+    $('#pedOut').textContent = S.p.ped + ' %';
+    [['unM', 'uMap'], ['unT', 'uTps'], ['unA', 'uApp']].forEach(([id, k]) => $('#' + id).setAttribute('aria-pressed', !!S.f[k]));
+  },
+  onOff() { S.p.keyT = 0; },
+  monitors: [
+    { code: 'P0642', name: 'Sensor reference voltage A circuit low', kind: 'Continuous', trips: 1, mat: 0.5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10 && S.p.keyT >= 0.3; circ(m, en, en && S.rf.vA < 4.5, dt); },
+      view(m) {
+        const crit = [['Ignition on', on()], ['Measured at the ECM\'s own ref A pin', null], ['Fails when ref A is below 4.5 V for 0.5 s', null]];
+        if (!m.en) return waitView(crit, 'Ignition off. Test not running.');
+        return ckView(m, S.rf.vA < 4.5, `Ref A ${fmtV(S.rf.vA)}`, `Ref A ${fmtV(S.rf.vA)} at the ECM pin.`, crit);
+      } },
+    { code: 'P0643', name: 'Sensor reference voltage A circuit high', kind: 'Continuous', trips: 1, mat: 0.5, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10 && S.p.keyT >= 0.3; circ(m, en, en && S.rf.vA > 5.5, dt); },
+      view(m) {
+        const crit = [['Ignition on', on()], ['Fails when ref A is above 5.5 V for 0.5 s', null]];
+        if (!m.en) return waitView(crit, 'Ignition off. Test not running.');
+        return ckView(m, S.rf.vA > 5.5, `Ref A ${fmtV(S.rf.vA)}`, `Ref A ${fmtV(S.rf.vA)} at the ECM pin.`, crit);
+      } },
+    rfMon('P0107', 'MAP sensor circuit low', 'm', false, 2, 2), rfMon('P0108', 'MAP sensor circuit high', 'm', true, 2, 2),
+    rfMon('P0122', 'TPS A circuit low', 't', false, 1, 1), rfMon('P0123', 'TPS A circuit high', 't', true, 1, 1),
+    rfMon('P2122', 'APP sensor 1 circuit low', 'a', false, 1, 1), rfMon('P2123', 'APP sensor 1 circuit high', 'a', true, 1, 1),
+  ],
+  visual(dt = 0) {
+    const p = S.p, r = S.rf, f = S.f;
+    if (!S.paused) { p.hc += dt; if (p.hc >= 0.05) { p.hc = 0; p.hist.push([S.clock, on() ? r.vA : 0, on() ? r.sig.m : 0, on() ? r.sig.t : 0, on() ? r.sig.a : 0]); while (p.hist.length && S.clock - p.hist[0][0] > 10.2) p.hist.shift(); } }
+    [['m', f.uMap], ['t', f.uTps], ['a', f.uApp]].forEach(([k, u]) => { $('#un' + k).style.display = u ? '' : 'none'; $('#g-s' + k).style.opacity = u ? 0.45 : 1; });
+    const isk = f.mapIn ? [160, 'MAP'] : f.tpsIn ? [260, 'TPS'] : null;
+    $('#g-ishort').style.display = isk ? '' : 'none';
+    if (isk) { const x = isk[0]; $('#ishortP').setAttribute('d', `M${x + 20} 412 C${x + 30} 476 ${x + 50} 476 ${x + 60} 468`); $('#ishortT').setAttribute('x', x + 2); $('#ishortT').setAttribute('y', 484); }
+    $('#g-shortg').classList.toggle('on', f.refG); $('#g-shortb').classList.toggle('on', f.refB); $('#g-mapg').classList.toggle('on', f.mapG);
+  },
+  text() {
+    const r = S.rf, o = on(), f = S.f;
+    $('#tpRv').textContent = fmtV(r.vA);
+    $('#tpR .tpdot').style.fill = vColor(r.vA);
+    const at = k => o ? (f[{ m: 'uMap', t: 'uTps', a: 'uApp', b: 'uApp' }[k]] ? '—' : fmtV(r.atS[k])) : '—';
+    for (const k of ['m', 't', 'a', 'b']) {
+      $('#rf' + k + 'R').textContent = 'REF ' + at(k);
+      $('#rf' + k + 'S').textContent = 'SIG ' + (o ? fmtV(r.sig[k]) : '—');
+      $('#rf' + k + 'R').style.fill = o && r.atS[k] < 4.5 && !f.uApp && !(k === 'm' && f.uMap) && !(k === 't' && f.uTps) ? '#FF8A80' : '';
+    }
+    $('#hrLbl1').textContent = '+' + f.hiRes + ' Ω';
+    $('#hrLbl2').textContent = `DROP ${(S.v.RP - S.v.RX).toFixed(2)} V`;
+    $('#sbLbl').textContent = `B+ ${S.batt.toFixed(1)}`;
+  },
+  chart: {
+    trig: { ms: 10, t0: 0, step: 2, xLabel: 'seconds · signal at each ECM pin', lbl: t => t === 10 ? 'now' : '−' + (10 - t), aMin: 0, aMax: 5.5, aTicks: [0, 1, 2, 3, 4, 5], aUnit: 'V', noZones: true,
+      curveX: { ms: 6, step: 99, xLabel: 'voltage at each ECM pin · APP 2 is on its own Ref B', lbl: () => '' } },
+    vMax: 5.5, yTicks: [0, 1, 2, 3, 4, 5],
+    hi: [5.5, ''], lo: [0, ''],
+    tabs: { curve: 'Right now', scope: 'Last 10 s' }, first: 'curve',
+    titles: { curve: 'Every sensor on Ref A · right now', scope: 'Ref A and its sensors · last 10 s' },
+    aria: 'Bar chart of reference and signal voltages at the ECM, or a 10 second trend of Ref A, MAP, TPS and APP 1',
+    trace: rfTrace, annot: rfAnnot,
+    curve: () => [], readX: () => 0, actualX: () => 0,
+  },
+  readouts() {
+    const o = on(), r = S.rf;
+    if (!o) return [{ v: '—', s: 'Module asleep', cls: '' }, { v: '—', s: '—', cls: '' }, { v: '—', s: '—', cls: '' }];
+    const bad = RF_S.filter(([k]) => r.sig[k] < 0.25 || r.sig[k] > (k === 'm' ? 4.8 : 4.75)).map(s => s[1]);
+    const red = rfReduced(), st = rfStatus();
+    return [
+      { v: fmtV(r.vA), s: r.vA < 4.5 ? 'Pulled down · P0642' : r.vA > 5.5 ? 'Pulled up · P0643' : 'Normal at the ECM pin', cls: r.vA < 4.5 || r.vA > 5.5 ? 'alert' : '' },
+      { v: bad.length ? `${bad.length} of 3 bad` : '3 of 3 OK', s: bad.length ? bad.join(', ') + ' out of range' : 'MAP, TPS and APP 1 in range', cls: bad.length ? 'alert' : '' },
+      { v: red ? (r.useApp2 ? 'APP 2 ONLY' : 'LIMP') : 'NORMAL', s: red ? st[0] : 'Pedal from APP 1', cls: red ? 'subst' : '' },
+    ];
+  },
+  dataRows() {
+    const r = S.rf, f1 = n => n.toFixed(1), conv = k => clamp(rfConv[k](r.sig[k]), 0, 100);
+    const flag = k => r.sig[k] < 0.25 || r.sig[k] > 4.75 ? 'bad' : '';
+    return [
+      ['5 V reference A', fmtV(r.vA), r.vA < 4.5 || r.vA > 5.5 ? 'bad' : ''], ['5 V reference B', fmtV(r.vB), ''],
+      ['MAP sensor', `${Math.round(clamp(rfConv.m(r.sig.m), 10, 115))} kPa · ${fmtV(r.sig.m)}`, flag('m')],
+      ['Throttle position (TPS)', `${f1(conv('t'))} % · ${fmtV(r.sig.t)}`, flag('t')],
+      ['APP sensor 1', `${f1(conv('a'))} % · ${fmtV(r.sig.a)}`, flag('a')], ['APP sensor 2', `${f1(conv('b'))} % · ${fmtV(r.sig.b)}`, ''],
+      ['Engine speed', Math.round(S.p.rpm) + ' rpm', ''], ['Reduced engine power', rfReduced() ? 'Active' : 'No', rfReduced() ? 'flag' : ''],
+    ];
+  },
+  ffRows: () => [['Ref A', fmtV(S.rf.vA)], ['MAP', fmtV(S.rf.sig.m)], ['TPS', fmtV(S.rf.sig.t)], ['APP 1', fmtV(S.rf.sig.a)], ['APP 2', fmtV(S.rf.sig.b)], ['Engine speed', Math.round(S.p.rpm) + ' rpm'], ['Ignition V', S.batt.toFixed(1) + ' V']],
+  dash: {
+    lo: '0', hi: '4k', hot: null,
+    frac: () => on() ? clamp(S.p.rpm / 4000, 0, 1) : null,
+    text: () => on() ? Math.round(S.p.rpm) + ' rpm' : '—',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" fill-rule="evenodd" d="M12 2.5L22.5 20.5H1.5ZM11 9h2v6h-2zM11 16.5h2v2h-2z"/></svg>',
+    t2on: () => rfStatus()[1],
+    t2text: () => rfStatus()[0],
+  },
+};
+RF.lesson = [
+  { title: 'One reference, three sensors',
+    body: 'To save wiring and ECM pins, one <b>5 V reference</b> often feeds several sensors. Here <b>Ref A</b> leaves the ECM, reaches splice <b>S101</b>, and branches to the <b>MAP</b>, the <b>TPS</b> and <b>APP 1</b> (the accelerator pedal). They share a low reference at <b>S102</b> too. <b>APP 2</b> is on its own <b>Ref B</b>, on purpose.',
+    setup() { fullReset(); S.p.ped = 0; setSpeed(1); setChart('curve'); }, spot: ['g-refa', 'g-bus', 'g-refb'] },
+  { title: 'Signals are a fraction of the reference',
+    body: 'Each sensor sends back a <b>fraction</b> of the reference it receives. That\'s called <b>ratiometric</b>. Press the pedal and watch APP 1 and APP 2 rise together, and the throttle (TPS) and MAP follow. The dashed boxes on the chart are each input\'s valid window.',
+    spot: ['inputRow', 'chartBox'],
+    goal: { text: 'Press the pedal past 40 %', test: () => S.p.ped >= 40 } },
+  { title: 'Predict: the MAP sensor shorts inside',
+    body: 'We\'re back at idle. The MAP sensor is about to fail with an <b>internal short</b> between its reference and ground pins.',
+    setup() { S.p.ped = 0; setChart('curve'); },
+    ask: { q: 'Which sensors will read wrong?', opts: ['Only the MAP', 'MAP, TPS and APP 1', 'All four'], ans: 1,
+      why: 'The short pulls down the whole Ref A circuit, and every sensor on it gets almost no reference. Each one can only send back a fraction of almost nothing. APP 2 is on Ref B, so it keeps working.',
+      apply() { setFault('mapIn', true); } },
+    spot: ['g-sm', 'chartBox'] },
+  { title: 'Four codes, one cause',
+    body: 'The ECM sets <b>P0642</b> (reference low) plus <b>P0107</b>, <b>P0122</b> and <b>P2122</b>, a low code for every sensor on the reference. It can\'t trust the TPS or APP 1, so it goes to <b>reduced power</b> and parks the throttle at its default opening. <b>APP 2</b> still reads the pedal on Ref B. That\'s why the pedal has a second sensor on a second reference: lose only APP 1 and the car stays drivable.',
+    setup() { if (!S.f.mapIn) setFault('mapIn', true); }, spot: ['mon-P0642', 'dtcBox', 'dash'],
+    goal: { text: 'P0642 and P2122 both set', test: () => S.M.P0642.confirmed && S.M.P2122.confirmed } },
+  { title: 'Find it: unplug one at a time',
+    body: 'Several low codes that share a reference point to <b>the reference, not three bad sensors</b>. With Ref A measured at the ECM, <b>unplug the sensors one at a time</b> with the Unplug buttons. Unplugging the TPS changes nothing. Unplug the <b>MAP</b> and Ref A jumps back to 5 V. That\'s the one pulling it down.',
+    spot: ['inputRow', 'tpR', 'read0'],
+    goal: { text: 'Ref A back above 4.5 V with a sensor unplugged', test: () => S.rf.vA > 4.5 && (S.f.uMap || S.f.uTps || S.f.uApp) } },
+  { title: 'Predict: a short in the harness',
+    body: 'We replaced the MAP, plugged everything back in and cleared the codes. Now Ref A has rubbed through to ground <b>in the harness</b>, between the ECM and the splice.',
+    setup() { clearFaults(); clearDTCs(true); S.p.ped = 0; },
+    ask: { q: 'Will unplugging a sensor bring Ref A back?', opts: ['Yes, one of them', 'No, none of them'], ans: 1,
+      why: 'The short isn\'t in a sensor, so removing sensors can\'t remove it. When Ref A stays low with all three unplugged, the fault is in the wiring or the ECM.',
+      apply() { setFault('refG', true); } },
+    spot: ['g-bus', 'tpR'] },
+  { title: 'It\'s the wiring',
+    body: 'Unplug <b>all three</b> sensors. Ref A stays near <b>0 V</b>, so the short has to be in the harness. Next you\'d disconnect the ECM and check the ref A circuit for continuity to ground, then inspect the harness near the splice.',
+    setup() { if (!S.f.refG) setFault('refG', true); }, spot: ['inputRow', 'g-shortg'],
+    goal: { text: 'All three unplugged and Ref A still low', test: () => S.f.uMap && S.f.uTps && S.f.uApp && S.rf.vA < 1 } },
+  { title: 'Predict: the shared ground opens',
+    body: 'Repaired and cleared. Now the <b>shared low reference</b> opens between the ECM and splice S102.',
+    setup() { clearFaults(); clearDTCs(true); },
+    ask: { q: 'What will the sensor signals do?', opts: ['All read low', 'All read high', 'Stay normal'], ans: 1,
+      why: 'With no path to ground, no current flows through the sensors, so nothing is dropped across them. Each signal floats up to the full reference. Every sensor on that ground sets a high code, and the reference itself is fine.',
+      apply() { setFault('lowUp', true); } },
+    spot: ['om-lowUp', 'g-bus'] },
+  { title: 'Everything reads high',
+    body: '<b>P0108</b>, <b>P0123</b> and <b>P2123</b>: three high codes, and <b>no reference code</b>, because Ref A still reads 5 V at the ECM. Several codes in the same direction point you to what those circuits share. Low codes all together point to the reference, and high codes all together point to the ground.',
+    setup() { if (!S.f.lowUp) setFault('lowUp', true); }, spot: ['mon-P0123', 'read1', 'chartBox'],
+    goal: { text: 'P0123 sets', test: () => S.M.P0123.confirmed } },
+  { title: 'A drop the ECM can\'t see',
+    body: 'Repaired. Now a corroded terminal adds <b>+150 Ω</b> on Ref A before the splice. The ECM\'s monitor reads its own pin, so it still sees <b>5.00 V</b> and <b>no code sets</b>. Compare the REF readings inside each sensor: they get about <b>4 V</b>. Every signal reads about 20 % low, so the ECM thinks there\'s less throttle, less pedal and less load than there is.',
+    setup() { clearFaults(); clearDTCs(true); S.f.hiRes = 150; syncFaultUI(); S.p.ped = 40; setChart('curve'); }, spot: ['g-hr', 'tpR', 'g-sm', 'g-st'] },
+  { title: 'Reading a shared reference',
+    body: 'When <b>several sensors fail at once</b>, look for what they share before you replace anything. All low with a reference code: a short on the reference, found by <b>unplugging sensors one at a time</b>. All high: an open shared ground. All skewed but no code: <b>check the reference at the sensor</b>, not just at the ECM.',
     final: true, alt: { label: '◂ Back to ECT', go() { switchSensor('ect'); } } },
 ];
 
-const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN, ckp: CKP, fp: FP };
+const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN, ckp: CKP, fp: FP, ref5: RF };
 const PLANNED = [];
 
 /* ================= simulation core ================= */
