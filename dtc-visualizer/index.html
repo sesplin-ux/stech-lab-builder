@@ -316,6 +316,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   .brand h1{white-space:normal}
   .lib{grid-template-columns:minmax(0,1fr)}
   #pickSub{display:none}
+  .inrow{flex-wrap:wrap}
 }
 @media (prefers-reduced-motion:reduce){
   .spot,#circuit .spot,#chart .spot,.tell.t2.on .fanrot,.tell.flash svg{animation:none}
@@ -2567,10 +2568,1007 @@ CAN.lesson = [
     goal: { text: 'The ABS stores U0100', test: () => S.p.mods.ABS.codes.includes('U0100') } },
   { title: 'Reading a network fault',
     body: 'Start with the pattern. <b>One module missing</b> points to that module\'s power, ground or connector. <b>Everyone missing one module</b>, with U0100 in all the others, points at the ECM\'s side. <b>Everything down</b> and U0073 points to the bus itself: check 60 Ω across DLC pins 6 and 14, then about 2.6 V on CAN-H and 2.4 V on CAN-L.',
+    final: true, alt: { label: 'Crank & cam lesson ▸', go() { switchSensor('ckp'); } } },
+];
+
+/* ================= Crank + cam: 2-wire VR crank sensor on a 36-1 wheel, 3-wire Hall cam sensor ================= */
+const CK_EXP = 35, CK_BAD = 31, CK_R = 850, CK_JUMP = 18;                       // teeth per turn, weak tooth index, coil Ω, chain jump in crank °
+const CM_PU = 2000, CM_RQ = 1000, CM_RON = 30, CM_EDGE = 90, CM_SPAN = 180;     // pull-up, Hall IC load, output on-resistance, cam edge after the gap, low span (crank °)
+const CK_EST = { off: 'Off', crank: 'Cranking', run: 'Running', dying: 'Stalling', stall: 'Stalled' };
+const CKA = 7.3, CKH = 2.3, CKB = 0.9, CKS = 0.56, CK_T0 = 30;                  // dual scope: channel A center/half-height, channel B zero/scale, gap offset (display units)
+const ckVpk = rpm => 3.2 * rpm / 700 * Math.exp(-S.f.gap / 0.93);               // VR output, volts peak: rises with speed, falls fast with air gap
+const ckLinked = () => !S.f.kpUp && !S.f.kmUp;
+const ckPt = V => clamp((V - 0.11) / 0.30, 0, 1);                                // chance the ECM catches a tooth at this amplitude
+const ckThr = V => Math.max(0.10, 0.3 * V);                                      // adaptive arming threshold
+const ckSigNow = () => S.t - S.p.lastCkT < 0.5;
+const ckRpm = () => ckSigNow() ? Math.round(S.p.rpm) : 0;                        // the ECM only knows rpm from the crank signal
+const ckCamTxt = () => S.p.camSeen && S.t - S.p.lastCmT < 1 ? (S.p.camOff >= 0 ? '+' : '−') + Math.abs(S.p.camOff).toFixed(1) + '°' : '—';
+const ckLobeUnder = () => { const r = S.p.vis / 2 + (S.f.chain ? -9 : 0); return (((270 - r) % 360) + 360) % 360 <= 90; };
+function ckCrank() {
+  if (S.key !== 'run') { setKey('run'); return; }
+  if (S.p.eng === 'stall') { S.p.eng = 'off'; CKP.onStart(); }
+  else toast('The engine is already turning.');
+}
+function ckStatus() {
+  const p = S.p;
+  if (!on()) return ['Engine off', false];
+  if (S.key !== 'run') return ['Key on · engine off', false];
+  if (p.eng === 'crank') return [p.crankT > 2 ? 'Long crank…' : 'Cranking', true];
+  if (p.eng === 'stall') return [p.stallWhy === 'nostart' ? 'Cranks · no start' : 'Stalled', true];
+  if (p.eng === 'dying') return ['Stalling', true];
+  if (p.dip > 40) return ['Stumbling', true];
+  if (S.f.chain || S.f.tooth) return ['Running rough', true];
+  return ['Running', false];
+}
+/* One crank turn: how many teeth the ECM caught, and whether it found the gap */
+function ckRev(now) {
+  const p = S.p, f = S.f, V = ckLinked() ? ckVpk(p.rpm) * 0.96 : 0, pt = ckPt(V);
+  let n = 0;
+  if (pt >= 1) n = CK_EXP; else if (pt > 0) for (let i = 0; i < CK_EXP; i++) if (Math.random() < pt) n++;
+  if (f.tooth && n > 0) n--;                                                     // the weak tooth never beats the adaptive threshold
+  const lost = p.revT > 0 ? clamp(p.glT / p.revT, 0, 1) : 0;
+  if (lost) n = Math.round(n * (1 - lost));
+  const gap = n > 0 && Math.random() < pt ** 5 && Math.random() >= lost;
+  p.glT = 0; p.revT = 0; p.revN++; p.camRevs++;
+  if (n > 0) { p.lastCkT = now; p.ckCnt = (p.ckCnt + 1) % 256; }
+  const bad = n > 0 && n !== CK_EXP;
+  if (bad) p.badN++;
+  if (gap) p.synced = true; else { if (p.synced) p.resync++; p.synced = false; }
+  if (p.eng === 'crank' && n > 0) p.syncAcc += pt ** 5 * (1 - lost) * (0.8 + 0.4 * Math.random());   // sync confidence builds turn by turn
+  p.lastN = n;
+  p.log.push(n === 0 ? 3 : !gap ? 2 : bad ? 1 : 0); if (p.log.length > 24) p.log.shift();
+  if (p.eng === 'run' || p.eng === 'dying') {
+    if (gap) { p.noFire = 0; if (p.eng === 'dying' && p.rpm > 250) { p.eng = 'run'; p.rpmB = p.rpm; } }
+    else { p.noFire++; p.dip += 70; }                                            // lost position: spark and fuel cut until the next gap
+  }
+}
+/* Cam edge: the ECM places it against the crank signal */
+function ckCam(now) {
+  const p = S.p;
+  if (!S.cm?.works) return;
+  p.lastCmT = now; p.cmCnt = (p.cmCnt + 1) % 256; p.camRevs = 0;
+  if (p.synced) { p.camOff = (S.f.chain ? CK_JUMP : 0) + (Math.random() - 0.5) * 1.4; p.camSeen = true; if (p.eng === 'crank') p.phaseOK = true; }
+}
+/* VR voltage at crank angle th (0 = first tooth after the gap): zero crossing at each tooth center */
+function ckVr(th, V) {
+  const a = ((th % 360) + 360) % 360, k = Math.round(a / 10) % 36, u = a - Math.round(a / 10) * 10;
+  if (k === 35) return -0.3 * V * Math.sin(Math.PI * (u + 5) / 10);           // missing tooth: a slow, shallow swing
+  return V * (k === 0 ? 1.4 : 1) * (S.f.tooth && k === CK_BAD ? 0.28 : 1) * Math.sin(2 * Math.PI * (u + 5) / 10);
+}
+function ckCmAt(th) {
+  const cm = S.cm;
+  if (!(S.p.rpm > 0) || !cm.works) return S.v.SP ?? 0;
+  const u = (((th - CM_EDGE - (S.f.chain ? CK_JUMP : 0)) % 720) + 720) % 720;
+  return u < CM_SPAN ? cm.pinLo : cm.pinHi;
+}
+const ckDrop = x => { const d = S.p.drop; return d && S.t - d.t < 1.5 && x >= d.x && x <= d.x + d.w; };
+/* Triggered capture of one engine cycle ('v' crank, 'v2' cam, display units) or the crank signal around the gap ('a', volts) */
+function ckTrace(kind) {
+  const p = S.p, R = CKP.chart.trig._R || 1;
+  const V = on() && p.rpm > 0 && ckLinked() ? ckVpk(p.rpm) * 0.96 : 0, nz = () => (Math.random() - 0.5) * (0.03 * V + 0.01), pts = [];
+  if (kind === 'a') { for (let x = 0; x <= 120 + 1e-9; x += 0.4) pts.push([x, clamp(ckVr(300 + x, V) + nz(), -R * 1.02, R * 1.02)]); return pts; }
+  if (kind === 'v') { for (let x = 0; x <= 720 + 1e-9; x += 0.5) pts.push([x, CKA + clamp((ckDrop(x) ? nz() * 0.3 : ckVr(x - CK_T0, V) + nz()) / R, -1, 1) * CKH]); return pts; }
+  for (let x = 0; x <= 720 + 1e-9; x += 1) pts.push([x, CKB + clamp(on() ? ckCmAt(x - CK_T0) : 0, 0, 5.4) * CKS]);
+  return pts;
+}
+function ckAnnot(mode) {
+  if (!on()) return '';
+  const p = S.p, cm = S.cm, R = CKP.chart.trig._R || 1, turning = p.rpm > 0;
+  const V = turning && ckLinked() ? ckVpk(p.rpm) * 0.96 : 0, hz = Math.round(p.rpm * 36 / 60);
+  const tx = (x, y, str, fill, a = 'start') => `<text class="ann" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" style="fill:${fill}">${str}</text>`;
+  const hl = (y, col, dash) => `<line x1="${CH.x0}" x2="${CH.x1}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+  const RED = '#FF8A80', DIM = '#8A98A8', BLU = '#8CCBF3', YEL = '#FFC766', GRN = '#7BE3B4';
+  let h = '';
+  if (mode === 'scope') {
+    const yA = cy(CKA), yAt = cy(CKA + CKH), yB0 = cy(CKB), yB5 = cy(CKB + 5 * CKS), yMid = (cy(CKA - CKH) + yB5) / 2;
+    h += hl(yA, '#243140', '3 3') + hl(yB0, '#1D2732') + hl(yB5, '#1D2732', '2 3');
+    h += tx(CH.x0 - 5, yA + 3, 'CKP', YEL, 'end') + tx(CH.x0 - 5, yA + 13, `±${R} V`, DIM, 'end');
+    h += tx(CH.x0 - 5, yB5 + 3, '5 V', DIM, 'end') + tx(CH.x0 - 5, (yB0 + yB5) / 2 + 3, 'CMP', BLU, 'end') + tx(CH.x0 - 5, yB0 + 3, '0 V', DIM, 'end');
+    const xs0 = cx(CK_T0 + CM_EDGE - 10), xs1 = cx(CK_T0 + CM_EDGE + 10);
+    h += `<rect x="${xs0.toFixed(1)}" y="${(yB5 - 4).toFixed(1)}" width="${(xs1 - xs0).toFixed(1)}" height="${(yB0 - yB5 + 8).toFixed(1)}" fill="rgba(61,220,151,.10)"/>`;
+    if (turning && V > 0.05) for (const x of [CK_T0 - 10, CK_T0 + 350]) h += tx(cx(x), yAt - 1, 'GAP', DIM, 'middle');
+    if (turning && ckDrop(p.drop?.x ?? -1)) h += tx(cx(p.drop.x + p.drop.w / 2), yAt - 1, 'DROPOUT', RED, 'middle');
+    if (turning && cm.works && ckSigNow()) {
+      const ce = CM_EDGE + (S.f.chain ? CK_JUMP : 0), xe = cx(CK_T0 + ce), late = ce - CM_EDGE;
+      h += `<line x1="${xe.toFixed(1)}" x2="${xe.toFixed(1)}" y1="${yAt.toFixed(1)}" y2="${yB0.toFixed(1)}" stroke="${late ? RED : GRN}" stroke-dasharray="2 3" stroke-width="1"/>`;
+      h += tx(xe + 4, yB5 - 6, late ? `CAM EDGE ${ce}° · SPEC 90 ± 10°` : 'CAM EDGE 90° AFTER THE GAP', late ? RED : GRN);
+    }
+    const st = !turning ? ['ENGINE NOT TURNING', DIM] : V < 0.05 ? ['NO CRANK SIGNAL AT THE ECM', RED] : [`${Math.round(p.rpm)} RPM · ${V.toFixed(1)} V PK · ${hz} HZ`, DIM];
+    h += tx(CH.x1 - 4, yMid + 3, st[0], st[1], 'end');
+    if (!turning) h += tx(cx(400), yA - 8, 'A VR SENSOR MAKES NO VOLTAGE WHEN STOPPED', DIM, 'middle') + tx(cx(400), (yB0 + yB5) / 2 + 3, 'THE HALL SENSOR HOLDS A STEADY LEVEL', DIM, 'middle');
+    else if (!cm.works) h += tx(cx(400), (yB0 + yB5) / 2 + 3, `NO CAM PULSES · STUCK AT ${fmtV(cm.pinHi)}`, RED, 'middle');
+  } else {
+    const y0 = ay(0), thr = ckThr(V), pt = ckPt(V);
+    h += hl(y0, '#243140');
+    h += tx(CH.x0 + 4, CH.y0 + 9, turning ? `${V.toFixed(2)} V PK · ${hz} HZ` : 'ENGINE NOT TURNING · NO SIGNAL', turning && V >= 0.05 ? DIM : RED) + tx(CH.x1 - 4, CH.y0 + 9, `AUTO RANGE ±${R} V`, DIM, 'end');
+    if (turning && V < 0.05) h += tx(cx(60), ay(R * 0.45), 'FLAT LINE · NO SIGNAL AT THE ECM', RED, 'middle');
+    if (V >= 0.05) {
+      h += hl(ay(thr), '#FFB224', '3 3') + hl(ay(-thr), '#FFB224', '3 3') + tx(CH.x1 - 4, CH.y1 - 5, `- - ARMING THRESHOLD ±${thr.toFixed(2)} V`, YEL, 'end');
+      for (let x = 0; x <= 120; x += 10) {
+        const k = Math.round(((300 + x) % 360) / 10) % 36, X = cx(x);
+        if (k === 35) continue;
+        const hit = !(S.f.tooth && k === CK_BAD) && Math.random() < pt;
+        h += hit ? `<circle cx="${X.toFixed(1)}" cy="${y0.toFixed(1)}" r="2.3" fill="${GRN}"/>` : `<path d="M${(X - 2.5).toFixed(1)} ${(y0 - 2.5).toFixed(1)}l5 5m0 -5l-5 5" stroke="${RED}" stroke-width="1.3"/>`;
+      }
+      h += tx(cx(50), ay(R * 0.82), 'GAP', YEL, 'middle') + tx(cx(60) + 5, ay(R * 0.82), 'TOOTH 1', BLU);
+      if (S.f.tooth) h += tx(cx(10), ay(R * 0.62), 'WEAK TOOTH · MISSED', RED, 'middle');
+      h += tx(CH.x0 + 4, CH.y1 - 5, '● = TOOTH COUNTED', GRN);
+    }
+  }
+  return h;
+}
+const ckView = (m, bad, badTxt, okTxt, crit) => m.failing ? { st: ['ok', 'bad', 'bad', 'bad'], frac: 1, pill: ['Failed', 'bad'], det: `${badTxt} for ${m.mat.toFixed(1)} s. Test failed.`, crit }
+  : m.timer > 0 ? { st: ['ok', 'act', 'act', ''], frac: m.timer / m.mat, pill: ['Maturing', 'act'], det: `${badTxt} · ${m.timer.toFixed(1)} of ${m.mat.toFixed(1)} s`, crit }
+  : { st: ['ok', bad ? 'act' : 'ok', '', m.good > 1 ? 'ok' : ''], frac: 0, pill: ['Passing', 'ok'], det: okTxt, crit };
+
+const ckPoly = (r0, r1, a, w) => { const P = (r, t) => `${(r * Math.cos(t)).toFixed(1)} ${(r * Math.sin(t)).toFixed(1)}`, t0 = (a - w) * Math.PI / 180, t1 = (a + w) * Math.PI / 180; return `M${P(r0, t0)}L${P(r1, t0)}L${P(r1, t1)}L${P(r0, t1)}Z`; };
+const CK_TEETH = Array.from({ length: 36 }, (_, i) => i === 35 || i === CK_BAD ? '' : ckPoly(37, 46, i * 10, 2.6)).join('');
+const CM_LOBE = (() => { const P = (r, d) => `${(r * Math.cos(d * Math.PI / 180)).toFixed(1)} ${(r * Math.sin(d * Math.PI / 180)).toFixed(1)}`; return `M${P(33, 0)}L${P(42, 0)}A42 42 0 0 1 ${P(42, 90)}L${P(33, 90)}Z`; })();
+const CKP_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gPU" gradientUnits="userSpaceOnUse" x1="404" y1="84" x2="404" y2="116"><stop offset="0" id="gPU0" stop-color="#2c3e50"/><stop offset="1" id="gPU1" stop-color="#2c3e50"/></linearGradient>
+  <radialGradient id="tipG"><stop offset="0" stop-color="#EAFBFF"/><stop offset=".5" stop-color="#5FD4FF" stop-opacity=".7"/><stop offset="1" stop-color="#5FD4FF" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="486" height="200" rx="14" class="ecm"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<path d="M204 100 H256 V110 M412 150 H298" fill="none" stroke="#2A3644" stroke-dasharray="3 3"/>
+<g id="g-ckin">
+  <rect x="36" y="62" width="168" height="60" rx="7" class="blk"/>
+  <text x="48" y="80" class="t-blk">CKP INPUT · VR</text>
+  <text x="48" y="95" class="t-tiny">ADAPTIVE THRESHOLD</text>
+  <text x="48" y="112" class="t-mono" id="ckThr" style="font-size:10px">ARM ±0.10 V</text>
+</g>
+<g id="g-sync">
+  <rect x="214" y="110" width="84" height="86" rx="7" class="blk"/>
+  <text x="256" y="127" class="t-blk" text-anchor="middle">SYNC</text>
+  <text x="224" y="145" class="t-mono" id="syncLbl" style="font-size:10px">—</text>
+  <text x="224" y="161" class="t-mono" id="camLbl" style="font-size:10px">—</text>
+  <text x="224" y="178" class="t-tiny">IGN · INJ</text>
+  <text x="224" y="191" class="t-mono" id="sparkLbl" style="font-size:10px">—</text>
+</g>
+<g id="g-ref5"><rect x="276" y="62" width="72" height="30" rx="7" class="blk"/><text x="312" y="81" class="t-blk" text-anchor="middle">5 V REF</text></g>
+<g id="g-cmin"><rect x="412" y="126" width="66" height="34" rx="7" class="blk"/><text x="445" y="141" class="t-blk" text-anchor="middle">CMP IN</text><text x="445" y="153" class="t-tiny" text-anchor="middle">0 / 5 V</text></g>
+<text x="414" y="104" class="t-tiny">PULL-UP 2 kΩ</text>
+<path class="gnd" d="M474 186 H498 M478 191 H494 M482 196 H490"/>
+<text x="78" y="204" class="t-pin">CKP +</text>
+<text x="182" y="204" class="t-pin" text-anchor="end">CKP −</text>
+<text x="304" y="204" class="t-pin" text-anchor="end">5 V REF</text>
+<text x="396" y="204" class="t-pin" text-anchor="end">CMP SIG</text>
+<text x="478" y="204" class="t-pin" text-anchor="end">LOW REF</text>
+<text x="130" y="288" class="t-tiny" text-anchor="middle">TWISTED PAIR</text>
+<rect x="40" y="296" width="180" height="28" rx="8" class="conn"/><text x="46" y="314" class="t-blk">C1</text>
+<rect x="292" y="296" width="214" height="28" rx="8" class="conn"/><text x="322" y="314" class="t-blk">C2</text>
+<g id="g-ckp">
+  <rect x="46" y="372" width="168" height="50" rx="12" class="sensor"/>
+  <text x="58" y="389" class="t-sub">CKP · VR</text>
+  <text x="202" y="389" class="t-mono" text-anchor="end" id="vrLbl" style="font-size:10px">850 Ω</text>
+  <rect x="124" y="422" width="12" height="12" rx="2" fill="#6B7887"/>
+  <circle id="tip" cx="130" cy="436" r="8" fill="url(#tipG)" opacity="0"/>
+</g>
+<text x="26" y="438" class="t-tiny">AIR GAP</text>
+<text x="26" y="451" class="t-mono" id="gapLbl" style="font-size:10px">0.8 mm</text>
+<text x="26" y="522" class="t-tiny">36−1 WHEEL</text>
+<text x="26" y="534" class="t-tiny">CRANKSHAFT</text>
+<g id="g-chain"><path id="chainP" d="M130 458 H404 M130 518 H404" fill="none" stroke="#2A3644" stroke-width="3" stroke-dasharray="4 3"/></g>
+<text x="267" y="486" class="t-tiny" text-anchor="middle">TIMING CHAIN</text>
+<text x="267" y="500" class="t-mono" text-anchor="middle" id="chainLbl" style="font-size:10px">IN TIME</text>
+<g id="ckWheel" transform="translate(130 488)"><g id="ckRot">
+  <circle r="37" fill="#10161d" stroke="#2c3643"/>
+  <path d="${CK_TEETH}" fill="#4A5A6C"/>
+  <path id="ckT31" d="${ckPoly(37, 46, CK_BAD * 10, 2.6)}" fill="#4A5A6C"/>
+  <path id="ckT31b" d="${ckPoly(37, 40.5, CK_BAD * 10, 2.6)}" fill="#5a2a24" stroke="#FF5A4E" stroke-width=".8" style="display:none"/>
+  <circle r="9" fill="#1b2530" stroke="#3a4a5c"/><circle cx="0" cy="-28" r="2.2" fill="#EAFBFF"/>
+</g></g>
+<g id="cmWheel" transform="translate(404 486)"><g id="cmRot">
+  <circle r="33" fill="#10161d" stroke="#2c3643"/>
+  <path d="${CM_LOBE}" fill="#4A5A6C"/>
+  <circle r="8" fill="#1b2530" stroke="#3a4a5c"/><circle cx="0" cy="-24" r="2.2" fill="#EAFBFF"/>
+</g></g>
+<text x="456" y="470" class="t-tiny">CAM TARGET</text>
+<text x="456" y="482" class="t-tiny">HALF SPEED</text>
+<text x="267" y="546" class="t-tiny" text-anchor="middle">WHEELS SHOWN AT 1/40 SPEED</text>
+<g id="g-cmp">
+  <rect x="292" y="372" width="214" height="50" rx="12" class="sensor"/>
+  <text x="318" y="389" class="t-sub">CMP · HALL</text>
+  <rect x="330" y="396" width="140" height="20" rx="4" class="blk"/>
+  <text x="338" y="410" class="t-tiny">HALL IC</text>
+  <text x="462" y="410" class="t-mono" text-anchor="end" id="hallOut" style="font-size:9.5px">—</text>
+  <rect x="398" y="422" width="12" height="10" rx="2" fill="#6B7887"/>
+</g>
+<text x="222" y="386" class="t-tiny">TEETH / REV</text>
+${Array.from({ length: 24 }, (_, i) => `<rect id="cl${i}" x="${222 + (i % 8) * 9.5}" y="${393 + Math.floor(i / 8) * 10}" width="7" height="7" rx="1.5" fill="#18212B"/>`).join('')}
+<text x="222" y="435" class="t-mono" id="revLbl" style="font-size:10px">—</text>
+<g>
+  <path class="w" data-n="KE" d="M70 122 V256"/>
+  <path class="w" data-n="KE" id="br-kpUp" d="M70 256 V264"/>
+  <path class="w" data-n="KS" d="M70 264 V404 H94"/>
+  <path class="w" data-n="KS" d="M94 404 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0"/>
+  <path class="w" data-n="KS" d="M166 404 H190 V264"/>
+  <path class="w" data-n="KE" id="br-kmUp" d="M190 256 V264"/>
+  <path class="w" data-n="KE" d="M190 122 V256"/>
+  <path class="w" data-n="RP" d="M312 92 V256"/>
+  <path class="w" data-n="RP" id="br-crUp" d="M312 256 V264"/>
+  <path class="w" data-n="RA" d="M312 264 V406 H330"/>
+  <path class="w" data-n="V5" d="M348 77 H404 V84"/>
+  <path class="w" data-g="gPU" d="M404 84 L411 88 L397 94 L411 100 L397 106 L411 112 L404 116"/>
+  <path class="w" data-n="SP" d="M404 116 V256"/>
+  <path class="w" data-n="SP" d="M404 141 H412"/>
+  <path class="w" data-n="SP" id="br-csUp" d="M404 256 V264"/>
+  <path class="w" data-n="SA" d="M404 264 V396"/>
+  <path class="w" data-n="LP" d="M486 186 V256"/>
+  <path class="w" data-n="LP" id="br-cgUp" d="M486 256 V264"/>
+  <path class="w" data-n="GA" d="M486 264 V406 H470"/>
+</g>
+<circle cx="404" cy="141" r="3" class="jdot"/>
+<rect x="64" y="210" width="12" height="12" rx="2" class="pinbox"/><rect x="184" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<rect x="306" y="210" width="12" height="12" rx="2" class="pinbox"/><rect x="398" y="210" width="12" height="12" rx="2" class="pinbox"/><rect x="480" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<g id="g-inter" class="jump">
+  <text x="84" y="314" class="t-tiny" style="fill:#FFD48A">LOOSE TERMINAL</text>
+  <g id="interSpark"><path class="spark" d="M62 302 l-5 -4 M62 316 l-6 3 M78 304 l5 -4 M77 318 l5 3"/></g>
+</g>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="SA" d="M404 272 H448 V280"/>
+  <path class="gnd" d="M436 280 H460 M440 285 H456 M444 290 H452"/>
+  <circle cx="404" cy="272" r="5" class="chafe"/>
+  <text x="396" y="284" class="t-tiny" text-anchor="end" style="fill:#FF8A80">CHAFED TO GND</text>
+</g>
+<path class="flow" id="fCk" d="M70 122 V404 H190 V122"/>
+<path class="flow" id="fRef" d="M312 92 V406 H330"/>
+<path class="flow" id="fGnd" d="M470 406 H486 V186"/>
+<path class="flow" id="fSig" d="M348 77 H404 V396"/>
+<path class="flow" id="fSG" d="M404 272 H448 V280"/>
+<g class="openpill" id="om-kpUp" style="display:none"><path class="spark" d="M62 256 l-5 -3 M62 264 l-5 3 M78 256 l5 -3 M78 264 l5 3"/><rect x="84" y="252" width="44" height="16" rx="8"/><text x="106" y="263.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-kmUp" style="display:none"><path class="spark" d="M182 256 l-5 -3 M182 264 l-5 3 M198 256 l5 -3 M198 264 l5 3"/><rect x="132" y="252" width="44" height="16" rx="8"/><text x="154" y="263.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-crUp" style="display:none"><path class="spark" d="M304 256 l-5 -3 M304 264 l-5 3 M320 256 l5 -3 M320 264 l5 3"/><rect x="254" y="252" width="44" height="16" rx="8"/><text x="276" y="263.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-csUp" style="display:none"><path class="spark" d="M396 256 l-5 -3 M396 264 l-5 3 M412 256 l5 -3 M412 264 l5 3"/><rect x="346" y="252" width="44" height="16" rx="8"/><text x="368" y="263.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-cgUp" style="display:none"><path class="spark" d="M478 256 l-5 -3 M478 264 l-5 3 M494 256 l5 -3 M494 264 l5 3"/><rect x="428" y="252" width="44" height="16" rx="8"/><text x="450" y="263.5" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tpK"><title>ECM CKP pins, DMM on AC volts</title><circle class="tpdot" cx="70" cy="236" r="4.5"/><rect x="80" y="225" width="102" height="22" rx="6"/><text x="88" y="239.5" class="lbl">CKP</text><text x="174" y="240" text-anchor="end" id="tpKv">0.00 V AC</text></g>
+<g class="badge" id="tpR"><title>ECM 5 V reference pin</title><circle class="tpdot" cx="312" cy="236" r="4.5"/><rect x="228" y="225" width="76" height="22" rx="6"/><text x="235" y="239.5" class="lbl">5V</text><text x="298" y="240" text-anchor="end" id="tpRv">0.00 V</text></g>
+<g class="badge" id="tpS"><title>ECM CMP signal pin (average, as a DMM reads it)</title><circle class="tpdot" cx="404" cy="236" r="4.5"/><rect x="320" y="225" width="76" height="22" rx="6"/><text x="327" y="239.5" class="lbl">SIG</text><text x="390" y="240" text-anchor="end" id="tpSv">0.00 V</text></g>
+<path class="hit" data-open="kpUp" d="M70 222 V294"><title>Click to open or repair CKP + (ECM side)</title></path>
+<path class="hit" data-open="kmUp" d="M190 222 V294"><title>Click to open or repair CKP − (ECM side)</title></path>
+<path class="hit" data-open="crUp" d="M312 250 V294"><title>Click to open or repair the CMP 5 V reference (ECM side)</title></path>
+<path class="hit" data-open="csUp" d="M404 250 V294"><title>Click to open or repair the CMP signal (ECM side)</title></path>
+<path class="hit" data-open="cgUp" d="M486 222 V294"><title>Click to open or repair the CMP low reference (ECM side)</title></path>`;
+
+const CKP = {
+  id: 'ckp', name: 'CKP / CMP', sub: 'VR crank + Hall cam', brandSub: 'Crank and cam circuits',
+  lib: { name: 'Crank & cam position (CKP / CMP)', type: '2-wire VR crank · 3-wire Hall cam', codes: 'P0016 · P0335 · P0336 · P0340' },
+  svg: CKP_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'scope',
+  readLabels: ['CKP · crank', 'CMP · cam', 'Engine sync'],
+  faults: [['kpUp', 'Open', 'CKP signal'], ['tooth', 'Damaged', 'Reluctor tooth'], ['inter', 'Intermittent', 'CKP terminal'], ['crUp', 'Open', 'CMP 5 V ref'], ['csG', 'Short to ground', 'CMP signal'], ['chain', 'Jumped a tooth', 'Timing chain']],
+  slider: { key: 'gap', label: 'CKP air gap · spec 0.5–1.5 mm', max: 2.5, step: 0.1, fmt: v => (0.8 + v).toFixed(1) + ' mm' },
+  opens: ['kpUp', 'kmUp', 'crUp', 'csUp', 'cgUp'],
+  excl: [],
+  names: { kpUp: 'CKP + open', kmUp: 'CKP − open', crUp: 'CMP 5 V reference open', csUp: 'CMP signal open', cgUp: 'CMP low reference open', tooth: 'damaged reluctor tooth', inter: 'loose CKP terminal at C1', csG: 'CMP signal shorted to ground', chain: 'timing chain jumped one tooth', gap: v => `CKP air gap ${(0.8 + v).toFixed(1)} mm` },
+  faultDefaults: () => ({ kpUp: false, kmUp: false, crUp: false, csUp: false, cgUp: false, tooth: false, inter: false, csG: false, chain: false, gap: 0 }),
+  initPhys: () => ({ eng: 'off', rpm: 0, rpmB: 0, rpmT: 700, dip: 0, crankT: 0, runT: 0, t0: 0, ang: Math.random() * 720, revT: 0, glT: 0, revN: 0, badN: 0, syncAcc: 0, synced: false, phaseOK: false, noFire: 0, camRevs: 0, camOff: 0, camSeen: false, lastCkT: -99, lastCmT: -99, lastN: 0, ckCnt: 0, cmCnt: 0, resync: 0, log: [], vis: Math.random() * 720, drop: null, stallWhy: '' }),
+  grads: { gPU: ['V5', 'SP'] },
+  flows: [['fCk', I => I.ck], ['fRef', I => I.rup], ['fGnd', I => I.gup], ['fSig', I => I.sup], ['fSG', I => I.sg]],
+  solve() {
+    const f = S.f, p = S.p, o = on();
+    if (S.key === 'run' && p.eng === 'crank') S.batt = 10.6;                     // starter load pulls the battery down
+    else if (S.key === 'run' && p.eng === 'stall') S.batt = 12.4;               // no alternator output
+    const base = [
+      ['V5', 'RP', 10, 'reg'], ['RP', 'RA', f.crUp ? OPEN : WIRE, 'rup'], ['RA', 'GS', CM_RQ, 'hall'],
+      ['GS', 'GA', 0.02, 'c2g'], ['GA', 'LP', f.cgUp ? OPEN : WIRE, 'gup'], ['LP', 'G', 0.1, 'lg'],
+      ['V5', 'SP', CM_PU, 'pu'], ['SP', 'SA', f.csUp ? OPEN : WIRE, 'sup'], ['SA', 'SS', 0.02, 'c2s'], ['SA', 'G', f.csG ? WIRE : OPEN, 'sg'],
+    ];
+    const nodes = ['RP', 'RA', 'GS', 'GA', 'LP', 'SP', 'SA', 'SS'], fx = { V5: o ? 5 : 0, G: 0 };
+    const hi = nodal(nodes, base.concat([['SS', 'GS', OPEN, 'out']]), fx);     // Hall output off: the pull-up wins
+    const pow = o && hi.v.RA - hi.v.GS > 4;                                      // the Hall IC needs its reference and ground to switch
+    const lo = pow ? nodal(nodes, base.concat([['SS', 'GS', CM_RON, 'out']]), fx) : hi;
+    const turning = p.rpm > 0, low = !turning && ckLobeUnder();
+    const sol = turning ? { v: avgMap(lo.v, hi.v, CM_SPAN / 720), I: avgMap(lo.I, hi.I, CM_SPAN / 720) } : low ? lo : hi;
+    S.cm = { pow, pinHi: hi.v.SP, pinLo: lo.v.SP, works: lo.v.SP < 1.5 && hi.v.SP > 3.5, low };
+    const vs = turning ? ckVpk(p.rpm) : 0, ve = ckLinked() && !S.glitch.open ? vs * 0.96 : 0;   // 850 Ω coil into a 20 kΩ input
+    S.ck = { vs, ve };
+    S.v = { ...sol.v, KE: ve / Math.SQRT2, KS: vs / Math.SQRT2 };
+    S.I = { ...sol.I, ck: ve / Math.SQRT2 / (CK_R + 20e3) };
+    S.vad = o ? sol.v.SP : null;
+  },
+  physics(dt) {
+    const p = S.p, f = S.f, g = S.glitch;
+    let done = 0;
+    while (done < dt - 1e-9) {
+      const h = Math.min(0.005, dt - done); done += h;
+      const now = S.t - dt + done;
+      if (S.key !== 'run') { p.eng = 'off'; p.rpm = 0; continue; }
+      if (p.eng === 'crank') {
+        p.crankT += h;
+        p.rpm = 195 + 25 * Math.sin(p.ang * Math.PI / 90);                        // compression pulses, 4 per cycle
+        if (p.syncAcc >= 3 && (p.phaseOK || p.crankT >= 3)) {                        // no cam: the ECM guesses phase after an extended crank
+          p.eng = 'run'; p.phaseOK = true; p.rpmB = 420; p.noFire = 0; p.runT = 0;
+          if (p.crankT > 2.2) toast(`Started after a ${p.crankT.toFixed(1)} s crank.`, 'warn');
+        } else if (p.crankT >= 10) { p.eng = 'stall'; p.stallWhy = 'nostart'; p.rpm = 0; p.synced = false; toast('Cranked 10 s with no start. Starter released.', 'warn'); }
+      } else if (p.eng === 'run') {
+        p.runT += h;
+        p.rpmB += (p.rpmT - p.rpmB) * (1 - Math.exp(-h * 2.5));
+        p.dip *= Math.exp(-h / 0.35);
+        const rough = (f.chain ? 22 : 0) + (f.tooth ? 14 : 0);
+        p.rpm = Math.max(0, p.rpmB - p.dip + rough * Math.sin(now * 17) * Math.sin(now * 5.3));
+        if (p.noFire >= 8) p.eng = 'dying';
+      } else if (p.eng === 'dying') {
+        p.rpm *= Math.exp(-h / 0.4);
+        if (p.rpm < 60) { p.eng = 'stall'; p.stallWhy = 'stall'; p.rpm = 0; p.synced = false; toast('Engine stalled: the ECM lost the crank signal.', 'bad'); }
+      } else p.rpm = 0;
+      if (f.inter && p.rpm > 0) {                                                // engine vibration opens the loose terminal
+        if (!g.open && now >= g.next) { g.open = true; g.until = now + 0.04 + Math.random() * 0.16; p.drop = { t: now, x: 60 + Math.random() * 520, w: Math.max(8, (g.until - now) * p.rpm * 6) }; }
+        else if (g.open && now >= g.until) { g.open = false; g.next = now + 1 + Math.random() * 2.5; }
+      } else g.open = false;
+      if (!(p.rpm > 0)) continue;
+      if (g.open) p.glT += h;
+      p.revT += h;
+      const a0 = p.ang; p.ang += p.rpm * 6 * h;
+      const ce = CM_EDGE + (f.chain ? CK_JUMP : 0);
+      if (Math.floor((p.ang - ce) / 720) > Math.floor((a0 - ce) / 720)) ckCam(now);
+      if (Math.floor(p.ang / 360) > Math.floor(a0 / 360)) ckRev(now);
+    }
+  },
+  inputHTML: '<label for="rpmIn">Engine rpm</label><input type="range" id="rpmIn" min="700" max="3000" step="50" value="700" aria-label="Engine speed"><output id="rpmOut" for="rpmIn">700</output><button class="btn small" id="btnIdle">Idle</button><button class="btn small" id="btn25">2,500</button><button class="btn small primary" id="btnCrank" title="Engage the starter">Crank</button>',
+  bindInputs() {
+    const r = $('#rpmIn');
+    r.addEventListener('pointerdown', () => thrDrag = true);
+    addEventListener('pointerup', () => thrDrag = false);
+    r.addEventListener('input', e => { S.p.rpmT = +e.target.value; });
+    $('#btnIdle').addEventListener('click', () => setRpm(700));
+    $('#btn25').addEventListener('click', () => setRpm(2500));
+    $('#btnCrank').addEventListener('click', ckCrank);
+  },
+  syncInputs() {
+    const r = $('#rpmIn'); if (!r) return;
+    if (!thrDrag) r.value = S.p.rpmT;
+    $('#rpmOut').textContent = S.p.rpmT;
+  },
+  onStart() {
+    const p = S.p;
+    if (p.eng !== 'off') return;                                                 // clearing codes doesn't restart a running engine
+    Object.assign(p, { eng: 'crank', crankT: 0, syncAcc: 0, synced: false, phaseOK: false, noFire: 0, dip: 0, runT: 0, camRevs: 0, camSeen: false, revT: 0, glT: 0, t0: S.t, stallWhy: '' });
+  },
+  onOff() { Object.assign(S.p, { eng: 'off', rpm: 0, synced: false, phaseOK: false, camSeen: false }); },
+  onClear() { const m = S.M.P0336; m.rev0 = null; m.result = null; },
+  barText() { const p = S.p; return S.key !== 'run' ? null : p.eng === 'crank' ? `Cranking ${p.crankT.toFixed(1)} s` : p.eng === 'stall' ? 'Stalled · key on' : 'Engine ' + mmss(p.runT); },
+  monitors: [
+    { code: 'P0335', name: 'Crankshaft position sensor A circuit', kind: 'Continuous', trips: 1, mat: 2, labels: ['Enable', 'Listen', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const p = S.p, en = on() && S.batt >= 10 && (p.eng === 'crank' || S.t - p.lastCmT < 1 || ckSigNow()); circ(m, en, en && S.t - Math.max(p.lastCkT, p.t0) > 0.5, dt); },
+      view(m) {
+        const p = S.p, crit = [['Ignition on', on()], ['Engine cranking or running (starter, cam or crank pulses)', on() && (p.eng === 'crank' || S.t - p.lastCmT < 1 || ckSigNow())], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Fails when no crank pulses arrive for 0.5 s, for 2.0 s in a row', null]];
+        if (!m.en) return waitView(crit, on() ? 'Waits for the engine to turn: starter on, or cam pulses.' : 'Ignition off. Test not running.');
+        return ckView(m, S.t - Math.max(p.lastCkT, p.t0) > 0.5, 'No crank pulses', 'Crank pulses arriving.', crit);
+      } },
+    { code: 'P0336', name: 'Crankshaft position sensor A range/performance', kind: 'Continuous', trips: 2, mat: 0, labels: ['Enable', 'Count', 'Compare', 'Result'], bar: 1,
+      run(m) {
+        const p = S.p;
+        m.en = on() && S.batt >= 10 && p.eng === 'run' && ckSigNow() && !S.M.P0335.failing;
+        if (!m.en) { m.rev0 = null; return; }
+        if (m.rev0 == null) { m.rev0 = p.revN; m.bad0 = p.badN; }
+        m.revs = p.revN - m.rev0;
+        if (m.revs < 50) return;
+        const n = m.result = p.badN - m.bad0;
+        m.rev0 = p.revN; m.bad0 = p.badN; m.revs = 0;
+        if (n >= 3) fail(m); else { m.failing = false; m.passedTrip = true; }
+      },
+      view(m) {
+        const p = S.p, crit = [['Engine running (not cranking) with crank pulses', p.eng === 'run' && ckSigNow()], ['P0335 not failing', !S.M.P0335.failing], ['Counts teeth between gaps: 35 expected every turn', null], ['Fails when 3 or more of 50 turns have the wrong count', null]];
+        if (!m.en) return waitView(crit, p.eng === 'crank' ? 'Waits until the engine is running.' : p.rpm > 0 ? 'Suspended: no crank signal.' : 'Runs with the engine running.');
+        const n = p.badN - (m.bad0 ?? p.badN), frac = clamp((m.revs || 0) / 50, 0, 1), cnt = `${m.revs || 0}/50 turns, ${n} wrong`;
+        if (m.failing) return { st: ['ok', 'run', 'bad', 'bad'], frac, pill: ['Failed', 'bad'], det: `Last block: ${m.result} wrong counts · now ${cnt}`, crit };
+        if (m.result != null) return { st: ['ok', 'run', 'ok', 'ok'], frac, pill: ['Passing', 'ok'], det: `Last block: ${m.result} wrong (under 3) · now ${cnt}`, crit };
+        return { st: ['ok', 'run', '', ''], frac, pill: ['Counting', 'run'], det: `Counting: ${cnt}`, crit };
+      } },
+    { code: 'P0340', name: 'Camshaft position sensor A circuit', kind: 'Continuous', trips: 2, mat: 2, labels: ['Enable', 'Listen', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const p = S.p, en = on() && S.batt >= 10 && p.rpm > 0 && ckSigNow() && p.synced; circ(m, en, en && p.camRevs > 4, dt); },
+      view(m) {
+        const p = S.p, crit = [['Engine turning with crank sync', p.rpm > 0 && ckSigNow() && p.synced], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Expects one cam edge every 2 crank turns', null], ['Fails when 4 crank turns pass with no cam edge, for 2.0 s', null]];
+        if (!m.en) return waitView(crit, p.rpm > 0 ? 'Needs crank sync to check the cam.' : 'Runs while the engine turns.');
+        return ckView(m, p.camRevs > 4, `No cam edge in ${Math.min(p.camRevs, 99)} crank turns`, 'A cam edge every 2 crank turns.', crit);
+      } },
+    { code: 'P0016', name: 'Crank/cam position correlation, bank 1 sensor A', kind: 'Continuous', trips: 2, mat: 3, labels: ['Enable', 'Compare', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const p = S.p, en = on() && p.eng === 'run' && p.runT >= 5 && ckSigNow() && p.camSeen && p.camRevs <= 4 && !['P0335', 'P0336', 'P0340'].some(c => S.M[c].failing); circ(m, en, en && Math.abs(p.camOff) > 10, dt); },
+      view(m) {
+        const p = S.p, crit = [['Engine running 5 s or more', p.eng === 'run' && p.runT >= 5], ['Crank and cam signals both present', p.rpm > 0 && ckSigNow() && p.camSeen && p.camRevs <= 4], ['No crank or cam circuit code failing', !['P0335', 'P0336', 'P0340'].some(c => S.M[c].failing)], ['Fails when the cam edge is more than 10° from spec for 3.0 s', null]];
+        if (!m.en) return waitView(crit, p.eng === 'run' ? 'Waits for 5 s of run time and both signals.' : 'Runs with the engine running.');
+        return ckView(m, Math.abs(p.camOff) > 10, `Cam edge ${ckCamTxt()} from spec`, `Cam edge ${ckCamTxt()} from spec (limit 10°).`, crit);
+      } },
+  ],
+  visual(dt = 0) {
+    const p = S.p, f = S.f, cm = S.cm;
+    if (!S.paused) p.vis = (p.vis + dt * p.rpm * 6 / 40) % 1440;
+    $('#ckWheel').setAttribute('transform', `translate(130 ${(482 + 6 + f.gap * 6).toFixed(1)})`);
+    $('#ckRot').setAttribute('transform', `rotate(${p.vis.toFixed(2)})`);
+    $('#cmRot').setAttribute('transform', `rotate(${(p.vis / 2 + (f.chain ? -9 : 0)).toFixed(2)})`);
+    $('#ckT31').style.display = f.tooth ? 'none' : ''; $('#ckT31b').style.display = f.tooth ? '' : 'none';
+    const rel = (((270 - p.vis) % 360) + 360) % 360, k = Math.round(rel / 10) % 36;
+    const near = Math.abs(rel - Math.round(rel / 10) * 10) < 2.6 && k !== 35 && !(f.tooth && k === CK_BAD);
+    $('#tip').style.opacity = near && S.ck.vs > 0.1 ? Math.min(1, 0.4 + S.ck.vs / 3).toFixed(2) : 0;
+    const out = cm.pow && ckLobeUnder();
+    $('#hallOut').textContent = !on() ? '—' : !cm.pow ? 'NO POWER' : out ? 'OUT ON · LOW' : 'OUT OFF · HIGH';
+    $('#hallOut').style.fill = on() && !cm.pow ? '#FF8A80' : out ? '#8CCBF3' : '';
+    $('#chainP').style.stroke = f.chain ? '#FF5A4E' : '';
+    $('#interSpark').style.display = S.glitch.open ? '' : 'none';
+    $('#g-inter').classList.toggle('on', f.inter);
+    $('#g-shortg').classList.toggle('on', f.csG);
+  },
+  text() {
+    const p = S.p, v = S.v, f = S.f, o = on(), V = S.ck.ve, sig = ckSigNow(), RED = '#FF8A80';
+    $('#tpKv').textContent = (V / Math.SQRT2).toFixed(2) + ' V AC';
+    $('#tpRv').textContent = fmtV(v.RP); $('#tpSv').textContent = fmtV(v.SP);
+    [['tpK', 'KE'], ['tpR', 'RP'], ['tpS', 'SP']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
+    $('#ckThr').textContent = o ? `ARM ±${ckThr(V).toFixed(2)} V` : 'ASLEEP';
+    const turning = p.rpm > 0, camOK = S.t - p.lastCmT < 1;
+    $('#syncLbl').textContent = !o ? '—' : !turning ? 'NO TEETH' : !sig ? 'NO SIGNAL' : p.synced ? 'GAP ✓' : 'NO GAP';
+    $('#syncLbl').style.fill = o && turning && !(sig && p.synced) ? RED : '';
+    $('#camLbl').textContent = !o ? '—' : !turning ? 'CAM —' : camOK ? 'CAM ✓' : 'CAM ✕';
+    $('#camLbl').style.fill = o && turning && !camOK ? RED : '';
+    const fire = (p.eng === 'run' || p.eng === 'crank') && p.synced;
+    $('#sparkLbl').textContent = !o ? '—' : fire ? 'FIRING' : p.eng === 'crank' ? 'WAITING' : S.key === 'run' ? 'CUT' : 'OFF';
+    $('#sparkLbl').style.fill = o && S.key === 'run' && !fire && p.eng !== 'crank' ? RED : '';
+    $('#vrLbl').textContent = turning ? (S.ck.vs / Math.SQRT2).toFixed(2) + ' V AC' : CK_R + ' Ω';
+    $('#gapLbl').textContent = (0.8 + f.gap).toFixed(1) + ' mm';
+    $('#gapLbl').style.fill = 0.8 + f.gap > 1.5 ? RED : '';
+    $('#revLbl').textContent = p.log.length ? `${p.lastN} of 35` : '—';
+    $('#revLbl').style.fill = p.log.length && p.lastN !== CK_EXP ? RED : '';
+    for (let i = 0; i < 24; i++) { const e = p.log[i]; $('#cl' + i).style.fill = e == null ? '#18212B' : ['rgba(61,220,151,.75)', '#FFB224', '#FF5A4E', '#6E2A26'][e]; }
+    $('#chainLbl').textContent = f.chain ? '1 TOOTH OFF · 18° LATE' : 'IN TIME';
+    $('#chainLbl').style.fill = f.chain ? RED : '';
+  },
+  chart: {
+    trig: { ms: 720, t0: 0, step: 90, xLabel: 'crank degrees · one engine cycle · triggered on the gap', aMin: -1, aMax: 1, aTicks: [-1, -0.5, 0, 0.5, 1], aUnit: 'V', noZones: true, col1: '#FFC766',
+      curveX: { ms: 120, step: 20, xLabel: 'crank degrees · zoomed on the gap', lbl: t => ((t + 300) % 360) + '°' },
+      range: () => { const V = S.p.rpm > 0 && ckLinked() ? ckVpk(S.p.rpm) * 0.96 * 1.4 : 0; return [1, 2, 5, 10, 20].find(r => r >= V * 1.05) || 20; } },
+    dual: true, vMax: 10, yTicks: [], yUnit: '', hi: [10, ''], lo: [0, ''],
+    tabs: { scope: 'Crank + cam', curve: 'CKP detail' }, first: 'scope',
+    titles: { scope: 'CKP and CMP · one engine cycle', curve: 'CKP at the ECM · around the gap' },
+    aria: 'Triggered scope capture: crank and cam signals over one engine cycle, or the crank signal zoomed on the missing-tooth gap',
+    trace: ckTrace, annot: ckAnnot,
+    curve: () => [], readX: () => 0, actualX: () => 0,
+  },
+  readouts() {
+    const o = on(), p = S.p, cm = S.cm, turning = p.rpm > 0;
+    if (!o) return [{ v: '—', s: 'Module asleep', cls: '' }, { v: '—', s: '—', cls: '' }, { v: '—', s: '—', cls: '' }];
+    const V = S.ck.ve, hz = Math.round(p.rpm * 36 / 60), sig = ckSigNow();
+    const r0 = !turning ? { v: '0.0 V', s: 'Not turning · no teeth moving', cls: '' }
+      : !sig ? { v: 'NO SIGNAL', s: 'Engine turning · no crank pulses', cls: 'alert' }
+      : { v: V.toFixed(1) + ' V pk', s: `${p.lastN}/35 teeth · ${hz} Hz`, cls: p.lastN !== CK_EXP ? 'alert' : '' };
+    const r1 = !turning ? { v: fmtV(S.v.SP), s: cm.pow ? 'Stopped · Hall holds a steady level' : 'Stopped · sensor has no power', cls: '' }
+      : !cm.works ? { v: cm.pinHi > 2.5 ? 'STUCK HIGH' : 'STUCK LOW', s: `No edges · pin at ${fmtV(cm.pinHi)}`, cls: 'alert' }
+      : !sig || !p.camSeen ? { v: 'PULSING', s: 'No crank to place edges', cls: '' }
+      : { v: 'PULSING', s: `Cam edge at ${Math.round(CM_EDGE + p.camOff)}°`, cls: Math.abs(p.camOff) > 10 ? 'alert' : '' };
+    let r2 = { v: '—', s: 'Engine off', cls: '' };
+    if (p.eng === 'crank') r2 = { v: p.synced ? 'SYNCED' : 'SEARCHING', s: `Cranking ${p.crankT.toFixed(1)} s` + (p.synced && !p.phaseOK ? ' · no cam phase' : ''), cls: p.crankT > 2.2 ? 'subst' : '' };
+    else if (p.eng === 'run') r2 = !p.synced ? { v: 'RESYNC', s: 'Lost the gap · spark and fuel cut', cls: 'alert' } : p.camRevs > 4 ? { v: 'CRANK ONLY', s: 'Phase from memory · no cam', cls: 'subst' } : { v: 'SYNCED', s: 'Spark + fuel timed', cls: '' };
+    else if (p.eng === 'dying' || p.eng === 'stall') r2 = { v: 'NO SYNC', s: 'Spark and fuel cut', cls: 'alert' };
+    return [r0, r1, r2];
+  },
+  dataRows() {
+    const p = S.p, lost = p.rpm > 0 && !ckSigNow();
+    return [
+      ['Engine speed', ckRpm() + ' rpm', lost ? 'bad' : ''], ['Engine state', CK_EST[p.eng], p.eng === 'stall' || p.eng === 'dying' ? 'bad' : ''],
+      ['Starter command', p.eng === 'crank' ? 'ON' : 'OFF', ''], ['CKP active counter', String(p.ckCnt), lost ? 'bad' : ''],
+      ['CKP resync counter', String(p.resync), p.resync ? 'flag' : ''], ['CMP active counter', String(p.cmCnt), p.rpm > 0 && S.t - p.lastCmT > 1 ? 'bad' : ''],
+      ['Cam position vs spec', ckCamTxt(), Math.abs(p.camOff) > 10 && p.camSeen ? 'bad' : ''], ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
+    ];
+  },
+  ffRows: () => [['Engine speed', ckRpm() + ' rpm'], ['Engine state', CK_EST[S.p.eng]], ['Crank time', S.p.eng === 'crank' ? S.p.crankT.toFixed(1) + ' s' : '—'], ['CKP active', String(S.p.ckCnt)], ['CMP active', String(S.p.cmCnt)], ['Cam vs spec', ckCamTxt()], ['Ignition V', S.batt.toFixed(1) + ' V']],
+  dash: {
+    lo: '0', hi: '4k', hot: null,
+    frac: () => on() ? clamp(ckRpm() / 4000, 0, 1) : null,
+    text: () => on() ? ckRpm() + ' rpm' : '—',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" d="M3 10h2V8h3V6h6v2h2l2 2h1V8h2v8h-2v-2h-1l-2 3H8l-3-3H3z"/></svg>',
+    t2on: () => ckStatus()[1],
+    t2text: () => ckStatus()[0],
+  },
+};
+CKP.lesson = [
+  { title: 'Meet the crank and cam sensors',
+    body: 'To time spark and fuel, the ECM has to know <b>exactly where the crankshaft is</b>. The <b>crankshaft position (CKP)</b> sensor reads a toothed wheel with 36 tooth spaces and one tooth missing (<b>36−1</b>). The gap marks one known crank position. The <b>camshaft position (CMP)</b> sensor tells the ECM which of the two crank turns is the compression stroke.',
+    setup() { fullReset(); setRpm(700); setSpeed(1); setChart('scope'); }, spot: ['g-ckp', 'g-cmp'] },
+  { title: 'Two kinds of sensor',
+    body: 'This CKP is a <b>magnetic (VR) sensor</b>: a magnet and a coil, with no power feed. Each tooth that passes makes a small <b>AC voltage</b>. The CMP is a <b>Hall-effect sensor</b>. It gets a <b>5 V reference</b> and a ground, and it switches its signal wire to ground while the cam tooth passes. The ECM pulls that wire up to 5 V, so it reads a <b>square wave</b>.',
+    spot: ['g-ckin', 'g-ref5', 'g-cmin'] },
+  { title: 'Read the pattern',
+    body: 'The scope shows one full engine cycle: <b>720°</b>, which is two crank turns and one cam turn. The yellow trace is the crank signal, with a <b>gap</b> once per turn. The blue trace is the cam signal, with one pulse per cycle. Its edge should land <b>90° after the gap</b>. Now open the <b>CKP detail</b> tab to zoom in on the gap.',
+    setup() { setChart('scope'); }, spot: ['chartBox'],
+    goal: { text: 'Open the CKP detail tab', test: () => S.chart === 'curve' } },
+  { title: 'Speed makes voltage',
+    body: 'A VR sensor only makes voltage while the teeth are moving, and <b>faster teeth make more voltage</b>. Each tooth crosses zero at its center, and that\'s the edge the ECM counts. Its <b>adaptive threshold</b> rises with the signal, so noise isn\'t counted as a tooth. Raise the engine to <b>2,500 rpm</b> and watch the peak voltage climb.',
+    setup() { setChart('curve'); }, spot: ['inputRow', 'read0'],
+    goal: { text: 'Crank signal above 10 V peak', test: () => S.ck.ve > 10 } },
+  { title: 'Predict: the crank signal wire breaks',
+    body: 'We\'re back at idle. The CKP signal wire is about to break between the sensor and the ECM, with the engine running.',
+    setup() { setRpm(700); setChart('scope'); },
+    ask: { q: 'What will the engine do?', opts: ['Keep running and set a code', 'Stall', 'Run on the cam sensor'], ans: 1,
+      why: 'With no crank teeth, the ECM loses track of engine position, so it can\'t time spark or fuel. It cuts both, and the engine stalls within a second. A few engines can limp along on the cam signal, but most stall.',
+      apply() { setFault('kpUp', true); } },
+    spot: ['tpK', 'read2'] },
+  { title: 'Crank, no start: P0335',
+    body: 'Click <b>Crank</b>. The engine turns, but look at the tach and the scan tool: <b>0 rpm</b>. The ECM gets engine speed from the CKP, so it can\'t see the engine turning. The <b>cam sensor is still pulsing</b>, though. Cam pulses with no crank pulses for 2 seconds sets <b>P0335</b>.',
+    setup() { if (!S.f.kpUp) setFault('kpUp', true); }, spot: ['btnCrank', 'mon-P0335', 'dash'],
+    goal: { text: 'P0335 sets while cranking', test: () => S.M.P0335.confirmed } },
+  { title: 'Predict: the cam sensor loses power',
+    body: 'We repaired the wire, cleared the codes and restarted the engine. Now the CMP sensor\'s <b>5 V reference</b> is about to open.',
+    setup() { clearFaults(); clearDTCs(true); coldStart(); setChart('scope'); },
+    ask: { q: 'What happens?', opts: ['The engine stalls', 'It keeps running', 'It runs rough'], ans: 1,
+      why: 'The ECM already knows which turn is the compression stroke, and it keeps counting from the crank signal. The engine keeps running, but the ECM can\'t check the cam anymore.',
+      apply() { setFault('crUp', true); } },
+    spot: ['g-ref5', 'g-cmp'] },
+  { title: 'P0340 and a long crank',
+    body: 'With no power, the Hall sensor can\'t switch, so the ECM\'s pull-up holds the signal at a steady <b>5 V</b>. The crank signal is fine, so <b>P0340</b> matures and is stored as <b>pending</b>. Now click <b>Next trip</b>. Without the cam, the ECM has to guess engine phase, so the engine cranks about <b>3 seconds</b> before it starts. The test fails again, and P0340 is confirmed.',
+    setup() { if (!S.f.crUp) setFault('crUp', true); }, spot: ['mon-P0340', 'read1', 'btnNext'],
+    goal: { text: 'P0340 confirmed', test: () => S.M.P0340.confirmed } },
+  { title: 'Predict: a weak crank signal',
+    body: 'We repaired the reference and cleared the codes. Now the CKP sensor isn\'t fully seated, so the air gap is <b>1.7 mm</b>, just past the 1.5 mm limit. We\'ll shut the engine off and restart it.',
+    setup() { clearFaults(); clearDTCs(true); setChart('curve'); },
+    ask: { q: 'When will the weak signal cause trouble?', opts: ['At high rpm', 'While cranking', 'Never'], ans: 1,
+      why: 'Cranking is the slowest the teeth ever move, so it makes the weakest signal. Near the arming threshold, the ECM misses teeth and can\'t find the gap, so the engine cranks a long time. Once it starts, the faster teeth make plenty of voltage.',
+      apply() { S.f.gap = 0.9; syncFaultUI(); coldStart(); } },
+    spot: ['g-ckp', 'gapLbl'] },
+  { title: 'A long crank, and no code',
+    body: 'Watch the <b>teeth per rev</b> squares and the CKP detail. While cranking, the signal barely clears the threshold, so the ECM misses teeth and has to wait for a clean turn. Once the engine starts, it runs fine and <b>no code sets</b>. A hard start like this is found with a meter or a scope <b>while cranking</b>: check the AC voltage at the sensor, then the air gap.',
+    setup() { if (!S.f.gap) { S.f.gap = 0.9; syncFaultUI(); coldStart(); } setChart('curve'); }, spot: ['read0', 'chartBox'],
+    goal: { text: 'The engine starts', test: () => S.p.eng === 'run' } },
+  { title: 'Both signals good, code anyway: P0016',
+    body: 'Now the wiring is perfect, but the <b>timing chain has jumped one tooth</b>. Both sensors work, yet on the scope the cam edge lands <b>18° late</b>. When the cam and crank disagree by more than 10°, <b>P0016</b> sets. That\'s a mechanical fault, and a new sensor won\'t fix it.',
+    setup() { clearFaults(); clearDTCs(true); if (S.p.eng !== 'run') coldStart(); setFault('chain', true); setChart('scope'); }, spot: ['chartBox', 'mon-P0016', 'g-chain'],
+    goal: { text: 'P0016 stored as pending', test: () => S.M.P0016.pending || S.M.P0016.confirmed } },
+  { title: 'Reading crank and cam faults',
+    body: '<b>No rpm while cranking</b> points to the crank signal: the CKP sensor, its wiring or the reluctor. <b>RPM shows but it cranks long</b> points to the cam signal, or a weak crank signal, so check AC volts or the scope while cranking. A <b>correlation code</b> like P0016 means both signals arrive but don\'t line up. Check mechanical timing before replacing parts.',
+    final: true, alt: { label: 'Fuel pump lesson ▸', go() { switchSensor('fp'); } } },
+];
+
+/* ================= Fuel pump: relay control (low-side driver) + high-current load, with feed sense and rail pressure ================= */
+const FP_R = 2.2, FP_COIL = 80, FP_DES = 58, FP_LOW = 48;                        // pump running resistance Ω, relay coil Ω, desired and P0087 psi
+const FP_EST = { off: 'Off', crank: 'Cranking', run: 'Running', stall: 'Stalled' };
+const FP_DIAG = { ok: 'OK', open: 'Open', low: 'Short to ground' };
+const fpPrpm = () => 5000 * clamp((S.fp.pumpV - 2) / 11.2, 0.1, 1.2);            // pump motor speed follows its voltage
+function fpCrank() {
+  if (S.key !== 'run') { setKey('run'); return; }
+  if (S.p.eng === 'stall') { S.p.eng = 'off'; FP.onStart(); }
+  else toast('The engine is already turning.');
+}
+function fpStatus() {
+  const p = S.p, run = S.fp.ip > 0.5;
+  if (!on()) return [run ? 'Pump running · key off' : 'Engine off', run];
+  if (p.eng === 'crank') return [p.crankT > 2 ? 'Long crank…' : 'Cranking', true];
+  if (p.eng === 'stall') return [p.stallWhy === 'nostart' ? 'Cranks · no start' : 'Stalled', true];
+  if (p.eng === 'run') return [p.rough > 0.05 ? 'Stumbling · lean' : 'Running · pump on', p.rough > 0.05 || run];
+  return [run ? (p.cmd ? 'Pump priming' : 'Pump on · not commanded') : 'Pump off', run];
+}
+/* Amp-probe capture of pump current: DC with one ripple hump per commutator segment */
+function fpTrace(kind) {
+  const p = S.p, s = S.fp, pts = [];
+  if (kind === 'a') {
+    const hs = p.hist, now = S.clock;
+    for (const [t, P] of hs) { const x = 10 - (now - t); if (x >= 0) pts.push([x, P]); }
+    return pts.length ? pts : [[0, 0], [10, 0]];
+  }
+  const nz = () => (Math.random() - 0.5) * 0.08;
+  if (s.ip < 0.05) { for (let t = 0; t <= 20; t += 0.5) pts.push([t, Math.max(0, nz())]); return pts; }
+  const T = 60000 / fpPrpm() / 8, ph = p.cph;
+  for (let t = 0; t <= 20 + 1e-9; t += 0.04) {
+    const w = t / T + ph, k = ((Math.floor(w) % 8) + 8) % 8, u = w - Math.floor(w), bad = S.f.worn && k === 3;
+    pts.push([t, s.ip * (0.93 + 0.14 * Math.sin(Math.PI * u) * (bad ? 0.15 : 1) - (bad ? 0.07 : 0)) + nz()]);
+  }
+  return pts;
+}
+function fpAnnot(mode) {
+  const p = S.p, s = S.fp, f = S.f;
+  const tx = (x, y, str, fill, a = 'start') => `<text class="ann" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" style="fill:${fill}">${str}</text>`;
+  const RED = '#FF8A80', DIM = '#8A98A8', BLU = '#8CCBF3', YEL = '#FFC766', GRN = '#7BE3B4';
+  let h = '';
+  if (mode === 'scope') {
+    h += `<rect x="${CH.x0}" y="${cy(8).toFixed(1)}" width="${CH.x1 - CH.x0}" height="${(cy(4) - cy(8)).toFixed(1)}" fill="rgba(61,220,151,.07)"/>` + tx(CH.x1 - 4, cy(8) - 4, 'TYPICAL 4–8 A', GRN, 'end');
+    if (s.ip < 0.05) {
+      const m = s.sense > 8 ? ['VOLTAGE AT THE RELAY OUTPUT · NO CURRENT FLOWING', RED] : p.cmd && on() ? ['COMMANDED ON · NO VOLTAGE REACHES THE PUMP', RED] : ['PUMP OFF · NO CURRENT', DIM];
+      h += tx(cx(10), cy(2), m[0], m[1], 'middle');
+    } else {
+      const hz = fpPrpm() / 60 * 8;
+      h += tx(CH.x0 + 4, CH.y0 + 9, `${s.ip.toFixed(1)} A AVERAGE · ${Math.round(hz)} HZ RIPPLE`, DIM) + tx(CH.x0 + 4, CH.y0 + 20, `8 SEGMENTS × ${Math.round(fpPrpm()).toLocaleString()} PUMP RPM`, DIM);
+      if (f.worn) { const T = 60000 / fpPrpm() / 8; for (let k = 0; k < 40; k++) { const t = (k * 8 + 3 - p.cph + 0.5) * T; if (t > 0.3 && t < 19.7) h += tx(cx(t), cy(s.ip * 0.8) + 12, '▲', RED, 'middle'); } h += tx(CH.x1 - 4, CH.y1 - 5, '▲ WEAK SEGMENT · SAME SPOT EVERY TURN', RED, 'end'); }
+      if (!on()) h += tx(cx(10), cy(s.ip) - 14, 'KEY OFF · PUMP STILL RUNNING', RED, 'middle');
+    }
+  } else {
+    const y55 = ay(62), y62 = ay(55);
+    h += `<rect x="${CH.x0}" y="${y55.toFixed(1)}" width="${CH.x1 - CH.x0}" height="${(y62 - y55).toFixed(1)}" fill="rgba(61,220,151,.10)"/>`;
+    h += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${ay(FP_DES).toFixed(1)}" y2="${ay(FP_DES).toFixed(1)}" stroke="${BLU}" stroke-dasharray="3 3" stroke-width="1" opacity=".8"/>` + tx(CH.x0 + 4, ay(FP_DES) - 4, 'DESIRED 58 PSI', BLU);
+    h += `<line x1="${CH.x0}" x2="${CH.x1}" y1="${ay(FP_LOW).toFixed(1)}" y2="${ay(FP_LOW).toFixed(1)}" stroke="#FF5A4E" stroke-dasharray="3 3" stroke-width="1" opacity=".8"/>` + tx(CH.x0 + 4, ay(FP_LOW) + 11, 'P0087 · BELOW 48 PSI', RED);
+    h += tx(CH.x1 - 4, CH.y0 + 9, `${Math.round(p.P)} PSI NOW`, p.P < FP_LOW ? RED : DIM, 'end');
+  }
+  return h;
+}
+
+const FP_SVG = `
+<defs>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#17202A"/></pattern>
+  <linearGradient id="gBI" gradientUnits="userSpaceOnUse" x1="263" y1="80" x2="263" y2="108"><stop offset="0" id="gBI0" stop-color="#2c3e50"/><stop offset="1" id="gBI1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gCO" gradientUnits="userSpaceOnUse" x1="384" y1="186" x2="384" y2="238"><stop offset="0" id="gCO0" stop-color="#2c3e50"/><stop offset="1" id="gCO1" stop-color="#2c3e50"/></linearGradient>
+  <linearGradient id="gHR" gradientUnits="userSpaceOnUse" x1="300" y1="506" x2="280" y2="506"><stop offset="0" id="gHR0" stop-color="#2c3e50"/><stop offset="1" id="gHR1" stop-color="#2c3e50"/></linearGradient>
+</defs>
+<rect width="520" height="552" fill="url(#dots)"/>
+<rect x="20" y="16" width="320" height="200" rx="14" class="ecm"/>
+<text x="40" y="45" class="t-title">ECM</text>
+<text x="92" y="44" class="t-sub">ENGINE CONTROL MODULE</text>
+<g id="g-mon"><rect x="150" y="60" width="76" height="32" rx="7" class="blk"/><text x="188" y="76" class="t-blk" text-anchor="middle">FP MON</text><text x="188" y="87" class="t-tiny" text-anchor="middle">FEED SENSE</text></g>
+<g id="g-bias"><rect x="228" y="56" width="70" height="24" rx="6" class="blk"/><text x="263" y="72" class="t-blk" text-anchor="middle">BIAS 3 V</text><text x="252" y="98" class="t-tiny" text-anchor="end">20 kΩ</text></g>
+<g id="g-driver">
+  <text x="40" y="120" class="t-tiny">RELAY DRIVER · LOW SIDE</text>
+  <text x="40" y="136" class="t-mono" id="cmdLbl" style="font-size:10px">CMD OFF</text>
+  <text x="40" y="150" class="t-tiny">CHECKS FOR OPEN / SHORT</text>
+  <path class="gnd" d="M228 148 H252 M232 153 H248 M236 158 H244"/>
+</g>
+<g id="g-frp"><rect x="36" y="172" width="74" height="26" rx="6" class="blk"/><text x="73" y="189" class="t-blk" text-anchor="middle">FRP IN</text></g>
+<text x="192" y="204" class="t-pin" text-anchor="end">FP MON</text>
+<text x="282" y="204" class="t-pin" text-anchor="end">FP RELAY</text>
+<path d="M57 198 V436" fill="none" stroke="#2A3644" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="64" y="284" class="t-tiny">FRP SIGNAL · 3-WIRE</text>
+<g id="g-fuses">
+  <rect x="352" y="16" width="154" height="112" rx="12" class="ecm"/>
+  <text x="364" y="34" class="t-blk">FUSE BLOCK</text>
+  <text x="384" y="48" class="t-tiny" text-anchor="middle">IGN</text>
+  <text x="474" y="48" class="t-tiny" text-anchor="middle">B+ HOT</text>
+  <rect x="376" y="62" width="16" height="36" rx="3" class="blk"/><rect x="466" y="62" width="16" height="36" rx="3" class="blk"/>
+  <text x="398" y="76" class="t-tiny">F2 · 10 A</text>
+  <text x="460" y="96" class="t-tiny" text-anchor="end">F1 · 20 A</text>
+</g>
+<g id="g-relay">
+  <rect x="352" y="140" width="154" height="150" rx="12" class="conn"/>
+  <text x="429" y="162" class="t-blk" text-anchor="middle">FP RELAY</text>
+  <text x="392" y="180" class="t-tiny">86</text><text x="392" y="252" class="t-tiny">85</text>
+  <text x="482" y="180" class="t-tiny">30</text><text x="482" y="252" class="t-tiny">87</text>
+  <path d="M400 212 H456" stroke="#3a4a5c" stroke-width="1.2" stroke-dasharray="2 3"/>
+  <text x="429" y="236" class="t-tiny" text-anchor="middle" id="g-stuck" style="fill:#FF8A80;display:none">WELDED</text>
+</g>
+<g id="g-legend">
+  <rect x="72" y="332" width="118" height="84" rx="10" fill="#0E151C" stroke="#1D2732"/>
+  <text x="82" y="349" class="t-tiny">TWO CIRCUITS</text>
+  <text x="82" y="367" class="t-tiny" style="fill:#8CCBF3">CONTROL · COIL</text>
+  <text x="82" y="380" class="t-mono" id="ctlA" style="font-size:10px">0 mA</text>
+  <text x="82" y="397" class="t-tiny" style="fill:#FFB08E">LOAD · PUMP</text>
+  <text x="82" y="410" class="t-mono" id="loadA" style="font-size:10px">0.0 A</text>
+</g>
+<rect x="420" y="340" width="86" height="26" rx="8" class="conn"/><text x="428" y="357" class="t-blk">C1</text>
+<text x="304" y="396" class="t-tiny" id="koWarn" style="fill:#FF8A80;display:none">PUMP RUNNING · KEY OFF</text>
+<g id="g-pump">
+  <rect x="300" y="404" width="206" height="140" rx="14" class="sensor"/>
+  <text x="310" y="421" class="t-sub">PUMP MODULE</text>
+  <circle cx="474" cy="470" r="18" class="blk"/>
+  <g id="imp"><path d="M474 470 L474 456 M474 470 L486 477 M474 470 L462 477" stroke="#8A98A8" stroke-width="2" stroke-linecap="round"/></g>
+  <circle cx="474" cy="470" r="3" fill="#8A98A8"/>
+  <g id="pumpX" style="display:none"><path d="M464 460 l20 20 M484 460 l-20 20" stroke="#FF5A4E" stroke-width="2.4" stroke-linecap="round"/></g>
+  <text x="500" y="500" class="t-tiny" text-anchor="end" id="pumpNote" style="fill:#FF8A80"></text>
+  <text x="446" y="486" class="t-tiny" text-anchor="end">AMP CLAMP</text>
+  <text x="446" y="499" class="t-mono" text-anchor="end" id="ampLbl" style="font-size:10px">0.0 A</text>
+</g>
+<path d="M456 470 H232" fill="none" stroke="#16304a" stroke-width="7" stroke-linecap="round"/>
+<path id="fuelFlow" d="M456 470 H232" fill="none" stroke="#5FA8E0" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 9" opacity="0"/>
+<g id="g-rail">
+  <rect x="30" y="456" width="200" height="28" rx="8" fill="#141D27" stroke="#2B3847"/>
+  <text x="80" y="474" class="t-blk">FUEL RAIL</text>
+  <rect x="46" y="436" width="22" height="20" rx="4" class="blk"/><text x="72" y="450" class="t-tiny">FRP</text>
+  ${[80, 116, 152, 188].map(x => `<rect x="${x}" y="484" width="10" height="12" rx="2" fill="#6B7887"/>`).join('')}
+  <text x="130" y="518" class="t-mono" text-anchor="middle" id="railLbl" style="font-size:17px">0 psi</text>
+  <text x="130" y="532" class="t-tiny" text-anchor="middle">RAIL · DESIRED 58 PSI</text>
+  <rect x="40" y="538" width="180" height="5" rx="2.5" fill="#18212B"/><rect id="railBar" x="40" y="538" width="0" height="5" rx="2.5" fill="#2F9BE0"/>
+</g>
+<g>
+  <path class="w" data-n="BAT" d="M474 52 V62"/>
+  <path class="w" data-n="BAT" id="f1link" d="M474 62 V72 q-5 4 0 8 q5 4 0 8 V98"/>
+  <path class="w" data-n="R30" d="M474 98 V190"/>
+  <path class="w" data-n="R30" id="blade" d="M474 190 L459 224"/>
+  <path class="w" data-n="R87" d="M474 228 V298"/>
+  <path class="w" data-n="R87" id="br-feedUp" d="M474 298 V306"/>
+  <path class="w" data-n="SPL" d="M474 306 V340"/>
+  <path class="w" data-n="SPL" d="M474 318 H200 V92"/>
+  <path class="w" data-n="FB" d="M474 340 V394"/>
+  <path class="w" data-n="FB" id="br-feedLo" d="M474 394 V402"/>
+  <path class="w" data-n="PP" d="M474 402 V452"/>
+  <path class="w" data-n="PG" d="M474 488 V506 H380"/>
+  <path class="w" data-n="PG" id="br-gOpen" d="M380 506 H372"/>
+  <path class="w" data-n="GW" d="M372 506 H300"/>
+  <path class="w" data-g="gHR" id="c1s" d="M300 506 H280"/>
+  <path class="w" data-g="gHR" id="c1z" d="M300 506 H296 L293 498 L288 514 L283 498 L280 506"/>
+  <path class="w" data-n="G" d="M280 506 V522"/>
+  <path class="w" data-n="IGN" d="M384 52 V62"/>
+  <path class="w" data-n="IG2" d="M384 62 V72 q-5 4 0 8 q5 4 0 8 V120"/>
+  <path class="w" data-n="IG2" id="br-cfOpen" d="M384 120 V128"/>
+  <path class="w" data-n="C86" d="M384 128 V186"/>
+  <path class="w" data-g="gCO" d="M384 186 a6.5 6.5 0 0 1 0 13 a6.5 6.5 0 0 1 0 13 a6.5 6.5 0 0 1 0 13 a6.5 6.5 0 0 1 0 13"/>
+  <path class="w" data-n="C85" d="M384 238 V300 H290 V264"/>
+  <path class="w" data-n="CP" id="br-ctlUp" d="M290 264 V256"/>
+  <path class="w" data-n="CP" d="M290 256 V116 H263 V108"/>
+  <path class="w" data-g="gBI" d="M263 80 V84 L270 88 L256 93 L270 98 L256 103 L263 106 V108"/>
+  <path class="w" data-n="CP" d="M290 180 H262"/>
+  <path class="w" data-n="CP" id="dblade" d="M262 180 L247 158"/>
+  <path class="w" data-n="G" d="M262 150 V142 H240 V148"/>
+</g>
+<path class="gnd" d="M268 522 H292 M272 527 H288 M276 532 H284"/>
+<text x="262" y="546" class="t-tiny" text-anchor="middle">G103 · FRAME</text>
+<circle cx="474" cy="318" r="3" class="jdot"/><circle cx="290" cy="180" r="2.8" class="jdot"/><circle cx="474" cy="228" r="2.5" class="jdot"/>
+<circle cx="262" cy="180" r="2.5" class="jdot"/><circle cx="262" cy="150" r="2.5" class="jdot"/>
+<rect x="194" y="210" width="12" height="12" rx="2" class="pinbox"/><rect x="284" y="210" width="12" height="12" rx="2" class="pinbox"/>
+<g id="g-f1blown" style="display:none"><path d="M469 76 l10 -6 M469 86 l10 6" stroke="#FF5A4E" stroke-width="1.6" stroke-linecap="round"/><text x="460" y="116" class="t-tiny" text-anchor="end" style="fill:#FF8A80">BLOWN</text></g>
+<g id="g-hr" class="jump">
+  <circle class="corr" cx="296" cy="501" r="2.2"/><circle class="corr" cx="286" cy="511" r="1.8"/><circle class="corr" cx="282" cy="500" r="1.4"/>
+  <text x="258" y="498" class="t-mono" text-anchor="end" id="hrLbl1" style="fill:#FFB3AC;font-size:10px">+0.00 Ω</text>
+  <text x="258" y="510" class="t-tiny" text-anchor="end" id="hrLbl2">DROP 0.0 V</text>
+</g>
+<g id="g-shortg" class="jump">
+  <path class="w" data-n="FB" d="M474 372 H436 V380"/>
+  <path class="gnd" d="M424 380 H448 M428 385 H444 M432 390 H440"/>
+  <circle cx="474" cy="372" r="5" class="chafe"/>
+  <text x="418" y="378" class="t-tiny" text-anchor="end" style="fill:#FF8A80">RUBBED THROUGH TO FRAME</text>
+</g>
+<path class="flow" id="fLoad" d="M474 44 V452"/>
+<path class="flow" id="fGnd" d="M474 488 V506 H280 V522"/>
+<path class="flow" id="fCoil" d="M384 44 V300 H290 V180 H262 V150"/>
+<path class="flow" id="fSG" d="M474 372 H436 V380"/>
+<g class="openpill" id="om-cfOpen" style="display:none"><path class="spark" d="M376 120 l-5 -3 M376 128 l-5 3 M392 120 l5 -3 M392 128 l5 3"/><rect x="398" y="116" width="44" height="16" rx="8"/><text x="420" y="127.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-ctlUp" style="display:none"><path class="spark" d="M282 256 l-5 -3 M282 264 l-5 3 M298 256 l5 -3 M298 264 l5 3"/><rect x="302" y="252" width="44" height="16" rx="8"/><text x="324" y="263.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-feedUp" style="display:none"><path class="spark" d="M466 298 l-5 -3 M466 306 l-5 3 M482 298 l5 -3 M482 306 l5 3"/><rect x="414" y="294" width="44" height="16" rx="8"/><text x="436" y="305.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-feedLo" style="display:none"><path class="spark" d="M466 394 l-5 -3 M466 402 l-5 3 M482 394 l5 -3 M482 402 l5 3"/><rect x="414" y="388" width="44" height="16" rx="8"/><text x="436" y="399.5" text-anchor="middle">OPEN</text></g>
+<g class="openpill" id="om-gOpen" style="display:none"><path class="spark" d="M372 498 l-3 -5 M380 498 l3 -5 M372 514 l-3 5 M380 514 l3 5"/><rect x="318" y="484" width="44" height="16" rx="8"/><text x="340" y="495.5" text-anchor="middle">OPEN</text></g>
+<g class="badge" id="tpS"><title>ECM FP MON pin: pump feed voltage the ECM sees</title><circle class="tpdot" cx="200" cy="236" r="4.5"/><rect x="112" y="225" width="80" height="22" rx="6"/><text x="119" y="239.5" class="lbl">MON</text><text x="186" y="240" text-anchor="end" id="tpSv">0.00 V</text></g>
+<g class="badge" id="tpC"><title>ECM relay control pin</title><circle class="tpdot" cx="290" cy="236" r="4.5"/><rect x="208" y="225" width="76" height="22" rx="6"/><text x="214" y="239.5" class="lbl">CTRL</text><text x="278" y="240" text-anchor="end" id="tpCv">0.00 V</text></g>
+<g class="badge" id="tpP"><title>Pump + terminal (feed side)</title><circle class="tpdot" cx="474" cy="432" r="4.5"/><rect x="370" y="421" width="96" height="22" rx="6"/><text x="377" y="435.5" class="lbl">PUMP +</text><text x="460" y="436" text-anchor="end" id="tpPv">0.00 V</text></g>
+<g class="badge" id="tpG"><title>Pump ground wire, before G103 (voltage drop to the frame)</title><circle class="tpdot" cx="340" cy="506" r="4.5"/><rect x="346" y="514" width="80" height="22" rx="6"/><text x="353" y="528.5" class="lbl">GND</text><text x="420" y="529" text-anchor="end" id="tpGv">0.00 V</text></g>
+<path class="hit" data-open="cfOpen" d="M384 104 V144"><title>Click to open or repair the relay coil feed (from F2)</title></path>
+<path class="hit" data-open="ctlUp" d="M290 222 V296"><title>Click to open or repair the relay control wire (ECM side)</title></path>
+<path class="hit" data-open="feedUp" d="M474 292 V314"><title>Click to open or repair the pump feed (relay side, before the splice)</title></path>
+<path class="hit" data-open="feedLo" d="M474 382 V402"><title>Click to open or repair the pump feed (at the tank)</title></path>
+<path class="hit" data-open="gOpen" d="M392 506 H356"><title>Click to open or repair the pump ground wire</title></path>`;
+
+const fpDesc = (m, bad, badTxt, okTxt, crit) => ckView(m, bad, badTxt, okTxt, crit);
+const FP = {
+  id: 'fp', name: 'Fuel pump', sub: 'Relay + pump motor', brandSub: 'Fuel pump circuit',
+  lib: { name: 'Fuel pump (relay control)', type: 'Relay control · 6 A load · feed sense', codes: 'P0087 · P0230 · P0231 · P0232' },
+  svg: FP_SVG, viewBox: '14 10 506 542', defaultSpeed: 1, chartDefault: 'scope',
+  readLabels: ['Relay control', 'FP MON · feed', 'Rail pressure'],
+  faults: [['fuse', 'Open', 'Pump fuse F1'], ['coil', 'Open', 'Relay coil'], ['stuck', 'Stuck closed', 'Relay contacts'], ['pOpen', 'Open', 'Pump motor'], ['worn', 'Worn', 'Fuel pump'], ['shortG', 'Short to ground', 'Pump feed']],
+  slider: { key: 'hiRes', label: 'High resistance · ground G103', max: 1, step: 0.05, fmt: v => v ? '+' + v.toFixed(2) + ' Ω' : 'None' },
+  opens: ['cfOpen', 'ctlUp', 'feedUp', 'feedLo', 'gOpen'],
+  excl: [],
+  names: { cfOpen: 'relay coil feed open', ctlUp: 'relay control open (ECM side)', feedUp: 'pump feed open before the splice', feedLo: 'pump feed open at the tank', gOpen: 'pump ground open', fuse: 'F1 open', coil: 'relay coil open', stuck: 'relay contacts welded shut', pOpen: 'pump motor open', worn: 'worn fuel pump', shortG: 'pump feed shorted to ground', hiRes: v => `+${v.toFixed(2)} Ω at G103` },
+  faultDefaults: () => ({ cfOpen: false, ctlUp: false, feedUp: false, feedLo: false, gOpen: false, fuse: false, coil: false, stuck: false, pOpen: false, worn: false, shortG: false, hiRes: 0 }),
+  initPhys: () => ({ eng: 'off', rpm: 0, rpmB: 0, thr: 0, crankT: 0, runT: 0, stallT: 0, keyT: 0, cmd: false, cmdT: 0, offT: 0, P: 20, rough: 0, lowT: 0, hist: [], hc: 0, cph: 0, pa: 0, fo: 0, stallWhy: '' }),
+  grads: { gBI: ['VBI', 'CP'], gCO: ['C86', 'C85'], gHR: ['GW', 'G'] },
+  flows: [['fLoad', I => I.f1], ['fGnd', I => I.g103], ['fCoil', I => I.coil], ['fSG', I => I.sg]],
+  solve() {
+    const f = S.f, p = S.p, o = on(), cmd = o && !!p.cmd;
+    if (S.key === 'run' && p.eng === 'crank') S.batt = 10.6; else if (S.key === 'run' && p.eng !== 'run') S.batt = 12.5;
+    const cE = [['IGN', 'IG2', o ? 0.05 : OPEN, 'f2'], ['IG2', 'C86', f.cfOpen ? OPEN : WIRE, 'cf'], ['C86', 'C85', f.coil ? OPEN : FP_COIL, 'coil'],
+      ['C85', 'CP', f.ctlUp ? OPEN : WIRE, 'cup'], ['VBI', 'CP', o ? 20e3 : OPEN, 'bias']];
+    const cN = ['IG2', 'C86', 'C85', 'CP'], cF = { IGN: o ? S.batt : 0, VBI: o ? 3 : 0, G: 0 };
+    const off = nodal(cN, cE.concat([['CP', 'G', OPEN, 'drv']]), cF);             // pin with the driver off: B+ through the coil, or only the bias if open
+    const cs = cmd ? nodal(cN, cE.concat([['CP', 'G', 0.2, 'drv']]), cF) : off;
+    const closed = f.stuck || Math.abs(cs.I.coil) > 0.06;
+    const lE = [['BAT', 'R30', f.fuse ? OPEN : 0.01, 'f1'], ['R30', 'R87', closed ? 0.02 : OPEN, 'sw'], ['R87', 'SPL', f.feedUp ? OPEN : WIRE, 'fup'],
+      ['SPL', 'SN', WIRE, 'sn'], ['SN', 'G', 10e3, 'snin'], ['SPL', 'FB', 0.04, 'c1'], ['FB', 'PP', f.feedLo ? OPEN : WIRE, 'flo'],
+      ['PP', 'PG', f.pOpen ? OPEN : FP_R, 'pump'], ['PG', 'GW', f.gOpen ? OPEN : WIRE, 'gw'], ['GW', 'G', 0.02 + f.hiRes, 'g103'], ['FB', 'G', f.shortG ? 0.03 : OPEN, 'sg']];
+    const ls = nodal(['R30', 'R87', 'SPL', 'SN', 'FB', 'PP', 'PG', 'GW'], lE, { BAT: S.batt, G: 0 });
+    if (Math.abs(ls.I.f1) > 30 && !f.fuse) {                                      // a dead short blows F1 in milliseconds
+      f.fuse = true; syncFaultUI();
+      toast(`F1 blew: about ${Math.round(Math.abs(ls.I.f1))} A through the shorted feed. Find the short before replacing the fuse.`, 'bad');
+      return FP.solve();
+    }
+    S.v = { ...off.v, ...cs.v, ...ls.v }; S.I = { ...cs.I, ...ls.I };
+    const pumpV = ls.v.PP - ls.v.PG, ip = Math.abs(ls.I.pump);
+    const vOff = off.v.CP, iCoil = Math.abs(cs.I.coil);
+    S.fp = { cmd, closed, vOff, iCoil, sense: ls.v.SN, pumpV, ip,
+      cap: ip > 0.5 ? clamp((pumpV - 4) / 9.2, 0, 1.15) * (f.worn ? 0.6 : 1) : 0,
+      diag: !o ? 'ok' : vOff < 1.5 ? 'low' : vOff < 8 ? 'open' : cmd && iCoil < 0.02 ? 'open' : 'ok' };
+    S.vad = o ? cs.v.CP : null;
+  },
+  physics(dt) {
+    const p = S.p, f = S.f;
+    let done = 0;
+    while (done < dt - 1e-9) {
+      const h = Math.min(0.01, dt - done); done += h;
+      if (on()) p.keyT += h;
+      if (S.key !== 'run') { p.eng = 'off'; p.rpm = 0; }
+      else if (p.eng === 'crank') {
+        p.crankT += h; p.rpm = 200 + 20 * Math.sin(p.crankT * 40);
+        if (p.P >= 40 && p.crankT >= 0.7) { p.eng = 'run'; p.runT = 0; p.lowT = 0; p.rpmB = 450; if (p.crankT > 2.2) toast(`Started after a ${p.crankT.toFixed(1)} s crank.`, 'warn'); }
+        else if (p.crankT >= 10) { p.eng = 'stall'; p.stallWhy = 'nostart'; p.stallT = 0; p.rpm = 0; toast('Cranked 10 s with no start. Starter released.', 'warn'); }
+      } else if (p.eng === 'run') {
+        p.runT += h;
+        p.rpmB += (700 + 23 * p.thr - p.rpmB) * (1 - Math.exp(-h * 2));
+        p.rough = clamp((36 - p.P) / 14, 0, 1);                                    // low pressure leans the mixture out
+        p.rpm = Math.max(0, p.rpmB * (1 - 0.3 * p.rough) + p.rough * 60 * Math.sin(S.t * 13));
+        p.lowT = p.P < 22 ? p.lowT + h : 0;
+        if (p.lowT > 1.5) { p.eng = 'stall'; p.stallWhy = 'stall'; p.stallT = 0; p.rpm = 0; toast('Engine stalled: fuel pressure too low.', 'bad'); }
+      } else if (p.eng === 'stall') { p.stallT += h; p.rpm = 0; }
+      // the ECM runs the pump to prime at key on, while cranking or running, and 2 s after a stall, then shuts it off for safety
+      const cmd = on() && (p.eng === 'crank' || p.eng === 'run' || (p.eng === 'stall' && p.stallT < 2) || (p.eng === 'off' && p.keyT < 2));
+      p.cmdT = cmd ? p.cmdT + h : 0; p.offT = cmd ? 0 : p.offT + h; p.cmd = cmd;
+      const cap = S.fp?.cap || 0, dem = p.eng === 'run' ? 0.25 + 0.006 * p.thr : p.eng === 'crank' ? 0.12 : 0;
+      if (cap <= 0.02) p.P = Math.max(0, p.P - (dem ? p.P * 1.1 + 2 : p.P * 0.003) * h);   // injectors drain the rail fast; at rest the check valve holds it
+      else { const tgt = dem ? FP_DES * Math.min(1, (cap / dem) ** 1.5) : FP_DES * Math.min(1, cap / 0.1); p.P += (tgt - p.P) * (1 - Math.exp(-h / 0.35)); }
+    }
+  },
+  inputHTML: '<label for="thrIn">Throttle</label><input type="range" id="thrIn" min="0" max="100" step="5" value="0" aria-label="Throttle"><output id="thrOut" for="thrIn">0 %</output><button class="btn small" id="btnIdle">Idle</button><button class="btn small" id="btnCruise">Cruise</button><button class="btn small" id="btnWot">WOT</button><button class="btn small primary" id="btnCrank" title="Engage the starter">Crank</button>',
+  bindInputs() {
+    const r = $('#thrIn');
+    r.addEventListener('pointerdown', () => thrDrag = true);
+    addEventListener('pointerup', () => thrDrag = false);
+    r.addEventListener('input', e => { S.p.thr = +e.target.value; });
+    $('#btnIdle').addEventListener('click', () => { S.p.thr = 0; });
+    $('#btnCruise').addEventListener('click', () => { S.p.thr = 35; });
+    $('#btnWot').addEventListener('click', () => { S.p.thr = 100; });
+    $('#btnCrank').addEventListener('click', fpCrank);
+  },
+  syncInputs() {
+    const r = $('#thrIn'); if (!r) return;
+    if (!thrDrag) r.value = S.p.thr;
+    $('#thrOut').textContent = S.p.thr + ' %';
+  },
+  onStart() { const p = S.p; if (p.eng !== 'off') return; Object.assign(p, { eng: 'crank', crankT: 0, runT: 0, lowT: 0, rough: 0, stallWhy: '' }); },
+  onOff() { Object.assign(S.p, { eng: 'off', rpm: 0, keyT: 0 }); },
+  soak() { S.p.P = 8; },                                                          // overnight the rail bleeds down
+  barText() { const p = S.p; return S.key !== 'run' ? null : p.eng === 'crank' ? `Cranking ${p.crankT.toFixed(1)} s` : p.eng === 'stall' ? 'Stalled · key on' : 'Engine ' + mmss(p.runT); },
+  monitors: [
+    { code: 'P0230', name: 'Fuel pump primary circuit', kind: 'Continuous', trips: 1, mat: 2, labels: ['Enable', 'Check', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const en = on() && S.batt >= 10 && S.p.keyT >= 0.5; circ(m, en, en && S.fp.diag !== 'ok', dt); },
+      view(m) {
+        const s = S.fp, crit = [['Ignition on 0.5 s or more', on() && S.p.keyT >= 0.5], ['Ignition voltage at least 10 V', on() && S.batt >= 10], ['Driver off: pin should read B+ through the coil (about 3 V means open, near 0 V means grounded)', null], ['Driver on: coil current should be over 20 mA', null]];
+        if (!m.en) return waitView(crit, on() ? 'Starts 0.5 s after key on.' : 'Ignition off. Test not running.');
+        return fpDesc(m, s.diag !== 'ok', `Relay control ${FP_DIAG[s.diag].toLowerCase()}`, `Relay control OK · pin ${fmtV(s.vOff)} off, ${Math.round(s.iCoil * 1000)} mA on`, crit);
+      } },
+    { code: 'P0231', name: 'Fuel pump secondary circuit low', kind: 'Continuous', trips: 1, mat: 2, labels: ['Enable', 'Compare', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const p = S.p, en = on() && S.batt >= 10 && p.cmd && p.cmdT >= 0.5 && S.fp.diag === 'ok' && !S.M.P0230.failing; circ(m, en, en && S.fp.sense < 8, dt); },
+      view(m) {
+        const p = S.p, crit = [['Pump commanded on for 0.5 s or more', on() && p.cmd && p.cmdT >= 0.5], ['Relay control circuit good (no P0230 fault)', S.fp.diag === 'ok' && !S.M.P0230.failing], ['Fails when FP MON reads under 8 V with the pump commanded on, for 2.0 s', null]];
+        if (!m.en) return waitView(crit, on() ? 'Runs while the ECM commands the pump on.' : 'Ignition off. Test not running.');
+        return fpDesc(m, S.fp.sense < 8, `Commanded on, feed ${fmtV(S.fp.sense)}`, `Feed ${fmtV(S.fp.sense)} with the pump on.`, crit);
+      } },
+    { code: 'P0232', name: 'Fuel pump secondary circuit high', kind: 'Continuous', trips: 2, mat: 2, labels: ['Enable', 'Compare', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const p = S.p, en = on() && S.batt >= 10 && !p.cmd && p.offT >= 0.5 && p.keyT >= 1; circ(m, en, en && S.fp.sense > 8, dt); },
+      view(m) {
+        const p = S.p, crit = [['Key on with the pump commanded off (after the prime)', on() && !p.cmd && p.offT >= 0.5], ['Fails when FP MON reads over 8 V with the pump commanded off, for 2.0 s', null], ['Can only run when the pump should be off', null]];
+        if (!m.en) return waitView(crit, on() ? 'Runs only while the pump is commanded off.' : 'Ignition off. Test not running.');
+        return fpDesc(m, S.fp.sense > 8, `Commanded off, feed ${fmtV(S.fp.sense)}`, `Feed ${fmtV(S.fp.sense)} with the pump off.`, crit);
+      } },
+    { code: 'P0087', name: 'Fuel rail/system pressure too low', kind: 'Continuous', trips: 2, mat: 3, labels: ['Enable', 'Compare', 'Mature', 'Result'], bar: 2,
+      run(m, dt) { const p = S.p, en = on() && ((p.eng === 'run' && p.runT >= 3) || (p.eng === 'crank' && p.crankT >= 3)) && !S.M.P0230.failing && !S.M.P0231.failing; circ(m, en, en && p.P < FP_LOW, dt); },
+      view(m) {
+        const p = S.p, crit = [['Engine running 3 s, or cranking 3 s', (p.eng === 'run' && p.runT >= 3) || (p.eng === 'crank' && p.crankT >= 3)], ['No pump circuit code failing', !S.M.P0230.failing && !S.M.P0231.failing], ['Fails when rail pressure is under 48 psi (10 below desired) for 3.0 s', null]];
+        if (!m.en) return waitView(crit, S.key === 'run' ? 'Waits for 3 s of running or cranking.' : 'Runs with the engine running or cranking.');
+        return fpDesc(m, p.P < FP_LOW, `Rail ${Math.round(p.P)} psi, desired 58`, `Rail ${Math.round(p.P)} psi, desired 58.`, crit);
+      } },
+  ],
+  visual(dt = 0) {
+    const p = S.p, s = S.fp, f = S.f;
+    if (!S.paused) {
+      p.hc += dt; if (p.hc >= 0.05) { p.hc = 0; p.hist.push([S.clock, p.P]); while (p.hist.length && S.clock - p.hist[0][0] > 10.2) p.hist.shift(); }
+      p.cph = (p.cph + dt * 3.1) % 8;
+      if (s.ip > 0.5) p.pa = (p.pa + dt * fpPrpm() * 6 / 60) % 360;
+      p.fo -= dt * 60 * s.cap * (s.ip > 0.5 ? 1 : 0);
+    }
+    $('#imp').setAttribute('transform', `rotate(${p.pa.toFixed(1)} 474 470)`);
+    $('#fuelFlow').style.opacity = s.ip > 0.5 && s.cap > 0.02 ? 0.9 : 0;
+    $('#fuelFlow').style.strokeDashoffset = p.fo.toFixed(1);
+    const bl = $('#blade'), bd = s.closed ? 'M474 190 L474 228' : 'M474 190 L459 224';
+    bl.setAttribute('d', bd); if (bl._glow) bl._glow.setAttribute('d', bd);
+    const db = $('#dblade'), dd = s.cmd ? 'M262 180 L262 152' : 'M262 180 L247 158';
+    db.setAttribute('d', dd); if (db._glow) db._glow.setAttribute('d', dd);
+    show($('#f1link'), !f.fuse); $('#g-f1blown').style.display = f.fuse ? '' : 'none';
+    $('#g-stuck').style.display = f.stuck ? '' : 'none';
+    $('#pumpX').style.display = f.pOpen ? '' : 'none';
+    $('#koWarn').style.display = !on() && s.ip > 0.5 ? '' : 'none';
+    $('#g-shortg').classList.toggle('on', f.shortG);
+  },
+  text() {
+    const p = S.p, v = S.v, s = S.fp, f = S.f, RED = '#FF8A80';
+    $('#tpSv').textContent = fmtV(v.SN); $('#tpCv').textContent = fmtV(v.CP);
+    $('#tpPv').textContent = fmtV(v.PP); $('#tpGv').textContent = fmtV(v.GW);
+    [['tpS', 'SN'], ['tpC', 'CP'], ['tpP', 'PP'], ['tpG', 'GW']].forEach(([id, n]) => $('#' + id + ' .tpdot').style.fill = vColor(v[n]));
+    $('#cmdLbl').textContent = !on() ? 'ASLEEP' : s.cmd ? (p.eng === 'off' ? 'CMD ON · PRIME' : 'CMD ON') : 'CMD OFF';
+    $('#ctlA').textContent = Math.round(s.iCoil * 1000) + ' mA'; $('#loadA').textContent = s.ip.toFixed(1) + ' A';
+    $('#ampLbl').textContent = s.ip.toFixed(1) + ' A';
+    $('#pumpNote').textContent = f.pOpen ? 'OPEN ARMATURE' : f.worn ? 'WORN' : '';
+    $('#railLbl').textContent = Math.round(p.P) + ' psi';
+    $('#railLbl').style.fill = p.P < FP_LOW && S.key === 'run' ? RED : '';
+    $('#railBar').setAttribute('width', (180 * clamp(p.P / 80, 0, 1)).toFixed(1));
+    $('#railBar').style.fill = p.P < FP_LOW && S.key === 'run' ? '#FF5A4E' : '';
+    $('#hrLbl1').textContent = '+' + f.hiRes.toFixed(2) + ' Ω';
+    $('#hrLbl2').textContent = `DROP ${(v.GW || 0).toFixed(1)} V`;
+  },
+  chart: {
+    trig: { ms: 20, t0: 0, step: 4, xLabel: 'ms · amp probe on the pump feed', aMin: 0, aMax: 80, aTicks: [0, 20, 40, 60, 80], aUnit: 'psi', noZones: true, col1: '#FFC766',
+      curveX: { ms: 10, step: 2, xLabel: 'seconds · fuel rail pressure', lbl: t => t === 10 ? 'now' : '−' + (10 - t) } },
+    vMax: 12, yTicks: [0, 3, 6, 9, 12], yUnit: 'A', hi: [12, ''], lo: [0, ''],
+    tabs: { scope: 'Pump current', curve: 'Rail pressure' }, first: 'scope',
+    titles: { scope: 'Pump current · amp probe', curve: 'Fuel rail pressure · last 10 s' },
+    aria: 'Pump current from an amp probe with commutator ripple, or fuel rail pressure over the last 10 seconds',
+    trace: fpTrace, annot: fpAnnot,
+    curve: () => [], readX: () => 0, actualX: () => 0,
+  },
+  readouts() {
+    const o = on(), p = S.p, s = S.fp;
+    if (!o) return [{ v: '—', s: 'Module asleep', cls: '' }, { v: fmtV(s.sense), s: s.sense > 8 ? 'Powered · key off!' : 'Key off', cls: s.sense > 8 ? 'alert' : '' }, { v: Math.round(p.P) + ' psi', s: 'Check valve holds it', cls: '' }];
+    const d = s.diag;
+    const r0 = { v: (s.cmd ? 'ON' : 'OFF') + (d !== 'ok' ? ' · ' + (d === 'open' ? 'OPEN' : 'SHORT') : ''), s: d !== 'ok' ? (d === 'open' ? 'No path through the coil' : 'Pin grounded') : s.cmd ? `Coil ${Math.round(s.iCoil * 1000)} mA · closed` : `Pin ${fmtV(s.vOff)} · open`, cls: d !== 'ok' ? 'alert' : '' };
+    const low = s.cmd && s.sense < 8, high = !s.cmd && s.sense > 8;
+    const r1 = { v: fmtV(s.sense), s: low ? 'On · no voltage' : high ? 'Off · voltage present' : 'Matches the command', cls: low || high ? 'alert' : '' };
+    const need = S.key === 'run' && p.eng !== 'stall';
+    const r2 = { v: Math.round(p.P) + ' psi', s: `Desired 58 · ${s.ip.toFixed(1)} A`, cls: need && p.P < FP_LOW ? 'alert' : '' };
+    return [r0, r1, r2];
+  },
+  dataRows() {
+    const p = S.p, s = S.fp, run = p.eng === 'run';
+    return [
+      ['Fuel pump relay command', s.cmd ? 'ON' : 'OFF', ''], ['FP relay control circuit', FP_DIAG[s.diag], s.diag !== 'ok' ? 'bad' : ''],
+      ['Fuel pump feedback', fmtV(s.sense), (s.cmd && s.sense < 8) || (!s.cmd && s.sense > 8) ? 'bad' : ''],
+      ['Fuel rail pressure', Math.round(p.P) + ' psi', S.key === 'run' && p.P < FP_LOW ? 'bad' : ''], ['Desired rail pressure', FP_DES + ' psi', ''],
+      ['Engine state', FP_EST[p.eng], p.eng === 'stall' ? 'bad' : ''], ['Engine speed', Math.round(p.rpm) + ' rpm', ''],
+      ['Throttle position', (run ? p.thr : 0) + ' %', ''], ['Ignition voltage', S.batt.toFixed(1) + ' V', ''],
+    ];
+  },
+  ffRows: () => [['Engine state', FP_EST[S.p.eng]], ['Engine speed', Math.round(S.p.rpm) + ' rpm'], ['Pump command', S.fp.cmd ? 'ON' : 'OFF'], ['FP feedback', fmtV(S.fp.sense)], ['Rail pressure', Math.round(S.p.P) + ' psi'], ['Throttle', S.p.thr + ' %'], ['Ignition V', S.batt.toFixed(1) + ' V']],
+  dash: {
+    lo: '0', hi: '4k', hot: null,
+    frac: () => on() ? clamp(S.p.rpm / 4000, 0, 1) : null,
+    text: () => on() ? Math.round(S.p.rpm) + ' rpm' : '—',
+    icon: '<svg width="30" height="24" viewBox="0 0 24 24" aria-hidden="true"><path class="ic" d="M4 4h9v7h1.5a2 2 0 0 1 2 2v4a1 1 0 0 0 2 0V9l-2.5-2.5 1.2-1.2L21 8.1V17a3 3 0 0 1-6 0v-4h-2v8H4zm2 2v4h5V6z"/></svg>',
+    t2on: () => fpStatus()[1],
+    t2text: () => fpStatus()[0],
+  },
+};
+FP.lesson = [
+  { title: 'Meet the fuel pump circuit',
+    body: 'This is really <b>two circuits</b>. On the <b>control side</b>, the ECM grounds the relay coil through a low-side driver, and only about <b>0.2 A</b> flows. On the <b>load side</b>, the relay contacts connect the always-hot F1 fuse to the pump, and about <b>6 A</b> flows through the pump to ground at <b>G103</b>. A small current switches a big one.',
+    setup() { fullReset(); S.p.thr = 0; setSpeed(1); setChart('scope'); }, spot: ['g-relay', 'g-driver', 'g-legend'] },
+  { title: 'Key on: the prime',
+    body: 'Turn the key <b>Off</b>, then <b>On</b> (don\'t start it). The ECM runs the pump for about <b>2 seconds</b> to build rail pressure, then shuts it off because the engine isn\'t turning. That\'s a safety feature: after a crash the pump stops. Listening for the prime is a good first check on a no-start.',
+    setup() { setKey('off'); setChart('curve'); }, spot: ['g-relay', 'chartBox'],
+    goal: { text: 'Key on, prime finished, pressure above 50 psi', test: () => S.key === 'on' && S.p.keyT > 2.2 && S.p.P > 50 } },
+  { title: 'Read the pump current',
+    body: 'Click <b>Crank</b> to start the engine. The scope now shows pump current from an <b>amp probe</b>. It\'s about 6 A of DC with small humps: each hump is one <b>commutator segment</b> passing the brushes. Count them and you know the pump speed. A healthy pump makes an even pattern.',
+    setup() { setChart('scope'); }, spot: ['btnCrank', 'chartBox'],
+    goal: { text: 'Engine running', test: () => S.p.eng === 'run' } },
+  { title: 'How the ECM watches the circuit',
+    body: 'The ECM checks its <b>control side</b> directly, the same way it checks an injector: bias voltage with the driver off, coil current with it on (<b>P0230</b>). It can\'t measure pump current, but the <b>FP MON</b> wire lets it read the voltage leaving the relay. Commanded on with no voltage is <b>P0231</b>. Commanded off with voltage present is <b>P0232</b>.',
+    spot: ['g-driver', 'g-mon', 'read1'] },
+  { title: 'Predict: F1 opens',
+    body: 'The 20 A pump fuse is about to fail open, with the engine running.',
+    ask: { q: 'Which code will the ECM set?', opts: ['P0230 relay control', 'P0231 feed low', 'No code'], ans: 1,
+      why: 'The control side is fine, so the relay still closes. There\'s just no voltage to pass through it. The ECM commands the pump on and FP MON reads 0 V, so P0231 sets.',
+      apply() { setFault('fuse', true); } },
+    spot: ['g-fuses', 'tpS'] },
+  { title: 'Pressure falls, the engine dies',
+    body: 'Watch the <b>Rail pressure</b> tab. With no pump, the injectors drain the rail in a few seconds, the engine stumbles lean and stalls. <b>P0231</b> is confirmed right away. The ECM only shuts off the pump 2 s after the stall, and a crank won\'t restart it.',
+    setup() { if (!S.f.fuse) setFault('fuse', true); setChart('curve'); }, spot: ['mon-P0231', 'read2', 'chartBox'],
+    goal: { text: 'P0231 sets', test: () => S.M.P0231.confirmed } },
+  { title: 'Predict: why did the fuse blow?',
+    body: 'A fuse doesn\'t fail on its own very often. Here the pump feed has <b>rubbed through to the frame</b> under the car. We\'ll replace the fuse and crank the engine.',
+    setup() { clearFaults(); clearDTCs(true); setKey('off'); },
+    ask: { q: 'What happens when the relay closes?', opts: ['The pump runs slowly', 'The new fuse blows', 'Nothing changes'], ans: 1,
+      why: 'The short gives current a path to ground that skips the pump, with almost no resistance. Well over 100 A flows, and the new fuse blows instantly. Always find the short before you install another fuse.',
+      apply() { setFault('shortG', true); setKey('run'); } },
+    spot: ['g-shortg', 'g-fuses'] },
+  { title: 'Predict: the pump motor opens',
+    body: 'We repaired the wire, replaced the fuse and cleared the codes. Now the pump\'s own motor fails open inside the tank. We\'ll let it sit overnight and try to start it.',
+    setup() { clearFaults(); clearDTCs(true); setKey('off'); },
+    ask: { q: 'Which pump circuit code sets?', opts: ['P0230', 'P0231', 'None of them'], ans: 2,
+      why: 'The relay closes and full voltage reaches the FP MON wire and even the pump terminal. The ECM can\'t see that no current flows. Only rail pressure gives it away: P0087 during the crank, and no start.',
+      apply() { setFault('pOpen', true); S.p.P = 8; setKey('run'); setChart('scope'); } },
+    spot: ['g-pump', 'tpP'] },
+  { title: 'Voltage drop under load',
+    body: 'We replaced the pump. Now ground <b>G103</b> is corroded (<b>+0.6 Ω</b>). With the pump off, the GND badge reads <b>0 V</b> and looks perfect. With 5 A flowing, the corrosion drops about <b>3 V</b>, so the pump runs slower. At idle there\'s enough fuel. Click <b>WOT</b> and watch rail pressure fall below 48 psi.',
+    setup() { clearFaults(); clearDTCs(true); if (S.key !== 'run' || S.p.eng !== 'run') { setKey('off'); setKey('run'); } S.f.hiRes = 0.6; syncFaultUI(); S.p.thr = 0; setChart('curve'); }, spot: ['g-hr', 'tpG', 'inputRow'],
+    goal: { text: 'P0087 stored as pending', test: () => S.M.P0087.pending || S.M.P0087.confirmed } },
+  { title: 'A relay that won\'t let go',
+    body: 'Now the relay contacts have <b>welded shut</b>. Turn the key <b>Off</b>: the pump keeps running, because F1 is always hot. That drains the battery overnight. Turn the key back to <b>On</b>. After the prime, the ECM commands the relay off, but FP MON still reads battery voltage, so <b>P0232</b> matures.',
+    setup() { clearFaults(); clearDTCs(true); S.p.thr = 0; setFault('stuck', true); setChart('scope'); }, spot: ['g-relay', 'koWarn', 'mon-P0232'],
+    goal: { text: 'P0232 stored as pending', test: () => S.M.P0232.pending || S.M.P0232.confirmed } },
+  { title: 'Reading a fuel pump circuit',
+    body: 'Split it in half. <b>P0230</b> points to the control side: the coil, its feed or the control wire. <b>P0231</b> means the relay output has no voltage: the fuse, the contacts, or a short that blew the fuse. <b>No circuit code but low pressure</b> points past the splice: the pump, its connector or its ground. Measure current, and <b>voltage drop under load</b>.',
     final: true, alt: { label: '◂ Back to ECT', go() { switchSensor('ect'); } } },
 ];
 
-const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN };
+const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN, ckp: CKP, fp: FP };
 const PLANNED = [];
 
 /* ================= simulation core ================= */
@@ -2740,21 +3738,24 @@ function renderCircuit(dtReal) {
 const CH = { x0: 34, x1: 350, y0: 12, y1: 170, vMax: 5.2 };
 const cy = v => CH.y1 - v / CH.vMax * (CH.y1 - CH.y0);
 const ay = a => { const t = D.chart.trig, lo = t?.aMin ?? 0, hi = t ? t.aMax : 1; return CH.y1 - (a - lo) / (hi - lo) * (CH.y1 - CH.y0); };   // 2nd axis (triggered curve view: amps, or differential volts)
-let cx = f => f;
+let cx = f => f, cxS = cx, cxC = cx;   // triggered charts: the curve tab can have its own time axis (chart.trig.curveX)
 /* Two chart styles: a transfer curve + rolling 6 s scope (sensors), or a triggered one-event capture in ms (actuators, chart.trig) */
 function buildChart() {
   const c = D.chart, tg = c.trig;
-  cx = tg ? (ms => CH.x0 + ms / tg.ms * (CH.x1 - CH.x0)) : (f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0));
+  cx = cxS = tg ? (ms => CH.x0 + ms / tg.ms * (CH.x1 - CH.x0)) : (f => CH.x0 + (f - c.xMin) / (c.xMax - c.xMin) * (CH.x1 - CH.x0));
+  cxC = tg?.curveX ? (ms => CH.x0 + ms / tg.curveX.ms * (CH.x1 - CH.x0)) : cxS;
   CH.vMax = c.vMax ?? 5.2;
   const yAxis = (ticks, y, unit) => ticks.map(v => `<line x1="${CH.x0}" x2="${CH.x1}" y1="${y(v)}" y2="${y(v)}" stroke="#141C25"/><text x="${CH.x0 - 6}" y="${y(v) + 3}" text-anchor="end">${(Number.isInteger(v) ? String(v) : v.toFixed(1)).replace('-', '−')}</text>`).join('') +
     `<text x="${CH.x0 - 6}" y="${CH.y0 - 2}" text-anchor="end">${unit}</text>`;
-  const yg = yAxis(c.yTicks ?? [0, 1, 2, 3, 4, 5], cy, 'V');
+  const yg = yAxis(c.yTicks ?? [0, 1, 2, 3, 4, 5], cy, c.yUnit ?? 'V');
   if (tg) {
-    let xs = '';
-    for (let t = 0; t <= tg.ms + 1e-9; t += tg.step || 2) xs += `<line x1="${cx(t)}" x2="${cx(t)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(t)}" y="${CH.y1 + 12}" text-anchor="middle">${t}</text>`;
-    xs += `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">${tg.xLabel || 'ms · triggered on driver turn-on'}</text>`;
-    $('#gridScope').innerHTML = yg + xs;
-    $('#gridCurve').innerHTML = yAxis(tg.aTicks, ay, tg.aUnit || 'A') + xs;
+    const xg = (X, map) => {
+      let xs = '';
+      for (let t = 0; t <= X.ms + 1e-9; t += X.step || 2) xs += `<line x1="${map(t)}" x2="${map(t)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${map(t)}" y="${CH.y1 + 12}" text-anchor="middle">${X.lbl ? X.lbl(t) : t}</text>`;
+      return xs + `<text x="${CH.x1}" y="${CH.y1 + 24}" text-anchor="end">${X.xLabel || 'ms · triggered on driver turn-on'}</text>`;
+    };
+    $('#gridScope').innerHTML = yg + xg(tg, cxS);
+    $('#gridCurve').innerHTML = yAxis(tg.aTicks, ay, tg.aUnit || 'A') + xg(tg.curveX || tg, cxC);
   } else {
     let g = yg;
     c.ticks.forEach(f => g += `<line x1="${cx(f)}" x2="${cx(f)}" y1="${CH.y0}" y2="${CH.y1}" stroke="#141C25"/><text x="${cx(f)}" y="${CH.y1 + 12}" text-anchor="middle">${f}</text>`);
@@ -2789,7 +3790,13 @@ function buildChart() {
 function renderChart() {
   const o = on(), c = D.chart;
   if (c.trig) {
+    const tg = c.trig;
+    if (tg.range) {                                                               // auto-ranging 2nd axis, like a scope's auto-set
+      const R = tg.range();
+      if (R !== tg._R) { tg._R = R; tg.aMin = -R; tg.aMax = R; tg.aTicks = [-R, -R / 2, 0, R / 2, R]; buildChart(); }
+    }
     const cur = S.chart === 'curve', yf = cur ? ay : (v => cy(clamp(v, 0, CH.vMax)));
+    cx = cur ? cxC : cxS;
     const d = c.trace(cur ? 'a' : 'v').map(([t, y], i) => (i ? 'L' : 'M') + cx(t).toFixed(1) + ' ' + yf(y).toFixed(1)).join('');
     if (cur) { $('#curve').setAttribute('d', d); $('#curveGlow').setAttribute('d', d); }
     else {
@@ -2930,7 +3937,7 @@ function renderDash() {
   $('#t2Txt').textContent = g.t2text();
 }
 function renderBar() {
-  $('#clock').textContent = `Trip ${S.trip} · ` + (S.key === 'run' ? 'Engine ' + mmss(S.run) : S.key === 'on' ? 'Key on, engine off' : 'Ignition off');
+  $('#clock').textContent = `Trip ${S.trip} · ` + (D.barText?.() ?? (S.key === 'run' ? 'Engine ' + mmss(S.run) : S.key === 'on' ? 'Key on, engine off' : 'Ignition off'));
   $('#slow').hidden = !S.slowmo;
 }
 function syncTop() {
@@ -2985,7 +3992,7 @@ function buildSensorUI() {
   buildFaultDock(); buildMonitors(); buildChart(); setChart(S.chart);
   const tabs = D.chart.tabs || { curve: 'Transfer curve', scope: 'Scope' };
   $$('[data-chart]').forEach(b => { b.textContent = tabs[b.dataset.chart]; b.style.order = D.chart.first === b.dataset.chart ? '-1' : ''; });
-  $('#chart').setAttribute('aria-label', D.chart.trig ? 'Triggered scope capture of one injection: control pin voltage or coil current' : 'Signal voltage chart with circuit low and circuit high fault zones');
+  $('#chart').setAttribute('aria-label', D.chart.aria || (D.chart.trig ? 'Triggered scope capture of one injection: control pin voltage or coil current' : 'Signal voltage chart with circuit low and circuit high fault zones'));
   const RL = D.readLabels || ['Signal pin', 'Converts to', 'ECM is using'];
   ['#read0', '#read1', '#ecmUsed'].forEach((id, i) => { $(id + ' label').textContent = RL[i]; });
   $('#t2Ico').innerHTML = D.dash.icon;
