@@ -448,7 +448,7 @@ const ANCHOR = {dmmR:[77,598], dmmB:[77,598], ppTip:[548,598], clamp:[862,598]};
 const S = {
   cid:'lamp', mode:'explore', tab:'main', colors:true,
   sw:{}, fuse:{}, plug:{}, ign:false, speed:'OFF', fault:null, faultR:0, pp:'off', ppTrip:false, jmpBlown:false,
-  stuck:false, stops:0, motRun:false, pad:false, relayOn:false, clickAt:0,
+  stuck:false, stops:0, motRun:false, pad:false, relayOn:false, clickAt:0, dim:0,
   dmm:{}, tips:{}, log:[], lesson:null, step:0, answered:{}, snaps:{}, mystery:null, sel:null,
 };
 let NLC = {};      // converged nonlinear resistances, reused between solves
@@ -1512,10 +1512,330 @@ RELAY.lessons = [
  ]},
 ];
 
-const CIRCUITS = {lamp:LAMP, blower:BLOWER, relay:RELAY};
+/* =====================================================================
+   CIRCUIT 4: SERIES / PARALLEL (three bulbs in series, three in parallel behind a dimmer)
+   ===================================================================== */
+/* 6 W bulbs: 0.5 A at 12.8 V hot (25.6 ohm), about 2.1 ohm cold. */
+const SPB = {In:.5, Rc:2.1};
+const zzh = (x0, x1, y, n = 6) => { const seg = (x1 - x0 - 12) / n; let d = `M${x0} ${y} H${x0 + 6}`; for (let i = 0; i < n; i++) d += ` L${(x0 + 6 + seg * (i + .5)).toFixed(1)} ${y + (i % 2 ? -7 : 7)}`; return d + ` L${x1 - 6} ${y} H${x1}`; };
+const SERIES = {
+  id:'series', name:'Series / parallel', sub:'3 bulbs in series · 3 in parallel', lib:'Series, parallel and series-parallel: how one open, short or shared resistance changes the other loads.',
+  fuseRating:{F1:5, F2:10},
+  defaults:{sw:{S1:false, S2:false}, fuse:{F1:'in', F2:'in'}, plug:{L1:true, L2:true, L3:true, L4:true, L5:true, L6:true}, dim:0},
+  start:{S1:true, S2:true, tips:{dmmR:'L1P', dmmB:'L1N'}},
+  mystStart:{S1:true, S2:true},
+  extraNodes:['SPL','SPo','W8m'],
+  TP:{
+    BATP:{n:'BP',  x:55,  y:368, l:'BAT+', nm:'BAT+', lx:55,  ly:394},
+    BATN:{n:'BN',  x:105, y:368, l:'BAT−', nm:'BAT−', lx:105, ly:394},
+    F1I: {n:'BUS', x:190, y:110, l:'IN',  nm:'F1 in'},
+    F1O: {n:'F1o', x:250, y:110, l:'OUT', nm:'F1 out'},
+    F2I: {n:'BUS', x:190, y:300, l:'IN',  nm:'F2 in'},
+    F2O: {n:'F2o', x:250, y:300, l:'OUT', nm:'F2 out'},
+    S1I: {n:'S1i', x:300, y:110, l:'IN',  nm:'S1 in'},
+    S1O: {n:'S1o', x:360, y:110, l:'OUT', nm:'S1 out'},
+    S2I: {n:'S2i', x:300, y:300, l:'IN',  nm:'S2 in'},
+    S2O: {n:'S2o', x:360, y:300, l:'OUT', nm:'S2 out'},
+    L1P: {n:'L1a', x:430, y:110, l:'L1+', nm:'L1+'},
+    L1N: {n:'L1b', x:490, y:110, l:'L1−', nm:'L1−'},
+    L2P: {n:'L2a', x:560, y:110, l:'L2+', nm:'L2+'},
+    L2N: {n:'L2b', x:620, y:110, l:'L2−', nm:'L2−'},
+    L3P: {n:'L3a', x:690, y:110, l:'L3+', nm:'L3+'},
+    L3N: {n:'L3b', x:750, y:110, l:'L3−', nm:'L3−'},
+    G1:  {n:'GE1', x:950, y:470, l:'G1', nm:'G1', lx:966, ly:474, a:'start'},
+    DIMO:{n:'DMo', x:470, y:300, l:'DIM', nm:'DIM out', ly:318},
+    L4P: {n:'L4a', x:600, y:250, l:'L4+', nm:'L4+', ly:266},
+    L4N: {n:'L4b', x:660, y:250, l:'L4−', nm:'L4−', ly:266},
+    L5P: {n:'L5a', x:600, y:300, l:'L5+', nm:'L5+', ly:316},
+    L5N: {n:'L5b', x:660, y:300, l:'L5−', nm:'L5−', ly:316},
+    L6P: {n:'L6a', x:600, y:350, l:'L6+', nm:'L6+', ly:366},
+    L6N: {n:'L6b', x:660, y:350, l:'L6−', nm:'L6−', ly:366},
+    G2:  {n:'GE2', x:840, y:468, l:'G2', nm:'G2', lx:858, ly:486, a:'start'},
+    BODY:{n:'BODY',x:700, y:520, l:'BODY', nm:'BODY', lx:700, ly:511},
+  },
+  CLAMP:{
+    cBatP:{el:'cabP', x:55,  y:280, nm:'the battery + cable'},
+    cW2:  {el:'wB',   x:395, y:110, nm:'W2 (series)'},
+    cW4:  {el:'wD',   x:655, y:110, nm:'W4 (series)'},
+    cW6:  {el:'wF',   x:275, y:300, nm:'W6 (parallel feed)'},
+    cW7:  {el:'wG',   x:495, y:300, nm:'W7 (all 3 branches)'},
+    cW8:  {el:'wHb',  x:585, y:250, nm:'W8 (L4 branch)'},
+    cW9:  {el:'wI',   x:580, y:300, nm:'W9 (L5 branch)'},
+    cW10: {el:'wJ',   x:585, y:350, nm:'W10 (L6 branch)'},
+    cBatN:{el:'cabN', x:300, y:520, nm:'the battery ground cable'},
+  },
+  FTYPES:[{k:'res', n:'Excessive resistance'},{k:'open', n:'Open'},{k:'tog', n:'Shorted load'},{k:'sg', n:'Short to ground'}],
+  FAULTS:[
+    {id:'rSock2', t:'res',  n:'Corroded L2 socket (series)', adj:8, rng:[1,40,1,'Ω'], myst:[6,20], concern:'The series bulbs are dimmer than they should be.'},
+    {id:'rSpl',   t:'res',  n:'Corroded splice SP1 (parallel feed)', adj:1.5, rng:[.2,6,.1,'Ω'], myst:[1,3], concern:'All three parallel bulbs are dim, and worse with all of them in.'},
+    {id:'rG2',    t:'res',  n:'Corroded shared ground G2', adj:1.2, rng:[.2,6,.1,'Ω'], myst:[.8,2.5], concern:'All three parallel bulbs are dim.'},
+    {id:'openL2', t:'open', n:'Burned-out bulb L2 (series)', concern:'None of the series bulbs light.'},
+    {id:'openL5', t:'open', n:'Burned-out bulb L5 (parallel)', concern:'L5 doesn’t light. The other parallel bulbs are fine.'},
+    {id:'openW10',t:'open', n:'Broken wire W10 (to L6)', concern:'L6 doesn’t light. The other parallel bulbs are fine.'},
+    {id:'shL2',   t:'tog',  n:'Shorted L2 socket (series)', concern:'L2 is dark, but L1 and L3 are brighter than normal.'},
+    {id:'sgL4',   t:'sg',   n:'W8 (to L4) chafed to ground', concern:'Fuse F2 blows as soon as S2 is turned on.'},
+  ],
+  ITEM:{
+    cabP:{n:'the battery + cable',k:'cable'}, cabN:{n:'the battery ground cable',k:'cable'},
+    f1:{n:'fuse F1',k:'fuse',fuse:'F1'}, wA:{n:'wire W1',k:'wire'}, s1:{n:'switch S1',k:'switch'}, wB:{n:'wire W2',k:'wire'},
+    lamp1:{n:'bulb L1',k:'load',ohm:'lamp',open:() => S.plug.L1 ? 'Bulb L1 is open.' : 'Bulb L1 is removed.'},
+    wC:{n:'wire W3 and the L2 socket',k:'wire'},
+    lamp2:{n:'bulb L2',k:'load',ohm:'lamp',faultOpen:true,open:() => S.plug.L2 ? 'Bulb L2 is open.' : 'Bulb L2 is removed.'},
+    wD:{n:'wire W4',k:'wire'},
+    lamp3:{n:'bulb L3',k:'load',ohm:'lamp',open:() => S.plug.L3 ? 'Bulb L3 is open.' : 'Bulb L3 is removed.'},
+    wE:{n:'wire W5',k:'wire'}, g1:{n:'ground G1',k:'conn'},
+    f2:{n:'fuse F2',k:'fuse',fuse:'F2'}, wF:{n:'wire W6',k:'wire'}, s2:{n:'switch S2',k:'switch'},
+    dim:{n:'the dimmer',k:'res',get nom(){ return Math.max(.01, S.dim); }},
+    feed4:{n:'wire W7, splice SP1 and wire W8',k:'wire',p:['wG','spl','wHa','wHb']},
+    feed5:{n:'wire W7, splice SP1 and wire W9',k:'wire',p:['wG','spl','wI']},
+    feed6:{n:'wire W7, splice SP1 and wire W10',k:'wire',p:['wG','spl','wJ']},
+    lamp4:{n:'bulb L4',k:'load',ohm:'lamp',open:() => 'Bulb L4 is removed.'},
+    lamp5:{n:'bulb L5',k:'load',ohm:'lamp',faultOpen:true,open:() => S.plug.L5 ? 'Bulb L5 is open.' : 'Bulb L5 is removed.'},
+    lamp6:{n:'bulb L6',k:'load',ohm:'lamp',open:() => 'Bulb L6 is removed.'},
+    gnd4:{n:'wire W11',k:'wire',p:['wK']}, gnd5:{n:'wire W12',k:'wire',p:['wL']}, gnd6:{n:'wire W13',k:'wire',p:['wM']},
+    g2:{n:'ground G2',k:'conn'},
+  },
+  chains(){
+    const ser = {load:5, loads:[5,7,9], nodes:['BP','BUS','F1o','S1i','S1o','L1a','L1b','L2a','L2b','L3a','L3b','GE1','BODY','BN'],
+      items:['cabP','f1','wA','s1','wB','lamp1','wC','lamp2','wD','lamp3','wE','g1','cabN']};
+    const br = n => ({load:6, nodes:['BP','BUS','F2o','S2i','S2o','DMo',`L${n}a`,`L${n}b`,'GE2','BODY','BN'],
+      items:['cabP','f2','wF','s2','dim',`feed${n}`,`lamp${n}`,`gnd${n}`,'g2','cabN']});
+    return [ser, br(4), br(5), br(6)];
+  },
+  build(A){
+    const f = S.fault, fr = S.faultR, F = S.fuse, P = S.plug;
+    const lamp = (n, a, b) => { if (P['L' + n] && f !== 'openL' + n) A('lamp' + n, a, b, 25.6, {nl:'lamp', ...SPB}); };
+    A('cabP','BP','BUS',.003);
+    if (F.F1 === 'in') A('f1','BUS','F1o',.008,{prot:5, dev:'F1'});
+    A('wA','F1o','S1i',.02);
+    if (S.sw.S1) A('s1','S1i','S1o',.01);
+    A('wB','S1o','L1a',.02);
+    lamp(1,'L1a','L1b');
+    A('wC','L1b','L2a',.02 + (f === 'rSock2' ? fr : 0));
+    lamp(2,'L2a','L2b');
+    A('wD','L2b','L3a',.02);
+    lamp(3,'L3a','L3b');
+    A('wE','L3b','GE1',.03); A('g1','GE1','BODY',.003);
+    if (f === 'shL2') A('xs','L2a','L2b',.05);
+    if (F.F2 === 'in') A('f2','BUS','F2o',.006,{prot:10, dev:'F2'});
+    A('wF','F2o','S2i',.02);
+    if (S.sw.S2) A('s2','S2i','S2o',.01);
+    A('dim','S2o','DMo',Math.max(.01, S.dim));
+    A('wG','DMo','SPL',.01);
+    A('spl','SPL','SPo',.002 + (f === 'rSpl' ? fr : 0));
+    A('wHa','SPo','W8m',.01); A('wHb','W8m','L4a',.01);
+    A('wI','SPo','L5a',.02);
+    if (f !== 'openW10') A('wJ','SPo','L6a',.02);
+    lamp(4,'L4a','L4b'); lamp(5,'L5a','L5b'); lamp(6,'L6a','L6b');
+    A('wK','L4b','GE2',.02); A('wL','L5b','GE2',.02); A('wM','L6b','GE2',.02);
+    A('g2','GE2','BODY',.003 + (f === 'rG2' ? fr : 0));
+    A('cabN','BODY','BN',.003);
+    if (f === 'sgL4') A('xs','W8m','BODY',.02);
+  },
+  WIRES:[
+    {el:'cabP', a:'BP',  b:'BUS', d:'M55 368 V200 H172', thick:true},
+    {el:'bus',  a:'BUS', b:'BUS', d:'M190 110 H172 V300 H190', noflow:true},
+    {el:'wA',   a:'F1o', b:'S1i', d:'M250 110 H300'},
+    {el:'wB',   a:'S1o', b:'L1a', d:'M360 110 H430'},
+    {el:'wC',   a:'L1b', b:'L2a', d:'M490 110 H560'},
+    {el:'wD',   a:'L2b', b:'L3a', d:'M620 110 H690'},
+    {el:'wE',   a:'L3b', b:'GE1', d:'M750 110 H950 V461'},
+    {el:'g1',   a:'GE1', b:'BODY',d:'M950 479 V520', thick:true},
+    {el:'wF',   a:'F2o', b:'S2i', d:'M250 300 H300'},
+    {el:'dim',  a:'S2o', b:'DMo', d:zzh(360, 470, 300)},
+    {el:'wG',   a:'DMo', b:'SPL', d:'M470 300 H520'},
+    {el:'spl',  a:'SPL', b:'SPo', d:'M520 300 H540'},
+    {el:'wHa',  a:'SPo', b:'W8m', d:'M540 300 V250 H570'},
+    {el:'wHb',  a:'W8m', b:'L4a', d:'M570 250 H600'},
+    {el:'wI',   a:'SPo', b:'L5a', d:'M540 300 H600'},
+    {el:'wJ',   a:'SPo', b:'L6a', d:'M540 300 V350 H600', brk:{f:'openW10', x:578, y:350}},
+    {el:'wK',   a:'L4b', b:'GE2', d:'M660 250 H870 V440 L850 462'},
+    {el:'wL',   a:'L5b', b:'GE2', d:'M660 300 H840 V458'},
+    {el:'wM',   a:'L6b', b:'GE2', d:'M660 350 H810 V440 L830 462'},
+    {el:'g2',   a:'GE2', b:'BODY',d:'M840 478 V520', thick:true},
+    {el:'cabN', a:'BODY',b:'BN',  d:'M950 520 H140 V354 H105 V368', thick:true},
+  ],
+  back:`
+    <rect x="150" y="66" width="122" height="270" rx="10" class="blk2"/>
+    <text x="211" y="352" text-anchor="middle" class="t-sub">FUSE BLOCK</text>
+    <text x="80" y="190" text-anchor="middle" class="t-tiny">+ CABLE</text>
+    <text x="275" y="101" text-anchor="middle" class="t-wire">W1</text>
+    <text x="395" y="101" text-anchor="middle" class="t-wire">W2</text>
+    <text x="525" y="101" text-anchor="middle" class="t-wire">W3</text>
+    <text x="655" y="101" text-anchor="middle" class="t-wire">W4</text>
+    <text x="850" y="101" text-anchor="middle" class="t-wire">W5</text>
+    <text x="275" y="291" text-anchor="middle" class="t-wire">W6</text>
+    <text x="495" y="291" text-anchor="middle" class="t-wire">W7</text>
+    <text x="580" y="241" text-anchor="middle" class="t-wire">W8</text>
+    <text x="580" y="291" text-anchor="middle" class="t-wire">W9</text>
+    <text x="532" y="362" text-anchor="end" class="t-wire">W10</text>
+    <text x="765" y="241" text-anchor="middle" class="t-wire">W11</text>
+    <text x="765" y="291" text-anchor="middle" class="t-wire">W12</text>
+    <text x="765" y="341" text-anchor="middle" class="t-wire">W13</text>
+    <text x="590" y="160" text-anchor="middle" class="t-tiny">SERIES · ONE PATH · 3 × 6 W BULBS</text>
+    <text x="420" y="236" text-anchor="middle" class="t-tiny">PARALLEL · A PATH FOR EACH BULB</text>
+    <text x="420" y="250" text-anchor="middle" class="t-tiny">(DIMMER, SP1 AND G2 ARE SHARED)</text>
+    <text x="528" y="292" text-anchor="middle" class="t-tiny">SP1</text>
+    <circle cx="540" cy="300" r="3.6" fill="#9fb3c6"/>
+    <path d="M378 316 L452 284" stroke="#7D8A98" stroke-width="1.3"/><path d="M446 282 L453 284 L449 290" fill="none" stroke="#7D8A98" stroke-width="1.3"/>
+    <text x="620" y="512" text-anchor="middle" class="t-tiny">BODY / CHASSIS GROUND</text>`,
+  parts(){
+    let h = fuseSVG('F1', 110, 190, 250) + fuseSVG('F2', 300, 190, 250) + spSwitch('S1', 110) + spSwitch('S2', 300);
+    h += hbulb(1, 430, 490, 110) + hbulb(2, 560, 620, 110) + hbulb(3, 690, 750, 110) + hbulb(4, 600, 660, 250) + hbulb(5, 600, 660, 300) + hbulb(6, 600, 660, 350);
+    h += `<text x="415" y="338" text-anchor="middle" class="t-mono">DIMMER · ${S.dim ? S.dim + ' Ω' : '0 Ω (bright)'}</text>`;
+    h += `<circle cx="950" cy="470" r="9" fill="#141D27" stroke="#7D8A98" stroke-width="2"/><circle cx="840" cy="468" r="10" fill="#141D27" stroke="#7D8A98" stroke-width="2"/>`;
+    if (S.fault === 'rG2' && showFault()) h += crust([[834,462,2.8],[847,474,3.4],[846,461,2.2]]);
+    return h;
+  },
+  fault(){
+    switch (S.fault){
+      case 'rSock2': return crust([[555,103,3],[566,117,3.4],[562,104,2.2]]) + ftag(560, 84, 'CORRODED ' + faultVal());
+      case 'rSpl': return crust([[526,295,2.6],[534,306,3],[536,294,2]]) + ftag(512, 330, 'CORRODED ' + faultVal());
+      case 'rG2': return ftag(900, 430, 'CORRODED ' + faultVal());
+      case 'openL2': return ftag(590, 84, 'BULB OPEN');
+      case 'openL5': return ftag(712, 300, 'BULB OPEN');
+      case 'openW10': return `<rect x="570" y="342" width="16" height="16" fill="#080B0F"/>${ftag(578, 386, 'OPEN')}`;
+      case 'shL2': return `<path d="M560 110 V86 H620 V110" class="short"/>${sparkSym(590, 86)}${ftag(590, 70, 'SOCKET SHORTED')}`;
+      case 'sgL4': return `<path d="M575 250 V270" class="short"/>${gndSym(575, 272, true)}${sparkSym(575, 254)}${ftag(500, 272, 'SHORT TO GROUND')}`;
+    }
+    return '';
+  },
+  ctrls(){ return `
+    <div class="cg"><span>Series</span>${swCtl('S1')}${fzCtl('F1')}${['L1','L2','L3'].map(k => plCtl(k, k, 'in', 'out')).join('')}</div>
+    <div class="cg"><span>Parallel</span>${swCtl('S2')}${fzCtl('F2')}${['L4','L5','L6'].map(k => plCtl(k, k, 'in', 'out')).join('')}</div>
+    <div class="cg"><span>Dimmer</span>${segCtl([['0','Bright'],['3','Mid'],['8','Dim']], String(S.dim), 'dim')}</div>${probeCtl()}`; },
+  cond(){
+    const c = [`S1 ${S.sw.S1 ? 'on' : 'off'}`, `S2 ${S.sw.S2 ? 'on' : 'off'}`, `dimmer ${S.dim} Ω`];
+    const out = Object.keys(S.plug).filter(k => !S.plug[k]);
+    if (out.length) c.push(out.join(', ') + ' out');
+    return c;
+  },
+  drawSpec(pr, I){
+    const a = Math.abs(I);
+    if (pr === ['BUS','F1o'].sort().join() && S.fuse.F1 !== 'in')
+      return {t:'Series circuit current', p:`${fmtA(a)} A. In a series circuit this same current flows through every bulb, wire and connection. Each bulb is rated 0.5 A at full voltage, but in series it only gets a share of the voltage.`};
+    if (pr === ['BUS','F2o'].sort().join() && S.fuse.F2 !== 'in')
+      return {t:'Parallel circuit total current', p:`${fmtA(a)} A: the branch currents added together. Each bulb draws about 0.5 A at full voltage. Remove a bulb and the total drops by that branch’s share.`};
+    return null;
+  },
+  clampNote(el){
+    if (['wHb','wI','wJ'].includes(el)) return {txt:'one branch', cls:'info'};
+    if (['wF','wG'].includes(el)) return {txt:'all branches', cls:'info'};
+    if (['wB','wD'].includes(el)) return {txt:'same everywhere in series', cls:'info'};
+    return null;
+  },
+  guide:`<div class="gcard"><span class="gk">Series and parallel</span>
+    <table class="spec"><tbody>
+      <tr><td><b>Series</b> current</td><td>same everywhere</td></tr><tr><td><b>Series</b> voltage</td><td>shared; drops add up to the source</td></tr>
+      <tr><td><b>Series</b> one open</td><td>everything stops</td></tr>
+      <tr><td><b>Parallel</b> voltage</td><td>same across every branch</td></tr><tr><td><b>Parallel</b> current</td><td>branch currents add up</td></tr>
+      <tr><td><b>Parallel</b> one open</td><td>only that branch stops</td></tr>
+    </tbody></table>
+    <ul><li><b>Series-parallel:</b> anything the branches share (fuse, switch, dimmer, a splice, a ground) is in series with all of them. A fault there affects every branch, and gets worse as more branches turn on.</li>
+    <li><b>Find an open in series:</b> the open part has the full source voltage across it. Good bulbs read 0 V because no current flows.</li>
+    <li><b>Shorted series load:</b> the other loads get a bigger share of the voltage and get brighter. Short them all and the fuse blows.</li>
+    <li>Bulbs change resistance as they heat up (6 W bulb: about 2 Ω cold, about 25 Ω lit), so dim bulbs in series draw more current than a hot-resistance calculation predicts.</li></ul></div>`,
+};
+function spSwitch(k, y){
+  const on = S.sw[k], col = ncol(k + 'i');
+  const lev = on ? `M308 ${y} L352 ${y}` : `M308 ${y} L348 ${y - 22}`;
+  return `<g class="act" data-act="sw:${k}" role="button" aria-label="Switch ${k}">
+    <rect x="290" y="${y - 40}" width="80" height="56" rx="8" class="hitr"/>
+    <text x="330" y="${y - 33}" text-anchor="middle" class="t-sub">${k} · ${on ? 'ON' : 'OFF'}</text>
+    <path d="M300 ${y} H308 M352 ${y} H360" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
+    <path d="${lev}" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>
+    <circle cx="308" cy="${y}" r="3.4" fill="#C9D3DD"/><circle cx="352" cy="${y}" r="3.4" fill="#C9D3DD"/></g>`;
+}
+function hbulb(n, xa, xb, y){
+  const b = R.bright['lamp' + n] || 0, v = Math.sqrt(Math.min(1, b)), plugged = S.plug['L' + n];
+  const cx = (xa + xb) / 2, open = S.fault === 'openL' + n && showFault();
+  const fil = v > .05 ? `rgb(255,${Math.round(150 + 90 * v)},${Math.round(60 + 120 * v)})` : '#5A5340';
+  const glass = plugged
+    ? `<circle cx="${cx}" cy="${y}" r="12.5" fill="${v > .05 ? 'rgba(255,214,140,' + (0.1 + 0.3 * v).toFixed(2) + ')' : '#12171D'}" stroke="#7D8A98" stroke-width="1.3"/>
+       ${open ? `<path d="M${cx - 7} ${y + 4} L${cx - 4} ${y - 2} M${cx + 4} ${y - 2} L${cx + 7} ${y + 4}" stroke="#5A5340" stroke-width="1.5" fill="none"/>`
+              : `<path d="M${cx - 7} ${y + 4} L${cx - 4.5} ${y - 3} L${cx - 1.5} ${y + 3} L${cx + 1.5} ${y - 3} L${cx + 4.5} ${y + 3} L${cx + 7} ${y + 4}" stroke="${fil}" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`}`
+    : `<circle cx="${cx}" cy="${y}" r="12.5" fill="none" stroke="#3A4757" stroke-width="1.2" stroke-dasharray="3 3"/><text x="${cx}" y="${y + 3}" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">OUT</text>`;
+  return `<g class="act" data-act="plug:L${n}" role="button" aria-label="Bulb L${n} (click to remove or install)">
+    <rect x="${xa + 8}" y="${y - 28}" width="${xb - xa - 16}" height="44" class="hitr"/>
+    <circle cx="${cx}" cy="${y}" r="${18 + 12 * v}" fill="url(#gGlow)" opacity="${plugged ? Math.min(1, v * 1.1).toFixed(2) : 0}"/>
+    <path d="M${xa} ${y} H${cx - 12.5}" stroke="${ncol('L' + n + 'a')}" stroke-width="2.4"/>
+    <path d="M${cx + 12.5} ${y} H${xb}" stroke="${ncol('L' + n + 'b')}" stroke-width="2.4"/>
+    ${glass}<text x="${cx}" y="${y - 18}" text-anchor="middle" class="t-sub">L${n}</text></g>`;
+}
+
+/* interpreting voltage on the series string (several loads on one path) */
+function interpSeries(V, rT, bT, sp){
+  const aV = Math.abs(V), items = sp.items, ch = sp.ch;
+  const Ich = Math.max(0, ...ch.items.slice(1, -1).map(id => itemPresent(id) ? itemI(id) : 0));  // series-only parts (not the shared battery cables)
+  const inSpan = ch.loads.filter(i => i >= sp.lo && i < sp.hi).map(i => ch.items[i]);
+  const names = inSpan.map(id => ITEM[id].n);
+  const rev = V < -.05 ? ' The reading is negative because the red lead is on the lower-voltage side.' : '';
+  const toGnd = GROUND_N.includes(ch.nodes[sp.hi]);
+  if (inSpan.length){
+    if (Ich < .02 && aV > 1) return {t:inSpan.length === 1 ? `Voltage across ${names[0]}` : 'Voltage across an open', p:`${fmtV(aV)} V with no current flowing. ${inSpan.length === 1 ? `Full voltage across one load that draws nothing means ${names[0]} (or its socket) is open.` : 'The path is open somewhere between your probes. Narrow it down one load at a time: the open part is the one with the full voltage across it.'}${rev}`};
+    if (Ich < .02) return {t:`No voltage across ${list(inSpan)}`, p:'0 V with no current flowing. A good bulb drops nothing when no current flows. In series, an open anywhere stops the current everywhere.'};
+    const pct = Math.round(aV / BATT_V * 100);
+    if (toGnd && inSpan.length > 1) return {t:`Voltage at ${nm(sp.redLow ? rT : bT)} to ground`, chip:[`${pct}% of the source`,'info'], p:`${fmtV(aV)} V. ${inSpan.length} bulbs between this point and ground share it. In a series circuit the voltage steps down after each load.${rev}`};
+    if (inSpan.length === 1) return {t:`Voltage across ${names[0]}`, chip:[`${pct}% of the source`,'info'], p:`${fmtV(aV)} V with ${fmtA(Ich)} A flowing. Loads in series share the source voltage; their drops add up to the whole.${rev}`};
+    return {t:`Voltage across ${inSpan.length} loads in series`, chip:[`${pct}% of the source`,'info'], p:`${fmtV(aV)} V across ${list(inSpan)}. The drops of loads in series add together.${rev}`};
+  }
+  if (Ich < .02){
+    if (aV > 1) return {t:'Voltage across an open', p:`${openWhy(items)} With no current flowing, nothing else drops any voltage, so the full source voltage appears across the open.${rev}`};
+    return {t:'No current flowing', p:'A voltage drop test needs current through the section. With no current, even a corroded connection reads 0 V.'};
+  }
+  const single = items.length === 1, lim = single ? SPEC.item : SPEC.power, pass = aV <= lim;
+  return {t:single ? `Voltage drop across ${ITEM[items[0]].n}` : 'Voltage drop · wiring section', chip:[`${pass ? 'Pass' : 'Fail'} · ≤ ${lim.toFixed(2)} V`, pass ? 'pass' : 'fail'],
+    p:`${fmtV(aV)} V lost with ${fmtA(Ich)} A flowing.${single ? '' : ' Covers ' + list(items) + '.'}${pass ? '' : ' Too much: resistance here steals voltage from every load in the string.'}${rev}`};
+}
+
+/* ---------- series / parallel lessons ---------- */
+SERIES.lessons = [
+ {t:'Series circuit', s:'Voltage divides; current stays the same', steps:[
+  {t:'One path or many', set:{S1:true, S2:true}, b:`The top circuit is <b>series</b>: three identical bulbs in one path, so the same current has to go through all of them. The bottom circuit is <b>parallel</b>: each bulb has its own path to the supply. Same bulbs, very different brightness.`},
+  {t:'Voltage across one bulb', b:`Meter on <b>V</b>. Red on <b>L1+</b>, black on <b>L1−</b>.`, goal:['Across L1', () => dV('L1P','L1N')], ok:'About a third of battery voltage. Three identical loads in series split the source voltage between them.', spot:['tp:L1P','tp:L1N']},
+  {t:'Add them up', b:`Measure L2 (<b>L2+</b> to <b>L2−</b>) and L3 (<b>L3+</b> to <b>L3−</b>).`, goal:['Across L3', () => dV('L3P','L3N')], ok:'Each bulb drops about the same. Add the three drops and you get battery voltage, minus a little in the wiring. That’s Kirchhoff’s voltage law: the drops around a circuit add up to the source.', spot:['tp:L2P','tp:L2N','tp:L3P','tp:L3N']},
+  {t:'Current is the same everywhere', b:`Pull <b>F1</b>, set the meter to <b>A</b> with the red lead in <b>10 A</b>, and put the probes on <b>F1 in</b> and <b>F1 out</b>.`, goal:['Meter in series with the string', () => mA() && S.fuse.F1 !== 'in' && across('dmmR','dmmB','F1I','F1O') && Math.abs(R.I.dmm || 0) > .1], ok:'About 0.27 A. That one current flows through every bulb, wire and connection in the string. Each bulb is rated 0.5 A at full voltage, so with a third of the voltage it gets much less current and glows dimly.', spot:['ctl:fuse:F1','#knob','#jackA','tp:F1I','tp:F1O']},
+  {t:'Predict', ask:{q:'If you added a fourth bulb to the series string, what would the other three do?', o:['Get brighter','Get dimmer','Stay the same'], a:1, why:'More resistance in the one path means less current, and each bulb gets a smaller share of the voltage.'}},
+  {t:'Takeaway', b:`In series: <b>one path</b>, the <b>same current</b> everywhere, and the voltage is <b>shared</b>. The drops add up to the source voltage.`},
+ ]},
+ {t:'One open stops a series circuit', s:'The open part has all the voltage', steps:[
+  {t:'All three are out', set:{S1:true, S2:true, fault:'openL2'}, b:`Bulb L2 is burned out, and all three series bulbs are out, because there’s only one path.`},
+  {t:'Across a good bulb', b:`Meter on <b>V</b>. Red on <b>L1+</b>, black on <b>L1−</b>.`, goal:['Across L1', () => dV('L1P','L1N')], ok:'0 V. No current flows, so a good bulb drops nothing.', spot:['tp:L1P','tp:L1N']},
+  {t:'Across the open', b:`Red on <b>L2+</b>, black on <b>L2−</b>.`, goal:['Across L2', () => dV('L2P','L2N')], ok:'Full battery voltage across the burned-out bulb. In a series circuit the open drops all of the voltage, which points you straight to it.', spot:['tp:L2P','tp:L2N']},
+  {t:'Takeaway', b:`In series, one open stops everything. The open part is the one with the full source voltage across it; the good parts read 0 V.`},
+ ]},
+ {t:'Parallel circuit', s:'Same voltage; currents add up', steps:[
+  {t:'Voltage across a branch', set:{S1:true, S2:true}, b:`Each parallel bulb connects straight across the supply. Meter on <b>V</b>: red on <b>L4+</b>, black on <b>L4−</b>.`, goal:['Across L4', () => dV('L4P','L4N')], ok:'Nearly full battery voltage. Every branch of a parallel circuit gets the same voltage, which is why these bulbs are bright.', spot:['tp:L4P','tp:L4N']},
+  {t:'Total current', b:`Pull <b>F2</b>, set the meter to <b>A</b> (red lead in 10 A), and put the probes across the F2 cavity: <b>F2 in</b> and <b>F2 out</b>.`, goal:['Meter across the F2 cavity', () => mA() && S.fuse.F2 !== 'in' && across('dmmR','dmmB','F2I','F2O') && Math.abs(R.I.dmm || 0) > .5], ok:'About 1.5 A: three 0.5 A branches added together. That’s Kirchhoff’s current law.', spot:['ctl:fuse:F2','#knob','#jackA','tp:F2I','tp:F2O']},
+  {t:'Take a branch away', b:`Remove bulb <b>L6</b> and watch the total.`, goal:['L6 removed', () => !S.plug.L6], ok:'The total drops by about 0.5 A, and the other two bulbs don’t change. Each branch is independent.', spot:['ctl:plug:L6']},
+  {t:'Predict', ask:{q:'What happens to a circuit’s total resistance as you add parallel branches?', o:['It goes up','It goes down','It stays the same'], a:1, why:'Each branch is another path for current, so total current rises and total resistance falls. That’s why adding accessories to one circuit can overload its fuse.'}},
+  {t:'Takeaway', b:`In parallel: the <b>same voltage</b> across every branch, and the branch currents <b>add up</b> to the total. Adding branches lowers total resistance and raises total current.`},
+ ]},
+ {t:'One open in parallel', s:'Only that branch stops', steps:[
+  {t:'One bulb out', set:{S1:true, S2:true, fault:'openL5'}, b:`L5 is out. L4 and L6 work normally, because each has its own path.`},
+  {t:'Power to the branch', b:`Meter on <b>V</b>. Red on <b>L5+</b>, black on <b>BAT−</b>.`, goal:['L5+ to ground', () => dV('L5P','GND')], ok:'Full voltage at L5+. Power reaches the branch.', spot:['tp:L5P']},
+  {t:'Across the bulb', b:`Red on <b>L5+</b>, black on <b>L5−</b>.`, goal:['Across L5', () => dV('L5P','L5N')], ok:'Full voltage across L5, with no current through it: the bulb is open.', spot:['tp:L5P','tp:L5N']},
+  {t:'Takeaway', b:`In parallel, an open only stops its own branch. Check that branch: power in, ground out, then the load itself.`},
+ ]},
+ {t:'The shared part: series-parallel', s:'What every branch shares is in series with all of them', steps:[
+  {t:'All three are dim', set:{S1:true, S2:true, fault:'rSpl', fr:1.5}, b:`All three parallel bulbs are dim. When every load on a circuit has the same problem, look at what they <b>share</b>: fuse F2, switch S2, the dimmer, splice SP1 and ground G2. Those parts are in series with all three branches.`},
+  {t:'Remove two bulbs', b:`Remove <b>L5</b> and <b>L6</b>.`, goal:['L5 and L6 removed', () => !S.plug.L5 && !S.plug.L6], ok:'L4 gets brighter. Less total current through the shared part means less voltage lost there. A shared resistance gets worse as more loads turn on.', spot:['ctl:plug:L5','ctl:plug:L6']},
+  {t:'Find it', b:`Put L5 and L6 back. Meter on <b>V</b>: measure from <b>DIM out</b> to <b>L4+</b>.`, goal:['All bulbs in, DIM out to L4+', () => S.plug.L5 && S.plug.L6 && dV('DIMO','L4P')], ok:'Far more than 0.10 V lost between the dimmer and the bulb. The corroded splice SP1 is stealing voltage from all three branches.', spot:['tp:DIMO','tp:L4P']},
+  {t:'The dimmer works the same way', set:{S1:true, S2:true, dim:3}, b:`No fault now, but the dimmer is set to <b>Mid</b>. The dimmer is a variable resistor in series with all three bulbs. Measure across it: red on <b>S2 out</b>, black on <b>DIM out</b>.`, goal:['Across the dimmer', () => dV('S2O','DIMO')], ok:'The dimmer drops voltage on purpose, so the bulbs get less. It’s the same effect as the corroded splice, except this time it’s intended.', spot:['tp:S2O','tp:DIMO']},
+  {t:'Takeaway', b:`Real circuits are usually series-parallel. A fault in a shared part (feed, splice, switch, ground) affects every branch and gets worse as more branches turn on. A fault in one branch affects only that branch.`},
+ ]},
+ {t:'A shorted series load', s:'Bypass one load and the others get more', steps:[
+  {t:'L2 dark, the others brighter', set:{S1:true, S2:true, fault:'shL2'}, b:`L2’s socket is shorted, so current bypasses bulb L2. Compare L1 and L3 with how they looked before.`},
+  {t:'Across L2', b:`Meter on <b>V</b>. Red on <b>L2+</b>, black on <b>L2−</b>.`, goal:['Across L2', () => dV('L2P','L2N')], ok:'Almost 0 V. With the short, L2 drops nothing.', spot:['tp:L2P','tp:L2N']},
+  {t:'Across L1', b:`Red on <b>L1+</b>, black on <b>L1−</b>.`, goal:['Across L1', () => dV('L1P','L1N')], ok:'About half of battery voltage instead of a third. With one load bypassed, the other two share the voltage, more current flows, and they get brighter.', spot:['tp:L1P','tp:L1N']},
+  {t:'Predict', ask:{q:'What would happen if all three series sockets were shorted?', o:['All three would be bright','Fuse F1 would blow','Nothing would change'], a:1, why:'With every load bypassed there’s almost no resistance left, so current jumps and F1 blows. In effect it becomes a short to ground.'}},
+  {t:'Takeaway', b:`In series, a shorted load drops no voltage and makes the other loads brighter. Short everything and the fuse blows.`},
+ ]},
+];
+
+const CIRCUITS = {lamp:LAMP, blower:BLOWER, relay:RELAY, series:SERIES};
 const LIB = [
-  {id:'lamp'}, {id:'blower'}, {id:'relay'},
-  {n:'Series / parallel', s:'How one open or short changes the other loads.'},
+  {id:'lamp'}, {id:'blower'}, {id:'relay'}, {id:'series'},
 ];
 
 /* ================= solver ================= */
@@ -1652,11 +1972,8 @@ function solveRun(){
     }
     if (!worst){
       if (C.settle && pass < 7 && C.settle(res)) continue;
-      const bright = {};
-      for (const id of ['lamp1','lamp2','tl','ld']){
-        const e = E.find(x => x.id === id);
-        bright[id] = e ? Math.min(1.25, Math.pow(Math.abs(res.v[e.a] - res.v[e.b]) / VN, 3.4)) : 0;
-      }
+      const bright = {lamp1:0, lamp2:0, tl:0, ld:0};
+      for (const e of E) if (e.nl === 'lamp') bright[e.id] = Math.min(1.25, Math.pow(Math.abs(res.v[e.a] - res.v[e.b]) / VN, 3.4));
       let rpm = 0;
       const m = E.find(x => x.id === 'mot');
       if (m){ const V = Math.abs(res.v[m.a] - res.v[m.b]); rpm = motorW(m, V) * 60 / (2 * Math.PI); }
@@ -1713,7 +2030,7 @@ function openWhy(items){
 }
 const list = items => items.map(i => ITEM[i].n.replace(/^the /,'')).join(', ');
 const OHM_TXT = {
-  lamp:'A cold tungsten filament reads far below the ~6 Ω it has when lit. That’s normal. A burned-out bulb reads OL.',
+  lamp:'A cold tungsten filament reads about a tenth of its lit resistance. That’s normal. A burned-out bulb reads OL.',
   coil:'A relay coil is a long, thin winding, so it reads tens of ohms (typically 50–120 Ω). OL means an open coil: the relay can’t click.',
   horn:'A horn coil reads a couple of ohms. OL means the horn is open.',
   motor:'A blower motor reads a fraction of an ohm through its brushes and armature. OL means the brushes aren’t touching the commutator (a dead spot) or the armature is open.',
@@ -1726,6 +2043,7 @@ function interpV(V, rT, bT){
   if (pair === 'BN,BP') return {t:'Battery voltage', p:`${fmtV(Math.abs(V))} V at the posts. A charged battery at rest reads about 12.6 V; with loads on, it dips a little.${V < 0 ? ' The reading is negative because the leads are reversed.' : ''}`};
   const sp = spanOf(rn, bn);
   if (!sp) return {t:`${nm(rT)} to ${nm(bT)}`, p:'These points aren’t on the same current path. The meter shows the difference between their voltages.'};
+  if (sp.ch.loads) return interpSeries(V, rT, bT, sp);
   const L = sp.ch.load, nodes = sp.ch.nodes;
   const hasLoad = L >= sp.lo && L < sp.hi;
   const rev = V < -.05 ? ' The reading is negative because the red lead is on the lower-voltage side.' : '';
@@ -1751,7 +2069,8 @@ function interpV(V, rT, bT){
   }
   if (sp.items.some(i => ITEM[i].k === 'res')){
     const only = sp.items.every(i => ITEM[i].k === 'res');
-    return {t:only ? 'Voltage across the speed resistors' : `Voltage drop · ${side} side, including the speed resistors`, chip:['resistors drop voltage on purpose','info'], p:`${fmtV(Math.abs(V))} V dropped with ${fmtA(I)} A flowing. The speed resistors are meant to drop voltage: that’s how the lower speeds slow the motor. Test the wires and connections on their own to judge them.${rev}`};
+    const rs = sp.items.filter(i => ITEM[i].k === 'res');
+    return {t:only ? `Voltage across ${list(rs)}` : `Voltage drop · ${side} side, including ${list(rs)}`, chip:['resistors drop voltage on purpose','info'], p:`${fmtV(Math.abs(V))} V dropped with ${fmtA(I)} A flowing. Resistors in a circuit drop voltage on purpose: speed resistors slow a motor, a dimmer dims the lamps. Test the wires and connections on their own to judge them.${rev}`};
   }
   const single = sp.items.length === 1;
   const totP = side === 'power' && sp.lo === 0 && (sp.hi === L || sp.hi === L - 1);
@@ -1791,13 +2110,13 @@ function interpR(Rth, rT, bT, ohmE){
   if (ol){
     const why = openWhy(items);
     if (single && (it.k === 'wire' || it.k === 'cable')) return {t:`${cap(it.n)}: OL`, chip:[`Fail · ≤ ${SPEC.wire.toFixed(1)} Ω`,'fail'], p:`OL means open: ${it.n} is broken.`};
-    if (single && it.k === 'res') return {t:`${cap(it.n)}: OL`, chip:['Open','fail'], p:`${why || 'No continuity.'} Speed resistors and the thermal limiter must have continuity.`};
+    if (single && it.k === 'res') return {t:`${cap(it.n)}: OL`, chip:['Open','fail'], p:`${why || 'No continuity.'} A resistor in the circuit must still have continuity.`};
     return {t:'OL · open', p:`${why || 'No continuity between the probes.'} OL means infinite resistance.`};
   }
   const parallel = !isFinite(spanR) || Rth < spanR * .85;
   const parNote = parallel ? ' This reads lower than the parts between your probes, so another path is connected in parallel. Unplug or disconnect to isolate the part.' : '';
   if (single && it.k === 'load') return {t:`${cap(it.n)}${it.ohm === 'lamp' ? ', cold' : ''}`, chip:it.nom ? [`rated ≈ ${it.nom} Ω`,'info'] : null, p:`${OHM_TXT[it.ohm] || ''}${parNote}${leadNote}`};
-  if (single && it.k === 'res') return {t:cap(it.n), chip:[`rated ≈ ${it.nom.toFixed(2)} Ω`,'info'], p:`Speed resistors are supposed to have resistance; they drop voltage to slow the motor. Compare the reading with the rated value. OL means open.${parNote}${leadNote}`};
+  if (single && it.k === 'res') return {t:cap(it.n), chip:[`rated ≈ ${it.nom.toFixed(2)} Ω`,'info'], p:`This resistor is supposed to have resistance; it drops voltage on purpose (to slow a motor or dim a lamp). Compare the reading with the rated value. OL means open.${parNote}${leadNote}`};
   if (single){
     const pass = Rth <= SPEC.wire;
     const good = it.k === 'wire' || it.k === 'cable' ? 'A good wire reads well under 1.0 Ω end to end.' : 'A good connection, switch, or fuse reads close to 0 Ω.';
@@ -2183,7 +2502,7 @@ function bench(o = {}){
   const d = C.defaults;
   S.sw = {...d.sw}; S.fuse = {...d.fuse}; S.plug = {...d.plug}; S.ign = !!d.ign; S.speed = d.speed || 'OFF';
   S.fault = null; S.faultR = 0; S.pp = 'off'; S.ppTrip = false; S.jmpBlown = false;
-  S.stuck = false; S.stops = 0; S.motRun = false; S.pad = !!d.pad; S.relayOn = false; S.clickAt = 0;
+  S.stuck = false; S.stops = 0; S.motRun = false; S.pad = !!d.pad; S.relayOn = false; S.clickAt = 0; S.dim = d.dim || 0;
   S.dmm = {knob:'V', jack:'V', rel:0, blown:false};
   S.tips = Object.fromEntries(Object.keys(TIPS).map(k => [k, null]));
   S.sel = null; NLC = {};
@@ -2194,6 +2513,7 @@ function bench(o = {}){
   }
   if (o.ign != null) S.ign = o.ign;
   if (o.pad != null) S.pad = o.pad;
+  if (o.dim != null) S.dim = o.dim;
   if (o.speed) S.speed = o.speed;
   if (o.fault) setFault(o.fault, o.fr);
   if (o.knob) S.dmm.knob = o.knob;
@@ -2229,6 +2549,7 @@ function act(a){
   else if (k === 'plug') S.plug[v] = !S.plug[v];
   else if (k === 'ign') S.ign = v === 'toggle' ? !S.ign : v === '1';
   else if (k === 'spd') S.speed = v;
+  else if (k === 'dim') S.dim = +v;
   else if (k === 'pad') S.pad = v === 'toggle' ? !S.pad : v === '1';
   else if (k === 'tap'){
     if (S.fault === 'dead' && S.stuck){ S.stuck = false; toast('You tapped the motor. The armature moved off the dead spot.', 'ok'); }
@@ -2381,7 +2702,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pop')
 
 /* ================= lessons ================= */
 /* Each step saves the bench as the student found it, so Back and Redo step put it back exactly. */
-const SNAP_KEYS = ['sw','fuse','plug','ign','speed','pad','relayOn','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
+const SNAP_KEYS = ['sw','fuse','plug','ign','speed','pad','relayOn','dim','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
 const snap = () => JSON.parse(JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k => [k, S[k]]))));
 function restore(o){ const c = JSON.parse(JSON.stringify(o)); for (const k of SNAP_KEYS) S[k] = c[k]; NLC = {}; S.sel = null; }
 function enterStep(i, reset){
@@ -2582,7 +2903,7 @@ const guideHTML = () => `<div class="guide">${C.guide}${GUIDE_HTML}</div>`;
 
 /* ================= boot ================= */
 const hash = location.hash.replace('#', '');
-const hm = hash.match(/^(lamp|blower|relay)?-?(?:lesson(\d))?$/) || [];
+const hm = hash.match(/^(lamp|blower|relay|series)?-?(?:lesson(\d))?$/) || [];
 loadCircuit(hm[1] || 'lamp');
 bench(C.start);
 if (hm[2] && C.lessons[+hm[2] - 1]){ S.mode = 'guided'; S.lesson = +hm[2] - 1; enterStep(0); }
@@ -2591,7 +2912,7 @@ else if (hash === 'mystery') S.mode = 'mystery';
 syncBar();
 update();
 requestAnimationFrame(tick);
-addEventListener('hashchange', () => { const m = location.hash.replace('#', '').match(/^(lamp|blower|relay)/); if (m) switchCircuit(m[1]); });
+addEventListener('hashchange', () => { const m = location.hash.replace('#', '').match(/^(lamp|blower|relay|series)/); if (m) switchCircuit(m[1]); });
 
 /* test hook */
 window.__etb = {S, update, bench, setFault, act, setMode, enterStep, switchCircuit, get C(){ return C; }, get R(){ return R; }, get RD(){ return RD; }, get LESSONS(){ return C.lessons; },
