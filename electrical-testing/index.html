@@ -206,6 +206,8 @@ button{font:inherit;color:inherit}
 .tchip i{width:7px;height:7px;border-radius:50%;flex:none}
 .tchip b{font:500 11px/1 var(--f-mono);color:var(--fg)}
 .tchip .chip{padding:3px 6px;font-size:8.5px}
+.clk{font-family:var(--f-label);font-weight:700;font-size:10px;letter-spacing:.16em;fill:var(--accent);animation:clk .9s ease-out forwards}
+@keyframes clk{from{opacity:1}to{opacity:0}}
 .mistake{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,90,78,.55);background:rgba(255,90,78,.08);font-size:12.5px;color:#FFC4BE;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 /* ---------- notebook ---------- */
@@ -446,7 +448,7 @@ const ANCHOR = {dmmR:[77,598], dmmB:[77,598], ppTip:[548,598], clamp:[862,598]};
 const S = {
   cid:'lamp', mode:'explore', tab:'main', colors:true,
   sw:{}, fuse:{}, plug:{}, ign:false, speed:'OFF', fault:null, faultR:0, pp:'off', ppTrip:false, jmpBlown:false,
-  stuck:false, stops:0, motRun:false,
+  stuck:false, stops:0, motRun:false, pad:false, relayOn:false, clickAt:0,
   dmm:{}, tips:{}, log:[], lesson:null, step:0, answered:{}, snaps:{}, mystery:null, sel:null,
 };
 let NLC = {};      // converged nonlinear resistances, reused between solves
@@ -458,9 +460,11 @@ const FAN = {a:0};
 /* current circuit and its tables (swapped by loadCircuit) */
 let C, TP, TP_IDS, CLAMP, WIRES, FAULTS, FBY, ITEM, FTYPES;
 function tpPos(id){
-  const t = TP[id]; let x = t.x;
-  if (t.mv && !S.plug[t.mv[0]]) x += t.mv[1];
-  return { x, y: t.y };
+  const t = TP[id]; if (!t) return null;
+  let x = t.x;
+  let y = t.y;
+  if (t.mv && !S.plug[t.mv[0]]){ x += t.mv[1]; y += t.mv[2] || 0; }
+  return { x, y };
 }
 const nm = id => TP[id] ? TP[id].nm : '?';
 const parts = id => ITEM[id].p || [id];
@@ -1189,10 +1193,328 @@ LAMP.lessons = [
  ]},
 ];
 
-const CIRCUITS = {lamp:LAMP, blower:BLOWER};
+/* =====================================================================
+   CIRCUIT 3: HORN RELAY (ISO 4-pin, ground-side switched control)
+   ===================================================================== */
+/* Coil 80 ohm pulls in above 85 mA (about 7 V) and drops out below 40 mA. Horn about 2.4 ohm, 5 A. */
+const RLY_COIL = 80, RLY_IN = .085, RLY_OUT = .04;
+const rlyOpen = () => 'The relay is pulled from its socket.';
+const RELAY = {
+  id:'relay', name:'Horn relay', sub:'4-pin ISO relay · control and load sides', lib:'Horn relay: control side and load side, coil and contact tests, jumping the socket.',
+  fuseRating:{F1:20, F2:10},
+  defaults:{sw:{}, fuse:{F1:'in', F2:'in'}, plug:{RLY:true, C5:true, HORN:true}, pad:false},
+  start:{tips:{dmmR:'S30', dmmB:'BATN'}},
+  mystStart:{},
+  extraNodes:['W2m','W5m'],
+  TP:{
+    BATP:{n:'BP',  x:55,  y:368, l:'BAT+', nm:'BAT+', lx:55,  ly:394},
+    BATN:{n:'BN',  x:105, y:368, l:'BAT−', nm:'BAT−', lx:105, ly:394},
+    F1I: {n:'BUS', x:190, y:110, l:'IN',  nm:'F1 in'},
+    F1O: {n:'F1o', x:250, y:110, l:'OUT', nm:'F1 out'},
+    F2I: {n:'BUS', x:190, y:250, l:'IN',  nm:'F2 in'},
+    F2O: {n:'F2o', x:250, y:250, l:'OUT', nm:'F2 out'},
+    S86: {n:'s86', x:420, y:150, l:'86', nm:'SKT 86', lx:410, ly:146, a:'end'},
+    S85: {n:'s85', x:420, y:300, l:'85', nm:'SKT 85', lx:410, ly:296, a:'end'},
+    S30: {n:'s30', x:580, y:150, l:'30', nm:'SKT 30', lx:590, ly:146, a:'start'},
+    S87: {n:'s87', x:580, y:300, l:'87', nm:'SKT 87', lx:590, ly:296, a:'start'},
+    R86: {n:'r86', x:446, y:150, l:'', nm:'RLY 86', mv:['RLY',0,-30]},
+    R85: {n:'r85', x:446, y:300, l:'', nm:'RLY 85', mv:['RLY',0,-30]},
+    R30: {n:'r30', x:554, y:150, l:'', nm:'RLY 30', mv:['RLY',0,-30]},
+    R87: {n:'r87', x:554, y:300, l:'', nm:'RLY 87', mv:['RLY',0,-30]},
+    HP:  {n:'hP',  x:760, y:300, l:'H+', nm:'H+', lx:760, ly:286},
+    HB:  {n:'hB',  x:782, y:300, l:'', nm:'horn +'},
+    HN:  {n:'hN',  x:782, y:360, l:'H−', nm:'H−', lx:770, ly:364, a:'end'},
+    G102:{n:'GE3', x:782, y:468, l:'G102', nm:'G102', lx:798, ly:472, a:'start'},
+    C5H: {n:'C5h', x:380, y:383, l:'C5', nm:'C5 (harness)', lx:394, ly:387, a:'start'},
+    C5C: {n:'CSi', x:380, y:405, l:'', nm:'C5 (column)', mv:['C5',0,8]},
+    PAD: {n:'PAD', x:300, y:440, l:'PAD', nm:'PAD', lx:288, ly:444, a:'end'},
+    PADG:{n:'PG',  x:300, y:470, l:'PAD·G', nm:'PAD·G', lx:288, ly:474, a:'end'},
+    G103:{n:'GE4', x:300, y:497, l:'G103', nm:'G103', lx:314, ly:501, a:'start'},
+    BODY:{n:'BODY',x:520, y:520, l:'BODY', nm:'BODY', lx:520, ly:511},
+  },
+  CLAMP:{
+    cBatP:{el:'cabP', x:55,  y:270, nm:'the battery + cable'},
+    cW1:  {el:'w1',   x:420, y:80,  nm:'W1 (load feed)'},
+    cW2:  {el:'w2a',  x:650, y:300, nm:'W2 (87 to horn)'},
+    cW3:  {el:'w3',   x:782, y:420, nm:'W3 (horn ground)'},
+    cW4:  {el:'w4',   x:330, y:200, nm:'W4 (coil feed)'},
+    cW5:  {el:'w5a',  x:398, y:300, nm:'W5 (85 to C5)'},
+    cW6:  {el:'w6',   x:300, y:482, nm:'W6 (pad ground)'},
+    cBatN:{el:'cabN', x:200, y:520, nm:'the battery ground cable'},
+  },
+  FTYPES:[{k:'relay', n:'Relay faults'},{k:'res', n:'Excessive resistance'},{k:'open', n:'Open'},{k:'sg', n:'Short to ground'}],
+  FAULTS:[
+    {id:'rCont',   t:'relay', n:'Burnt relay contacts', adj:1.5, rng:[.1,4,.1,'Ω'], myst:[.8,2.5], concern:'The horn sounds weak. You can hear the relay click.'},
+    {id:'openCoil',t:'relay', n:'Open relay coil', concern:'The horn doesn’t work, and the relay doesn’t click.'},
+    {id:'weld',    t:'relay', n:'Welded relay contacts', concern:'The horn won’t shut off.'},
+    {id:'rG102',   t:'res',   n:'Corroded horn ground G102', adj:.8, rng:[.1,4,.1,'Ω'], myst:[.6,2], concern:'The horn sounds weak. You can hear the relay click.'},
+    {id:'openCS',  t:'open',  n:'Open clockspring', concern:'The horn doesn’t work, and the relay doesn’t click.'},
+    {id:'openHorn',t:'open',  n:'Burned-out horn', concern:'The horn doesn’t work, but you can hear the relay click.'},
+    {id:'sgW5',    t:'sg',    n:'W5 (85 to C5) chafed to ground', concern:'The horn won’t shut off.'},
+    {id:'sgW2',    t:'sg',    n:'W2 (87 to horn) chafed to ground', concern:'The horn fuse blows when the horn is pressed.'},
+  ],
+  ITEM:{
+    cabP:{n:'the battery + cable',k:'cable'}, cabN:{n:'the battery ground cable',k:'cable'},
+    f1:{n:'fuse F1',k:'fuse',fuse:'F1'}, w1:{n:'wire W1',k:'wire'},
+    k30:{n:'socket terminal 30',k:'conn',open:rlyOpen}, k87:{n:'socket terminal 87',k:'conn',open:rlyOpen},
+    k86:{n:'socket terminal 86',k:'conn',open:rlyOpen}, k85:{n:'socket terminal 85',k:'conn',open:rlyOpen},
+    cont:{n:'the relay contacts (30 to 87)',k:'switch',open:'The relay isn’t energized, so its contacts are open.'},
+    w2:{n:'wire W2',k:'wire',p:['w2a','w2b']}, kh:{n:'the horn connector',k:'conn',open:'The horn is unplugged.'},
+    horn:{n:'the horn',k:'load',ohm:'horn',faultOpen:true,open:'The horn itself is open.'},
+    w3:{n:'wire W3',k:'wire'}, g102:{n:'ground G102',k:'conn'},
+    f2:{n:'fuse F2',k:'fuse',fuse:'F2'}, w4:{n:'wire W4',k:'wire'},
+    coil:{n:'the relay coil',k:'load',ohm:'coil',nom:RLY_COIL,faultOpen:true,open:'The relay coil is open.'},
+    w5:{n:'wire W5',k:'wire',p:['w5a','w5b']}, c5:{n:'connector C5',k:'conn',plug:'C5'},
+    cs:{n:'the clockspring',k:'conn',faultOpen:true,open:'The clockspring is open.'},
+    pad:{n:'the horn pad switch',k:'switch',open:'The horn pad isn’t pressed, so the switch is open.'},
+    w6:{n:'wire W6',k:'wire'}, g103:{n:'ground G103',k:'conn'},
+  },
+  chains(){ return [
+    {load:8, nodes:['BP','BUS','F1o','s30','r30','r87','s87','hP','hB','hN','GE3','BODY','BN'],
+             items:['cabP','f1','w1','k30','cont','k87','w2','kh','horn','w3','g102','cabN']},
+    {load:4, nodes:['BP','BUS','F2o','s86','r86','r85','s85','C5h','CSi','PAD','PG','GE4','BODY','BN'],
+             items:['cabP','f2','w4','k86','coil','k85','w5','c5','cs','pad','w6','g103','cabN']},
+  ]; },
+  build(A){
+    const f = S.fault, fr = S.faultR, F = S.fuse, P = S.plug;
+    A('cabP','BP','BUS',.002);
+    if (F.F1 === 'in') A('f1','BUS','F1o',.004,{prot:20, dev:'F1'});
+    A('w1','F1o','s30',.012);
+    if (P.RLY){ A('k30','s30','r30',.002); A('k87','r87','s87',.002); A('k86','s86','r86',.002); A('k85','r85','s85',.002); }
+    if (S.relayOn || f === 'weld') A('cont','r30','r87',.005 + (f === 'rCont' ? fr : 0));
+    if (f !== 'openCoil') A('coil','r86','r85',RLY_COIL);
+    A('w2a','s87','W2m',.006); A('w2b','W2m','hP',.006);
+    if (P.HORN) A('kh','hP','hB',.002);
+    if (f !== 'openHorn') A('horn','hB','hN',2.4);
+    A('w3','hN','GE3',.01);
+    A('g102','GE3','BODY',.002 + (f === 'rG102' ? fr : 0));
+    A('cabN','BODY','BN',.002);
+    if (F.F2 === 'in') A('f2','BUS','F2o',.006,{prot:10, dev:'F2'});
+    A('w4','F2o','s86',.03);
+    A('w5a','s85','W5m',.02); A('w5b','W5m','C5h',.02);
+    if (P.C5) A('c5','C5h','CSi',.003);
+    if (f !== 'openCS') A('cs','CSi','PAD',.1);
+    if (S.pad) A('pad','PAD','PG',.02);
+    A('w6','PG','GE4',.02);
+    A('g103','GE4','BODY',.002);
+    if (f === 'sgW5') A('xs','W5m','BODY',.02);
+    if (f === 'sgW2') A('xs','W2m','BODY',.02);
+  },
+  settle(res){
+    const I = Math.abs(res.I.coil || 0);
+    const on = I > RLY_IN ? true : I < RLY_OUT ? false : S.relayOn;
+    if (on === S.relayOn) return false;
+    S.relayOn = on; if (on) S.clickAt = performance.now();
+    return true;
+  },
+  metrics(res, E){
+    const h = E.find(e => e.id === 'horn');
+    return {horn: h ? Math.min(1.2, Math.pow(Math.abs(res.v[h.a] - res.v[h.b]) / 12.4, 2)) : 0};
+  },
+  WIRES:[
+    {el:'cabP', a:'BP',  b:'BUS', d:'M55 368 V180 H172', thick:true},
+    {el:'bus',  a:'BUS', b:'BUS', d:'M190 110 H172 V250 H190', noflow:true},
+    {el:'w1',   a:'F1o', b:'s30', d:'M250 110 V80 H620 V150 H580'},
+    {el:'w4',   a:'F2o', b:'s86', d:'M250 250 H330 V150 H420'},
+    {el:'w2a',  a:'s87', b:'W2m', d:'M580 300 H700'},
+    {el:'w2b',  a:'W2m', b:'hP',  d:'M700 300 H760'},
+    {el:'w3',   a:'hN',  b:'GE3', d:'M782 360 V459'},
+    {el:'g102', a:'GE3', b:'BODY',d:'M782 477 V520', thick:true},
+    {el:'w5a',  a:'s85', b:'W5m', d:'M420 300 H380 V340'},
+    {el:'w5b',  a:'W5m', b:'C5h', d:'M380 340 V383'},
+    {el:'cs',   a:'CSi', b:'PAD', d:'M380 405 V440 H300', brk:{f:'openCS', x:356, y:440}},
+    {el:'w6',   a:'PG',  b:'GE4', d:'M300 470 V488'},
+    {el:'g103', a:'GE4', b:'BODY',d:'M300 506 V520', thick:true},
+    {el:'cabN', a:'BODY',b:'BN',  d:'M782 520 H140 V354 H105 V368', thick:true},
+  ],
+  back:`
+    <rect x="150" y="66" width="122" height="236" rx="10" class="blk2"/>
+    <text x="211" y="318" text-anchor="middle" class="t-sub">FUSE BLOCK</text>
+    <text x="211" y="132" text-anchor="middle" class="t-tiny">HORN</text>
+    <text x="211" y="272" text-anchor="middle" class="t-tiny">HORN RELAY</text>
+    <rect x="404" y="126" width="192" height="196" rx="10" class="blk2" style="fill:url(#hatch)"/>
+    <text x="500" y="356" text-anchor="middle" class="t-sub">RELAY SOCKET</text>
+    <text x="80" y="170" text-anchor="middle" class="t-tiny">+ CABLE</text>
+    <text x="420" y="71" text-anchor="middle" class="t-wire">W1 · LOAD FEED</text>
+    <text x="300" y="166" text-anchor="end" class="t-wire">W4 · COIL FEED</text>
+    <text x="660" y="291" text-anchor="middle" class="t-wire">W2</text>
+    <text x="796" y="420" class="t-wire">W3</text>
+    <text x="370" y="326" text-anchor="end" class="t-wire">W5</text>
+    <text x="640" y="150" class="t-tiny">LOAD SIDE</text>
+    <text x="300" y="232" text-anchor="middle" class="t-tiny">CONTROL SIDE</text>
+    <rect x="262" y="422" width="102" height="62" rx="12" fill="none" stroke="#2A3644" stroke-dasharray="4 4"/>
+    <text x="290" y="416" text-anchor="middle" class="t-tiny">STEERING WHEEL</text>
+    <text x="330" y="458" text-anchor="middle" class="t-tiny">CLOCKSPRING</text>
+    <text x="845" y="398" text-anchor="middle" class="t-blk">HORN</text><text x="845" y="412" text-anchor="middle" class="t-mono">≈ 5 A</text>
+    <text x="640" y="512" text-anchor="middle" class="t-tiny">BODY / CHASSIS GROUND</text>`,
+  parts(){
+    let h = fuseSVG('F1', 110, 190, 250) + fuseSVG('F2', 250, 190, 250) + relayBody() + relayHorn() + relayPad() + relayC5();
+    h += `<circle cx="782" cy="468" r="9" fill="#141D27" stroke="#7D8A98" stroke-width="2"/><circle cx="300" cy="497" r="9" fill="#141D27" stroke="#7D8A98" stroke-width="2"/>`;
+    if (S.fault === 'rG102' && showFault()) h += crust([[776,463,2.6],[788,473,3.2],[787,462,2]]);
+    return h;
+  },
+  fault(){
+    switch (S.fault){
+      case 'rCont': return ftag(500, 108 + (S.plug.RLY ? 0 : -30), 'BURNT CONTACTS ' + faultVal());
+      case 'openCoil': return ftag(500, 108 + (S.plug.RLY ? 0 : -30), 'COIL OPEN');
+      case 'weld': return ftag(500, 108 + (S.plug.RLY ? 0 : -30), 'CONTACTS WELDED');
+      case 'rG102': return ftag(840, 470, 'CORRODED ' + faultVal());
+      case 'openCS': return `<rect x="348" y="432" width="16" height="16" fill="#080B0F"/>${ftag(330, 474, 'OPEN')}`;
+      case 'openHorn': return ftag(845, 280, 'HORN OPEN');
+      case 'sgW5': return `<path d="M380 340 H346 V352" class="short"/>${gndSym(346, 354, true)}${sparkSym(380, 340)}${ftag(330, 372, 'SHORT TO GROUND')}`;
+      case 'sgW2': return `<path d="M700 300 V336" class="short"/>${gndSym(700, 338, true)}${sparkSym(700, 304)}${ftag(700, 366, 'SHORT TO GROUND')}`;
+    }
+    return '';
+  },
+  ctrls(){ return `
+    <div class="cg"><span>Horn pad</span>${segCtl([['0','Released'],['1','Pressed']], S.pad ? '1' : '0', 'pad')}</div>
+    <div class="cg"><span>Fuses</span>${fzCtl('F1')}${fzCtl('F2')}</div>
+    <div class="cg"><span>Parts</span>${plCtl('RLY', 'Relay', 'in', 'pulled')}${plCtl('C5', 'C5', 'mated', 'apart')}${plCtl('HORN', 'Horn', 'in', 'out')}</div>${probeCtl()}`; },
+  cond(){
+    const c = [`pad ${S.pad ? 'pressed' : 'released'}`, `relay ${!S.plug.RLY ? 'pulled' : S.relayOn ? 'energized' : 'off'}`];
+    if (!S.plug.C5) c.push('C5 apart'); if (!S.plug.HORN) c.push('horn unplugged');
+    return c;
+  },
+  drawSpec(pr, I){
+    const a = Math.abs(I);
+    if (pr === ['BUS','F1o'].sort().join() && S.fuse.F1 !== 'in'){
+      const pass = a >= 4 && a <= 6;
+      return {t:'Horn circuit current draw', chip:a > .05 ? [`${pass ? 'Pass' : 'Fail'} · 4–6 A`, pass ? 'pass' : 'fail'] : null, p:`${fmtA(a)} A on the load side. The horn should draw 4–6 A. Low means resistance in the load circuit (often burnt relay contacts); high means a short.`};
+    }
+    if (pr === ['BUS','F2o'].sort().join() && S.fuse.F2 !== 'in')
+      return {t:'Relay coil current', p:`${fmtA(a)} A on the control side. An 80 Ω coil draws about 0.16 A. A relay lets this small current switch the horn’s 5 A.`};
+    return null;
+  },
+  clampNote(el, I){
+    if (['w1','w2a','w3'].includes(el) && I > .5){ const pass = I >= 4 && I <= 6; return {txt:'horn spec 4–6 A', cls:pass ? 'pass' : 'fail'}; }
+    if (['w4','w5a','w6'].includes(el)) return {txt:'below clamp range', cls:'info'};
+    return null;
+  },
+  guide:`<div class="gcard"><span class="gk">Relay circuit</span>
+    <table class="spec"><tbody>
+      <tr><td>Terminals 85 / 86</td><td>coil</td></tr><tr><td>Terminal 30</td><td>common (feed)</td></tr>
+      <tr><td>Terminal 87</td><td>output, normally open</td></tr><tr><td>Terminal 87a (5-pin)</td><td>normally closed</td></tr>
+      <tr><td>Coil resistance (typical)</td><td>50–120 Ω</td></tr><tr><td>Horn draw (this bench)</td><td>4–6 A</td></tr>
+    </tbody></table>
+    <ul><li><b>Two circuits:</b> test the control side (power at 86, ground at 85 when the switch is on) and the load side (power at 30, power at 87 when the relay is on) separately.</li>
+    <li><b>No click?</b> Pull the relay and jump 30 to 87 with a fused jumper. If the load works, the problem is the relay or its control side.</li>
+    <li><b>A click isn’t proof.</b> Burnt contacts click and still drop voltage. Check the voltage drop from 30 to 87 under load.</li>
+    <li><b>Won’t shut off?</b> Pull the relay. If 85 still has a ground with the switch off, the control wire is shorted to ground. If not, the contacts are welded.</li>
+    <li>Some relays have a diode across the coil, which makes 85 and 86 polarity-sensitive. Check before you bench-test with jumpers.</li></ul></div>`,
+};
+function relayBody(){
+  const dy = S.plug.RLY ? 0 : -30, on = S.relayOn || S.fault === 'weld';
+  const c86 = ncol('r86'), c85 = ncol('r85'), c30 = ncol('r30'), c87 = ncol('r87');
+  const open = S.fault === 'openCoil' && showFault();
+  let loops = '';
+  for (let i = 0; i < 8; i++){
+    if (open && i === 4){ loops += ' m0 12'; continue; }
+    loops += ' a6 6 0 0 1 0 12';
+  }
+  const lever = on ? 'M524 184 L524 262' : 'M524 184 L544 256';
+  const burnt = S.fault === 'rCont' && showFault();
+  const clk = S.clickAt && performance.now() - S.clickAt < 900;
+  return `<g class="act" data-act="plug:RLY" role="button" aria-label="Horn relay (click to pull or install)"><g transform="translate(0 ${dy})">
+    <rect x="432" y="134" width="136" height="182" rx="8" class="blk"/>
+    <text x="500" y="128" text-anchor="middle" class="t-blk">RELAY</text>
+    <path d="M446 150 H476 V176" fill="none" stroke="${c86}" stroke-width="2.4"/>
+    <path d="M476 176${loops}" fill="none" stroke="${S.colors ? vcol(((R.v.r86 || 0) + (R.v.r85 || 0)) / 2) : NEUTRAL}" stroke-width="2.2"/>
+    <path d="M476 272 V300 H446" fill="none" stroke="${c85}" stroke-width="2.4"/>
+    <path d="M490 224 H516" stroke="#5A6773" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <path d="M554 150 H524 V184" fill="none" stroke="${c30}" stroke-width="2.4"/>
+    <path d="${lever}" stroke="${c30}" stroke-width="3" stroke-linecap="round"/><circle cx="524" cy="184" r="3.6" fill="#C9D3DD"/>
+    <path d="M524 268 V300 H554" fill="none" stroke="${c87}" stroke-width="2.4"/><circle cx="524" cy="266" r="3.2" fill="${burnt ? '#7a3a10' : '#C9D3DD'}"/>
+    ${burnt ? '<circle cx="524" cy="266" r="7" fill="none" stroke="#B4561C" stroke-width="2" opacity=".8"/>' : ''}
+    <text x="458" y="146" class="t-tp">86</text><text x="458" y="314" class="t-tp">85</text>
+    <text x="542" y="146" text-anchor="end" class="t-tp">30</text><text x="542" y="314" text-anchor="end" class="t-tp">87</text>
+    <text x="500" y="332" text-anchor="middle" class="t-tiny" style="fill:${on ? 'var(--accent)' : 'var(--faint)'}">${on ? 'ENERGIZED' : 'AT REST'}</text>
+    ${clk ? '<text x="560" y="222" class="clk">CLICK</text>' : ''}
+  </g>${S.plug.RLY ? '' : '<text x="500" y="370" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">PULLED</text>'}</g>`;
+}
+function relayHorn(){
+  const loud = R.horn || 0, plugged = S.plug.HORN;
+  let arcs = '';
+  for (let i = 0; i < 3; i++) arcs += `<path d="M${880 + i * 14} ${314 - i * 8} Q${894 + i * 16} 332 ${880 + i * 14} ${350 + i * 8}" fill="none" stroke="var(--warn)" stroke-width="2.4" stroke-linecap="round" opacity="${(loud * (1 - i * .22)).toFixed(2)}"/>`;
+  return `<g class="act" data-act="plug:HORN" role="button" aria-label="Horn connector">
+    <rect x="748" y="288" width="140" height="84" class="hitr"/>
+    <rect x="752" y="290" width="16" height="20" rx="4" class="blk"/>
+    <rect x="${774 + (plugged ? 0 : 8)}" y="290" width="16" height="20" rx="4" class="blk"/>
+    <path d="M782 300 H805 V318" fill="none" stroke="${ncol('hB')}" stroke-width="2.4"/>
+    <path d="M805 346 V360 H782" fill="none" stroke="${ncol('hN')}" stroke-width="2.4"/>
+    <rect x="794" y="318" width="24" height="28" rx="4" fill="#141D27" stroke="#7D8A98" stroke-width="1.3"/>
+    <path d="M818 322 L870 302 L870 362 L818 342 Z" fill="#141D27" stroke="${loud > .05 ? 'var(--warn)' : '#7D8A98'}" stroke-width="1.3"/>
+    ${arcs}${plugged ? '' : '<text x="770" y="282" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>'}</g>`;
+}
+function relayPad(){
+  const c = ncol('PAD');
+  return `<g class="act" data-act="pad:toggle" role="button" aria-label="Horn pad (click to press or release)">
+    <rect x="270" y="436" width="60" height="40" class="hitr"/>
+    <path d="M300 440 V447" stroke="${c}" stroke-width="2.4"/><circle cx="300" cy="448" r="3" fill="#C9D3DD"/>
+    <path d="${S.pad ? 'M300 448 L300 463' : 'M300 448 L313 460'}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="300" cy="464" r="3" fill="#C9D3DD"/><path d="M300 464 V470" stroke="${ncol('PG')}" stroke-width="2.4"/>
+    <text x="320" y="476" class="t-tiny" style="fill:${S.pad ? 'var(--accent)' : 'var(--faint)'}">${S.pad ? 'PRESSED' : 'PAD'}</text></g>`;
+}
+function relayC5(){
+  const dy = S.plug.C5 ? 0 : 8;
+  return `<g class="act" data-act="plug:C5" role="button" aria-label="Steering column connector C5">
+    <rect x="364" y="372" width="32" height="50" class="hitr"/>
+    <rect x="370" y="374" width="20" height="18" rx="4" class="blk"/>
+    <rect x="370" y="${396 + dy}" width="20" height="18" rx="4" class="blk"/></g>`;
+}
+
+/* ---------- relay lessons ---------- */
+RELAY.lessons = [
+ {t:'Two circuits in one', s:'A relay is a switch run by a small control circuit', steps:[
+  {t:'Meet the relay circuit', set:{pad:false}, b:`A relay lets a small current switch a big one. The <b>control side</b> runs from fuse F2 to socket terminal 86, through the relay coil to 85, then through column connector C5, the clockspring and the horn pad to ground G103. The <b>load side</b> runs from fuse F1 to terminal 30, through the relay contacts to 87, then through the horn to ground G102. Pressing the horn pad energizes the coil, and the coil pulls the contacts closed.`},
+  {t:'The load side is ready', b:`Meter on <b>V</b>. Red on <b>SKT 30</b>, black on <b>BAT−</b>.`, goal:['Red on SKT 30, black on ground', () => dV('S30','GND')], ok:'Battery voltage, waiting at the relay contacts. Terminal 30 is hot all the time on this circuit.', spot:['tp:S30','tp:BATN']},
+  {t:'Control power', b:`Move red to <b>SKT 86</b>.`, goal:['Red on SKT 86', () => dV('S86','GND')], ok:'Battery voltage from fuse F2 feeds the coil.', spot:['tp:S86']},
+  {t:'Predict terminal 85', b:`Move red to <b>SKT 85</b>. The horn pad is released.`, ask:{q:'What will SKT 85 read with the pad released?', o:['0 V','About 12.6 V'], a:1, why:'No current flows through the coil, so it drops no voltage, and battery voltage passes through it to 85. The horn pad is on the ground side of the coil, so 85 only drops to 0 V when the pad is pressed.'}, goal:['Red on SKT 85', () => dV('S85','GND')], spot:['tp:S85']},
+  {t:'Press the horn', b:`Set the horn pad to <b>Pressed</b>.`, goal:['Horn pad pressed', () => S.pad], ok:'85 drops to almost 0 V, the coil pulls in (watch the contacts close), and the horn sounds. The coil uses about 0.16 A to switch about 5 A.', spot:['ctl:pad:1']},
+  {t:'The output', b:`Red on <b>SKT 87</b>.`, goal:['Red on SKT 87, pad pressed', () => S.pad && dV('S87','GND')], ok:'Battery voltage at 87, but only while the relay is energized. Release the pad and it drops to 0 V.', spot:['tp:S87']},
+  {t:'Takeaway', b:`Test a relay circuit as <b>two circuits</b>. Control side: power at 86, and a ground at 85 when the switch is pressed. Load side: power at 30 all the time, and power at 87 when the relay is on.`},
+ ]},
+ {t:'Test the relay itself', s:'Coil resistance, contacts, and a bench test', steps:[
+  {t:'Pull the relay', set:{pad:false}, b:`Pull the relay from its socket (click it, or use the Relay control). Its own terminals, RLY 86, 85, 30 and 87, are now test points.`, goal:['Relay pulled', () => !S.plug.RLY], spot:['ctl:plug:RLY']},
+  {t:'Coil resistance', b:`Meter on <b>Ω</b>. Measure <b>RLY 86</b> to <b>RLY 85</b>.`, goal:['Ω across the coil', () => dR('R86','R85')], ok:'About 80 Ω. Relay coils are typically 50–120 Ω. OL would mean an open coil.', spot:['#knob','tp:R86','tp:R85']},
+  {t:'Contacts at rest', b:`Measure <b>RLY 30</b> to <b>RLY 87</b>.`, goal:['Ω across the contacts, reading OL', () => dR('R30','R87') && RD.ol], ok:'OL. A normally open relay’s contacts stay open until the coil is energized.', spot:['tp:R30','tp:R87']},
+  {t:'Energize it on the bench', b:`Put the <b>power probe</b> tip on <b>RLY 86</b> and set it to <b>+B</b>. Then clip the <b>fused jumper</b> from <b>RLY 85</b> to <b>BODY</b>.`, goal:['Relay energized out of the socket', () => !S.plug.RLY && at('ppTip','R86') && S.pp === 'B' && S.relayOn], ok:'Click. The coil pulled the contacts closed.', spot:['tool:pp','tool:jmp','tp:R86','tp:R85','tp:BODY']},
+  {t:'Contacts closed', b:`Keep it energized and measure <b>RLY 30</b> to <b>RLY 87</b> again.`, goal:['Energized, Ω across the contacts', () => S.relayOn && dR('R30','R87')], ok:'Near 0 Ω, so the contacts close cleanly. A click alone doesn’t prove this: burnt contacts can click and still have high resistance.'},
+  {t:'Takeaway', b:`Bench-test a relay in three checks: coil resistance (85 to 86), contacts open at rest (30 to 87 OL), and contacts closed when energized (30 to 87 near 0 Ω). For a final proof, check the voltage drop across 30 to 87 under load in the car.`},
+ ]},
+ {t:'No click: jump the socket', s:'Split the problem: relay, load side, or control side', steps:[
+  {t:'No horn, no click', set:{pad:true, fault:'openCoil'}, b:`The horn doesn’t work and the relay doesn’t click. The horn pad is pressed.`},
+  {t:'Prove the load side', b:`Pull the relay. Clip the <b>fused jumper</b> from <b>SKT 30</b> to <b>SKT 87</b>.`, goal:['Relay pulled, 30 jumped to 87', () => !S.plug.RLY && across('jA','jB','S30','S87')], ok:'The horn sounds. Fuse F1, the wiring, the horn and its ground are all good, so the problem is the relay or its control side.', spot:['ctl:plug:RLY','tool:jmp','tp:S30','tp:S87']},
+  {t:'Control power', b:`Remove the jumper. <b>Test light</b>: clip on <b>BODY</b>, tip on <b>SKT 86</b>.`, goal:['Test light lit on SKT 86', () => at('tlTip','S86') && gnd('tlClip') && R.bright.tl > .4], ok:'It lights: the coil has power.', spot:['tool:tl','tp:S86','tp:BODY']},
+  {t:'Control ground', b:`Move the test light clip to <b>SKT 30</b> (battery voltage) and the tip to <b>SKT 85</b>. Keep the horn pad pressed.`, goal:['Test light lit from SKT 30 to SKT 85', () => across('tlTip','tlClip','S85','S30') && S.pad && R.bright.tl > .4], ok:'It lights. With the pad pressed, 85 has a good ground through C5, the clockspring and the horn pad. Power and ground both reach the socket, so the relay is the problem.', spot:['tp:S30','tp:S85']},
+  {t:'Confirm', b:`Ohm the relay: <b>RLY 86</b> to <b>RLY 85</b>.`, goal:['Ω across the coil', () => dR('R86','R85')], ok:'OL: the coil is open. Replace the relay.', spot:['#knob','tp:R86','tp:R85']},
+  {t:'Takeaway', b:`No click? Pull the relay and jump 30 to 87 to prove the load side. Then check for power at 86 and a ground at 85. If both are there, the relay is bad.`},
+ ]},
+ {t:'Clicks, but the horn is weak', s:'Burnt relay contacts', steps:[
+  {t:'A weak horn', set:{pad:true, fault:'rCont', fr:1.5}, b:`The relay clicks but the horn is weak. A click proves the coil works. It doesn’t prove the contacts can carry current.`},
+  {t:'Voltage at the horn', b:`Meter on <b>V</b>. Red on <b>H+</b>, black on <b>BAT−</b>.`, goal:['Red on H+, black on ground', () => dV('HP','GND')], ok:'Several volts low. The load side is losing voltage before the horn.', spot:['tp:HP']},
+  {t:'Across the relay', b:`Red on <b>SKT 30</b>, black on <b>SKT 87</b>, pad pressed.`, goal:['SKT 30 to SKT 87, pad pressed', () => S.pad && dV('S30','S87')], ok:'Most of the missing voltage is lost inside the relay, between 30 and 87. A good relay drops well under 0.10 V. The contacts are burnt: replace the relay.', spot:['tp:S30','tp:S87']},
+  {t:'Takeaway', b:`A relay can click and still fail. Check the voltage drop from 30 to 87 with the load on. More than about 0.1 V means burnt or pitted contacts.`},
+ ]},
+ {t:'The horn won’t shut off', s:'Control-side short to ground, or welded contacts', steps:[
+  {t:'Stuck on', set:{pad:false, fault:'sgW5'}, b:`The horn won’t shut off, even with the pad released.`},
+  {t:'Pull the relay', b:`Pull the relay.`, goal:['Relay pulled', () => !S.plug.RLY], ok:'The horn stops. The load wiring isn’t shorted to power. Something is energizing the relay, or the relay is stuck on.', spot:['ctl:plug:RLY']},
+  {t:'Is 85 grounded?', b:`<b>Test light</b>: clip on <b>SKT 30</b>, tip on <b>SKT 85</b>. The pad is released.`, goal:['Test light from SKT 30 to SKT 85, pad released', () => across('tlTip','tlClip','S85','S30') && !S.pad], ok:'It lights with the pad released. 85 has a path to ground when it shouldn’t: a short to ground on the control side.', spot:['tool:tl','tp:S30','tp:S85']},
+  {t:'Find the section', b:`Unplug steering column connector <b>C5</b>.`, goal:['C5 unplugged', () => !S.plug.C5], ok:'The test light stays lit, so the short is in W5, between the relay socket and C5. The steering wheel is fine.', spot:['ctl:plug:C5']},
+  {t:'If it hadn’t lit', ask:{q:'If the test light had stayed off in the "Is 85 grounded?" step, what would that point to?', o:['A short in W5','Welded relay contacts','An open horn'], a:1, why:'With no ground at 85, nothing energizes the coil. If the horn still runs with the relay installed, the contacts are welded shut. Replace the relay.'}},
+  {t:'Takeaway', b:`On a ground-side switched control circuit, a short to ground turns the load <b>on</b>. It doesn’t blow a fuse, because the coil limits the current. Pull the relay to stop it, then look for a ground at 85.`},
+ ]},
+ {t:'Fuse blows on the load side', s:'Short to ground after the relay', steps:[
+  {t:'Fuse F1 blows', set:{pad:false, fault:'sgW2'}, b:`Fuse F1 blows when the horn is pressed. Press the horn pad.`, goal:['F1 blown', () => S.fuse.F1 === 'blown'], ok:'F1 blew the moment the relay closed.', spot:['ctl:pad:1']},
+  {t:'Test light in the cavity', b:`Put the <b>test light</b> across the F1 cavity: tip on <b>F1 in</b>, clip on <b>F1 out</b>. Keep the pad pressed.`, goal:['Test light across F1, lit', () => across('tlTip','tlClip','F1I','F1O') && R.bright.tl > .4], ok:'It lights: the short is still there while the relay is closed.', spot:['tool:tl','tp:F1I','tp:F1O']},
+  {t:'Open the relay', b:`Release the horn pad.`, goal:['Pad released', () => !S.pad], ok:'The light goes out. The short is only connected when the relay closes, so it’s on the 87 side: W2 or the horn.', spot:['ctl:pad:0']},
+  {t:'Isolate it', b:`Pull the relay and unplug the horn. Set the meter to <b>Ω</b> and measure from <b>SKT 87</b> to <b>BODY</b>.`, goal:['Relay pulled, horn unplugged, SKT 87 to BODY', () => !S.plug.RLY && !S.plug.HORN && dR('S87','BODY')], ok:'Near 0 Ω with the horn unplugged: W2 is shorted to ground. A good wire reads OL to ground.', spot:['ctl:plug:RLY','ctl:plug:HORN','tp:S87','tp:BODY']},
+  {t:'Takeaway', b:`Use the relay to split the circuit. If the fuse only blows when the relay closes, the short is downstream of the contacts, on the 87 side.`},
+ ]},
+];
+
+const CIRCUITS = {lamp:LAMP, blower:BLOWER, relay:RELAY};
 const LIB = [
-  {id:'lamp'}, {id:'blower'},
-  {n:'Relay circuit', s:'Control side and load side, tested separately.'},
+  {id:'lamp'}, {id:'blower'}, {id:'relay'},
   {n:'Series / parallel', s:'How one open or short changes the other loads.'},
 ];
 
@@ -1329,6 +1651,7 @@ function solveRun(){
       if (ratio > 1 && ratio > wr){ wr = ratio; worst = e; }
     }
     if (!worst){
+      if (C.settle && pass < 7 && C.settle(res)) continue;
       const bright = {};
       for (const id of ['lamp1','lamp2','tl','ld']){
         const e = E.find(x => x.id === id);
@@ -1337,7 +1660,7 @@ function solveRun(){
       let rpm = 0;
       const m = E.find(x => x.id === 'mot');
       if (m){ const V = Math.abs(res.v[m.a] - res.v[m.b]); rpm = motorW(m, V) * 60 / (2 * Math.PI); }
-      return {...res, E, ev, bright, rpm, has: new Set(E.map(e => e.id))};
+      return {...res, E, ev, bright, rpm, ...(C.metrics ? C.metrics(res, E) : {}), has: new Set(E.map(e => e.id))};
     }
     blowDev(worst.dev, Math.abs(res.I[worst.id]), ev);
   }
@@ -1391,6 +1714,8 @@ function openWhy(items){
 const list = items => items.map(i => ITEM[i].n.replace(/^the /,'')).join(', ');
 const OHM_TXT = {
   lamp:'A cold tungsten filament reads far below the ~6 Ω it has when lit. That’s normal. A burned-out bulb reads OL.',
+  coil:'A relay coil is a long, thin winding, so it reads tens of ohms (typically 50–120 Ω). OL means an open coil: the relay can’t click.',
+  horn:'A horn coil reads a couple of ohms. OL means the horn is open.',
   motor:'A blower motor reads a fraction of an ohm through its brushes and armature. OL means the brushes aren’t touching the commutator (a dead spot) or the armature is open.',
 };
 
@@ -1471,7 +1796,7 @@ function interpR(Rth, rT, bT, ohmE){
   }
   const parallel = !isFinite(spanR) || Rth < spanR * .85;
   const parNote = parallel ? ' This reads lower than the parts between your probes, so another path is connected in parallel. Unplug or disconnect to isolate the part.' : '';
-  if (single && it.k === 'load') return {t:`${cap(it.n)}${it.ohm === 'lamp' ? ', cold' : ''}`, p:`${OHM_TXT[it.ohm] || ''}${parNote}${leadNote}`};
+  if (single && it.k === 'load') return {t:`${cap(it.n)}${it.ohm === 'lamp' ? ', cold' : ''}`, chip:it.nom ? [`rated ≈ ${it.nom} Ω`,'info'] : null, p:`${OHM_TXT[it.ohm] || ''}${parNote}${leadNote}`};
   if (single && it.k === 'res') return {t:cap(it.n), chip:[`rated ≈ ${it.nom.toFixed(2)} Ω`,'info'], p:`Speed resistors are supposed to have resistance; they drop voltage to slow the motor. Compare the reading with the rated value. OL means open.${parNote}${leadNote}`};
   if (single){
     const pass = Rth <= SPEC.wire;
@@ -1711,7 +2036,7 @@ function drawTPs(){
     const spot = SPOT.has('tp:' + id);
     h += `<g class="tp${near === id ? ' near' : ''}${armed && !kindClamp ? ' armed' : ''}" data-tp="${id}" tabindex="0" role="button" aria-label="Test point ${t.nm}" transform="translate(${p.x} ${p.y})">
       <circle class="tph" r="12"/>${spot ? '<circle class="spotring" r="10"/>' : ''}<circle class="tpring" r="9"/><circle class="tpd" r="4.6" fill="${fill}"/></g>`;
-    if (t.l){ const lx = (t.lx ?? t.x) + (p.x - t.x), ly = t.ly ?? (t.y + 18); h += `<text x="${lx}" y="${ly}" text-anchor="${t.a || 'middle'}" class="t-tp">${t.l}</text>`; }
+    if (t.l){ const lx = (t.lx ?? t.x) + (p.x - t.x), ly = (t.ly ?? (t.y + 18)) + (p.y - t.y); h += `<text x="${lx}" y="${ly}" text-anchor="${t.a || 'middle'}" class="t-tp">${t.l}</text>`; }
   }
   if (kindClamp) for (const id in CLAMP){
     const c = CLAMP[id];
@@ -1858,7 +2183,7 @@ function bench(o = {}){
   const d = C.defaults;
   S.sw = {...d.sw}; S.fuse = {...d.fuse}; S.plug = {...d.plug}; S.ign = !!d.ign; S.speed = d.speed || 'OFF';
   S.fault = null; S.faultR = 0; S.pp = 'off'; S.ppTrip = false; S.jmpBlown = false;
-  S.stuck = false; S.stops = 0; S.motRun = false;
+  S.stuck = false; S.stops = 0; S.motRun = false; S.pad = !!d.pad; S.relayOn = false; S.clickAt = 0;
   S.dmm = {knob:'V', jack:'V', rel:0, blown:false};
   S.tips = Object.fromEntries(Object.keys(TIPS).map(k => [k, null]));
   S.sel = null; NLC = {};
@@ -1868,6 +2193,7 @@ function bench(o = {}){
     else if (k in S.plug) S.plug[k] = o[k];
   }
   if (o.ign != null) S.ign = o.ign;
+  if (o.pad != null) S.pad = o.pad;
   if (o.speed) S.speed = o.speed;
   if (o.fault) setFault(o.fault, o.fr);
   if (o.knob) S.dmm.knob = o.knob;
@@ -1903,6 +2229,7 @@ function act(a){
   else if (k === 'plug') S.plug[v] = !S.plug[v];
   else if (k === 'ign') S.ign = v === 'toggle' ? !S.ign : v === '1';
   else if (k === 'spd') S.speed = v;
+  else if (k === 'pad') S.pad = v === 'toggle' ? !S.pad : v === '1';
   else if (k === 'tap'){
     if (S.fault === 'dead' && S.stuck){ S.stuck = false; toast('You tapped the motor. The armature moved off the dead spot.', 'ok'); }
     else toast('You tapped the motor.');
@@ -2054,7 +2381,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pop')
 
 /* ================= lessons ================= */
 /* Each step saves the bench as the student found it, so Back and Redo step put it back exactly. */
-const SNAP_KEYS = ['sw','fuse','plug','ign','speed','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
+const SNAP_KEYS = ['sw','fuse','plug','ign','speed','pad','relayOn','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
 const snap = () => JSON.parse(JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k => [k, S[k]]))));
 function restore(o){ const c = JSON.parse(JSON.stringify(o)); for (const k of SNAP_KEYS) S[k] = c[k]; NLC = {}; S.sel = null; }
 function enterStep(i, reset){
@@ -2255,7 +2582,7 @@ const guideHTML = () => `<div class="guide">${C.guide}${GUIDE_HTML}</div>`;
 
 /* ================= boot ================= */
 const hash = location.hash.replace('#', '');
-const hm = hash.match(/^(lamp|blower)?-?(?:lesson(\d))?$/) || [];
+const hm = hash.match(/^(lamp|blower|relay)?-?(?:lesson(\d))?$/) || [];
 loadCircuit(hm[1] || 'lamp');
 bench(C.start);
 if (hm[2] && C.lessons[+hm[2] - 1]){ S.mode = 'guided'; S.lesson = +hm[2] - 1; enterStep(0); }
@@ -2264,6 +2591,7 @@ else if (hash === 'mystery') S.mode = 'mystery';
 syncBar();
 update();
 requestAnimationFrame(tick);
+addEventListener('hashchange', () => { const m = location.hash.replace('#', '').match(/^(lamp|blower|relay)/); if (m) switchCircuit(m[1]); });
 
 /* test hook */
 window.__etb = {S, update, bench, setFault, act, setMode, enterStep, switchCircuit, get C(){ return C; }, get R(){ return R; }, get RD(){ return RD; }, get LESSONS(){ return C.lessons; },
