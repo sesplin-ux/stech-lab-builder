@@ -448,7 +448,7 @@ const ANCHOR = {dmmR:[77,598], dmmB:[77,598], ppTip:[548,598], clamp:[862,598]};
 const S = {
   cid:'lamp', mode:'explore', tab:'main', colors:true,
   sw:{}, fuse:{}, plug:{}, ign:false, speed:'OFF', fault:null, faultR:0, pp:'off', ppTrip:false, jmpBlown:false,
-  stuck:false, stops:0, motRun:false, pad:false, relayOn:false, clickAt:0, dim:0,
+  stuck:false, stops:0, motRun:false, pad:false, relayOn:false, clickAt:0, dim:0, door:false, glove:false, tmin:0, lost:false,
   dmm:{}, tips:{}, log:[], lesson:null, step:0, answered:{}, snaps:{}, mystery:null, sel:null,
 };
 let NLC = {};      // converged nonlinear resistances, reused between solves
@@ -468,11 +468,11 @@ function tpPos(id){
 }
 const nm = id => TP[id] ? TP[id].nm : '?';
 const parts = id => ITEM[id].p || [id];
-const GROUND_N = ['GE','GE2','BODY','BN'];
+const GROUND_N = ['GE','GE1','GE2','GE3','GE4','GB','BODY','CE','BN'];
 
 /* ---------- lesson goal helpers ---------- */
 const at = (tip, tp) => !!S.tips[tip] && !!TP[S.tips[tip]] && !!TP[tp] && TP[S.tips[tip]].n === TP[tp].n;
-const gnd = tip => !!S.tips[tip] && !!TP[S.tips[tip]] && ['BN','BODY','GE','GE2'].includes(TP[S.tips[tip]].n);
+const gnd = tip => !!S.tips[tip] && !!TP[S.tips[tip]] && GROUND_N.includes(TP[S.tips[tip]].n);
 const across = (a, b, p, q) => (at(a, p) && at(b, q)) || (at(a, q) && at(b, p));
 const mV = () => S.dmm.knob === 'V' && S.dmm.jack === 'V';
 const mR = () => S.dmm.knob === 'R' && S.dmm.jack === 'V';
@@ -1833,9 +1833,298 @@ SERIES.lessons = [
  ]},
 ];
 
-const CIRCUITS = {lamp:LAMP, blower:BLOWER, relay:RELAY, series:SERIES};
+/* =====================================================================
+   CIRCUIT 5: PARASITIC DRAW (key-off loads, module sleep timer)
+   ===================================================================== */
+/* Key-off draws (asleep): radio memory 15 mA, BCM 12 mA, PCM KAM 8 mA, alternator 1 mA ≈ 36 mA.
+   BCM awake 350 mA for 20 min after key-off / door close. Spec ≤ 50 mA once modules sleep. */
+const DRAW_SPEC = .05, SLEEP_MIN = 20;
+const FUSE_R = {F1:.005, F2:.0075, F3:.0075, F4:.0035, F5:.0003};
+const bcmAwake = () => S.ign || S.door || S.tmin < SLEEP_MIN || S.fault === 'bcmAwake';
+const days50 = I => I > .001 ? (30 / I / 24) : Infinity;   // a 60 Ah battery loses half its charge
+const DRAW = {
+  id:'draw', name:'Parasitic draw', sub:'Key-off draw · module sleep · fuse voltage drop', lib:'Key-off battery drain: module sleep timers, a meter in series without waking modules, and fuse voltage drop.',
+  fuseRating:{F1:15, F2:10, F3:10, F4:20, F5:150},
+  defaults:{sw:{}, fuse:{F1:'in', F2:'in', F3:'in', F4:'in', F5:'in'}, plug:{NEG:true, ALT:true}, ign:false},
+  start:{tips:{clamp:'cBatN'}},
+  mystStart:{},
+  iMin:.0005, fuseDrop:true,
+  extraNodes:['SP3','DS','GS','GB'],
+  TP:{
+    BATP:{n:'BP',  x:55,  y:368, l:'BAT+', nm:'BAT+', lx:55,  ly:394},
+    BATN:{n:'BN',  x:105, y:368, l:'BAT−', nm:'BAT− post', lx:105, ly:394},
+    CE:  {n:'CE',  x:128, y:350, l:'CABLE', nm:'neg cable end', lx:136, ly:344, a:'start'},
+    F1I: {n:'BUS', x:190, y:100, l:'IN', nm:'F1 in'},  F1O:{n:'F1o', x:250, y:100, l:'OUT', nm:'F1 out'},
+    F2I: {n:'BUS', x:190, y:165, l:'IN', nm:'F2 in'},  F2O:{n:'F2o', x:250, y:165, l:'OUT', nm:'F2 out'},
+    F3I: {n:'BUS', x:190, y:230, l:'IN', nm:'F3 in'},  F3O:{n:'F3o', x:250, y:230, l:'OUT', nm:'F3 out'},
+    F4I: {n:'BUS', x:190, y:340, l:'IN', nm:'F4 in'},  F4O:{n:'F4o', x:250, y:340, l:'OUT', nm:'F4 out'},
+    F5I: {n:'BUS', x:190, y:410, l:'IN', nm:'F5 in'},  F5O:{n:'F5o', x:250, y:410, l:'OUT', nm:'F5 out'},
+    RAD: {n:'RAD', x:640, y:100, l:'', nm:'radio feed'},
+    BCM: {n:'BCMi',x:640, y:165, l:'', nm:'BCM feed'},
+    DOME:{n:'DOMEi',x:600, y:230, l:'DOME+', nm:'DOME+', ly:248},
+    GLV: {n:'GLi', x:600, y:280, l:'GLV+', nm:'GLV+', ly:298},
+    PCM: {n:'PCMi',x:640, y:340, l:'', nm:'PCM feed'},
+    ALTC:{n:'ALh', x:540, y:410, l:'B+', nm:'ALT B+ cable', ly:428},
+    ALTS:{n:'ALs', x:564, y:410, l:'', nm:'ALT B+ stud'},
+    G1:  {n:'GB',  x:880, y:470, l:'G1', nm:'G1', lx:896, ly:474, a:'start'},
+    BODY:{n:'BODY',x:500, y:520, l:'BODY', nm:'BODY', lx:500, ly:511},
+  },
+  CLAMP:{
+    cBatN:{el:'cabN', x:320, y:520, nm:'the battery ground cable'},
+    cBatP:{el:'cabP', x:55,  y:300, nm:'the battery + cable'},
+    cW1:{el:'w1', x:450, y:100, nm:'W1 (radio)'}, cW2:{el:'w2', x:450, y:165, nm:'W2 (BCM)'},
+    cW3:{el:'w3', x:400, y:230, nm:'W3 (interior lamps)'}, cW4:{el:'w4', x:450, y:340, nm:'W4 (PCM)'},
+    cW5:{el:'w5', x:400, y:410, nm:'W5 (alternator B+)'},
+  },
+  FTYPES:[{k:'drain', n:'Parasitic draws'}],
+  FAULTS:[
+    {id:'glove',   t:'drain', n:'Glovebox lamp switch stuck closed', concern:'The battery is dead after the car sits for a day or two.'},
+    {id:'bcmAwake',t:'drain', n:'BCM won’t go to sleep (bad hood-ajar switch)', concern:'The battery is dead after sitting overnight.'},
+    {id:'amp',     t:'drain', n:'Aftermarket amplifier wired to constant power', concern:'The battery dies overnight. A new stereo was installed last week.'},
+    {id:'diode',   t:'drain', n:'Leaky alternator diode', concern:'The battery dies overnight. The battery was replaced last month, and it still happens.'},
+  ],
+  ITEM:{
+    cabP:{n:'the battery + cable',k:'cable'}, cabN:{n:'the battery ground cable',k:'cable'},
+    cpost:{n:'the negative cable clamp',k:'conn',open:'The negative cable is off the post.'},
+    f1:{n:'fuse F1',k:'fuse',fuse:'F1'}, f2:{n:'fuse F2',k:'fuse',fuse:'F2'}, f3:{n:'fuse F3',k:'fuse',fuse:'F3'}, f4:{n:'fuse F4',k:'fuse',fuse:'F4'}, f5:{n:'fuse F5 (mega fuse)',k:'fuse',fuse:'F5'},
+    w1:{n:'wire W1',k:'wire'}, w2:{n:'wire W2',k:'wire'}, w4:{n:'wire W4',k:'wire'}, w5:{n:'wire W5',k:'wire'},
+    w3d:{n:'wires W3 and W3a',k:'wire',p:['w3','w3a']}, w3g:{n:'wires W3 and W3b',k:'wire',p:['w3','w3b']},
+    radio:{n:'the radio',k:'load'}, bcm:{n:'the BCM',k:'load'}, pcm:{n:'the PCM',k:'load'},
+    dome:{n:'the dome lamp',k:'load',ohm:'lamp'}, glove:{n:'the glovebox lamp',k:'load',ohm:'lamp'},
+    dsw:{n:'the door jamb switch',k:'switch',open:'The door is closed, so the jamb switch is open.'},
+    gsw:{n:'the glovebox switch',k:'switch',open:'The glovebox is closed, so its switch is open.'},
+    altn:{n:'the alternator B+ terminal',k:'conn',open:'The alternator B+ cable is disconnected.'},
+    alt:{n:'the alternator',k:'load'}, g1:{n:'ground G1',k:'conn'},
+  },
+  chains(){
+    const tail = ['GB','BODY','CE','BN'], tI = ['g1','cabN','cpost'];
+    return [
+      {load:3, nodes:['BP','BUS','F1o','RAD',...tail], items:['cabP','f1','w1','radio',...tI]},
+      {load:3, nodes:['BP','BUS','F2o','BCMi',...tail], items:['cabP','f2','w2','bcm',...tI]},
+      {load:3, nodes:['BP','BUS','F3o','DOMEi','DS',...tail], items:['cabP','f3','w3d','dome','dsw',...tI]},
+      {load:3, nodes:['BP','BUS','F3o','GLi','GS',...tail], items:['cabP','f3','w3g','glove','gsw',...tI]},
+      {load:3, nodes:['BP','BUS','F4o','PCMi',...tail], items:['cabP','f4','w4','pcm',...tI]},
+      {load:4, nodes:['BP','BUS','F5o','ALh','ALs','BODY','CE','BN'], items:['cabP','f5','w5','altn','alt','cabN','cpost']},
+    ];
+  },
+  build(A){
+    const f = S.fault, F = S.fuse;
+    A('cabP','BP','BUS',.002);
+    if (S.plug.NEG) A('cpost','BN','CE',.0005);
+    A('cabN','CE','BODY',.002);
+    A('g1','GB','BODY',.002);
+    if (F.F1 === 'in') A('f1','BUS','F1o',FUSE_R.F1,{prot:15, dev:'F1'});
+    A('w1','F1o','RAD',.03);
+    A('radio','RAD','GB', 12.6 / (.015 + (f === 'amp' ? .6 : 0) + (S.ign ? .9 : 0)));
+    if (F.F2 === 'in') A('f2','BUS','F2o',FUSE_R.F2,{prot:10, dev:'F2'});
+    A('w2','F2o','BCMi',.03);
+    A('bcm','BCMi','GB', bcmAwake() ? 12.6 / .35 : 12.6 / .012);
+    if (F.F3 === 'in') A('f3','BUS','F3o',FUSE_R.F3,{prot:10, dev:'F3'});
+    A('w3','F3o','SP3',.02); A('w3a','SP3','DOMEi',.02); A('w3b','SP3','GLi',.02);
+    A('dome','DOMEi','DS',31.5,{nl:'lamp', In:.4, Rc:2.6});
+    if (S.door) A('dsw','DS','GB',.01);
+    A('glove','GLi','GS',42,{nl:'lamp', In:.3, Rc:3.5});
+    if (S.glove || f === 'glove') A('gsw','GS','GB',.01);
+    if (F.F4 === 'in') A('f4','BUS','F4o',FUSE_R.F4,{prot:20, dev:'F4'});
+    A('w4','F4o','PCMi',.02);
+    A('pcm','PCMi','GB', S.ign ? .9 : 12.6 / .008);
+    if (F.F5 === 'in') A('f5','BUS','F5o',FUSE_R.F5,{prot:150, dev:'F5'});
+    A('w5','F5o','ALh',.003);
+    if (S.plug.ALT) A('altn','ALh','ALs',.001);
+    A('alt','ALs','BODY', f === 'diode' ? 25 : 12600);
+  },
+  after(){
+    // pulling the negative cable with nothing bridging it drops power to every module: they reboot awake
+    const Ib = Math.abs(R.I.bat || 0);
+    if (Ib < 5e-4){ if (!S.lost){ S.lost = true; } return false; }
+    if (S.lost){
+      S.lost = false;
+      if (S.tmin >= SLEEP_MIN){ S.tmin = 0; toast(`The modules lost power and rebooted awake. The ${SLEEP_MIN}-minute sleep timer started over.`, 'warn'); return true; }
+    }
+    return false;
+  },
+  act(k, v){
+    if (k === 'key'){ const on = v === '1'; if (S.ign && !on) S.tmin = 0; S.ign = on; return true; }
+    if (k === 'door'){ const op = v === 'toggle' ? !S.door : v === '1'; if (S.door && !op) S.tmin = 0; S.door = op; return true; }
+    if (k === 'glove'){ S.glove = v === 'toggle' ? !S.glove : v === '1'; return true; }
+    if (k === 'wait'){
+      const was = bcmAwake(); S.tmin += +v;
+      if (was && !bcmAwake()) toast(`${v} minutes later: the BCM went to sleep.`, 'ok'); else toast(`${v} minutes later.`);
+      return true;
+    }
+    return false;
+  },
+  WIRES:[
+    {el:'cabP', a:'BP',  b:'BUS', d:'M55 368 V250 H172', thick:true},
+    {el:'bus',  a:'BUS', b:'BUS', d:'M190 100 H172 V410 H190 M172 165 H190 M172 230 H190 M172 340 H190', noflow:true},
+    {el:'w1',   a:'F1o', b:'RAD', d:'M250 100 H640'},
+    {el:'w2',   a:'F2o', b:'BCMi',d:'M250 165 H640'},
+    {el:'w3',   a:'F3o', b:'SP3', d:'M250 230 H520'},
+    {el:'w3a',  a:'SP3', b:'DOMEi', d:'M520 230 H600'},
+    {el:'w3b',  a:'SP3', b:'GLi', d:'M520 230 V280 H600'},
+    {el:'w4',   a:'F4o', b:'PCMi',d:'M250 340 H640'},
+    {el:'w5',   a:'F5o', b:'ALh', d:'M250 410 H540'},
+    {el:'radio',a:'GB',  b:'GB',  d:'M760 100 H880'},
+    {el:'bcm',  a:'GB',  b:'GB',  d:'M760 165 H880'},
+    {el:'dsw',  a:'DS',  b:'GB',  d:'M740 230 H880'},
+    {el:'gsw',  a:'GS',  b:'GB',  d:'M740 280 H880'},
+    {el:'pcm',  a:'GB',  b:'GB',  d:'M760 340 H880'},
+    {el:'gbus', a:'GB',  b:'GB',  d:'M880 100 V461', noflow:true},
+    {el:'g1',   a:'GB',  b:'BODY',d:'M880 479 V520', thick:true},
+    {el:'alt',  a:'BODY',b:'BODY',d:'M620 478 V520'},
+    {el:'cabN', a:'BODY',b:'CE',  d:'M880 520 H150 V350 H128', thick:true, sign:-1},
+  ],
+  back:`
+    <rect x="150" y="62" width="150" height="372" rx="10" class="blk2"/>
+    <text x="225" y="450" text-anchor="middle" class="t-sub">POWER DISTRIBUTION</text>
+    <text x="80" y="240" text-anchor="middle" class="t-tiny">+ CABLE</text>
+    <text x="280" y="134" text-anchor="middle" class="t-tiny">RADIO</text><text x="280" y="199" text-anchor="middle" class="t-tiny">BCM</text>
+    <text x="280" y="264" text-anchor="middle" class="t-tiny">INT LAMPS</text><text x="280" y="374" text-anchor="middle" class="t-tiny">PCM / IGN</text>
+    <text x="280" y="388" text-anchor="middle" class="t-tiny">ALT MEGA</text>
+    <text x="450" y="91" text-anchor="middle" class="t-wire">W1</text><text x="450" y="156" text-anchor="middle" class="t-wire">W2</text>
+    <text x="400" y="221" text-anchor="middle" class="t-wire">W3</text><text x="450" y="331" text-anchor="middle" class="t-wire">W4</text>
+    <text x="400" y="401" text-anchor="middle" class="t-wire">W5 · ALT B+</text>
+    <text x="812" y="221" text-anchor="middle" class="t-tiny">DOOR JAMB SW</text><text x="812" y="304" text-anchor="middle" class="t-tiny">GLOVEBOX SW</text>
+    <text x="900" y="300" class="t-tiny" transform="rotate(90 900 300)">GROUND BUS</text>
+    <text x="660" y="512" text-anchor="middle" class="t-tiny">BODY / CHASSIS GROUND</text>
+    <text x="680" y="400" text-anchor="start" class="t-blk">ALTERNATOR</text>`,
+  parts(){
+    const box = (y, name, sub, warn) => `<rect x="640" y="${y - 18}" width="120" height="36" rx="7" class="blk" ${warn ? 'style="stroke:var(--warn)"' : ''}/><text x="700" y="${y - 3}" text-anchor="middle" class="t-blk">${name}</text><text x="700" y="${y + 11}" text-anchor="middle" class="t-mono" style="fill:${warn ? 'var(--warn)' : 'var(--dim)'};font-size:9px">${sub}</text>`;
+    const mA = id => `${Math.round(Math.abs(R.I[id] || 0) * 1000)} mA`;
+    const aw = bcmAwake(), left = Math.max(0, SLEEP_MIN - S.tmin);
+    let h = ['F1',100,'F2',165,'F3',230,'F4',340,'F5',410].reduce((s, v, i, a) => i % 2 ? s : s + fuseSVG(a[i], a[i + 1], 190, 250), '');
+    h += box(100, 'RADIO', `memory · ${mA('radio')}`, S.fault === 'amp' && showFault());
+    h += box(165, 'BCM', aw ? `AWAKE · ${S.ign || S.door || S.fault === 'bcmAwake' ? '' : `sleeps in ${left} min · `}${mA('bcm')}` : `asleep · ${mA('bcm')}`, aw);
+    h += box(340, 'PCM', S.ign ? `key on · ${(Math.abs(R.I.pcm || 0)).toFixed(1)} A` : `keep-alive · ${mA('pcm')}`, false);
+    h += pbulb('dome', 630, 230) + pbulb('glove', 630, 280);
+    h += jamb('dsw', S.door, 230, 'door:toggle', 'Door jamb switch') + jamb('gsw', S.glove || (S.fault === 'glove'), 280, 'glove:toggle', 'Glovebox switch');
+    // alternator
+    const plugged = S.plug.ALT, leak = S.fault === 'diode' && showFault();
+    h += `<g class="act" data-act="plug:ALT" role="button" aria-label="Alternator B+ terminal (click to disconnect)">
+      <rect x="530" y="396" width="140" height="90" class="hitr"/>
+      <rect x="${532 + (plugged ? 0 : -10)}" y="402" width="16" height="16" rx="4" class="blk"/>
+      <path d="M564 410 H600 V418" fill="none" stroke="${ncol('ALs')}" stroke-width="2.4"/>
+      <circle cx="620" cy="446" r="32" fill="#10171F" stroke="#7D8A98" stroke-width="1.5"/>
+      <text x="620" y="442" text-anchor="middle" class="t-sub">ALT</text>
+      <path d="M610 452 L630 452 M614 446 L620 456 L626 446 Z" fill="none" stroke="${leak ? 'var(--fail)' : '#7D8A98'}" stroke-width="1.2"/>
+      ${plugged ? '' : '<text x="540" y="392" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">B+ OFF</text>'}</g>`;
+    h += `<circle cx="880" cy="470" r="9" fill="#141D27" stroke="#7D8A98" stroke-width="2"/>`;
+    // negative cable clamp on the post
+    h += `<g class="act" data-act="plug:NEG" role="button" aria-label="Negative battery cable (click to remove or reinstall)">
+      <rect x="92" y="336" width="48" height="40" class="hitr"/>
+      ${S.plug.NEG ? `<path d="M105 368 L128 350" stroke="${ncol('CE')}" stroke-width="5" stroke-linecap="round"/>` : '<text x="128" y="334" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">CABLE OFF</text>'}</g>`;
+    h += `<text x="40" y="482" class="t-mono" style="fill:var(--soft)">KEY OFF · ${S.ign ? 'key ON' : S.tmin + ' min'}</text>`;
+    return h;
+  },
+  fault(){
+    switch (S.fault){
+      case 'glove': return ftag(800, 256, 'SWITCH STUCK CLOSED');
+      case 'bcmAwake': return ftag(700, 138, 'WON’T SLEEP');
+      case 'amp': return ftag(700, 73, 'AMP ON CONSTANT POWER');
+      case 'diode': return ftag(620, 494, 'LEAKY DIODE');
+    }
+    return '';
+  },
+  ctrls(){ return `
+    <div class="cg"><span>Key</span>${segCtl([['0','Off'],['1','Run']], S.ign ? '1' : '0', 'key')}</div>
+    <div class="cg"><span>Door</span>${segCtl([['0','Closed'],['1','Open']], S.door ? '1' : '0', 'door')}</div>
+    <div class="cg"><span>Glovebox</span>${segCtl([['0','Closed'],['1','Open']], S.glove ? '1' : '0', 'glove')}</div>
+    <div class="cg"><span>Time</span>${tg('wait:5', 'Wait', '5 min', '')}${tg('wait:20', 'Wait', '20 min', '')}</div>
+    <div class="cg"><span>Battery</span>${plCtl('NEG', 'Neg cable', 'on', 'off')}${plCtl('ALT', 'ALT B+', 'on', 'off')}</div>
+    <div class="cg"><span>Fuses</span>${['F1','F2','F3','F4','F5'].map(fzCtl).join('')}</div>${probeCtl()}`; },
+  cond(){
+    const c = [`key ${S.ign ? 'on' : 'off'}`, `${S.tmin} min after key off`, `BCM ${bcmAwake() ? 'awake' : 'asleep'}`];
+    if (S.door) c.push('door open'); if (S.glove) c.push('glovebox open');
+    if (!S.plug.NEG) c.push('neg cable off'); if (!S.plug.ALT) c.push('ALT B+ off');
+    return c;
+  },
+  drawVerdict(I){
+    const a = Math.abs(I), pass = a <= DRAW_SPEC, d = days50(a);
+    const life = isFinite(d) ? ` At this draw a 60 Ah battery loses half its charge in about ${d < 2 ? (d * 24).toFixed(0) + ' hours' : d.toFixed(0) + ' days'}.` : '';
+    if (bcmAwake() && !S.ign) return {chip:['modules awake','info'], note:` The BCM is still awake${S.door ? ' (door open)' : ''}, so this isn’t the final reading. Wait for the modules to sleep before you judge it.${life}`};
+    return {chip:[`${pass ? 'Pass' : 'Fail'} · ≤ 50 mA`, pass ? 'pass' : 'fail'], note:` ${pass ? 'Normal key-off draw: modules keeping their memory.' : 'Too much: something is staying on.'}${life}`};
+  },
+  drawSpec(pr, I){
+    if (pr === ['BN','CE'].sort().join() && !S.plug.NEG){
+      const v = DRAW.drawVerdict(I);
+      return {t:'Total key-off draw', chip:v.chip, p:`${Math.round(Math.abs(I) * 1000)} mA flowing out through the negative cable.${v.note}`};
+    }
+    for (const k of ['F1','F2','F3','F4','F5']) if (pr === ['BUS', k + 'o'].sort().join() && S.fuse[k] !== 'in')
+      return {t:`Current through ${k}’s circuit`, p:`${Math.round(Math.abs(I) * 1000)} mA through this fuse’s circuit.`};
+    return null;
+  },
+  clampNote(el, I){
+    if (el !== 'cabN' && el !== 'cabP') return null;
+    const v = DRAW.drawVerdict(I);
+    return {txt:v.chip[0], cls:v.chip[1]};
+  },
+  guide:`<div class="gcard"><span class="gk">Parasitic draw test</span>
+    <table class="spec"><tbody>
+      <tr><td>Key-off draw after modules sleep (typical)</td><td>≤ 50 mA</td></tr>
+      <tr><td>Module sleep time (this bench)</td><td>${SLEEP_MIN} min</td></tr>
+      <tr><td>Fuse drop chart: 10 A mini fuse ≈ 7.5 mΩ</td><td>1 mV ≈ 133 mA</td></tr>
+    </tbody></table>
+    <ul><li><b>Set up:</b> charged battery, everything off, doors latched closed (close the latch with a screwdriver), hood switch closed. Opening a door wakes the modules.</li>
+    <li><b>Measure:</b> a low-amp clamp around the negative cable, or a meter in series. Connect the meter across the post and cable <b>before</b> lifting the cable, or the modules lose power and reboot awake.</li>
+    <li><b>Wait:</b> modules can take 10–45 minutes to sleep. Check the service information. Judge the draw only after they sleep.</li>
+    <li><b>Find it:</b> measure the millivolt drop across each fuse. A fuse with a drop has current through it. Pull that fuse to confirm. This doesn’t wake modules the way pulling fuses blindly can.</li>
+    <li><b>No fuse shows it?</b> Check what isn’t in the fuse box: the alternator B+ (leaky diode), the starter, aftermarket wiring.</li>
+    <li><b>Never</b> turn the key on or crank with the meter in series. The draw jumps far past 10 A and blows the meter’s fuse.</li></ul></div>`,
+};
+function pbulb(id, cx, y){
+  const b = R.bright[id] || 0, v = Math.sqrt(Math.min(1, b));
+  const fil = v > .05 ? `rgb(255,${Math.round(150 + 90 * v)},${Math.round(60 + 120 * v)})` : '#5A5340';
+  const nIn = id === 'dome' ? 'DOMEi' : 'GLi', nOut = id === 'dome' ? 'DS' : 'GS';
+  return `<circle cx="${cx}" cy="${y}" r="${16 + 12 * v}" fill="url(#gGlow)" opacity="${Math.min(1, v * 1.1).toFixed(2)}"/>
+    <path d="M600 ${y} H${cx - 12}" stroke="${ncol(nIn)}" stroke-width="2.4"/><path d="M${cx + 12} ${y} H690" stroke="${ncol(nOut)}" stroke-width="2.4"/>
+    <circle cx="${cx}" cy="${y}" r="12" fill="${v > .05 ? 'rgba(255,214,140,' + (0.1 + 0.3 * v).toFixed(2) + ')' : '#12171D'}" stroke="#7D8A98" stroke-width="1.3"/>
+    <path d="M${cx - 7} ${y + 4} L${cx - 4.5} ${y - 3} L${cx - 1.5} ${y + 3} L${cx + 1.5} ${y - 3} L${cx + 4.5} ${y + 3} L${cx + 7} ${y + 4}" stroke="${fil}" stroke-width="1.5" fill="none"/>
+    <text x="${cx}" y="${y - 17}" text-anchor="middle" class="t-tiny">${id === 'dome' ? 'DOME LAMP' : 'GLOVEBOX LAMP'}</text>`;
+}
+function jamb(el, closed, y, act, label){
+  const c = ncol(el === 'dsw' ? 'DS' : 'GS');
+  return `<g class="act" data-act="${act}" role="button" aria-label="${label}">
+    <rect x="686" y="${y - 20}" width="60" height="34" class="hitr"/>
+    <path d="M690 ${y} H698" stroke="${c}" stroke-width="2.4"/><circle cx="698" cy="${y}" r="3" fill="#C9D3DD"/>
+    <path d="${closed ? `M698 ${y} L734 ${y}` : `M698 ${y} L730 ${y - 16}`}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="734" cy="${y}" r="3" fill="#C9D3DD"/><path d="M734 ${y} H740" stroke="${ncol('GB')}" stroke-width="2.4"/></g>`;
+}
+
+/* ---------- parasitic draw lessons ---------- */
+DRAW.lessons = [
+ {t:'What is parasitic draw?', s:'Key-off draw, and why you wait for modules to sleep', steps:[
+  {t:'Key-off loads', set:{tips:{}}, b:`With the key off, modules still draw a little current to keep their memory: radio presets, the BCM, the PCM’s keep-alive memory. That’s normal. Trouble starts when something stays <b>on</b>. A typical spec is <b>50 mA or less</b>, measured after the modules go to sleep.`},
+  {t:'Clamp the battery cable', b:`Drag the <b>amp clamp</b> onto the battery ground cable.`, goal:['Clamp on the battery ground cable', () => S.tips.clamp === 'cBatN'], ok:'About 370 mA, but look at the BCM: it’s still awake. The key was just turned off.', spot:['tool:clamp','cl:cBatN']},
+  {t:'Wait for sleep', b:`Press <b>Wait 20 min</b>.`, goal:['BCM asleep', () => !bcmAwake()], ok:'About 36 mA, inside the 50 mA spec. That’s the real key-off draw.', spot:['ctl:wait:20']},
+  {t:'Predict', ask:{q:'You open the driver’s door to check something. What happens to the draw?', o:['Nothing','It jumps back up and the sleep timer restarts','It drops to zero'], a:1, why:'Opening a door turns on the dome lamp and wakes the BCM. When it closes, the sleep timer starts over. Latch the door striker closed with a screwdriver so the car thinks the door is shut.'}, goal:['Open the door', () => S.door], spot:['ctl:door:1']},
+  {t:'Takeaway', b:`Measure key-off draw only after the modules sleep, with the doors latched and the hood switch closed. Typical spec: 50 mA or less. Higher than that drains the battery in days.`},
+ ]},
+ {t:'Meter in series, modules asleep', s:'Hook up without waking anything, and the key-on mistake', steps:[
+  {t:'Why use the meter', set:{tips:{}}, mod:() => { S.tmin = 30; }, b:`The modules are already asleep. A meter in series is more accurate at milliamps than a clamp. The trick is getting it in series without interrupting power.`},
+  {t:'Set up the meter', b:`Knob on <b>A</b>, red lead in the <b>10 A</b> jack. Put the red probe on the <b>neg cable end</b> and the black probe on the <b>BAT− post</b>. The cable is still on the post.`, goal:['Meter across the cable clamp', () => mA() && across('dmmR','dmmB','CE','BATN')], ok:'The meter is in parallel with the clamp for now, so it reads almost nothing. The clamp is still carrying the current.', spot:['#knob','#jackA','tp:CE','tp:BATN']},
+  {t:'Lift the cable', b:`Now take the <b>negative cable</b> off the post. The meter keeps the circuit connected.`, goal:['Cable off, meter in series', () => !S.plug.NEG && mA() && across('dmmR','dmmB','CE','BATN')], ok:() => bcmAwake() ? 'The modules lost power at some point and rebooted awake. Wait for them to sleep again.' : 'About 36 mA, and the modules stayed asleep, because power was never interrupted.', spot:['ctl:plug:NEG']},
+  {t:'Predict', ask:{q:'What if you had lifted the cable first, then connected the meter?', o:['Same reading','The modules lose power, wake up, and the timer starts over','The meter fuse blows'], a:1, why:'Even a moment without power reboots the modules awake. Some also lose memory: radio presets, idle relearn, window learn. That’s why you connect first, or use a parasitic draw switch.'}},
+  {t:'The key-on mistake', b:`With the meter still in series, turn the <b>key</b> to Run.`, goal:['Try it', () => S.dmm.blown], ok:'Key-on loads draw well over 10 A, so the meter’s fuse blew. Never turn the key on or crank with the meter in series. Press Replace meter fuse.', spot:['ctl:key:1']},
+  {t:'Takeaway', b:`Connect the meter across the post and the cable end <b>before</b> lifting the cable, so the modules never lose power. Keep the key off the whole time. Reconnect the cable before you start the car.`},
+ ]},
+ {t:'Find it with fuse voltage drop', s:'Millivolts across a fuse show current without pulling it', steps:[
+  {t:'Battery dies overnight', set:{fault:'glove', tips:{clamp:'cBatN'}}, mod:() => { S.tmin = 30; }, b:`The battery goes dead after sitting. The modules are asleep and the clamp reads about 330 mA: well over spec.`},
+  {t:'A fuse is a tiny resistor', b:`Meter on <b>V</b>. Measure across fuse <b>F1</b>: red on <b>F1 in</b>, black on <b>F1 out</b>. Then try <b>F2</b>, <b>F3</b> and <b>F4</b>.`, goal:['Across F3', () => dV('F3I','F3O')], ok:'F3 shows a couple of millivolts. The other fuses show only a fraction of a millivolt. A fuse has a few milliohms of resistance, so a millivolt drop means current is flowing through it.', spot:['tp:F1I','tp:F1O','tp:F3I','tp:F3O']},
+  {t:'Confirm', b:`Pull fuse <b>F3</b> and watch the clamp.`, goal:['F3 pulled', () => S.fuse.F3 !== 'in'], ok:'The draw drops to about 36 mA. The draw is on the interior lamp circuit.', spot:['ctl:fuse:F3']},
+  {t:'Find the part', b:`Put F3 back. Look at the lamps on that circuit.`, ask:{q:'The door and glovebox are both closed, but the glovebox lamp is lit. What’s the cause?', o:['The dome lamp bulb','A glovebox switch stuck closed','The BCM'], a:1, why:'The glovebox lamp is switched by the glovebox door. A stuck or misadjusted switch leaves it on with the glovebox closed, out of sight.'}},
+  {t:'Takeaway', b:`Measure the millivolt drop across each fuse to find which circuit carries the draw, then pull that fuse to confirm. This finds the circuit without pulling fuses one by one and waking modules.`},
+ ]},
+ {t:'A draw the fuse box can’t find', s:'Leaky alternator diode', steps:[
+  {t:'Every fuse looks normal', set:{fault:'diode', tips:{clamp:'cBatN'}}, mod:() => { S.tmin = 30; }, b:`The battery dies overnight. The clamp reads about 540 mA with the modules asleep.`},
+  {t:'Check the fuses', b:`Pull <b>F1</b>, <b>F2</b>, <b>F3</b> and <b>F4</b> one at a time (or check their millivolt drops).`, goal:['F1 to F4 all checked', () => ['F1','F2','F3','F4'].every(k => S.fuse[k] !== 'in')], ok:'The draw barely changes. The current isn’t going through the fuse box circuits.', spot:['ctl:fuse:F1','ctl:fuse:F2','ctl:fuse:F3','ctl:fuse:F4']},
+  {t:'What isn’t in the fuse box?', b:`Put the fuses back. The alternator’s B+ cable runs to the battery through the mega fuse. Disconnect the <b>ALT B+</b> terminal.`, goal:['ALT B+ disconnected', () => !S.plug.ALT], ok:'The draw drops to normal. A leaking rectifier diode lets current flow from the battery back through the alternator to ground. Replace the alternator.', spot:['ctl:plug:ALT']},
+  {t:'Takeaway', b:`If no fuse in the fuse box carries the draw, check the circuits that bypass it: the alternator B+, the starter, and any aftermarket wiring connected straight to the battery.`},
+ ]},
+];
+
+const CIRCUITS = {lamp:LAMP, blower:BLOWER, relay:RELAY, series:SERIES, draw:DRAW};
 const LIB = [
-  {id:'lamp'}, {id:'blower'}, {id:'relay'}, {id:'series'},
+  {id:'lamp'}, {id:'blower'}, {id:'relay'}, {id:'series'}, {id:'draw'},
 ];
 
 /* ================= solver ================= */
@@ -2044,25 +2333,30 @@ function interpV(V, rT, bT){
   const sp = spanOf(rn, bn);
   if (!sp) return {t:`${nm(rT)} to ${nm(bT)}`, p:'These points aren’t on the same current path. The meter shows the difference between their voltages.'};
   if (sp.ch.loads) return interpSeries(V, rT, bT, sp);
-  const L = sp.ch.load, nodes = sp.ch.nodes;
+  const L = sp.ch.load, nodes = sp.ch.nodes, IMIN = C.iMin ?? .02;
   const hasLoad = L >= sp.lo && L < sp.hi;
   const rev = V < -.05 ? ' The reading is negative because the red lead is on the lower-voltage side.' : '';
   if (hasLoad){
     if (sp.lo === L && sp.hi === L + 1){
       const I = itemI(sp.items[0]);
-      if (I < .02 && Math.abs(V) > 1) return {t:`Voltage across ${ITEM[sp.items[0]].n}`, p:`${fmtV(Math.abs(V))} V with no current flowing. Full voltage across a load that draws nothing means the load itself is open.${rev}`};
+      if (I < IMIN && Math.abs(V) > 1) return {t:`Voltage across ${ITEM[sp.items[0]].n}`, p:`${fmtV(Math.abs(V))} V with no current flowing. Full voltage across a load that draws nothing means the load itself is open.${rev}`};
       return {t:`Voltage across ${ITEM[sp.items[0]].n}`, p:`${fmtV(Math.abs(V))} V reaches ${ITEM[sp.items[0]].n} itself: the source voltage minus every drop on the power and ground sides.${rev}`};
     }
     const powerTP = sp.redLow ? rT : bT;
     const I = itemI(sp.ch.items[L]);
     const below = BATT_V - Math.abs(V);
-    if (I > .05) return {t:`Available voltage at ${nm(powerTP)}`, chip:[`${below.toFixed(2)} V below battery`,'info'], p:`Measured across the load and its ground path with ${fmtA(I)} A flowing. Close to battery voltage means the power side is delivering. A low reading means voltage is being lost before this point; find it with voltage drop tests.${rev}`};
+    if (I > IMIN * 2.5) return {t:`Available voltage at ${nm(powerTP)}`, chip:[`${below.toFixed(2)} V below battery`,'info'], p:`Measured across the load and its ground path with ${fmtA(I)} A flowing. Close to battery voltage means the power side is delivering. A low reading means voltage is being lost before this point; find it with voltage drop tests.${rev}`};
     if (Math.abs(V) < .5) return {t:`No voltage at ${nm(powerTP)}`, p:`0 V with no current flowing: voltage isn’t reaching this point. Work back toward the battery to find where it stops, at an open or a switch that’s off.`};
     return {t:`Available voltage at ${nm(powerTP)}`, chip:['no current','info'], p:`No current is flowing, so nothing drops any voltage yet. This proves voltage is present, not that the circuit can carry current. Check again with the circuit loaded.${rev}`};
   }
   const side = (L < 0 || sp.hi <= L) ? 'power' : 'ground';
   const I = itemI(sp.items[0]);
-  if (I < .02){
+  if (C.fuseDrop && sp.items.length === 1 && ITEM[sp.items[0]].k === 'fuse' && I >= IMIN){
+    const it = ITEM[sp.items[0]], rf = FUSE_R[it.fuse], est = Math.abs(V) / rf;
+    return {t:`Voltage drop across ${it.n}`, chip:[`≈ ${est < 1 ? Math.round(est * 1000) + ' mA' : est.toFixed(2) + ' A'}`,'info'], p:`${(Math.abs(V) * 1000).toFixed(2)} mV across the fuse. A ${C.fuseRating[it.fuse]} A fuse is a tiny resistor (about ${(rf * 1000).toFixed(1)} mΩ), so this drop means about ${est < 1 ? Math.round(est * 1000) + ' mA' : est.toFixed(2) + ' A'} is flowing through it. Comparing fuse drops finds the circuit carrying a draw without pulling fuses or waking modules.`};
+  }
+  if (C.fuseDrop && sp.items.length === 1 && ITEM[sp.items[0]].k === 'fuse' && Math.abs(V) < .0005 && itemPresent(sp.items[0])) return {t:`Voltage drop across ${ITEM[sp.items[0]].n}`, chip:['≈ 0 mA','info'], p:'No measurable drop across this fuse, so its circuit isn’t carrying the draw.'};
+  if (I < IMIN){
     if (side === 'ground' && Math.abs(V) < .5 && GROUND_N.includes(sp.ch.nodes[sp.hi])) return {t:`No voltage at ${nm(sp.redLow ? rT : bT)}`, p:'0 V to ground with no current flowing. This point has a path to ground, but nothing is pushing current through it. If the load should be on, the open is between this point and the power source.'};
     if (Math.abs(V) > 1) return {t:'Voltage across an open', p:`${openWhy(sp.items)} With no current flowing, nothing else drops any voltage, so the full source voltage appears across the open.${rev}`};
     return {t:'No current flowing', p:'A voltage drop test needs current through the section. With no current, even a badly corroded connection reads 0 V. Turn the circuit on.'};
@@ -2153,6 +2447,7 @@ function readMeter(){
     }
     const V = both ? R.v[TP[r].n] - R.v[TP[b].n] : 0;
     o.num = V; o.val = fmtV(V);
+    if (Math.abs(V) < .6 && Math.abs(V) >= .00001){ o.val = (V * 1000).toFixed(Math.abs(V) < .06 ? 2 : 1); o.unit = 'mV'; }
     o.it = both ? interpV(V, r, b) : {t:'Voltage', p:'Voltmeter: probes in parallel, circuit powered. Put black on a good ground and red on the point you want to check, or one probe at each end of a section for a voltage drop test.'};
     return o;
   }
@@ -2191,7 +2486,7 @@ function readMeter(){
     return o;
   }
   const I = both ? (R.I.dmm || 0) : 0;
-  o.num = I; o.val = fmtA(I);
+  o.num = I; o.val = Math.abs(I) < .0005 ? '0.000' : Math.abs(I) < 6 ? I.toFixed(3) : I.toFixed(2);
   o.it = both ? interpA(I, r, b) : {t:'Current', p:'Ammeter: in series, never across a voltage. Pull the fuse and put one probe on each fuse terminal, or use the amp clamp.'};
   return o;
 }
@@ -2434,7 +2729,7 @@ function renderMeter(){
   const chips = [];
   if (S.tips.clamp && CLAMP[S.tips.clamp]){
     const c = CLAMP[S.tips.clamp], I = Math.abs(R.I[c.el] || 0), note = C.clampNote(c.el, I);
-    chips.push(`<span class="tchip"><i style="background:var(--clamp)"></i>Clamp on ${c.nm.replace(/^the /,'')} <b>${I < .05 ? '0.0' : I.toFixed(2)} A</b>${note ? `<span class="chip ${note.cls}">${note.txt}</span>` : ''}</span>`);
+    chips.push(`<span class="tchip"><i style="background:var(--clamp)"></i>Clamp on ${c.nm.replace(/^the /,'')} <b>${I < .0005 ? '0 mA' : I < 1 ? Math.round(I * 1000) + ' mA' : I.toFixed(2) + ' A'}</b>${note ? `<span class="chip ${note.cls}">${note.txt}</span>` : ''}</span>`);
   }
   const br = x => x > .6 ? 'bright' : x > .15 ? 'dim' : x > .004 ? 'faint glow' : 'off';
   if (S.tips.tlTip && S.tips.tlClip) chips.push(`<span class="tchip"><i style="background:var(--tl)"></i>Test light <b>${br(R.bright.tl)}</b></span>`);
@@ -2502,7 +2797,7 @@ function bench(o = {}){
   const d = C.defaults;
   S.sw = {...d.sw}; S.fuse = {...d.fuse}; S.plug = {...d.plug}; S.ign = !!d.ign; S.speed = d.speed || 'OFF';
   S.fault = null; S.faultR = 0; S.pp = 'off'; S.ppTrip = false; S.jmpBlown = false;
-  S.stuck = false; S.stops = 0; S.motRun = false; S.pad = !!d.pad; S.relayOn = false; S.clickAt = 0; S.dim = d.dim || 0;
+  S.stuck = false; S.stops = 0; S.motRun = false; S.pad = !!d.pad; S.relayOn = false; S.clickAt = 0; S.dim = d.dim || 0; S.door = false; S.glove = false; S.tmin = 0; S.lost = false;
   S.dmm = {knob:'V', jack:'V', rel:0, blown:false};
   S.tips = Object.fromEntries(Object.keys(TIPS).map(k => [k, null]));
   S.sel = null; NLC = {};
@@ -2541,6 +2836,7 @@ function switchCircuit(id){
 /* ================= actions ================= */
 function act(a){
   const [k, v] = a.split(':');
+  if (C.act && C.act(k, v)){ update(); return; }
   if (k === 'sw') S.sw[v] = !S.sw[v];
   else if (k === 'fuse'){
     if (S.fuse[v] === 'in') S.fuse[v] = 'out';
@@ -2702,7 +2998,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pop')
 
 /* ================= lessons ================= */
 /* Each step saves the bench as the student found it, so Back and Redo step put it back exactly. */
-const SNAP_KEYS = ['sw','fuse','plug','ign','speed','pad','relayOn','dim','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
+const SNAP_KEYS = ['sw','fuse','plug','ign','speed','pad','relayOn','dim','door','glove','tmin','lost','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
 const snap = () => JSON.parse(JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k => [k, S[k]]))));
 function restore(o){ const c = JSON.parse(JSON.stringify(o)); for (const k of SNAP_KEYS) S[k] = c[k]; NLC = {}; S.sel = null; }
 function enterStep(i, reset){
@@ -2800,7 +3096,7 @@ function lessonHTML(){
     h += `<div class="l-ask"><p>${st.ask.q}</p><div class="opts">${st.ask.o.map((o, i) => `<button type="button" class="opt${ans != null ? (i === st.ask.a ? ' right' : i === ans ? ' wrong' : '') : ''}" data-opt="${i}">${o}</button>`).join('')}</div>${ans != null ? `<div class="why">${ans === st.ask.a ? 'Right. ' : 'Not quite. '}${st.ask.why}</div>` : ''}</div>`;
   }
   if (st.goal) h += `<div class="l-goal${done ? ' done' : ''}"><i>${done ? '✓' : '○'}</i><span>${st.goal[0]}</span></div>`;
-  if (st.goal && done && st.ok) h += `<div class="why">${st.ok}</div>`;
+  if (st.goal && done && st.ok) h += `<div class="why">${typeof st.ok === 'function' ? st.ok() : st.ok}</div>`;
   const last = S.step === n - 1;
   h += `<div class="l-nav"><button type="button" class="btn small" data-nav="list">All lessons</button><div class="r">
     <button type="button" class="btn small" data-nav="redo" title="Put the bench back to how this step started">Redo step</button>
@@ -2903,7 +3199,7 @@ const guideHTML = () => `<div class="guide">${C.guide}${GUIDE_HTML}</div>`;
 
 /* ================= boot ================= */
 const hash = location.hash.replace('#', '');
-const hm = hash.match(/^(lamp|blower|relay|series)?-?(?:lesson(\d))?$/) || [];
+const hm = hash.match(/^(lamp|blower|relay|series|draw)?-?(?:lesson(\d))?$/) || [];
 loadCircuit(hm[1] || 'lamp');
 bench(C.start);
 if (hm[2] && C.lessons[+hm[2] - 1]){ S.mode = 'guided'; S.lesson = +hm[2] - 1; enterStep(0); }
@@ -2912,7 +3208,7 @@ else if (hash === 'mystery') S.mode = 'mystery';
 syncBar();
 update();
 requestAnimationFrame(tick);
-addEventListener('hashchange', () => { const m = location.hash.replace('#', '').match(/^(lamp|blower|relay|series)/); if (m) switchCircuit(m[1]); });
+addEventListener('hashchange', () => { const m = location.hash.replace('#', '').match(/^(lamp|blower|relay|series|draw)/); if (m) switchCircuit(m[1]); });
 
 /* test hook */
 window.__etb = {S, update, bench, setFault, act, setMode, enterStep, switchCircuit, get C(){ return C; }, get R(){ return R; }, get RD(){ return RD; }, get LESSONS(){ return C.lessons; },
