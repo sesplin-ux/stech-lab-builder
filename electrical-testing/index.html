@@ -267,6 +267,12 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .l-nav .r{display:flex;gap:8px}
 
 .myst{display:grid;gap:10px}
+.mprog{display:grid;gap:6px;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.s{background:var(--fail)}
+.mdots i.cur{background:var(--accent)}
 .concern{padding:11px 13px;border-radius:12px;border:1px solid rgba(255,178,36,.45);background:linear-gradient(180deg,rgba(255,178,36,.08),var(--raise))}
 .concern small{display:block;font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:6px}
 .concern p{margin:0;font:600 16px/1.3 var(--f-label);letter-spacing:.01em}
@@ -3107,28 +3113,76 @@ function lessonHTML(){
 function safe(fn){ try { return fn(); } catch (_) { return false; } }
 
 /* ---------- mystery ---------- */
+/* Shuffle bag per circuit: every fault comes up once per round, in a random order, before any repeat.
+   A new round reshuffles and never opens with the fault that closed the last one. Saved per browser. */
+const BAG_KEY = 'etb-mystery-v1';
+let BAGS = {};
+try { BAGS = JSON.parse(localStorage.getItem(BAG_KEY) || '{}') || {}; } catch (_) { BAGS = {}; }
+const saveBags = () => { try { localStorage.setItem(BAG_KEY, JSON.stringify(BAGS)); } catch (_) {} };
+function shuffled(ids, avoidFirst){
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst){ const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bag(){
+  const ids = FAULTS.map(f => f.id);
+  let g = BAGS[S.cid];
+  const valid = g && Array.isArray(g.order) && g.order.length === ids.length && ids.every(id => g.order.includes(id));
+  if (!valid){ g = BAGS[S.cid] = {order:shuffled(ids), i:0, round:1, res:{}}; saveBags(); }
+  return g;
+}
+function bagNewRound(){
+  const g = bag(), last = g.order[g.order.length - 1];
+  g.order = shuffled(FAULTS.map(f => f.id), last); g.i = 0; g.round++; g.res = {}; saveBags();
+}
+function bagDots(g, curId){
+  return `<div class="mdots" aria-label="Round progress">${g.order.map((id, k) => {
+    const r = g.res[id], cls = r ? (r.right && r.tries === 1 ? 'r' : r.right ? 't' : 's') : '';
+    return `<i class="${cls}${id === curId && !r ? ' cur' : ''}" title="Fault ${k + 1}${r ? (r.right ? (r.tries === 1 ? ': correct, first try' : `: correct in ${r.tries} tries`) : ': shown') : ''}"></i>`;
+  }).join('')}</div>`;
+}
 function mysteryHTML(){
-  const M = S.mystery;
-  if (!M) return `<div class="myst"><div class="nsec"><h3>Mystery fault · ${C.name}</h3><span>Diagnose it like a real car</span></div>
-    <p class="fine" style="font-size:13.5px;color:var(--soft)">The bench picks a random fault and hides it. Voltage colors and current dots turn off, so the only things you can see are the loads, the fuses, and your tools. Read the customer concern, test, record your readings, then make the call.</p>
-    <div class="row"><button type="button" class="btn primary" data-my="new">Start a mystery fault</button></div></div>`;
+  const M = S.mystery, g = bag(), n = g.order.length;
+  const done = Object.keys(g.res).length, first = Object.values(g.res).filter(r => r.right && r.tries === 1).length;
+  const prog = `<div class="mprog"><span>Round ${g.round} · ${done} of ${n} faults done</span>${bagDots(g, M && M.fault)}</div>`;
+  if (!M){
+    const complete = g.i >= n;
+    return `<div class="myst"><div class="nsec"><h3>Mystery fault · ${C.name}</h3><span>Diagnose it like a real car</span></div>
+    <p class="fine" style="font-size:13.5px;color:var(--soft)">The bench hides a fault and turns off voltage colors and current dots, so the only things you can see are the loads, the fuses, and your tools. Read the customer concern, test, record your readings, then make the call. Each of this circuit’s <b style="color:var(--fg)">${n} faults</b> comes up once per round, in a shuffled order.</p>
+    ${prog}
+    ${complete ? `<div class="result ok"><b>Set complete.</b> Correct on the first try: ${first} of ${n}.</div>` : ''}
+    <div class="row"><button type="button" class="btn primary" data-my="new">${complete ? `Start round ${g.round + 1}` : done ? `Next mystery fault (${done + 1} of ${n})` : 'Start a mystery fault'}</button>${done ? '<button type="button" class="btn small" data-my="restart">Restart this set</button>' : ''}</div></div>`;
+  }
   const f = FBY[M.fault];
-  let h = `<div class="myst"><div class="concern"><small>Customer concern</small><p>${f.concern}</p></div>
+  let h = `<div class="myst">${prog}<div class="concern"><small>Customer concern · fault ${g.order.indexOf(M.fault) + 1} of ${n}</small><p>${f.concern}</p></div>
     <p class="fine">Readings recorded: <b style="color:var(--fg)">${S.log.length - M.log0}</b>. Use <b style="color:var(--fg)">Record</b> on the meter to log each test.</p>`;
   if (!M.revealed){
     h += `<label class="gk" for="diag">Your diagnosis</label><select id="diag"><option value="">Choose the fault…</option>${FTYPES.map(t => `<optgroup label="${t.n}">${FAULTS.filter(x => x.t === t.k).map(x => `<option value="${x.id}" ${M.pick === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</optgroup>`).join('')}</select>
       <div class="row"><button type="button" class="btn primary" data-my="check">Check diagnosis</button><button type="button" class="btn small" data-my="reveal">Show me</button></div>`;
     if (M.wrong) h += `<div class="result no">Not that. Those symptoms could fit, but the readings will tell them apart. Keep testing.</div>`;
   } else {
-    h += `<div class="result ${M.right ? 'ok' : 'no'}">${M.right ? '<b>Correct.</b> ' : ''}The fault was <b>${f.n}</b>${f.rng ? ` (${faultVal()})` : ''}. It’s now shown on the circuit, and voltage colors are back on.${M.tries > 1 ? ` Tries: ${M.tries}.` : ''}</div>
-      <div class="row"><button type="button" class="btn primary" data-my="new">Next mystery fault</button></div>`;
+    const complete = g.i >= n;
+    h += `<div class="result ${M.right ? 'ok' : 'no'}">${M.right ? '<b>Correct.</b> ' : ''}The fault was <b>${f.n}</b>${f.rng ? ` (${faultVal()})` : ''}. It’s now shown on the circuit, and voltage colors are back on.${M.tries > 1 ? ` Tries: ${M.tries}.` : ''}</div>`;
+    if (complete) h += `<div class="result ok"><b>Set complete!</b> You’ve worked through all ${n} mystery faults for the ${C.name}. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>
+      <div class="row"><button type="button" class="btn primary" data-my="new">Start round ${g.round + 1}</button></div>`;
+    else h += `<div class="row"><button type="button" class="btn primary" data-my="new">Next mystery fault (${g.i + 1} of ${n})</button></div>`;
   }
   return h + '</div>';
 }
+function finishMystery(right){
+  const M = S.mystery, g = bag();
+  M.revealed = true; M.right = right; S.colors = true;
+  if (!g.res[M.fault]){ g.res[M.fault] = {right, tries:M.tries}; g.i = Math.max(g.i, g.order.indexOf(M.fault) + 1); saveBags(); }
+  if (g.i >= g.order.length) toast(`Set complete: all ${g.order.length} ${C.name.toLowerCase()} faults done.`, 'ok');
+}
 function mysteryAct(a){
   const M = S.mystery;
+  if (a === 'restart'){ const g = bag(); g.order = shuffled(FAULTS.map(f => f.id), g.order[Math.max(0, g.i - 1)]); g.i = 0; g.res = {}; saveBags(); S.mystery = null; syncBar(); renderNote(); return; }
   if (a === 'new'){
-    const f = FAULTS[Math.floor(Math.random() * FAULTS.length)];
+    let g = bag();
+    if (g.i >= g.order.length){ bagNewRound(); g = bag(); }
+    const f = FBY[g.order[g.i]];
     bench(C.mystStart);
     let r;
     if (f.myst){ const [lo, hi] = f.myst, st = f.rng[2]; r = Math.round((lo + Math.random() * (hi - lo)) / st) * st; r = +r.toFixed(3); }
@@ -3138,9 +3192,9 @@ function mysteryAct(a){
   } else if (a === 'check'){
     const v = $('#diag').value; if (!v){ toast('Choose a fault first.', 'warn'); return; }
     M.tries++; M.pick = v;
-    if (v === M.fault){ M.revealed = true; M.right = true; S.colors = true; toast('Correct diagnosis.', 'ok'); }
+    if (v === M.fault){ finishMystery(true); toast('Correct diagnosis.', 'ok'); }
     else M.wrong = true;
-  } else if (a === 'reveal'){ M.revealed = true; M.right = false; S.colors = true; }
+  } else if (a === 'reveal'){ if (!M.tries) M.tries = 1; finishMystery(false); }
   syncBar(); update();
 }
 
@@ -3211,7 +3265,7 @@ requestAnimationFrame(tick);
 addEventListener('hashchange', () => { const m = location.hash.replace('#', '').match(/^(lamp|blower|relay|series|draw)/); if (m) switchCircuit(m[1]); });
 
 /* test hook */
-window.__etb = {S, update, bench, setFault, act, setMode, enterStep, switchCircuit, get C(){ return C; }, get R(){ return R; }, get RD(){ return RD; }, get LESSONS(){ return C.lessons; },
+window.__etb = {get BAGS(){ return BAGS; }, mysteryAct, S, update, bench, setFault, act, setMode, enterStep, switchCircuit, get C(){ return C; }, get R(){ return R; }, get RD(){ return RD; }, get LESSONS(){ return C.lessons; },
   probe(r, b, knob, jack){ S.tips.dmmR = r; S.tips.dmmB = b; if (knob) S.dmm.knob = knob; if (jack) S.dmm.jack = jack; update(); return {val:RD.val, unit:RD.unit, t:RD.it && RD.it.t, chip:RD.it && RD.it.chip && RD.it.chip[0], p:RD.it && RD.it.p}; }};
 })();
 </script>
