@@ -205,6 +205,7 @@ button{font:inherit;color:inherit}
 .tchip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:#0B1116;border:1px solid var(--line);font:600 10.5px/1.1 var(--f-label);letter-spacing:.06em;color:var(--soft)}
 .tchip i{width:7px;height:7px;border-radius:50%;flex:none}
 .tchip b{font:500 11px/1 var(--f-mono);color:var(--fg)}
+.tchip .chip{padding:3px 6px;font-size:8.5px}
 .mistake{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,90,78,.55);background:rgba(255,90,78,.08);font-size:12.5px;color:#FFC4BE;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 /* ---------- notebook ---------- */
@@ -425,59 +426,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const SPEC = { wire: 1.0, item: 0.10, power: 0.50, ground: 0.20 };
 const BATT_V = 12.6, BATT_R = 0.012, LEAD_R = 0.20, VN = 12.8, OHM_I = 1e-3, OL_R = 4e7;
 
-/* ---------- test points: id -> node, position, label ---------- */
-const TP = {
-  BATP:{n:'BP',  x:55,  y:368, l:'BAT+', nm:'BAT+', lx:55,  ly:394},
-  BATN:{n:'BN',  x:105, y:368, l:'BAT−', nm:'BAT−', lx:105, ly:394},
-  F3I: {n:'BUS', x:190, y:60,  l:'IN',  nm:'F3 in'},
-  F3O: {n:'F3o', x:250, y:60,  l:'OUT', nm:'F3 out'},
-  F1I: {n:'BUS', x:190, y:120, l:'IN',  nm:'F1 in'},
-  F1O: {n:'F1o', x:250, y:120, l:'OUT', nm:'F1 out'},
-  F2I: {n:'BUS', x:190, y:300, l:'IN',  nm:'F2 in'},
-  F2O: {n:'F2o', x:250, y:300, l:'OUT', nm:'F2 out'},
-  S1I: {n:'S1i', x:330, y:120, l:'IN',  nm:'S1 in'},
-  S1O: {n:'S1o', x:390, y:120, l:'OUT', nm:'S1 out'},
-  S2I: {n:'S2i', x:330, y:300, l:'IN',  nm:'S2 in'},
-  S2O: {n:'S2o', x:390, y:300, l:'OUT', nm:'S2 out'},
-  C1A: {n:'C1a', x:560, y:120, l:'1a', nm:'C1·1a', mv:['C1',-8]},
-  C1B: {n:'C1b', x:582, y:120, l:'1b', nm:'C1·1b', mv:['C1',8]},
-  C2A: {n:'C2a', x:560, y:300, l:'2a', nm:'C1·2a', mv:['C1',-8]},
-  C2B: {n:'C2b', x:582, y:300, l:'2b', nm:'C1·2b', mv:['C1',8]},
-  L1P: {n:'L1p', x:780, y:150, l:'L1+', nm:'L1+', lx:762, ly:154, a:'end'},
-  B1P: {n:'LB1p',x:804, y:150, l:'B1+', nm:'B1+', lx:812, ly:140, a:'start', mv:['L1',24]},
-  B1N: {n:'LB1n',x:804, y:220, l:'B1−', nm:'B1−', lx:812, ly:236, a:'start', mv:['L1',24]},
-  L1N: {n:'L1n', x:780, y:220, l:'L1−', nm:'L1−', lx:762, ly:224, a:'end'},
-  L2P: {n:'L2p', x:780, y:330, l:'L2+', nm:'L2+', lx:762, ly:334, a:'end'},
-  B2P: {n:'LB2p',x:804, y:330, l:'B2+', nm:'B2+', lx:812, ly:320, a:'start', mv:['L2',24]},
-  B2N: {n:'LB2n',x:804, y:400, l:'B2−', nm:'B2−', lx:812, ly:416, a:'start', mv:['L2',24]},
-  L2N: {n:'L2n', x:780, y:400, l:'L2−', nm:'L2−', lx:762, ly:404, a:'end'},
-  G101:{n:'GE',  x:920, y:468, l:'G101', nm:'G101', lx:940, ly:472, a:'start'},
-  BODY:{n:'BODY',x:760, y:520, l:'BODY', nm:'BODY', lx:760, ly:510},
-};
-const TP_IDS = Object.keys(TP);
-function tpPos(id){
-  const t = TP[id]; let x = t.x;
-  if (t.mv && !S.plug[t.mv[0]]) x += t.mv[1];
-  return { x, y: t.y };
-}
-const nm = id => TP[id] ? TP[id].nm : '?';
-
-/* ---------- amp clamp spots: id -> element, position ---------- */
-const CLAMP = {
-  cBatP:{el:'cabP', x:55,  y:270, nm:'the battery + cable'},
-  cW6:  {el:'w6',   x:470, y:60,  nm:'W6 (F3 feed)'},
-  cW2:  {el:'w2',   x:290, y:120, nm:'W2'},
-  cW3:  {el:'w3a',  x:432, y:120, nm:'W3'},
-  cW4:  {el:'w4a',  x:616, y:120, nm:'W4'},
-  cW5:  {el:'w5',   x:864, y:246, nm:'W5'},
-  cW7:  {el:'w2_2', x:290, y:300, nm:'W7'},
-  cW8:  {el:'w3_2', x:470, y:300, nm:'W8'},
-  cW9:  {el:'w4a_2',x:616, y:300, nm:'W9'},
-  cW10: {el:'w5_2', x:864, y:426, nm:'W10'},
-  cBatN:{el:'cabN', x:480, y:520, nm:'the battery ground cable'},
-};
-
-/* ---------- tools: each tip is dragged independently ---------- */
+/* ---------- tools: each tip is dragged independently (shared by every circuit) ---------- */
 const TIPS = {
   dmmR:  {tool:'dmm',  kind:'probe',  fill:'#E8384F', edge:'#FF95A0', ang:-32, home:[60,592],  L:46, nm:'DMM red probe'},
   dmmB:  {tool:'dmm',  kind:'probe',  fill:'#1B2128', edge:'#A3AFBC', ang:32,  home:[94,592],  L:46, nm:'DMM black probe'},
@@ -493,80 +442,759 @@ const TIPS = {
 const CABLE_COL = {dmmR:'#E8384F', dmmB:'#6B7785', tlClip:'#C9D3DD', ldA:'#FF9B42', ldB:'#FF9B42', ppTip:'#B48CFF', jA:'#5FD4C4', jB:'#5FD4C4', clamp:'#8CCBF3'};
 const ANCHOR = {dmmR:[77,598], dmmB:[77,598], ppTip:[548,598], clamp:[862,598]};
 
-/* ---------- faults ---------- */
-const FTYPES = [
-  {k:'res',  n:'Excessive resistance'},
-  {k:'load', n:'Can’t carry the load'},
-  {k:'open', n:'Open'},
-  {k:'sg',   n:'Short to ground'},
-  {k:'tog',  n:'Shorted together'},
-];
-const FAULTS = [
-  {id:'rC1',     t:'res',  n:'Corroded terminal at C1 pin 1', adj:2.0, concern:'Lamp 1 is dim.'},
-  {id:'rS1',     t:'res',  n:'Burnt contacts in switch S1',  adj:1.5, concern:'Lamp 1 is dim.'},
-  {id:'rG',      t:'res',  n:'Loose, corroded ground G101',  adj:1.0, concern:'Both lamps are dim. They get worse when both are on.'},
-  {id:'strands', t:'load', n:'W3 down to a few strands',     concern:'Lamp 1 barely glows.'},
-  {id:'openW3',  t:'open', n:'Broken wire W3',               concern:'Lamp 1 does not light.'},
-  {id:'openW5',  t:'open', n:'Broken ground wire W5',        concern:'Lamp 1 does not light.'},
-  {id:'openBulb',t:'open', n:'Burned-out bulb 1',            concern:'Lamp 1 does not light.'},
-  {id:'sgW3',    t:'sg',   n:'W3 chafed to ground',          concern:'Fuse F1 blows as soon as S1 is turned on.'},
-  {id:'sgW4',    t:'sg',   n:'W4 chafed to ground',          concern:'Fuse F1 blows as soon as S1 is turned on.'},
-  {id:'sB',      t:'tog',  n:'W4 shorted to an always-hot wire', concern:'Lamp 1 stays on with the switch off. The battery is dead by morning.'},
-  {id:'xf',      t:'tog',  n:'W4 and W9 rubbed together',    concern:'Turning on either switch lights both lamps.'},
-];
-const FBY = Object.fromEntries(FAULTS.map(f => [f.id, f]));
-
-/* ---------- circuit chains (for interpreting where the probes are) ---------- */
-const CHAINS = [
-  {c:1, load:8, nodes:['BP','BUS','F1o','S1i','S1o','C1a','C1b','L1p','LB1p','LB1n','L1n','GE','BODY','BN'],
-        items:['cabP','f1','w2','s1','w3','c1','w4','k1p','lamp1','k1n','w5','g101','cabN']},
-  {c:2, load:8, nodes:['BP','BUS','F2o','S2i','S2o','C2a','C2b','L2p','LB2p','LB2n','L2n','GE','BODY','BN'],
-        items:['cabP','f2','w2_2','s2','w3_2','c1_2','w4_2','k2p','lamp2','k2n','w5_2','g101','cabN']},
-  {c:3, load:-1, nodes:['BP','BUS','F3o','HOT'], items:['cabP','f3','w6']},
-];
-const ITEM = {
-  cabP:{n:'the battery + cable',k:'cable'}, cabN:{n:'the battery ground cable',k:'cable'},
-  f1:{n:'fuse F1',k:'fuse'}, w2:{n:'wire W2',k:'wire'}, s1:{n:'switch S1',k:'switch'},
-  w3:{n:'wire W3',k:'wire',p:['w3a','w3b']}, c1:{n:'connector C1 pin 1',k:'conn'},
-  w4:{n:'wire W4',k:'wire',p:['w4a','w4b']}, k1p:{n:'the lamp 1 socket (+)',k:'conn'},
-  lamp1:{n:'bulb 1',k:'load'}, k1n:{n:'the lamp 1 socket (−)',k:'conn'}, w5:{n:'wire W5',k:'wire'},
-  g101:{n:'ground G101',k:'conn'},
-  f2:{n:'fuse F2',k:'fuse'}, w2_2:{n:'wire W7',k:'wire'}, s2:{n:'switch S2',k:'switch'},
-  w3_2:{n:'wire W8',k:'wire'}, c1_2:{n:'connector C1 pin 2',k:'conn'},
-  w4_2:{n:'wire W9',k:'wire',p:['w4a_2','w4b_2']}, k2p:{n:'the lamp 2 socket (+)',k:'conn'},
-  lamp2:{n:'bulb 2',k:'load'}, k2n:{n:'the lamp 2 socket (−)',k:'conn'}, w5_2:{n:'wire W10',k:'wire'},
-  f3:{n:'fuse F3',k:'fuse'}, w6:{n:'wire W6',k:'wire'},
-};
-const parts = id => ITEM[id].p || [id];
-const GROUND_N = ['GE','BODY','BN'];
-
 /* ================= state ================= */
 const S = {
-  mode:'explore', tab:'main', colors:true,
-  sw:{}, fuse:{}, plug:{}, fault:null, faultR:2, pp:'off', ppTrip:false, jmpBlown:false,
+  cid:'lamp', mode:'explore', tab:'main', colors:true,
+  sw:{}, fuse:{}, plug:{}, ign:false, speed:'OFF', fault:null, faultR:0, pp:'off', ppTrip:false, jmpBlown:false,
+  stuck:false, stops:0, motRun:false,
   dmm:{}, tips:{}, log:[], lesson:null, step:0, answered:{}, snaps:{}, mystery:null, sel:null,
 };
 let NLC = {};      // converged nonlinear resistances, reused between solves
 let R = null;      // last run-mode solution
 let RD = null;     // last meter reading
+let SPOT = new Set();
+const FAN = {a:0};
 
-function bench(o = {}){
-  S.sw = {S1:false, S2:false};
-  S.fuse = {F1:'in', F2:'in', F3:'in'};
-  S.plug = {C1:true, L1:true, L2:true};
-  S.fault = null; S.faultR = 2; S.pp = 'off'; S.ppTrip = false; S.jmpBlown = false;
-  S.dmm = {knob:'V', jack:'V', rel:0, blown:false};
-  S.tips = Object.fromEntries(Object.keys(TIPS).map(k => [k, null]));
-  S.sel = null; NLC = {};
-  if (o.S1 != null) S.sw.S1 = o.S1;
-  if (o.S2 != null) S.sw.S2 = o.S2;
-  for (const k of ['F1','F2','F3']) if (o[k]) S.fuse[k] = o[k];
-  for (const k of ['C1','L1','L2']) if (o[k] != null) S.plug[k] = o[k];
-  if (o.fault) { S.fault = o.fault; S.faultR = o.fr ?? FBY[o.fault].adj ?? 2; }
-  if (o.knob) S.dmm.knob = o.knob;
-  if (o.jack) S.dmm.jack = o.jack;
-  if (o.tips) Object.assign(S.tips, o.tips);
+/* current circuit and its tables (swapped by loadCircuit) */
+let C, TP, TP_IDS, CLAMP, WIRES, FAULTS, FBY, ITEM, FTYPES;
+function tpPos(id){
+  const t = TP[id]; let x = t.x;
+  if (t.mv && !S.plug[t.mv[0]]) x += t.mv[1];
+  return { x, y: t.y };
 }
+const nm = id => TP[id] ? TP[id].nm : '?';
+const parts = id => ITEM[id].p || [id];
+const GROUND_N = ['GE','GE2','BODY','BN'];
+
+/* ---------- lesson goal helpers ---------- */
+const at = (tip, tp) => !!S.tips[tip] && !!TP[S.tips[tip]] && !!TP[tp] && TP[S.tips[tip]].n === TP[tp].n;
+const gnd = tip => !!S.tips[tip] && !!TP[S.tips[tip]] && ['BN','BODY','GE','GE2'].includes(TP[S.tips[tip]].n);
+const across = (a, b, p, q) => (at(a, p) && at(b, q)) || (at(a, q) && at(b, p));
+const mV = () => S.dmm.knob === 'V' && S.dmm.jack === 'V';
+const mR = () => S.dmm.knob === 'R' && S.dmm.jack === 'V';
+const mA = () => S.dmm.knob === 'A' && S.dmm.jack === 'A';
+const dV = (r, b) => mV() && at('dmmR', r) && (b === 'GND' ? gnd('dmmB') : at('dmmB', b));
+const dR = (p, q) => mR() && across('dmmR', 'dmmB', p, q);
+const loadTo = tp => (at('ldA', tp) && gnd('ldB')) || (at('ldB', tp) && gnd('ldA'));
+
+/* ---------- shared drawing helpers ---------- */
+const STOPS = [[0,[44,62,80]],[.08,[40,110,150]],[.45,[95,212,255]],[1,[255,122,69]]];
+function vcol(v){
+  const t = Math.max(0, Math.min(1, (v || 0) / BATT_V));
+  for (let i = 1; i < STOPS.length; i++) if (t <= STOPS[i][0]){
+    const [t0, c0] = STOPS[i - 1], [t1, c1] = STOPS[i], f = (t - t0) / (t1 - t0);
+    return `rgb(${c0.map((c, k) => Math.round(c + (c1[k] - c) * f)).join(',')})`;
+  }
+  return 'rgb(255,122,69)';
+}
+const NEUTRAL = '#46525F';
+const ncol = n => S.colors ? vcol(R.v[n]) : NEUTRAL;
+const showFault = () => S.mode !== 'mystery' || (S.mystery && S.mystery.revealed);
+const gndSym = (x, y, red) => `<path d="M${x - 9} ${y} H${x + 9} M${x - 6} ${y + 4} H${x + 6} M${x - 3} ${y + 8} H${x + 3}" class="gsym"${red ? ' style="stroke:var(--fail)"' : ''}/>`;
+const sparkSym = (x, y) => `<path d="M${x - 5} ${y - 5} L${x + 5} ${y + 5} M${x + 5} ${y - 5} L${x - 5} ${y + 5} M${x} ${y - 7} V${y + 7}" class="spark"/>`;
+const ftag = (x, y, t, cls = 'ftag') => { const w = t.length * 6.2 + 14; return `<g class="${cls}"><rect x="${x - w / 2}" y="${y - 9}" width="${w}" height="16" rx="8"/><text x="${x}" y="${y + 3}" text-anchor="middle">${t}</text></g>`; };
+const crust = pts => pts.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" class="crust"/>`).join('');
+const faultVal = () => { const f = FBY[S.fault]; return f && f.rng ? `${S.faultR.toFixed(f.rng[3] === '%' ? 0 : f.rng[2] < .1 ? 2 : 1)}${f.rng[3] === '%' ? '%' : ' Ω'}` : ''; };
+function fuseSVG(k, y, xa, xb){
+  const st = S.fuse[k], rating = C.fuseRating[k], x0 = xa + 8, w = xb - xa - 16, xm = (xa + xb) / 2;
+  const body = st === 'out'
+    ? `<rect x="${x0}" y="${y - 9}" width="${w}" height="18" rx="4" fill="url(#hatch)" stroke="#2A3644" stroke-dasharray="3 3"/><text x="${xm}" y="${y + 3}" text-anchor="middle" class="t-tiny">PULLED</text>`
+    : `<rect x="${x0}" y="${y - 9}" width="${w}" height="18" rx="4" class="fz${st === 'blown' ? ' blown' : ''}"/>
+       <path d="M${x0 + 6} ${y} C${xm - 8} ${y - 6} ${xm - 4} ${y + 6} ${xm} ${y} S${xm + 8} ${y - 6} ${x0 + w - 6} ${y}" class="fzel${st === 'blown' ? ' blown' : ''}"/>`;
+  return `<g class="act" data-act="fuse:${k}" role="button" aria-label="Fuse ${k}">
+    <rect x="${xa - 4}" y="${y - 32}" width="${xb - xa + 8}" height="46" class="hitr"/>
+    <text x="${xm}" y="${y - 15}" text-anchor="middle" class="t-sub" ${st === 'blown' ? 'style="fill:#FF8A80"' : ''}>${k} · ${rating} A${st === 'blown' ? ' · BLOWN' : ''}</text>
+    ${body}</g>`;
+}
+const zz = (x, y0, y1, n = 6) => { const seg = (y1 - y0 - 12) / n; let d = `M${x} ${y0} V${y0 + 6}`; for (let i = 0; i < n; i++) d += ` L${x + (i % 2 ? -7 : 7)} ${(y0 + 6 + seg * (i + .5)).toFixed(1)}`; return d + ` L${x} ${y1 - 6} V${y1}`; };
+/* control helpers */
+const tg = (act, lbl, val, cls) => `<button type="button" class="tg ${cls}" data-act="${act}">${lbl} <b>${val}</b></button>`;
+const fzCtl = k => S.fuse[k] === 'in' ? tg('fuse:' + k, k, 'in', 'on') : S.fuse[k] === 'out' ? tg('fuse:' + k, k, 'pulled', 'off') : tg('fuse:' + k, k, 'blown · replace', 'bad');
+const swCtl = k => tg('sw:' + k, k, S.sw[k] ? 'on' : 'off', S.sw[k] ? 'on' : '');
+const plCtl = (k, lbl, a, b) => tg('plug:' + k, lbl, S.plug[k] ? a : b, S.plug[k] ? '' : 'off');
+const segCtl = (items, cur, pre) => `<div class="seg mini">${items.map(([v, l]) => `<button type="button" data-act="${pre}:${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
+const probeCtl = () => `<div class="cg"><span>Probe</span>${segCtl([['off','Off'],['B','+B'],['G','GND']], S.pp, 'pp')}${S.ppTrip ? tg('pp:reset', 'Breaker', 'reset', 'bad') : ''}</div>`;
+const RES_RNG = [0.2, 10, 0.1, 'Ω'];
+
+/* =====================================================================
+   CIRCUIT 1: LAMP
+   ===================================================================== */
+const LAMP = {
+  id:'lamp', name:'Lamp circuit', sub:'2 lamps · shared C1 and G101', lib:'Two lamps, shared connector and ground. Every meter test and fault type.',
+  fuseRating:{F1:10, F2:10, F3:15},
+  defaults:{sw:{S1:false, S2:false}, fuse:{F1:'in', F2:'in', F3:'in'}, plug:{C1:true, L1:true, L2:true}},
+  start:{S1:true, tips:{dmmR:'L1P', dmmB:'BATN'}},
+  mystStart:{S1:false},
+  extraNodes:['W3m','W4m','W4bm','HOT'],
+  TP:{
+    BATP:{n:'BP',  x:55,  y:368, l:'BAT+', nm:'BAT+', lx:55,  ly:394},
+    BATN:{n:'BN',  x:105, y:368, l:'BAT−', nm:'BAT−', lx:105, ly:394},
+    F3I: {n:'BUS', x:190, y:60,  l:'IN',  nm:'F3 in'},
+    F3O: {n:'F3o', x:250, y:60,  l:'OUT', nm:'F3 out'},
+    F1I: {n:'BUS', x:190, y:120, l:'IN',  nm:'F1 in'},
+    F1O: {n:'F1o', x:250, y:120, l:'OUT', nm:'F1 out'},
+    F2I: {n:'BUS', x:190, y:300, l:'IN',  nm:'F2 in'},
+    F2O: {n:'F2o', x:250, y:300, l:'OUT', nm:'F2 out'},
+    S1I: {n:'S1i', x:330, y:120, l:'IN',  nm:'S1 in'},
+    S1O: {n:'S1o', x:390, y:120, l:'OUT', nm:'S1 out'},
+    S2I: {n:'S2i', x:330, y:300, l:'IN',  nm:'S2 in'},
+    S2O: {n:'S2o', x:390, y:300, l:'OUT', nm:'S2 out'},
+    C1A: {n:'C1a', x:560, y:120, l:'1a', nm:'C1·1a', mv:['C1',-8]},
+    C1B: {n:'C1b', x:582, y:120, l:'1b', nm:'C1·1b', mv:['C1',8]},
+    C2A: {n:'C2a', x:560, y:300, l:'2a', nm:'C1·2a', mv:['C1',-8]},
+    C2B: {n:'C2b', x:582, y:300, l:'2b', nm:'C1·2b', mv:['C1',8]},
+    L1P: {n:'L1p', x:780, y:150, l:'L1+', nm:'L1+', lx:762, ly:154, a:'end'},
+    B1P: {n:'LB1p',x:804, y:150, l:'B1+', nm:'B1+', lx:812, ly:140, a:'start', mv:['L1',24]},
+    B1N: {n:'LB1n',x:804, y:220, l:'B1−', nm:'B1−', lx:812, ly:236, a:'start', mv:['L1',24]},
+    L1N: {n:'L1n', x:780, y:220, l:'L1−', nm:'L1−', lx:762, ly:224, a:'end'},
+    L2P: {n:'L2p', x:780, y:330, l:'L2+', nm:'L2+', lx:762, ly:334, a:'end'},
+    B2P: {n:'LB2p',x:804, y:330, l:'B2+', nm:'B2+', lx:812, ly:320, a:'start', mv:['L2',24]},
+    B2N: {n:'LB2n',x:804, y:400, l:'B2−', nm:'B2−', lx:812, ly:416, a:'start', mv:['L2',24]},
+    L2N: {n:'L2n', x:780, y:400, l:'L2−', nm:'L2−', lx:762, ly:404, a:'end'},
+    G101:{n:'GE',  x:920, y:468, l:'G101', nm:'G101', lx:940, ly:472, a:'start'},
+    BODY:{n:'BODY',x:760, y:520, l:'BODY', nm:'BODY', lx:760, ly:510},
+  },
+  CLAMP:{
+    cBatP:{el:'cabP', x:55,  y:270, nm:'the battery + cable'},
+    cW6:  {el:'w6',   x:470, y:60,  nm:'W6 (F3 feed)'},
+    cW2:  {el:'w2',   x:290, y:120, nm:'W2'},
+    cW3:  {el:'w3a',  x:432, y:120, nm:'W3'},
+    cW4:  {el:'w4a',  x:616, y:120, nm:'W4'},
+    cW5:  {el:'w5',   x:864, y:246, nm:'W5'},
+    cW7:  {el:'w2_2', x:290, y:300, nm:'W7'},
+    cW8:  {el:'w3_2', x:470, y:300, nm:'W8'},
+    cW9:  {el:'w4a_2',x:616, y:300, nm:'W9'},
+    cW10: {el:'w5_2', x:864, y:426, nm:'W10'},
+    cBatN:{el:'cabN', x:480, y:520, nm:'the battery ground cable'},
+  },
+  FTYPES:[{k:'res', n:'Excessive resistance'},{k:'load', n:'Can’t carry the load'},{k:'open', n:'Open'},{k:'sg', n:'Short to ground'},{k:'tog', n:'Shorted together'}],
+  FAULTS:[
+    {id:'rC1',     t:'res',  n:'Corroded terminal at C1 pin 1', adj:2.0, rng:RES_RNG, myst:[1,4], concern:'Lamp 1 is dim.'},
+    {id:'rS1',     t:'res',  n:'Burnt contacts in switch S1',  adj:1.5, rng:RES_RNG, myst:[1,4], concern:'Lamp 1 is dim.'},
+    {id:'rG',      t:'res',  n:'Loose, corroded ground G101',  adj:1.0, rng:RES_RNG, myst:[.6,1.8], concern:'Both lamps are dim. They get worse when both are on.'},
+    {id:'strands', t:'load', n:'W3 down to a few strands',     concern:'Lamp 1 barely glows.'},
+    {id:'openW3',  t:'open', n:'Broken wire W3',               concern:'Lamp 1 does not light.'},
+    {id:'openW5',  t:'open', n:'Broken ground wire W5',        concern:'Lamp 1 does not light.'},
+    {id:'openBulb',t:'open', n:'Burned-out bulb 1',            concern:'Lamp 1 does not light.'},
+    {id:'sgW3',    t:'sg',   n:'W3 chafed to ground',          concern:'Fuse F1 blows as soon as S1 is turned on.'},
+    {id:'sgW4',    t:'sg',   n:'W4 chafed to ground',          concern:'Fuse F1 blows as soon as S1 is turned on.'},
+    {id:'sB',      t:'tog',  n:'W4 shorted to an always-hot wire', concern:'Lamp 1 stays on with the switch off. The battery is dead by morning.'},
+    {id:'xf',      t:'tog',  n:'W4 and W9 rubbed together',    concern:'Turning on either switch lights both lamps.'},
+  ],
+  ITEM:{
+    cabP:{n:'the battery + cable',k:'cable'}, cabN:{n:'the battery ground cable',k:'cable'},
+    f1:{n:'fuse F1',k:'fuse',fuse:'F1'}, w2:{n:'wire W2',k:'wire'}, s1:{n:'switch S1',k:'switch'},
+    w3:{n:'wire W3',k:'wire',p:['w3a','w3b']}, c1:{n:'connector C1 pin 1',k:'conn',plug:'C1'},
+    w4:{n:'wire W4',k:'wire',p:['w4a','w4b']}, k1p:{n:'the lamp 1 socket (+)',k:'conn',plug:'L1'},
+    lamp1:{n:'bulb 1',k:'load',ohm:'lamp'}, k1n:{n:'the lamp 1 socket (−)',k:'conn',plug:'L1'}, w5:{n:'wire W5',k:'wire'},
+    g101:{n:'ground G101',k:'conn'},
+    f2:{n:'fuse F2',k:'fuse',fuse:'F2'}, w2_2:{n:'wire W7',k:'wire'}, s2:{n:'switch S2',k:'switch'},
+    w3_2:{n:'wire W8',k:'wire'}, c1_2:{n:'connector C1 pin 2',k:'conn',plug:'C1'},
+    w4_2:{n:'wire W9',k:'wire',p:['w4a_2','w4b_2']}, k2p:{n:'the lamp 2 socket (+)',k:'conn',plug:'L2'},
+    lamp2:{n:'bulb 2',k:'load',ohm:'lamp'}, k2n:{n:'the lamp 2 socket (−)',k:'conn',plug:'L2'}, w5_2:{n:'wire W10',k:'wire'},
+    f3:{n:'fuse F3',k:'fuse',fuse:'F3'}, w6:{n:'wire W6',k:'wire'},
+  },
+  chains(){ return [
+    {load:8, nodes:['BP','BUS','F1o','S1i','S1o','C1a','C1b','L1p','LB1p','LB1n','L1n','GE','BODY','BN'],
+             items:['cabP','f1','w2','s1','w3','c1','w4','k1p','lamp1','k1n','w5','g101','cabN']},
+    {load:8, nodes:['BP','BUS','F2o','S2i','S2o','C2a','C2b','L2p','LB2p','LB2n','L2n','GE','BODY','BN'],
+             items:['cabP','f2','w2_2','s2','w3_2','c1_2','w4_2','k2p','lamp2','k2n','w5_2','g101','cabN']},
+    {load:-1, nodes:['BP','BUS','F3o','HOT'], items:['cabP','f3','w6']},
+  ]; },
+  build(A){
+    const f = S.fault, fr = S.faultR, F = S.fuse;
+    A('cabP','BP','BUS',.003);
+    if (F.F1 === 'in') A('f1','BUS','F1o',.006,{prot:10, dev:'F1'});
+    A('w2','F1o','S1i',.02);
+    if (S.sw.S1) A('s1','S1i','S1o',.01 + (f === 'rS1' ? fr : 0));
+    if (f !== 'openW3') A('w3a','S1o','W3m',.018, f === 'strands' ? {nl:'strand'} : null);
+    A('w3b','W3m','C1a',.017);
+    if (S.plug.C1){ A('c1','C1a','C1b',.003 + (f === 'rC1' ? fr : 0)); A('c1_2','C2a','C2b',.003); }
+    A('w4a','C1b','W4m',.01); A('w4b','W4m','L1p',.01);
+    if (S.plug.L1){ A('k1p','L1p','LB1p',.003); A('k1n','LB1n','L1n',.003); }
+    if (f !== 'openBulb') A('lamp1','LB1p','LB1n',6.1,{nl:'lamp', In:2.1, Rc:.5});
+    if (f !== 'openW5') A('w5','L1n','GE',.02);
+    A('g101','GE','BODY',.003 + (f === 'rG' ? fr : 0));
+    A('cabN','BODY','BN',.003);
+    if (F.F2 === 'in') A('f2','BUS','F2o',.006,{prot:10, dev:'F2'});
+    A('w2_2','F2o','S2i',.02);
+    if (S.sw.S2) A('s2','S2i','S2o',.01);
+    A('w3_2','S2o','C2a',.035);
+    A('w4a_2','C2b','W4bm',.01); A('w4b_2','W4bm','L2p',.01);
+    if (S.plug.L2){ A('k2p','L2p','LB2p',.003); A('k2n','LB2n','L2n',.003); }
+    A('lamp2','LB2p','LB2n',6.1,{nl:'lamp', In:2.1, Rc:.5});
+    A('w5_2','L2n','GE',.02);
+    if (F.F3 === 'in') A('f3','BUS','F3o',.006,{prot:15, dev:'F3'});
+    A('w6','F3o','HOT',.02);
+    if (f === 'sgW3') A('xs','W3m','BODY',.02);
+    if (f === 'sgW4') A('xs','W4m','BODY',.02);
+    if (f === 'sB')   A('xs','W4m','HOT',.02);
+    if (f === 'xf')   A('xs','W4m','W4bm',.02);
+  },
+  WIRES:[
+    {el:'cabP', a:'BP',  b:'BUS',  d:'M55 368 V180 H172', thick:true},
+    {el:'bus',  a:'BUS', b:'BUS',  d:'M190 60 H172 V300 H190 M172 120 H190', noflow:true},
+    {el:'w6',   a:'F3o', b:'HOT',  d:'M250 60 H730'},
+    {el:'w2',   a:'F1o', b:'S1i',  d:'M250 120 H330'},
+    {el:'w3a',  a:'S1o', b:'W3m',  d:'M390 120 H475', brk:{f:'openW3', x:432, y:120}},
+    {el:'w3b',  a:'W3m', b:'C1a',  d:'M475 120 H560'},
+    {el:'w4a',  a:'C1b', b:'W4m',  d:'M582 120 H650'},
+    {el:'w4b',  a:'W4m', b:'L1p',  d:'M650 120 H780 V150'},
+    {el:'w5',   a:'L1n', b:'GE',   d:'M780 220 V246 H948 V440 L926 460', brk:{f:'openW5', x:864, y:246}},
+    {el:'w2_2', a:'F2o', b:'S2i',  d:'M250 300 H330'},
+    {el:'w3_2', a:'S2o', b:'C2a',  d:'M390 300 H560'},
+    {el:'w4a_2',a:'C2b', b:'W4bm', d:'M582 300 H650'},
+    {el:'w4b_2',a:'W4bm',b:'L2p',  d:'M650 300 H780 V330'},
+    {el:'w5_2', a:'L2n', b:'GE',   d:'M780 400 V426 H900 V440 L914 460'},
+    {el:'g101', a:'GE',  b:'BODY', d:'M920 479 V520', thick:true},
+    {el:'cabN', a:'BODY',b:'BN',   d:'M920 520 H140 V354 H105 V368', thick:true},
+  ],
+  back:`
+    <rect x="150" y="34" width="122" height="300" rx="10" class="blk2"/>
+    <text x="211" y="350" text-anchor="middle" class="t-sub">FUSE BLOCK</text>
+    <text x="736" y="64" class="t-tiny">ALWAYS HOT · TO OTHER CIRCUITS</text>
+    <path d="M726 56 L732 60 L726 64" fill="none" stroke="#4C5968" stroke-width="1.4"/>
+    <text x="520" y="511" text-anchor="middle" class="t-tiny">BODY / CHASSIS GROUND</text>
+    <text x="290" y="111" text-anchor="middle" class="t-wire">W2</text>
+    <text x="512" y="111" text-anchor="middle" class="t-wire">W3</text>
+    <text x="736" y="111" text-anchor="middle" class="t-wire">W4</text>
+    <text x="900" y="238" text-anchor="middle" class="t-wire">W5</text>
+    <text x="400" y="51" text-anchor="middle" class="t-wire">W6</text>
+    <text x="290" y="291" text-anchor="middle" class="t-wire">W7</text>
+    <text x="512" y="291" text-anchor="middle" class="t-wire">W8</text>
+    <text x="736" y="291" text-anchor="middle" class="t-wire">W9</text>
+    <text x="840" y="418" text-anchor="middle" class="t-wire">W10</text>
+    <text x="80" y="170" text-anchor="middle" class="t-tiny">+ CABLE</text>
+    <text x="300" y="166" text-anchor="middle" class="t-tiny">CIRCUIT 1</text>
+    <text x="300" y="346" text-anchor="middle" class="t-tiny">CIRCUIT 2</text>
+    <text x="872" y="182" class="t-blk">LAMP 1</text><text x="872" y="196" class="t-mono">27 W · 2.1 A</text>
+    <text x="872" y="362" class="t-blk">LAMP 2</text><text x="872" y="376" class="t-mono">27 W · 2.1 A</text>
+    <text x="571" y="88" text-anchor="middle" class="t-blk">C1</text>
+    <text x="940" y="486" class="t-tiny">EYELET</text>`,
+  parts(){
+    let h = fuseSVG('F3', 60, 190, 250) + fuseSVG('F1', 120, 190, 250) + fuseSVG('F2', 300, 190, 250) + lampSwitch('S1', 120) + lampSwitch('S2', 300) + lampC1() + lampBulb(1, 150) + lampBulb(2, 330);
+    h += `<circle cx="920" cy="468" r="11" fill="#141D27" stroke="#7D8A98" stroke-width="2"/>`;
+    if (S.fault === 'rG' && showFault()) h += crust([[913,462,3],[927,473,3.6],[926,460,2.4]]);
+    return h;
+  },
+  fault(){
+    switch (S.fault){
+      case 'rC1': return crust([[566,113,3.4],[577,127,4],[572,110,2.4]]) + ftag(571, 360, 'CORROSION ' + faultVal());
+      case 'rS1': return ftag(360, 148, 'BURNT ' + faultVal());
+      case 'rG':  return ftag(920, 444, 'LOOSE ' + faultVal());
+      case 'strands': return `<rect x="420" y="113" width="24" height="14" rx="3" fill="#080B0F"/><path d="M420 120 C426 114 438 126 444 120 M420 120 C428 125 436 114 444 120 M424 117 l-3 -6 M440 123 l3 6" stroke="#C9A36A" stroke-width="1.2" fill="none"/>${ftag(432, 146, 'FEW STRANDS')}`;
+      case 'openW3': return `<rect x="424" y="112" width="16" height="16" fill="#080B0F"/>${ftag(432, 146, 'OPEN')}`;
+      case 'openW5': return `<rect x="856" y="238" width="16" height="16" fill="#080B0F"/>${ftag(864, 272, 'OPEN')}`;
+      case 'openBulb': return ftag(845, 140, 'FILAMENT OPEN');
+      case 'sgW3': return `<path d="M475 120 V156" class="short"/>${gndSym(475, 158, true)}${sparkSym(475, 124)}${ftag(475, 186, 'SHORT TO GROUND')}`;
+      case 'sgW4': return `<path d="M705 120 V156" class="short"/>${gndSym(705, 158, true)}${sparkSym(705, 124)}${ftag(705, 186, 'SHORT TO GROUND')}`;
+      case 'sB': return `<path d="M690 120 V60" class="short"/>${sparkSym(690, 90)}${ftag(690, 88, 'SHORT TO B+')}`;
+      case 'xf': return `<path d="M650 120 V300" class="short"/>${sparkSym(650, 210)}${ftag(650, 230, 'W4 ⇄ W9 SHORT')}`;
+    }
+    return '';
+  },
+  ctrls(){ return `
+    <div class="cg"><span>Circuit 1</span>${swCtl('S1')}${fzCtl('F1')}${plCtl('L1', 'Lamp 1', 'in', 'out')}</div>
+    <div class="cg"><span>Circuit 2</span>${swCtl('S2')}${fzCtl('F2')}${plCtl('L2', 'Lamp 2', 'in', 'out')}</div>
+    <div class="cg"><span>Shared</span>${plCtl('C1', 'C1', 'mated', 'apart')}${fzCtl('F3')}</div>${probeCtl()}`; },
+  cond(){
+    const c = [`S1 ${S.sw.S1 ? 'on' : 'off'}`, `S2 ${S.sw.S2 ? 'on' : 'off'}`];
+    if (!S.plug.C1) c.push('C1 apart'); if (!S.plug.L1) c.push('lamp 1 out'); if (!S.plug.L2) c.push('lamp 2 out');
+    return c;
+  },
+  drawSpec(pr, I){
+    for (const k of ['F1','F2']) if (pr === ['BUS', k + 'o'].sort().join() && S.fuse[k] !== 'in')
+      return {t:`Circuit ${k[1]} current draw`, p:`${fmtA(Math.abs(I))} A. This lamp normally draws about 2.1 A. Lower means extra resistance; higher means a short or an extra load; 0 A means an open.`};
+    return null;
+  },
+  clampNote(){ return null; },
+  guide:'',
+};
+function lampSwitch(k, y){
+  const on = S.sw[k], col = ncol(k + 'i');
+  const burnt = k === 'S1' && S.fault === 'rS1' && showFault();
+  const lev = on ? `M338 ${y} L382 ${y}` : `M338 ${y} L378 ${y - 22}`;
+  return `<g class="act" data-act="sw:${k}" role="button" aria-label="Switch ${k}">
+    <rect x="318" y="${y - 40}" width="84" height="56" rx="8" class="hitr"/>
+    <text x="360" y="${y - 33}" text-anchor="middle" class="t-sub">${k} · ${on ? 'ON' : 'OFF'}</text>
+    <path d="M330 ${y} H338 M382 ${y} H390" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
+    <path d="${lev}" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>
+    <circle cx="338" cy="${y}" r="3.4" fill="#C9D3DD"/><circle cx="382" cy="${y}" r="3.4" fill="${burnt ? '#7a3a10' : '#C9D3DD'}"/>
+    ${burnt ? `<circle cx="382" cy="${y}" r="7" fill="none" stroke="#B4561C" stroke-width="2" opacity=".8"/>` : ''}</g>`;
+}
+function bulbGlass(cx, cy, b){
+  const fil = b > .01 ? `rgb(255,${Math.round(150 + 90 * Math.min(1, b))},${Math.round(60 + 120 * Math.min(1, b))})` : '#5A5340';
+  return {fil, glass:`<circle cx="${cx}" cy="${cy}" r="17" fill="${b > .02 ? 'rgba(255,214,140,' + (0.1 + 0.25 * Math.min(1, b)) + ')' : '#12171D'}" stroke="#7D8A98" stroke-width="1.3"/>`};
+}
+function lampBulb(n, y0){
+  const plugged = S.plug['L' + n], dx = plugged ? 0 : 24;
+  const b = R.bright['lamp' + n], open = n === 1 && S.fault === 'openBulb';
+  const cp = ncol('LB' + n + 'p'), cn = ncol('LB' + n + 'n');
+  const cy = y0 + 35, g = bulbGlass(845, cy, b);
+  const filament = open && showFault()
+    ? `<path d="M837 ${cy + 6} L840 ${cy - 2} M850 ${cy - 2} L853 ${cy + 6}" stroke="#5A5340" stroke-width="1.6" fill="none"/>`
+    : `<path d="M837 ${cy + 6} L840 ${cy - 3} L843 ${cy + 3} L846 ${cy - 3} L849 ${cy + 3} L853 ${cy + 6}" stroke="${g.fil}" stroke-width="1.6" fill="none" stroke-linejoin="round"/>`;
+  return `<g class="act" data-act="plug:L${n}" role="button" aria-label="Lamp ${n} plug">
+    <rect x="766" y="${y0 - 16}" width="104" height="104" class="hitr"/>
+    <rect x="768" y="${y0 - 14}" width="24" height="98" rx="5" class="blk"/>
+    <g transform="translate(${dx} 0)">
+      <circle cx="845" cy="${cy}" r="${36 + 14 * Math.min(1, b)}" fill="url(#gGlow)" opacity="${Math.min(1, b * 1.15)}"/>
+      <rect x="794" y="${y0 - 14}" width="22" height="98" rx="5" class="blk"/>
+      <path d="M804 ${y0} H845 V${cy - 17}" fill="none" stroke="${cp}" stroke-width="2.4"/>
+      <path d="M845 ${cy + 17} V${y0 + 70} H804" fill="none" stroke="${cn}" stroke-width="2.4"/>
+      ${g.glass}${filament}
+    </g>
+    ${plugged ? '' : `<text x="792" y="${y0 + 98}" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>`}</g>`;
+}
+function lampC1(){
+  const dx = S.plug.C1 ? 0 : 8;
+  return `<g class="act" data-act="plug:C1" role="button" aria-label="Connector C1">
+    <rect x="536" y="96" width="70" height="230" class="hitr"/>
+    <rect x="${548 - dx}" y="98" width="22" height="224" rx="5" class="blk"/>
+    <rect x="${572 + dx}" y="98" width="22" height="224" rx="5" class="blk"/>
+    ${S.plug.C1 ? '' : '<text x="571" y="338" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>'}</g>`;
+}
+
+/* =====================================================================
+   CIRCUIT 2: BLOWER MOTOR + RESISTOR BLOCK (ground-side switched)
+   ===================================================================== */
+/* Permanent-magnet DC motor driving a fan: V = I·Ra + k·ω, torque k·I = Tf + c·ω².
+   Tuned so HI ≈ 13.5 A at ≈ 2,900 rpm. Binding raises friction and drag. */
+const MOTOR = {k:.0338, Ra:.12, Tf:.05, c:4.29e-6, Rc:.25};
+const BLOWER_SPEC = {L:[3,4.5,'LO'], M1:[5,7,'M1'], M2:[8,10.5,'M2'], H:[12,15,'HI']};
+const SPD_LBL = {OFF:'OFF', L:'LO', M1:'M1', M2:'M2', H:'HI'};
+const BLOWER = {
+  id:'blower', name:'Blower motor', sub:'Ground-side switched · resistor block', lib:'Blower motor with a resistor block: high-current voltage drop, amp draw, motor faults.',
+  fuseRating:{F1:30},
+  defaults:{sw:{}, fuse:{F1:'in'}, plug:{C2:true, C3:true}, ign:true, speed:'OFF'},
+  start:{ign:true, speed:'H', tips:{dmmR:'MP', dmmB:'BATN'}},
+  mystStart:{ign:false, speed:'OFF'},
+  extraNodes:['W1m','SPL','bT','SWG'],
+  TP:{
+    BATP:{n:'BP',  x:55,  y:368, l:'BAT+', nm:'BAT+', lx:55,  ly:394},
+    BATN:{n:'BN',  x:105, y:368, l:'BAT−', nm:'BAT−', lx:105, ly:394},
+    F1I: {n:'IGo', x:215, y:110, l:'IN',  nm:'F1 in', ly:128},
+    F1O: {n:'F1o', x:295, y:110, l:'OUT', nm:'F1 out', ly:128},
+    C2P: {n:'hP',  x:568, y:110, l:'C2·1', nm:'C2·1', lx:558, ly:100, a:'end'},
+    MP:  {n:'mP',  x:592, y:110, l:'M+',  nm:'M+', lx:600, ly:100, a:'start', mv:['C2',24]},
+    MN:  {n:'mN',  x:592, y:230, l:'M−',  nm:'M−', lx:600, ly:248, a:'start', mv:['C2',24]},
+    C2N: {n:'hN',  x:568, y:230, l:'C2·2', nm:'C2·2', lx:558, ly:248, a:'end'},
+    C3M: {n:'hM',  x:530, y:300, l:'M',   nm:'C3·M',  lx:520, ly:292, a:'end'},
+    C3M2:{n:'hM2', x:530, y:370, l:'M2',  nm:'C3·M2', lx:520, ly:362, a:'end'},
+    C3M1:{n:'hM1', x:530, y:410, l:'M1',  nm:'C3·M1', lx:520, ly:402, a:'end'},
+    C3L: {n:'hL',  x:530, y:450, l:'LO',  nm:'C3·LO', lx:520, ly:442, a:'end'},
+    RM:  {n:'bM',  x:554, y:300, l:'R·M',  nm:'R·M',  lx:564, ly:292, a:'start', mv:['C3',8]},
+    RM2: {n:'bM2', x:554, y:370, l:'R·M2', nm:'R·M2', lx:564, ly:362, a:'start', mv:['C3',8]},
+    RM1: {n:'bM1', x:554, y:410, l:'R·M1', nm:'R·M1', lx:564, ly:402, a:'start', mv:['C3',8]},
+    RL:  {n:'bL',  x:554, y:450, l:'R·LO', nm:'R·LO', lx:564, ly:442, a:'start', mv:['C3',8]},
+    SWH: {n:'SH',  x:330, y:330, l:'', nm:'SW·HI'},
+    SWM2:{n:'SM2', x:330, y:370, l:'', nm:'SW·M2'},
+    SWM1:{n:'SM1', x:330, y:410, l:'', nm:'SW·M1'},
+    SWL: {n:'SL',  x:330, y:450, l:'', nm:'SW·LO'},
+    SWG: {n:'SWG', x:240, y:466, l:'SW·G', nm:'SW·G', lx:228, ly:470, a:'end'},
+    G200:{n:'GE2', x:240, y:494, l:'G200', nm:'G200', lx:254, ly:498, a:'start'},
+    BODY:{n:'BODY',x:330, y:520, l:'BODY', nm:'BODY', lx:330, ly:511},
+  },
+  CLAMP:{
+    cBatP:{el:'cabP', x:55,  y:240, nm:'the battery + cable'},
+    cW1:  {el:'w1a',  x:360, y:110, nm:'W1'},
+    cW2:  {el:'w2',   x:470, y:266, nm:'W2'},
+    cW3:  {el:'w3',   x:500, y:300, nm:'W3'},
+    cW5:  {el:'wH',   x:372, y:330, nm:'W5 (HI)'},
+    cW6:  {el:'wm2',  x:440, y:370, nm:'W6 (M2)'},
+    cW7:  {el:'wm1',  x:440, y:410, nm:'W7 (M1)'},
+    cW8:  {el:'wl',   x:440, y:450, nm:'W8 (LO)'},
+    cW9:  {el:'wg',   x:240, y:479, nm:'W9 (switch ground)'},
+    cBatN:{el:'cabN', x:190, y:520, nm:'the battery ground cable'},
+  },
+  FTYPES:[{k:'res', n:'Excessive resistance'},{k:'motor', n:'Motor faults'},{k:'open', n:'Open'},{k:'sg', n:'Short to ground'}],
+  FAULTS:[
+    {id:'rC2',   t:'res',   n:'Corroded motor connector C2 pin 1', adj:.25, rng:[.05,1.5,.05,'Ω'], myst:[.15,.5], concern:'The blower is weak on every speed.'},
+    {id:'rG200', t:'res',   n:'Loose switch ground G200', adj:.2, rng:[.05,1.5,.05,'Ω'], myst:[.12,.4], concern:'The blower is weak on every speed.'},
+    {id:'melt',  t:'res',   n:'Melted connector C3 pin M', adj:.3, rng:[.05,1.5,.05,'Ω'], myst:[.2,.6], concern:'The lower speeds are weak and the customer smelled something hot. HI is fine.'},
+    {id:'bind',  t:'motor', n:'Binding motor (worn bushings)', adj:60, rng:[10,100,5,'%'], lbl:'Drag', myst:[45,80], concern:'The blower is loud and slow. LO doesn’t run at all.'},
+    {id:'dead',  t:'motor', n:'Dead spot (worn brushes)', concern:'Sometimes the blower doesn’t come on. Smacking the dash gets it going.'},
+    {id:'openTL',t:'open',  n:'Open thermal limiter', concern:'The blower only works on HI.'},
+    {id:'openHi',t:'open',  n:'Broken HI wire W5', concern:'The blower works on every speed except HI.'},
+    {id:'sgW1',  t:'sg',    n:'W1 chafed to ground', concern:'The blower fuse blows as soon as the key is turned on.'},
+  ],
+  ITEM:{
+    cabign:{n:'the battery cable and ignition switch',k:'switch',p:['cabP','ign'],open:'The ignition is off, so the feed is open.'},
+    f1:{n:'fuse F1',k:'fuse',fuse:'F1'}, w1:{n:'wire W1',k:'wire',p:['w1a','w1b']},
+    c2p:{n:'connector C2 pin 1',k:'conn',plug:'C2'}, mot:{n:'the blower motor',k:'load',ohm:'motor',faultOpen:true,open:'The motor itself is open: the brushes are on a dead spot.'},
+    c2n:{n:'connector C2 pin 2',k:'conn',plug:'C2'},
+    w2h:{n:'wires W2 and W5',k:'wire',p:['w2','wH']}, w23:{n:'wires W2 and W3',k:'wire',p:['w2','w3']},
+    swH:{n:'the blower switch HI contact',k:'switch',open:() => swOpen('HI')},
+    swM2:{n:'the blower switch M2 contact',k:'switch',open:() => swOpen('M2')},
+    swM1:{n:'the blower switch M1 contact',k:'switch',open:() => swOpen('M1')},
+    swL:{n:'the blower switch LO contact',k:'switch',open:() => swOpen('LO')},
+    wg:{n:'switch ground wire W9',k:'wire'}, g200:{n:'ground G200',k:'conn'}, cabN:{n:'the battery ground cable',k:'cable'},
+    c3m:{n:'connector C3 pin M',k:'conn',plug:'C3'}, c3m2:{n:'connector C3 pin M2',k:'conn',plug:'C3'},
+    c3m1:{n:'connector C3 pin M1',k:'conn',plug:'C3'}, c3l:{n:'connector C3 pin LO',k:'conn',plug:'C3'},
+    tlra:{n:'the thermal limiter and resistor R1',k:'res',p:['tl','ra'],nom:.33,faultOpen:true,open:'The thermal limiter is open.'},
+    rb:{n:'resistor R2',k:'res',nom:.54}, rc:{n:'resistor R3',k:'res',nom:1.33},
+    wm2:{n:'wire W6',k:'wire'}, wm1:{n:'wire W7',k:'wire'}, wl:{n:'wire W8',k:'wire'},
+  },
+  chains(){
+    const hN = ['BP','IGo','F1o','hP','mP','mN','hN'], hI = ['cabign','f1','w1','c2p','mot','c2n'];
+    const tail = ['SWG','GE2','BODY','BN'], tI = ['wg','g200','cabN'];
+    const ch = {
+      H: {nodes:[...hN,'SH',...tail], items:[...hI,'w2h','swH',...tI]},
+      M2:{nodes:[...hN,'hM','bM','bM2','hM2','SM2',...tail], items:[...hI,'w23','c3m','tlra','c3m2','wm2','swM2',...tI]},
+      M1:{nodes:[...hN,'hM','bM','bM2','bM1','hM1','SM1',...tail], items:[...hI,'w23','c3m','tlra','rb','c3m1','wm1','swM1',...tI]},
+      L: {nodes:[...hN,'hM','bM','bM2','bM1','bL','hL','SL',...tail], items:[...hI,'w23','c3m','tlra','rb','rc','c3l','wl','swL',...tI]},
+    };
+    const order = [S.speed, 'H','M2','M1','L'].filter((k, i, a) => ch[k] && a.indexOf(k) === i);
+    return order.map(k => ({load:4, ...ch[k]}));
+  },
+  build(A){
+    const f = S.fault, fr = S.faultR, sp = S.speed;
+    A('cabP','BP','BUS',.002);
+    if (S.ign) A('ign','BUS','IGo',.004);
+    if (S.fuse.F1 === 'in') A('f1','IGo','F1o',.002,{prot:30, dev:'F1'});
+    A('w1a','F1o','W1m',.004); A('w1b','W1m','hP',.004);
+    if (S.plug.C2){ A('c2p','hP','mP',.001 + (f === 'rC2' ? fr : 0)); A('c2n','mN','hN',.001); }
+    if (!(f === 'dead' && S.stuck)){
+      const x = f === 'bind' ? fr : 0;
+      A('mot','mP','mN',1,{nl:'motor', ...MOTOR, Tf:MOTOR.Tf + .005 * x, c:MOTOR.c * (1 + .01 * x)});
+    }
+    A('w2','hN','SPL',.002);
+    if (f !== 'openHi') A('wH','SPL','SH',.003);
+    A('w3','SPL','hM',.003);
+    if (S.plug.C3){
+      A('c3m','hM','bM',.001 + (f === 'melt' ? fr : 0)); A('c3m2','hM2','bM2',.001); A('c3m1','hM1','bM1',.001); A('c3l','hL','bL',.001);
+    }
+    if (f !== 'openTL') A('tl','bM','bT',.002);
+    A('ra','bT','bM2',.33); A('rb','bM2','bM1',.54); A('rc','bM1','bL',1.33);
+    A('wm2','hM2','SM2',.004); A('wm1','hM1','SM1',.004); A('wl','hL','SL',.004);
+    const swn = {H:['swH','SH'], M2:['swM2','SM2'], M1:['swM1','SM1'], L:['swL','SL']}[sp];
+    if (swn) A(swn[0], swn[1], 'SWG', .002);
+    A('wg','SWG','GE2',.002);
+    A('g200','GE2','BODY',.001 + (f === 'rG200' ? fr : 0));
+    A('cabN','BODY','BN',.002);
+    if (f === 'sgW1') A('xs','W1m','BODY',.02);
+  },
+  after(){
+    // worn brushes: when the motor stops, it lands on the dead spot two times out of three
+    const run = Math.abs(R.I.mot || 0) > .5;
+    let changed = false;
+    if (S.fault === 'dead' && S.motRun && !run){ S.stops++; if (S.stops % 3 !== 0){ S.stuck = true; changed = true; } }
+    S.motRun = run;
+    return changed;
+  },
+  onFault(id){ if (id === 'dead'){ S.stuck = true; S.stops = 0; S.motRun = false; } else S.stuck = false; },
+  WIRES:[
+    {el:'cabP', a:'BP',  b:'BUS', d:'M55 368 V110 H170', thick:true},
+    {el:'ign',  a:'IGo', b:'IGo', d:'M204 110 H223'},
+    {el:'w1a',  a:'F1o', b:'W1m', d:'M287 110 H430'},
+    {el:'w1b',  a:'W1m', b:'hP',  d:'M430 110 H568'},
+    {el:'w2',   a:'hN',  b:'SPL', d:'M568 230 H470 V300'},
+    {el:'w3',   a:'SPL', b:'hM',  d:'M470 300 H530'},
+    {el:'wH',   a:'SPL', b:'SH',  d:'M470 300 V330 H330', brk:{f:'openHi', x:400, y:330}},
+    {el:'wm2',  a:'hM2', b:'SM2', d:'M530 370 H330'},
+    {el:'wm1',  a:'hM1', b:'SM1', d:'M530 410 H330'},
+    {el:'wl',   a:'hL',  b:'SL',  d:'M530 450 H330'},
+    {el:'tl',   a:'bM',  b:'bT',  d:'M554 300 H720', brk:{f:'openTL', x:624, y:300}},
+    {el:'ra',   a:'bT',  b:'bM2', d:zz(720, 300, 370)},
+    {el:'rb',   a:'bM2', b:'bM1', d:zz(720, 370, 410, 4)},
+    {el:'rc',   a:'bM1', b:'bL',  d:zz(720, 410, 450, 4)},
+    {el:'c3m2', a:'bM2', b:'bM2', d:'M720 370 H554', sign:-1},
+    {el:'c3m1', a:'bM1', b:'bM1', d:'M720 410 H554', sign:-1},
+    {el:'c3l',  a:'bL',  b:'bL',  d:'M720 450 H554', sign:-1},
+    {el:'wg',   a:'SWG', b:'GE2', d:'M240 466 V485'},
+    {el:'g200', a:'GE2', b:'BODY',d:'M240 503 V520', thick:true},
+    {el:'cabN', a:'BODY',b:'BN',  d:'M240 520 H140 V354 H105 V368', thick:true},
+  ],
+  back:`
+    <rect x="150" y="66" width="162" height="96" rx="10" class="blk2"/>
+    <text x="231" y="178" text-anchor="middle" class="t-sub">FUSE BLOCK</text>
+    <path d="M240 520 H960" stroke="rgb(44,62,80)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <text x="620" y="512" text-anchor="middle" class="t-tiny">BODY / CHASSIS GROUND</text>
+    <text x="80" y="200" text-anchor="middle" class="t-tiny">+ CABLE</text>
+    <text x="360" y="101" text-anchor="middle" class="t-wire">W1</text>
+    <text x="520" y="222" text-anchor="middle" class="t-wire">W2</text>
+    <text x="500" y="316" text-anchor="middle" class="t-wire">W3</text>
+    <text x="420" y="322" text-anchor="middle" class="t-wire">W5 · HI</text>
+    <text x="450" y="362" text-anchor="middle" class="t-wire">W6</text>
+    <text x="450" y="402" text-anchor="middle" class="t-wire">W7</text>
+    <text x="450" y="442" text-anchor="middle" class="t-wire">W8</text>
+    <text x="226" y="486" text-anchor="end" class="t-wire">W9</text>
+    <circle cx="470" cy="300" r="3.6" fill="#9fb3c6"/><text x="462" y="292" text-anchor="end" class="t-tiny">S200</text>
+    <text x="580" y="84" text-anchor="middle" class="t-blk">C2</text>
+    <text x="542" y="282" text-anchor="middle" class="t-blk">C3</text>
+    <rect x="572" y="282" width="226" height="190" rx="10" class="blk2"/>
+    <text x="685" y="488" text-anchor="middle" class="t-sub">RESISTOR BLOCK</text>
+    <text x="624" y="324" text-anchor="middle" class="t-tiny">THERMAL LIMITER</text>
+    <text x="738" y="339" class="t-mono">R1 0.33 Ω</text>
+    <text x="738" y="394" class="t-mono">R2 0.54 Ω</text>
+    <text x="738" y="434" class="t-mono">R3 1.33 Ω</text>
+    <text x="265" y="306" text-anchor="middle" class="t-sub">BLOWER SWITCH</text>
+    <text x="770" y="150" class="t-blk">BLOWER MOTOR</text>
+    <text x="770" y="184" class="t-mono">HI spec 12–15 A</text>`,
+  parts(){
+    let h = blowerIgn() + fuseSVG('F1', 110, 215, 295) + blowerC2() + blowerMotor() + blowerSwitch() + blowerC3() + blowerTL();
+    h += `<circle cx="240" cy="494" r="9" fill="#141D27" stroke="#7D8A98" stroke-width="2"/>`;
+    if (S.fault === 'rG200' && showFault()) h += crust([[234,489,2.6],[246,499,3.2],[245,488,2]]);
+    return h;
+  },
+  fault(){
+    switch (S.fault){
+      case 'rC2': return crust([[574,104,3],[580,117,3.6],[586,106,2.2]]) + ftag(574, 268, 'CORROSION ' + faultVal());
+      case 'rG200': return ftag(300, 484, 'LOOSE ' + faultVal());
+      case 'melt': return `<path d="M534 292 C540 286 552 288 556 294 C560 302 552 310 544 308 C536 310 530 300 534 292 Z" fill="#5A3A1A" stroke="#B4561C" stroke-width="1.2" opacity=".9"/>${ftag(640, 272, 'MELTED ' + faultVal())}`;
+      case 'bind': return ftag(690, 262, 'BINDING ' + faultVal());
+      case 'dead': return ftag(690, 262, 'DEAD SPOT · ' + (S.stuck ? 'STUCK' : 'TURNING'));
+      case 'openTL': return ftag(660, 346, 'OPEN');
+      case 'openHi': return `<rect x="392" y="322" width="16" height="16" fill="#080B0F"/>${ftag(400, 350, 'OPEN')}`;
+      case 'sgW1': return `<path d="M430 110 V146" class="short"/>${gndSym(430, 148, true)}${sparkSym(430, 114)}${ftag(430, 176, 'SHORT TO GROUND')}`;
+    }
+    return '';
+  },
+  ctrls(){ return `
+    <div class="cg"><span>Ignition</span>${segCtl([['0','Off'],['1','Run']], S.ign ? '1' : '0', 'ign')}</div>
+    <div class="cg"><span>Blower</span>${segCtl([['OFF','Off'],['L','LO'],['M1','M1'],['M2','M2'],['H','HI']], S.speed, 'spd')}</div>
+    <div class="cg"><span>Parts</span>${fzCtl('F1')}${plCtl('C2', 'C2', 'mated', 'apart')}${plCtl('C3', 'C3', 'mated', 'apart')}${tg('tap', 'Motor', 'tap', '')}</div>${probeCtl()}`; },
+  cond(){
+    const c = [`key ${S.ign ? 'run' : 'off'}`, `blower ${SPD_LBL[S.speed]}`];
+    if (!S.plug.C2) c.push('C2 apart'); if (!S.plug.C3) c.push('C3 apart');
+    return c;
+  },
+  ampSpec(){ return BLOWER_SPEC[S.speed] || null; },
+  drawSpec(pr, I){
+    if (pr === ['IGo','F1o'].sort().join() && S.fuse.F1 !== 'in'){
+      const sp = BLOWER.ampSpec(), a = Math.abs(I);
+      if (!sp) return {t:'Blower current draw', p:`${fmtA(a)} A with the blower off.`};
+      const pass = a >= sp[0] && a <= sp[1];
+      return {t:`Blower current draw · ${sp[2]}`, chip:[`${pass ? 'Pass' : 'Fail'} · ${sp[0]}–${sp[1]} A`, pass ? 'pass' : 'fail'], p:`${fmtA(a)} A. ${a > sp[1] ? 'High draw with good voltage at the motor points to a binding motor.' : a < sp[0] ? 'Low draw points to extra resistance in the circuit, or a motor that isn’t being fed.' : 'Normal for this speed.'} Careful: the meter’s 10 A jack can’t handle HI.`};
+    }
+    return null;
+  },
+  clampNote(el, I){
+    if (!['cabP','w1a','w2','wg','cabN'].includes(el)) return null;
+    const sp = BLOWER.ampSpec(); if (!sp) return null;
+    const pass = I >= sp[0] && I <= sp[1];
+    return {txt:`${sp[2]} spec ${sp[0]}–${sp[1]} A`, cls:pass ? 'pass' : 'fail'};
+  },
+  guide:`<div class="gcard"><span class="gk">Blower circuit</span>
+    <table class="spec"><tbody>
+      <tr><td>Amp draw, LO</td><td>3–4.5 A</td></tr><tr><td>Amp draw, M1</td><td>5–7 A</td></tr>
+      <tr><td>Amp draw, M2</td><td>8–10.5 A</td></tr><tr><td>Amp draw, HI</td><td>12–15 A</td></tr>
+    </tbody></table>
+    <ul><li><b>Ground-side switched:</b> the motor’s feed is hot whenever the key is on. With the blower off, both motor terminals read battery voltage. That’s normal.</li>
+    <li><b>Resistor block:</b> LO, M1 and M2 send current through the resistors, which drop voltage on purpose. HI bypasses the block, so an open thermal limiter leaves only HI working.</li>
+    <li><b>Test at HI:</b> voltage drop is current × resistance, so high current shows bad connections best. Use the amp clamp: HI is over the meter’s 10 A limit.</li>
+    <li><b>Motor faults:</b> a binding motor draws high current with good voltage at the motor. A dead spot (worn brushes) won’t start until tapped and reads OL across the motor while stuck.</li></ul></div>`,
+};
+const swOpen = pos => S.speed === 'OFF' ? 'The blower switch is off, so the motor’s ground path is open. That’s why an idle motor reads battery voltage on both sides.' : `The blower switch isn’t on ${pos}, so that contact is open.`;
+function blowerIgn(){
+  const col = ncol('BUS');
+  return `<g class="act" data-act="ign:toggle" role="button" aria-label="Ignition switch">
+    <rect x="162" y="80" width="52" height="44" class="hitr"/>
+    <text x="190" y="93" text-anchor="middle" class="t-sub">IGN · ${S.ign ? 'RUN' : 'OFF'}</text>
+    <path d="${S.ign ? 'M176 110 L204 110' : 'M176 110 L200 96'}" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>
+    <circle cx="176" cy="110" r="3" fill="#C9D3DD"/><circle cx="204" cy="110" r="3" fill="#C9D3DD"/></g>`;
+}
+function blowerC2(){
+  return `<g class="act" data-act="plug:C2" role="button" aria-label="Motor connector C2">
+    <rect x="552" y="88" width="30" height="164" class="hitr"/>
+    <rect x="558" y="90" width="20" height="160" rx="5" class="blk"/>
+    ${S.plug.C2 ? '' : '<text x="568" y="266" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>'}</g>`;
+}
+function blowerMotor(){
+  const dx = S.plug.C2 ? 0 : 24, rpm = R.rpm || 0, I = Math.abs(R.I.mot || 0);
+  const stalled = I > 1 && rpm < 60;
+  let blades = '';
+  for (let i = 0; i < 5; i++) blades += `<path d="M690 170 C698 150 712 144 718 156 C708 160 700 164 690 170 Z" transform="rotate(${i * 72} 690 170)" fill="#2A3644" stroke="#5A6773" stroke-width=".8"/>`;
+  const txt = stalled ? 'STALLED · humming' : rpm > 30 ? `≈ ${Math.round(rpm / 10) * 10} rpm` : 'stopped';
+  return `<g class="act" data-act="tap" role="button" aria-label="Blower motor. Click to tap it.">
+    <rect x="${582 + dx}" y="88" width="${150}" height="164" class="hitr"/>
+    <g transform="translate(${dx} 0)">
+      <rect x="582" y="90" width="20" height="160" rx="5" class="blk"/>
+      <path d="M592 110 H690 V136" fill="none" stroke="${ncol('mP')}" stroke-width="2.4"/>
+      <path d="M690 204 V230 H592" fill="none" stroke="${ncol('mN')}" stroke-width="2.4"/>
+      <circle cx="690" cy="170" r="34" fill="#10171F" stroke="${stalled ? '#FF8A80' : '#7D8A98'}" stroke-width="1.5"/>
+      <g id="fan" transform="rotate(${FAN.a.toFixed(1)} 690 170)">${blades}</g>
+      <circle cx="690" cy="170" r="7" fill="#1B2530" stroke="#7D8A98"/>
+    </g>
+    <text x="770" y="167" class="t-mono" style="fill:${stalled ? '#FF8A80' : rpm > 30 ? 'var(--soft)' : 'var(--faint)'}">${txt}</text></g>`;
+}
+function blowerSwitch(){
+  const rows = {H:330, M2:370, M1:410, L:450}, lab = {H:'HI', M2:'M2', M1:'M1', L:'LO'}, nodes = {H:'SH', M2:'SM2', M1:'SM1', L:'SL'};
+  const wc = ncol('SWG');
+  let h = `<rect x="196" y="312" width="138" height="154" rx="10" class="blk"/>`;
+  h += `<path d="M240 390 V466" stroke="${wc}" stroke-width="2.6" fill="none"/>`;
+  for (const k in rows){
+    const y = rows[k];
+    h += `<g class="act" data-act="spd:${k}" role="button" aria-label="Blower ${lab[k]}"><rect x="252" y="${y - 18}" width="82" height="36" class="hitr"/>
+      <path d="M300 ${y} H330" stroke="${ncol(nodes[k])}" stroke-width="2.6"/><circle cx="300" cy="${y}" r="3.4" fill="#C9D3DD"/>
+      <text x="292" y="${y + 3.5}" text-anchor="end" class="t-sub" style="fill:${S.speed === k ? 'var(--fg)' : 'var(--dim)'}">${lab[k]}</text></g>`;
+  }
+  h += `<g class="act" data-act="spd:OFF" role="button" aria-label="Blower off"><rect x="198" y="330" width="44" height="34" class="hitr"/><circle cx="214" cy="352" r="3" fill="#5A6773"/><text x="214" y="342" text-anchor="middle" class="t-tiny" style="fill:${S.speed === 'OFF' ? 'var(--fg)' : 'var(--faint)'}">OFF</text></g>`;
+  const to = S.speed === 'OFF' ? [216, 354] : [296, rows[S.speed]];
+  h += `<path d="M240 390 L${to[0]} ${to[1]}" stroke="${wc}" stroke-width="3.2" stroke-linecap="round"/><circle cx="240" cy="390" r="5" fill="#C9D3DD"/>`;
+  return h;
+}
+function blowerC3(){
+  const dx = S.plug.C3 ? 0 : 8;
+  return `<g class="act" data-act="plug:C3" role="button" aria-label="Resistor block connector C3">
+    <rect x="514" y="286" width="56" height="182" class="hitr"/>
+    <rect x="520" y="288" width="20" height="176" rx="5" class="blk"/>
+    <rect x="${544 + dx}" y="288" width="20" height="176" rx="5" class="blk"/>
+    ${S.plug.C3 ? '' : '<text x="542" y="478" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>'}</g>`;
+}
+function blowerTL(){
+  const open = S.fault === 'openTL' && showFault();
+  return `<rect x="600" y="292" width="48" height="16" rx="4" class="fz${open ? ' blown' : ''}"/><path d="M606 300 H642" class="fzel${open ? ' blown' : ''}"/>`;
+}
+
+/* ---------- blower lessons ---------- */
+BLOWER.lessons = [
+ {t:'Ground-side switching', s:'Where the blower is switched, and what that does to your readings', steps:[
+  {t:'Meet the blower circuit', set:{ign:true, speed:'OFF'}, b:`With the key on, fuse <b>F1</b> feeds the blower motor directly. The <b>blower switch is on the ground side</b>: it picks the path the motor’s current takes to ground. HI goes straight to ground on W5. M2, M1 and LO go through more and more of the resistor block, so the motor slows down.`},
+  {t:'Power at the motor', b:`Meter on <b>V</b>. Red on <b>M+</b>, black on <b>BAT−</b>. The blower is off.`, goal:['Red on M+, black on ground', () => dV('MP','GND')], ok:'Battery voltage, even with the blower off. On a ground-side switched circuit, the feed is hot whenever the key is on.', spot:['tp:MP','tp:BATN']},
+  {t:'Predict the ground side', b:`Move red to <b>M−</b>.`, ask:{q:'The blower is still off. What will M− read to ground?', o:['0 V','About 12.6 V','About 6 V'], a:1, why:'With no current flowing, the motor drops no voltage, so battery voltage passes straight through it. Both sides of an idle motor read battery voltage on a ground-side switched circuit. That’s normal, not a short.'}, goal:['Red on M−', () => dV('MN','GND')], spot:['tp:MN']},
+  {t:'Turn it on', b:`Turn the blower to <b>HI</b>.`, goal:['Blower on HI', () => S.speed === 'H'], ok:'M− drops to a fraction of a volt. The switch closed the ground path, and now the motor uses nearly all of the voltage.', spot:['ctl:spd:H']},
+  {t:'Voltage across the motor', b:`Red on <b>M+</b>, black on <b>M−</b>. Then step the switch down through <b>M2</b>, <b>M1</b> and <b>LO</b>.`, goal:['Across the motor, blower on LO', () => dV('MP','MN') && S.speed === 'L'], ok:'The motor gets less voltage at each lower speed, because the resistors drop the rest. The voltage across the motor plus the voltage across the resistors adds up to the source voltage.', spot:['tp:MP','tp:MN','ctl:spd:L']},
+  {t:'Takeaway', b:`On a ground-side switched circuit, battery voltage on <b>both</b> sides of an idle load is normal. Voltage only drops across the load once the ground path closes. Know which side the switch is on before you judge a reading.`},
+ ]},
+ {t:'Amp draw', s:'Check the motor against spec, and respect the meter’s 10 A limit', steps:[
+  {t:'Amp draw tells you about the motor', set:{ign:true, speed:'OFF'}, b:`A blower motor’s current shows how hard it’s working. Worn bushings or a dragging fan make it draw more. Bench specs: <b>LO 3–4.5 A</b>, <b>M1 5–7 A</b>, <b>M2 8–10.5 A</b>, <b>HI 12–15 A</b>.`},
+  {t:'Clamp the feed', b:`Drag the <b>amp clamp</b> onto wire <b>W1</b> and turn the blower to <b>HI</b>.`, goal:['Clamp on W1, blower on HI', () => S.tips.clamp === 'cW1' && S.speed === 'H'], ok:'About 13.5 A, inside the 12–15 A spec. The clamp reads the current without breaking the circuit.', spot:['cl:cW1','ctl:spd:H']},
+  {t:'Every speed', b:`Step the switch through <b>M2</b>, <b>M1</b> and <b>LO</b> and watch the clamp reading.`, goal:['Blower on LO, clamp on W1', () => S.speed === 'L' && S.tips.clamp === 'cW1'], ok:'The current drops at each lower speed, because the resistors limit it.', spot:['ctl:spd:L']},
+  {t:'The meter in series', b:`Now try the meter: pull <b>F1</b>, set the knob to <b>A</b>, move the red lead to the <b>10 A</b> jack, and put the probes on <b>F1 in</b> and <b>F1 out</b>. Keep the blower on LO.`, goal:['Meter in series, blower on LO', () => mA() && S.fuse.F1 !== 'in' && across('dmmR','dmmB','F1I','F1O') && Math.abs(R.I.dmm || 0) > 1], ok:'About the same reading as the clamp.', spot:['ctl:fuse:F1','#knob','#jackA','tp:F1I','tp:F1O']},
+  {t:'Predict: HI', b:`Keep the meter in series.`, ask:{q:'Switch to HI. What happens?', o:['It reads about 13.5 A','The meter’s fuse blows','The blower runs faster'], a:1, why:'The meter’s 10 A jack is fused for 10 A. A blower on HI draws more than that, so the fuse blows. Use the amp clamp on anything that draws close to 10 A or more.'}, goal:['Switch to HI', () => S.speed === 'H'], spot:['ctl:spd:H']},
+  {t:'Takeaway', b:`Compare amp draw with spec at every speed. High draw with good voltage at the motor means the motor (or the fan) is the problem. Use the clamp on high-current circuits; the meter’s 10 A jack is for small currents.`},
+ ]},
+ {t:'Voltage drop at high current', s:'Bad connections show up best at high current', steps:[
+  {t:'Why high current matters', set:{ign:true, speed:'H'}, b:`Voltage drop is current × resistance. A connection that hides at 3 A shows up at 13 A, so test with the circuit at its highest current: blower on <b>HI</b>.`, goal:['Meter on V', mV], spot:['#knob']},
+  {t:'Power side', b:`Red on <b>BAT+</b>, black on <b>M+</b>.`, goal:['BAT+ to M+, on HI', () => S.speed === 'H' && dV('BATP','MP')], ok:'About a quarter volt, inside the 0.50 V limit, even at 13 A.', spot:['tp:BATP','tp:MP']},
+  {t:'Ground side', b:`Red on <b>M−</b>, black on <b>BAT−</b>.`, goal:['M− to BAT−, on HI', () => S.speed === 'H' && dV('MN','BATN')], ok:'Under the 0.20 V ground-side limit. On HI the ground path is W2, W5, the switch, W9, G200 and the battery cable.', spot:['tp:MN','tp:BATN']},
+  {t:'Same test on LO', b:`Put the probes back on the power side (BAT+ to M+).`, ask:{q:'Switch to LO. Will the power-side drop be bigger or smaller?', o:['Bigger','Smaller','The same'], a:1, why:'Less current means less voltage drop across the same wiring. That’s why you test on HI.'}, goal:['BAT+ to M+, on LO', () => S.speed === 'L' && dV('BATP','MP')], spot:['ctl:spd:L']},
+  {t:'A corroded connector', set:{ign:true, speed:'H', fault:'rC2', fr:.25, tips:{dmmR:'BATP', dmmB:'MP'}}, b:`We corroded connector <b>C2</b> pin 1. The blower is weak on every speed. The probes are on the power side again, BAT+ to M+, on HI.`, goal:['Power side, on HI', () => S.speed === 'H' && dV('BATP','MP')], ok:'Several volts lost on the power side. Now split it.'},
+  {t:'Pin it down', b:`Measure across the connector: red on <b>C2·1</b>, black on <b>M+</b>.`, goal:['Across C2 pin 1', () => dV('C2P','MP')], ok:'Nearly all of the drop is across one connection. Clean or replace the terminal.', spot:['tp:C2P','tp:MP']},
+  {t:'Takeaway', b:`Test voltage drop at the highest current the circuit uses. A quarter ohm doesn’t matter to a 2 A lamp, but at 13 A it costs the blower several volts.`},
+ ]},
+ {t:'Only HI works', s:'Open thermal limiter in the resistor block', steps:[
+  {t:'Only HI works', set:{ign:true, speed:'L', fault:'openTL'}, b:`The blower only works on HI. HI bypasses the resistor block, so one open in the block kills every other speed. The blower is on <b>LO</b> now.`},
+  {t:'Check the motor’s ground side', b:`Meter on <b>V</b>. Red on <b>M−</b>, black on <b>BAT−</b>.`, goal:['M− to ground', () => dV('MN','GND')], ok:'Battery voltage on the motor’s ground side, with no current. The motor drops nothing, so the ground path is open somewhere after M−.', spot:['tp:MN']},
+  {t:'Follow it into the block', b:`Move red to <b>R·M</b>, then to <b>R·M2</b>.`, goal:['Red on R·M2', () => dV('RM2','GND')], ok:'R·M has battery voltage and R·M2 has 0 V. The open is between them: the thermal limiter or R1.', spot:['tp:RM','tp:RM2']},
+  {t:'Confirm with ohms', b:`Unplug <b>C3</b>, set the meter to <b>Ω</b>, and measure from <b>R·M</b> to <b>R·M2</b>.`, goal:['C3 unplugged, R·M to R·M2', () => !S.plug.C3 && dR('RM','RM2')], ok:'OL. The thermal limiter is open, so the resistor block needs replacing. Find out why it overheated: a binding motor drawing high current is a common cause.', spot:['ctl:plug:C3','#knob']},
+  {t:'Takeaway', b:`When only HI works, look at the resistor block first, since HI is the one speed that doesn’t use it. When only HI is <b>dead</b>, look at the HI circuit (W5 and the switch’s HI contact).`},
+ ]},
+ {t:'Binding motor', s:'High amp draw with good voltage = the motor', steps:[
+  {t:'Loud and slow', set:{ign:true, speed:'H', fault:'bind', fr:60, tips:{clamp:'cW1'}}, b:`The blower is loud and slow. The amp clamp is on W1 and the blower is on HI. Compare the reading with the <b>12–15 A</b> HI spec.`},
+  {t:'Rule out the wiring', b:`Meter on <b>V</b>: red on <b>M+</b>, black on <b>M−</b>.`, goal:['Across the motor, on HI', () => S.speed === 'H' && dV('MP','MN')], ok:'The motor is getting nearly full voltage. The wiring isn’t the problem: the motor draws too much current even at full voltage.', spot:['tp:MP','tp:MN']},
+  {t:'Try LO', b:`Watch the motor and the clamp.`, ask:{q:'Switch to LO. What does a binding motor do on low?', o:['Runs slowly','Doesn’t turn, just hums','Runs faster'], a:1, why:'On LO the resistors limit current, so the motor can’t make enough torque to overcome the drag. It stalls and hums. It still draws current, which heats the resistor block and can open the thermal limiter.'}, goal:['Blower on LO', () => S.speed === 'L'], spot:['ctl:spd:L']},
+  {t:'Takeaway', b:`High amp draw with good voltage at the motor means a motor problem. Replace the motor, then check the resistor block too: a binding motor is a common reason they fail.`},
+ ]},
+ {t:'Dead spot', s:'Worn brushes: won’t start until tapped', steps:[
+  {t:'Sometimes it won’t start', set:{ign:true, speed:'OFF', fault:'dead'}, b:`The customer says the blower sometimes doesn’t come on, and smacking the dash gets it going. Turn the blower to <b>HI</b>.`, goal:['Blower on HI', () => S.speed === 'H'], ok:'Nothing. The motor doesn’t turn.', spot:['ctl:spd:H']},
+  {t:'Voltage across the motor', b:`Meter on <b>V</b>: red on <b>M+</b>, black on <b>M−</b>.`, goal:['Across the motor', () => dV('MP','MN')], ok:'Full battery voltage with no current. All of the voltage drops across the motor, so the motor itself is open: the brushes are resting on a dead spot of the worn commutator.', spot:['tp:MP','tp:MN']},
+  {t:'Tap it', b:`Tap the motor: click it, or press <b>Motor tap</b>.`, goal:['Motor running', () => Math.abs(R.I.mot || 0) > 1], ok:'It runs. Tapping moved the armature off the dead spot, and once it’s spinning, momentum carries it past.', spot:['ctl:tap']},
+  {t:'It comes back', b:`Turn the blower <b>off</b> and back to <b>HI</b> a few times.`, goal:['Catch it stuck again', () => S.stuck && S.speed !== 'OFF'], ok:'It stopped on the dead spot again. A motor that only starts when tapped has worn brushes or a worn commutator. Replace the motor.'},
+  {t:'Ohms on a dead spot', b:`With the motor stuck, unplug <b>C2</b>, set the meter to <b>Ω</b>, and measure across the motor: red on <b>M+</b>, black on <b>M−</b>. Then tap it.`, goal:['C2 unplugged, across the motor', () => !S.plug.C2 && dR('MP','MN')], ok:'OL while it’s stuck, a fraction of an ohm after a tap. An ohms test only catches it if the motor stopped on the bad spot.', spot:['ctl:plug:C2','#knob']},
+  {t:'Takeaway', b:`Full voltage across a motor that isn’t turning, with no current flowing, means the motor is open. If a tap brings it back, it’s worn brushes or a dead spot. Replace the motor.`},
+ ]},
+ {t:'Melted connector', s:'Resistance and heat at the resistor block', steps:[
+  {t:'Weak lower speeds', set:{ign:true, speed:'M2', fault:'melt', fr:.3}, b:`The lower speeds are weak and the customer smelled something hot. HI is fine. Resistor-block connectors carry high current in a hot spot, so they often overheat and melt. The blower is on <b>M2</b>.`},
+  {t:'Across the connector', b:`Meter on <b>V</b>. Measure the drop across connector C3 pin M: red on <b>C3·M</b>, black on <b>R·M</b>.`, goal:['Across C3 pin M, on M2', () => S.speed === 'M2' && dV('C3M','RM')], ok:'Far over 0.10 V for one connection. That resistance makes heat (current² × resistance), which melts the connector even more.', spot:['tp:C3M','tp:RM']},
+  {t:'Why HI is fine', ask:{q:'Why does HI still work normally?', o:['HI doesn’t use connector C3','HI gets more voltage','HI has its own fuse'], a:0, why:'On HI, current goes from splice S200 straight to the switch on W5, so it never passes through connector C3.'}},
+  {t:'Takeaway', b:`Replace the connector and terminal, and usually the resistor block. Check the motor’s amp draw too: a motor drawing high current is often what overheated the connector in the first place.`},
+ ]},
+];
+
+/* ---------- lamp lessons ---------- */
+LAMP.lessons = [
+ {t:'Measure voltage', s:'Available voltage and how a voltmeter connects', steps:[
+  {t:'Meet the bench', set:{S1:true}, b:`Two lamp circuits share connector <b>C1</b> and ground <b>G101</b>. Wire color shows voltage, from slate (0 V) to orange (battery voltage), and moving dots show current. Drag a tool from the tray onto a round test point, or click a tool and then click a test point.`},
+  {t:'Set up the meter', mod:() => { S.dmm.knob = 'OFF'; }, b:`Turn the knob to <b>V</b> (DC volts) and keep the red lead in the <b>VΩ</b> jack. A voltmeter connects in parallel: one probe on each side of what you’re measuring, with the circuit powered.`, goal:['Knob on V, red lead in VΩ', mV], spot:['#knob','#jackV']},
+  {t:'Battery voltage', b:`Put the red probe on <b>BAT+</b> and the black probe on <b>BAT−</b>. A charged battery reads about 12.6 V at rest. With a lamp on, it reads a few hundredths less.`, goal:['Red on BAT+, black on BAT−', () => dV('BATP','BATN')], spot:['tp:BATP','tp:BATN']},
+  {t:'Available voltage at the lamp', b:`Keep black on <b>BAT−</b> and move red to <b>L1+</b>, the lamp socket’s power terminal. It reads a little below battery voltage. That’s normal: it takes a little voltage to push current through the wires and connections.`, goal:['Red on L1+, black on ground', () => dV('L1P','GND')], spot:['tp:L1P']},
+  {t:'Predict: switch off', b:`Leave the probes where they are.`, ask:{q:'With S1 turned off, what will L1+ read?', o:['About 12.6 V','0 V','About 6 V'], a:1, why:'With S1 open, L1+ has no path to the battery. It connects through the bulb to ground, so it sits at 0 V.'}, goal:['Turn S1 off with red still on L1+', () => !S.sw.S1 && at('dmmR','L1P')], spot:['ctl:sw:S1']},
+  {t:'Voltage waits at the open switch', b:`Move red to <b>S1 in</b>.`, ask:{q:'S1 is still off. What does S1 in read?', o:['About 12.6 V','0 V'], a:0, why:'S1 in connects straight back to the battery through W2 and fuse F1. Voltage is there, waiting for the switch to close.'}, goal:['Red on S1 in', () => at('dmmR','S1I')], spot:['tp:S1I']},
+  {t:'Takeaway', b:`A voltmeter only reports the <b>difference</b> between its two probes. Black on a good ground and red on a point gives you the available voltage at that point. It proves voltage is present. It doesn’t prove the circuit can carry current; a voltage drop test checks that.`},
+ ]},
+ {t:'Voltage drop', s:'Find unwanted resistance while the circuit works', steps:[
+  {t:'What voltage drop tells you', set:{S1:true}, b:`Voltage drop is the voltage lost across part of a circuit <b>while current flows</b>. Put one probe at each end of the section. Specs on this bench: <b>≤ 0.10 V</b> per connection or wire, <b>≤ 0.50 V</b> for the whole power side, and <b>≤ 0.20 V</b> for the whole ground side.`, goal:['Meter on V', mV], spot:['#knob']},
+  {t:'Whole power side', b:`Red on <b>BAT+</b>, black on <b>L1+</b>, S1 on. This adds up every drop between the battery and the lamp.`, goal:['Red on BAT+, black on L1+', () => S.sw.S1 && dV('BATP','L1P')], spot:['tp:BATP','tp:L1P']},
+  {t:'One connection', b:`Now check one connection by itself: red on <b>C1·1a</b>, black on <b>C1·1b</b>. A clean connection loses only a few millivolts.`, goal:['Across C1 pin 1', () => dV('C1A','C1B')], spot:['tp:C1A','tp:C1B']},
+  {t:'Whole ground side', b:`Red on <b>L1−</b>, black on <b>BAT−</b>. Resistance on the ground side hurts as much as on the power side, and the limit is tighter.`, goal:['Red on L1−, black on BAT−', () => dV('L1N','BATN')], spot:['tp:L1N','tp:BATN']},
+  {t:'Predict: no current', b:`Keep the probes on the ground side.`, ask:{q:'Turn S1 off. What does the ground-side drop read?', o:['Same as before','0 V','Battery voltage'], a:1, why:'No current, no voltage drop. A voltage drop test only works with the circuit on and loaded. Even a badly corroded ground reads 0 V when nothing flows.'}, goal:['Turn S1 off', () => !S.sw.S1], spot:['ctl:sw:S1']},
+  {t:'A loose ground', set:{S1:true, fault:'rG', fr:1.0, tips:{dmmR:'L1N', dmmB:'BATN'}}, b:`We loosened ground <b>G101</b>, adding 1 Ω. Lamp 1 is dim. The probes are back on the ground side, L1− to BAT−. Compare this drop with the 0.20 V limit.`, goal:['S1 on, probes on L1− and BAT−', () => S.sw.S1 && dV('L1N','GND')]},
+  {t:'Pin it down', b:`Split the ground side to find the bad spot: red on <b>G101</b>, black on <b>BODY</b>.`, goal:['Red on G101, black on BODY', () => dV('G101','BODY')], ok:'Nearly all of the drop is right there. The fix is to clean and tighten the ground, not to replace parts.', spot:['tp:G101','tp:BODY']},
+  {t:'Shared ground', b:`Lamp 2 uses G101 too.`, ask:{q:'Turn on S2. What happens to lamp 1?', o:['It gets brighter','It gets dimmer','No change'], a:1, why:'Both lamps send their current through G101. More current through the same bad ground means more voltage lost there, so both lamps get dimmer.'}, goal:['Turn S2 on', () => S.sw.S2], spot:['ctl:sw:S2']},
+ ]},
+ {t:'Measure resistance', s:'Power off, part isolated, leads zeroed', steps:[
+  {t:'How an ohmmeter works', set:{S1:true}, b:`An ohmmeter pushes its own tiny current through the part and measures the voltage it takes. Voltage already in the circuit corrupts that, and any other path in parallel makes the reading too low. The rule: <b>power off, part isolated</b>. Turn the knob to <b>Ω</b>.`, goal:['Knob on Ω', () => S.dmm.knob === 'R'], spot:['#knob']},
+  {t:'Zero the leads', b:`Touch both probes to the <b>same</b> test point, any one. The meter shows about 0.20 Ω: that’s the test leads. Press <b>REL</b> to subtract it from every reading.`, goal:['Leads zeroed with REL', () => S.dmm.rel > .1], spot:['#relBtn']},
+  {t:'The wrong way', b:`With S1 on and F1 installed, measure wire <b>W3</b>: red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['Red on S1 out, black on C1·1a', () => dR('S1O','C1A')], ok:'The meter flags VOLTAGE PRESENT. With current flowing, there’s a small voltage across W3, so the ohmmeter can’t read it.', spot:['tp:S1O','tp:C1A']},
+  {t:'Isolate it', b:`Pull fuse <b>F1</b> and keep the probes on W3. Now nothing powers the circuit and W3 reads by itself. Spec: a wire should read <b>≤ 1.0 Ω</b> end to end.`, goal:['F1 pulled, W3 measured', () => S.fuse.F1 !== 'in' && dR('S1O','C1A')], ok:'A few hundredths of an ohm. W3 is a good wire.', spot:['ctl:fuse:F1']},
+  {t:'A bulb, cold', b:`Unplug lamp 1 and measure the bulb itself: red on <b>B1+</b>, black on <b>B1−</b>.`, ask:{q:'It reads about 0.5 Ω, but a lit bulb runs at about 6 Ω. Is it shorted?', o:['Yes, replace it','No, that’s normal'], a:1, why:'Tungsten has much lower resistance cold. A good bulb reads low; a burned-out bulb reads OL.'}, goal:['Lamp 1 unplugged, bulb measured', () => !S.plug.L1 && dR('B1P','B1N')], spot:['ctl:plug:L1','tp:B1P','tp:B1N']},
+  {t:'A parallel path', b:`Plug lamp 1 back in, then check W4 for a short to ground: red on <b>L1+</b>, black on <b>BODY</b>.`, goal:['Lamp 1 plugged in, L1+ to BODY', () => S.plug.L1 && dR('L1P','BODY')], ok:'About half an ohm. That looks like a short to ground, but it isn’t: you’re reading through the bulb to ground.', spot:['ctl:plug:L1','tp:L1P','tp:BODY']},
+  {t:'Isolate the wire', b:`Unplug lamp 1 again and keep the probes on L1+ and BODY.`, goal:['Lamp 1 unplugged, reading OL', () => !S.plug.L1 && dR('L1P','BODY') && RD.ol], ok:'OL: no short to ground. Always disconnect the load before testing a wire for a short.', spot:['ctl:plug:L1']},
+  {t:'Takeaway', b:`Zero the leads. Power off. Isolate the part. A wire or connection should read <b>≤ 1.0 Ω</b> end to end, and OL means open. A good ohms reading still doesn’t prove a wire can carry current. Lesson 9 shows why.`},
+ ]},
+ {t:'Measure amperage', s:'Ammeter in series, or use the clamp', steps:[
+  {t:'Series, not parallel', set:{S1:false}, b:`An ammeter has to be <b>in</b> the path, so all of the circuit’s current flows through it. Inside, the 10 A jack connects to a shunt of almost zero ohms. Treat the meter like a jumper wire.`},
+  {t:'Set up for amps', b:`Turn the knob to <b>A</b> and move the red lead to the <b>10 A</b> jack.`, goal:['Knob on A, red lead in 10 A', mA], spot:['#knob','#jackA']},
+  {t:'Break the circuit at the fuse', b:`Pull fuse <b>F1</b>. Put red on <b>F1 in</b> and black on <b>F1 out</b>, then turn S1 on. The meter now carries the whole circuit’s current.`, goal:['F1 pulled, meter across the cavity, S1 on', () => mA() && S.fuse.F1 !== 'in' && across('dmmR','dmmB','F1I','F1O') && S.sw.S1 && Math.abs(R.I.dmm || 0) > 1], ok:'About 2.1 A, this lamp’s normal draw.', spot:['ctl:fuse:F1','tp:F1I','tp:F1O','ctl:sw:S1']},
+  {t:'Read the number', b:`Current tells you how hard the circuit is working.`, ask:{q:'A circuit that should draw 2.1 A draws 1.2 A. What does that point to?', o:['Excessive resistance','A short to ground','An open'], a:0, why:'Less current than normal means something added resistance. A short draws more current and usually blows the fuse. An open draws none.'}},
+  {t:'The classic mistake', b:`Leave the red lead in the 10 A jack and touch the probes straight across the battery: red on <b>BAT+</b>, black on <b>BAT−</b>.`, goal:['Try it', () => S.dmm.blown], ok:'The meter became a dead short across the battery. Hundreds of amps flowed and the meter’s internal fuse blew. On a cheap meter, the meter itself can be ruined. Press Replace meter fuse.', spot:['tp:BATP','tp:BATN']},
+  {t:'No break needed: the amp clamp', set:{S1:true, F1:'in'}, b:`An amp clamp reads the magnetic field around a wire, so you don’t have to break the circuit. Drag the <b>amp clamp</b> onto wire <b>W3</b>.`, goal:['Clamp on W3', () => S.tips.clamp === 'cW3'], ok:'About 2.1 A, the same as the meter in series. Clamps are easiest to read above about 1 A. For small draws, like a parasitic drain, put the meter in series.', spot:['tool:clamp','cl:cW3']},
+  {t:'Takeaway', b:`<b>0 A</b> means open. <b>Low</b> means excessive resistance. <b>High</b> means a short or an extra load. Never put an ammeter across a voltage source, and don’t hunt a short with it; a test light is safer (lesson 7).`},
+ ]},
+ {t:'Excessive resistance', s:'Dim lamp: find it with voltage drop, confirm with ohms', steps:[
+  {t:'Dim lamp', set:{S1:true, fault:'rC1', fr:2}, b:`Lamp 1 is dim. Corrosion, a loose or spread terminal, or a damaged wire adds resistance <b>in series</b> with the bulb. The bulb gets less voltage, so less current flows.`},
+  {t:'Available voltage', b:`Red on <b>L1+</b>, black on <b>BAT−</b>.`, goal:['Red on L1+, black on ground', () => dV('L1P','GND')], ok:'Several volts are missing. The power side is losing voltage somewhere between the battery and the lamp.', spot:['tp:L1P','tp:BATN']},
+  {t:'Whole power side', b:`Red on <b>BAT+</b>, black on <b>L1+</b>.`, goal:['Red on BAT+, black on L1+', () => dV('BATP','L1P')], ok:'Far over the 0.50 V power-side limit.', spot:['tp:BATP','tp:L1P']},
+  {t:'Split it', b:`Measure smaller sections until the drop is in one spot. Try across C1 pin 1: red on <b>C1·1a</b>, black on <b>C1·1b</b>.`, goal:['Across C1 pin 1', () => dV('C1A','C1B')], ok:'Almost all of the drop is across this one connection. The limit for one connection is 0.10 V.', spot:['tp:C1A','tp:C1B']},
+  {t:'Confirm with ohms', b:`Pull fuse <b>F1</b>, set the meter to <b>Ω</b>, and measure the same connection, C1·1a to C1·1b.`, goal:['F1 pulled, Ω across C1 pin 1', () => S.fuse.F1 !== 'in' && dR('C1A','C1B')], ok:'About 2 Ω across one connection. A good connection reads near 0 Ω; anything over 1.0 Ω fails.', spot:['ctl:fuse:F1','#knob']},
+  {t:'Takeaway', b:`Voltage drop finds excessive resistance with the circuit working, which is when the fault shows up. Ohms confirms it once the part is isolated. Clean or repair the terminal; a new bulb won’t fix it.`},
+ ]},
+ {t:'Opens', s:'Voltage is there up to the break and gone after it', steps:[
+  {t:'Lamp out', set:{S1:true, fault:'openW3'}, b:`Lamp 1 doesn’t light. An open is a break in the path, so no current flows anywhere in that circuit.`},
+  {t:'Start at the load', b:`Red on <b>L1+</b>, black on <b>BAT−</b>.`, goal:['Red on L1+, black on ground', () => dV('L1P','GND')], ok:'0 V. Voltage isn’t reaching the lamp.', spot:['tp:L1P']},
+  {t:'Work back toward the battery', b:`Move red back one point at a time: <b>C1·1b</b>, <b>C1·1a</b>, then <b>S1 out</b>.`, goal:['Red on S1 out', () => mV() && at('dmmR','S1O') && gnd('dmmB')], ok:'Battery voltage at S1 out and 0 V at C1·1a. The open is in wire W3, between those two points.', spot:['tp:C1B','tp:C1A','tp:S1O']},
+  {t:'Voltage across the open', b:`Red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['Across W3', () => dV('S1O','C1A')], ok:'Nearly full battery voltage. With no current, nothing else in the circuit drops any voltage, so all of it shows up across the break.'},
+  {t:'Open on the ground side', set:{S1:true, fault:'openW5'}, b:`Now the break is in ground wire <b>W5</b>. Red on <b>L1−</b>, black on <b>BAT−</b>.`, ask:{q:'Why does the ground side of the bulb read battery voltage?', o:['W5 is shorted to power','No current flows, so the bulb drops no voltage','The leads are reversed'], a:1, why:'With no current, the bulb drops no voltage, so battery voltage passes straight through it to L1−. Battery voltage on the ground side of a load means the ground path is open.'}, goal:['Red on L1−, black on BAT−', () => dV('L1N','BATN')], spot:['tp:L1N','tp:BATN']},
+  {t:'Confirm with ohms', b:`Pull <b>F1</b>, unplug lamp 1, set the meter to <b>Ω</b>, and measure W5: red on <b>L1−</b>, black on <b>G101</b>.`, goal:['Ω across W5, isolated', () => S.fuse.F1 !== 'in' && !S.plug.L1 && dR('L1N','G101')], ok:'OL: W5 is open. A good wire reads ≤ 1.0 Ω.', spot:['ctl:fuse:F1','ctl:plug:L1','tp:L1N','tp:G101']},
+  {t:'Takeaway', b:`Voltage is present up to an open and missing after it. Across the open you read full voltage. An open on the ground side puts battery voltage on the ground side of the load. Ohms reads OL across the break.`},
+ ]},
+ {t:'Short to ground', s:'Blown fuse: hunt it with a test light, not fuses', steps:[
+  {t:'Blown fuse', set:{S1:false, fault:'sgW4'}, b:`W4 has rubbed through its insulation and touches the body. Turn <b>S1</b> on and watch fuse F1.`, goal:['F1 blown', () => S.fuse.F1 === 'blown'], ok:'Current took the short path to ground and skipped the bulb. With almost no resistance in the path, well over 100 A tried to flow and the fuse blew.', spot:['ctl:sw:S1']},
+  {t:'Test light in the fuse cavity', b:`Don’t keep feeding it fuses, and don’t hunt a short with an ammeter. Put the test light across the F1 cavity: tip on <b>F1 in</b>, clip on <b>F1 out</b>. Keep S1 on.`, goal:['Test light across F1, lit', () => across('tlTip','tlClip','F1I','F1O') && R.bright.tl > .4], ok:'The test light takes the fuse’s place and lights full bright, because the short is still there. It limits the current to about a quarter amp, so nothing is damaged while you search.', spot:['tool:tl','tp:F1I','tp:F1O']},
+  {t:'Isolate', b:`Unplug connector <b>C1</b>.`, goal:['C1 unplugged', () => !S.plug.C1], ok:'The light went out, so the short is on the lamp side of C1: wire W4 or lamp 1. If it had stayed lit, the short would be between the fuse and C1.', spot:['ctl:plug:C1']},
+  {t:'Confirm with ohms', b:`Unplug lamp 1, set the meter to <b>Ω</b>, and measure from <b>C1·1b</b> to <b>BODY</b>.`, goal:['Lamp 1 unplugged, C1·1b to BODY', () => !S.plug.L1 && dR('C1B','BODY')], ok:'Near 0 Ω to ground with the load unplugged: a short to ground. A healthy, isolated power wire reads OL to ground.', spot:['ctl:plug:L1','tp:C1B','tp:BODY']},
+  {t:'Takeaway', b:`Short to ground means a blown fuse. Put a test light (or a short finder) in the fuse cavity and unplug connectors one at a time until it goes out. The short is in the section you just disconnected. Repair the chafed wire, then install a new fuse.`},
+ ]},
+ {t:'Shorts together', s:'Short to power and cross-fed circuits', steps:[
+  {t:'On with the switch off', set:{S1:false, fault:'sB'}, b:`Lamp 1 is lit with S1 off. Overnight, that drains the battery. W4 has rubbed into an always-hot wire fed by fuse <b>F3</b>.`},
+  {t:'Is it the lamp’s own fuse?', b:`Pull fuse <b>F1</b>.`, goal:['F1 pulled', () => S.fuse.F1 !== 'in'], ok:'Lamp 1 stays on, so its power is coming from somewhere other than its own fuse.', spot:['ctl:fuse:F1']},
+  {t:'Find the section', b:`Unplug connector <b>C1</b>.`, goal:['C1 unplugged', () => !S.plug.C1], ok:'Still on. The power is getting in on the lamp side of C1, so the short is in W4.', spot:['ctl:plug:C1']},
+  {t:'Find the source', b:`Pull fuse <b>F3</b>.`, goal:['F3 pulled', () => S.fuse.F3 !== 'in'], ok:'Lamp 1 goes out. Its power was coming from the F3 circuit. Repair and separate the rubbed wires.', spot:['ctl:fuse:F3']},
+  {t:'Cross-fed circuits', set:{S1:false, S2:false, fault:'xf'}, b:`A different short: W4 and W9 have rubbed through and touch each other. Turn on <b>S2</b> only.`, goal:['S2 on', () => S.sw.S2], ok:'Both lamps light. Either switch now feeds both bulbs.', spot:['ctl:sw:S2']},
+  {t:'Prove it with ohms', b:`Unplug <b>C1</b> and both lamps, set the meter to <b>Ω</b>, and measure from <b>C1·1b</b> to <b>C1·2b</b>.`, goal:['Isolated, C1·1b to C1·2b', () => !S.plug.C1 && !S.plug.L1 && !S.plug.L2 && dR('C1B','C2B')], ok:'Near 0 Ω between two wires that should be separate. Two different circuits should read OL to each other.', spot:['ctl:plug:C1','ctl:plug:L1','ctl:plug:L2','tp:C1B','tp:C2B']},
+  {t:'Watch for the parallel path', b:`One more check of your thinking.`, ask:{q:'On a good harness with both lamps still plugged in, what would C1·1b to C1·2b read?', o:['OL','About 1 Ω','0 Ω'], a:1, why:'You would read through bulb 1, shared ground G101, and bulb 2: two cold filaments in series. Unplug the loads so the only path left is the one you’re testing.'}},
+  {t:'Takeaway', b:`Short to power: the load runs with its switch off. Cross-feed: one switch runs two loads. Pull fuses and unplug connectors to see where the power gets in, then confirm with ohms between the isolated wires.`},
+ ]},
+ {t:'Good readings, bad circuit', s:'Test light false positive and the load tool', steps:[
+  {t:'Lamp barely glows', set:{S1:true, fault:'strands'}, b:`Lamp 1 barely glows. Run the quick checks that most people stop at.`},
+  {t:'Voltage at the socket', b:`Unplug lamp 1. With the meter on <b>V</b>, red on <b>L1+</b>, black on <b>BAT−</b>.`, goal:['Lamp 1 unplugged, L1+ to ground', () => !S.plug.L1 && dV('L1P','GND')], ok:'Full battery voltage, which looks perfect. With the bulb unplugged no current flows, so nothing drops any voltage, good wire or bad.', spot:['ctl:plug:L1','tp:L1P']},
+  {t:'Ohm the wire', b:`Pull <b>F1</b>, set the meter to <b>Ω</b>, and measure W3: red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['F1 pulled, Ω across W3', () => S.fuse.F1 !== 'in' && dR('S1O','C1A')], ok:'Under 1.0 Ω, so it passes. The meter’s tiny test current gets through the few strands that are left.', spot:['ctl:fuse:F1','tp:S1O','tp:C1A']},
+  {t:'Test light', b:`Put <b>F1</b> back in. Clip the test light to <b>BODY</b> and touch its tip to <b>L1+</b>.`, goal:['F1 in, test light from L1+ to ground', () => S.fuse.F1 === 'in' && at('tlTip','L1P') && gnd('tlClip')], ok:'Bright. A test light only draws about 0.25 A, and the few strands can carry that much. A false positive.', spot:['ctl:fuse:F1','tool:tl','tp:L1P','tp:BODY']},
+  {t:'Load it like the real bulb', b:`Clip the <b>load tool</b> from <b>L1+</b> to <b>BODY</b>. It’s a bulb like lamp 1’s, so it asks for about 2 A.`, goal:['Load tool from L1+ to ground', () => loadTo('L1P')], ok:'It barely glows. The circuit can’t carry the load.', spot:['tool:ld','tp:L1P','tp:BODY']},
+  {t:'Voltage drop under load', b:`Leave the load tool on. Set the meter to <b>V</b> and measure across W3: red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['Load tool on, V across W3', () => loadTo('L1P') && dV('S1O','C1A')], ok:'Most of the battery voltage is lost across W3. Under load, the damaged wire shows itself.', spot:['tp:S1O','tp:C1A']},
+  {t:'Shop method: power probe + load tool', b:`To test one wire by itself, pull <b>F1</b> and unplug <b>C1</b>. Put the <b>power probe</b> tip on <b>S1 out</b> and set it to <b>+B</b>, then clip the load tool from <b>C1·1a</b> to <b>BODY</b>.`, goal:['W3 isolated, powered, and loaded', () => S.fuse.F1 !== 'in' && !S.plug.C1 && at('ppTip','S1O') && S.pp === 'B' && loadTo('C1A')], ok:'The load bulb is dim, so W3 can’t carry current. Try the same on W4 (power probe on C1·1b, load tool from L1+ to BODY): the bulb is bright, so W4 is good.', spot:['ctl:fuse:F1','ctl:plug:C1','tool:pp','tp:S1O','tp:C1A']},
+  {t:'Takeaway', b:`Voltage checks with no load and ohms checks use almost no current, so a wire hanging by a few strands passes both. A test light can pass it too. Prove the circuit <b>under load</b>, with the real component or a load tool, and measure voltage drop while it’s loaded.`},
+ ]},
+];
+
+const CIRCUITS = {lamp:LAMP, blower:BLOWER};
+const LIB = [
+  {id:'lamp'}, {id:'blower'},
+  {n:'Relay circuit', s:'Control side and load side, tested separately.'},
+  {n:'Series / parallel', s:'How one open or short changes the other loads.'},
+];
 
 /* ================= solver ================= */
 /* Modified nodal analysis with every node leaking 1e10 ohms to G so floating nodes stay defined.
@@ -605,44 +1233,13 @@ const tipNode = k => S.tips[k] && TP[S.tips[k]] ? TP[S.tips[k]].n : null;
 
 /* The whole bench as a list of resistive elements. ohm=true builds it for the ohmmeter (no DMM in V/A). */
 function buildNet(ohm){
-  const E = [], f = S.fault, fr = S.faultR, F = S.fuse;
+  const E = [];
   const A = (id, a, b, r, o) => E.push(Object.assign({id, a, b, r}, o || {}));
   A('bat','SRC','BP',BATT_R);
-  A('cabP','BP','BUS',.003);
-  // circuit 1
-  if (F.F1 === 'in') A('f1','BUS','F1o',.006,{prot:10, dev:'F1'});
-  A('w2','F1o','S1i',.02);
-  if (S.sw.S1) A('s1','S1i','S1o',.01 + (f === 'rS1' ? fr : 0));
-  if (f !== 'openW3') A('w3a','S1o','W3m',.018, f === 'strands' ? {nl:'strand'} : null);
-  A('w3b','W3m','C1a',.017);
-  if (S.plug.C1){ A('c1','C1a','C1b',.003 + (f === 'rC1' ? fr : 0)); A('c1_2','C2a','C2b',.003); }
-  A('w4a','C1b','W4m',.01); A('w4b','W4m','L1p',.01);
-  if (S.plug.L1){ A('k1p','L1p','LB1p',.003); A('k1n','LB1n','L1n',.003); }
-  if (f !== 'openBulb') A('lamp1','LB1p','LB1n',6.1,{nl:'lamp', In:2.1, Rc:.5});
-  if (f !== 'openW5') A('w5','L1n','GE',.02);
-  A('g101','GE','BODY',.003 + (f === 'rG' ? fr : 0));
-  A('cabN','BODY','BN',.003);
-  // circuit 2
-  if (F.F2 === 'in') A('f2','BUS','F2o',.006,{prot:10, dev:'F2'});
-  A('w2_2','F2o','S2i',.02);
-  if (S.sw.S2) A('s2','S2i','S2o',.01);
-  A('w3_2','S2o','C2a',.035);
-  A('w4a_2','C2b','W4bm',.01); A('w4b_2','W4bm','L2p',.01);
-  if (S.plug.L2){ A('k2p','L2p','LB2p',.003); A('k2n','LB2n','L2n',.003); }
-  A('lamp2','LB2p','LB2n',6.1,{nl:'lamp', In:2.1, Rc:.5});
-  A('w5_2','L2n','GE',.02);
-  // always-hot feed to other circuits
-  if (F.F3 === 'in') A('f3','BUS','F3o',.006,{prot:15, dev:'F3'});
-  A('w6','F3o','HOT',.02);
-  // shorts
-  if (f === 'sgW3') A('xs','W3m','BODY',.02);
-  if (f === 'sgW4') A('xs','W4m','BODY',.02);
-  if (f === 'sB')   A('xs','W4m','HOT',.02);
-  if (f === 'xf')   A('xs','W4m','W4bm',.02);
-  // tools
+  C.build(A);
   const r = tipNode('dmmR'), b = tipNode('dmmB');
   if (r && b && !ohm){
-    if (S.dmm.jack === 'A'){ if (!S.dmm.blown) A('dmm', r, b, .01, {prot:11, dev:'METER'}); }
+    if (S.dmm.jack === 'A'){ if (!S.dmm.blown) A('dmm', r, b, .01, {prot:10, blowAt:1.2, dev:'METER'}); }
     else if (S.dmm.knob === 'V') A('dmm', r, b, 1e7);
   }
   if (r && b && ohm && S.dmm.jack === 'A' && !S.dmm.blown) A('dmm', r, b, .01);
@@ -662,26 +1259,37 @@ function nodeList(E){
   const set = new Set();
   for (const e of E){ set.add(e.a); set.add(e.b); }
   for (const id of TP_IDS) set.add(TP[id].n);
-  ['W3m','W4m','W4bm','HOT'].forEach(n => set.add(n));
+  (C.extraNodes || []).forEach(n => set.add(n));
   for (const k of FIXED_NODES) set.delete(k);
   return [...set];
 }
 /* Tungsten: I = In (V/Vn)^0.55, so R rises with voltage; cold R is the floor (and what an ohmmeter sees).
    Few strands: ~0.35 ohm for small currents, then rises steeply above ~0.3 A as the strands heat up
-   (about 11 ohm per extra amp: a 0.25 A test light passes, a 2 A bulb only glows). */
+   (about 11 ohm per extra amp: a 0.25 A test light passes, a 2 A bulb only glows).
+   Motor: solve the torque balance for the speed, then I = (V - k·ω) / Ra. */
+function motorW(e, V){
+  const b = e.k * e.k / e.Ra, q = e.Tf - e.k * V / e.Ra;
+  return q < 0 ? (-b + Math.sqrt(b * b - 4 * e.c * q)) / (2 * e.c) : 0;
+}
 function nlTarget(e, V, I){
   if (e.nl === 'lamp'){
     if (V < .02) return e.Rc;
     return Math.max(e.Rc, V / (e.In * Math.pow(V / VN, .55)));
   }
+  if (e.nl === 'motor'){
+    if (V < .02) return e.Ra;
+    const w = motorW(e, V);
+    return Math.max(e.Ra, V / ((V - e.k * w) / e.Ra));
+  }
   if (I < .3) return .35;
   return (.105 + 11 * (I - .3)) / I;
 }
+const nlStart = e => e.nl === 'lamp' ? VN / e.In : e.nl === 'motor' ? 1 : .35;
 function iterate(E, fixed){
   const nodes = nodeList(E), nl = E.filter(e => e.nl);
-  for (const e of nl) e.r = NLC[e.id] ?? (e.nl === 'lamp' ? VN / e.In : .35);
+  for (const e of nl) e.r = NLC[e.id] ?? nlStart(e);
   let res = nodal(nodes, E, fixed);
-  for (let k = 0; k < 80 && nl.length; k++){
+  for (let k = 0; k < 120 && nl.length; k++){
     let ch = 0;
     for (const e of nl){
       const V = Math.abs(res.v[e.a] - res.v[e.b]), I = V / e.r;
@@ -694,22 +1302,20 @@ function iterate(E, fixed){
   for (const e of nl) NLC[e.id] = e.r;
   return res;
 }
-const DEV_NAME = {F1:'Fuse F1', F2:'Fuse F2', F3:'Fuse F3', METER:'The meter’s 10 A fuse', JMP:'The fused jumper’s fuse', PP:'The power probe breaker'};
 function blowDev(dev, amps, ev){
   const a = amps >= 100 ? Math.round(amps / 10) * 10 : Math.round(amps);
-  if (dev === 'F1' || dev === 'F2' || dev === 'F3'){
+  if (C.fuseRating[dev]){
     S.fuse[dev] = 'blown';
-    const rating = dev === 'F3' ? 15 : 10;
-    ev.push([`${DEV_NAME[dev]} blew: about ${a} A tried to flow through a ${rating} A fuse.`, 'bad']);
+    ev.push([`Fuse ${dev} blew: about ${a} A tried to flow through a ${C.fuseRating[dev]} A fuse.`, 'bad']);
   } else if (dev === 'METER'){
     S.dmm.blown = true;
-    ev.push([`The meter’s internal fuse blew: about ${a} A went through the 10 A jack.`, 'bad']);
+    ev.push([`The meter’s internal fuse blew: about ${a} A went through the 10 A jack.${a < 60 ? ' Use the amp clamp for anything over 10 A.' : ''}`, 'bad']);
   } else if (dev === 'JMP'){
     S.jmpBlown = true;
     ev.push([`The fused jumper’s 10 A fuse blew (about ${a} A).`, 'bad']);
   } else if (dev === 'PP'){
     S.ppTrip = true;
-    ev.push([`Power probe breaker tripped (about ${a} A). That point has a path straight to ${S.pp === 'B' ? 'ground' : 'power'}.`, 'bad']);
+    ev.push([`Power probe breaker tripped (about ${a} A). ${a < 25 ? 'That load draws more than the probe’s 8 A breaker allows.' : `That point has a path straight to ${S.pp === 'B' ? 'ground' : 'power'}.`}`, 'bad']);
   }
 }
 function solveRun(){
@@ -717,10 +1323,10 @@ function solveRun(){
   for (let pass = 0; pass < 8; pass++){
     const E = buildNet(false);
     const res = iterate(E, {SRC:BATT_V, BN:0, G:0, PPS:BATT_V});
-    let worst = null, wr = 1.5;
+    let worst = null, wr = 0;
     for (const e of E) if (e.prot){
-      const ratio = Math.abs(res.I[e.id]) / e.prot;
-      if (ratio > wr){ wr = ratio; worst = e; }
+      const ratio = Math.abs(res.I[e.id]) / e.prot / (e.blowAt || 1.5);
+      if (ratio > 1 && ratio > wr){ wr = ratio; worst = e; }
     }
     if (!worst){
       const bright = {};
@@ -728,7 +1334,10 @@ function solveRun(){
         const e = E.find(x => x.id === id);
         bright[id] = e ? Math.min(1.25, Math.pow(Math.abs(res.v[e.a] - res.v[e.b]) / VN, 3.4)) : 0;
       }
-      return {...res, E, ev, bright, has: new Set(E.map(e => e.id))};
+      let rpm = 0;
+      const m = E.find(x => x.id === 'mot');
+      if (m){ const V = Math.abs(res.v[m.a] - res.v[m.b]); rpm = motorW(m, V) * 60 / (2 * Math.PI); }
+      return {...res, E, ev, bright, rpm, has: new Set(E.map(e => e.id))};
     }
     blowDev(worst.dev, Math.abs(res.I[worst.id]), ev);
   }
@@ -738,7 +1347,7 @@ function solveRun(){
 function solveOhm(rn, bn){
   if (rn === bn) return {R:0, E:[]};
   const E = buildNet(true);
-  for (const e of E) if (e.nl) e.r = e.nl === 'lamp' ? e.Rc : .35;
+  for (const e of E) if (e.nl) e.r = e.nl === 'lamp' ? e.Rc : e.nl === 'motor' ? e.Rc : .35;
   const res = nodal(nodeList(E), E, {SRC:0, BN:0, G:0, PPS:0}, [[bn, rn, OHM_I]]);
   return {R:(res.v[rn] - res.v[bn]) / OHM_I, E};
 }
@@ -761,7 +1370,7 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const itemPresent = id => parts(id).every(p => R.has.has(p));
 const itemI = id => Math.abs(R.I[parts(id)[0]] || 0);
 function spanOf(na, nb){
-  for (const ch of CHAINS){
+  for (const ch of C.chains()){
     const ia = ch.nodes.indexOf(na), ib = ch.nodes.indexOf(nb);
     if (ia < 0 || ib < 0) continue;
     const lo = Math.min(ia, ib), hi = Math.max(ia, ib);
@@ -772,13 +1381,18 @@ function spanOf(na, nb){
 function openWhy(items){
   const id = items.find(i => !itemPresent(i));
   if (!id) return '';
-  if (id === 's1' || id === 's2') return `${cap(ITEM[id].n)} is off, so it’s open.`;
-  if (/^f\d/.test(id)){ const k = 'F' + id[1]; return `${cap(ITEM[id].n)} is ${S.fuse[k] === 'blown' ? 'blown' : 'pulled'}, so it’s open.`; }
-  if (id === 'c1' || id === 'c1_2') return 'Connector C1 is unplugged.';
-  if (id === 'k1p' || id === 'k1n' || id === 'k2p' || id === 'k2n') return 'The lamp is unplugged.';
+  const it = ITEM[id];
+  if (it.open && !(it.faultOpen && !showFault())) return typeof it.open === 'function' ? it.open() : it.open;
+  if (it.k === 'switch') return `${cap(it.n)} is off, so it’s open.`;
+  if (it.k === 'fuse') return `${cap(it.n)} is ${S.fuse[it.fuse] === 'blown' ? 'blown' : 'pulled'}, so it’s open.`;
+  if (it.k === 'conn' && it.plug && !S.plug[it.plug]) return /^L\d/.test(it.plug) ? 'The lamp is unplugged.' : `Connector ${it.plug} is unplugged.`;
   return 'The path is broken somewhere between your probes.';
 }
 const list = items => items.map(i => ITEM[i].n.replace(/^the /,'')).join(', ');
+const OHM_TXT = {
+  lamp:'A cold tungsten filament reads far below the ~6 Ω it has when lit. That’s normal. A burned-out bulb reads OL.',
+  motor:'A blower motor reads a fraction of an ohm through its brushes and armature. OL means the brushes aren’t touching the commutator (a dead spot) or the armature is open.',
+};
 
 function interpV(V, rT, bT){
   const rn = TP[rT].n, bn = TP[bT].n;
@@ -786,24 +1400,33 @@ function interpV(V, rT, bT){
   const pair = [rn, bn].sort().join();
   if (pair === 'BN,BP') return {t:'Battery voltage', p:`${fmtV(Math.abs(V))} V at the posts. A charged battery at rest reads about 12.6 V; with loads on, it dips a little.${V < 0 ? ' The reading is negative because the leads are reversed.' : ''}`};
   const sp = spanOf(rn, bn);
-  if (!sp) return {t:`${nm(rT)} to ${nm(bT)}`, p:'These points are on different circuits. The meter shows the difference between their voltages.'};
+  if (!sp) return {t:`${nm(rT)} to ${nm(bT)}`, p:'These points aren’t on the same current path. The meter shows the difference between their voltages.'};
   const L = sp.ch.load, nodes = sp.ch.nodes;
   const hasLoad = L >= sp.lo && L < sp.hi;
   const rev = V < -.05 ? ' The reading is negative because the red lead is on the lower-voltage side.' : '';
   if (hasLoad){
-    if (sp.lo === L && sp.hi === L + 1) return {t:`Voltage across ${ITEM[sp.items[0]].n}`, p:`${fmtV(Math.abs(V))} V reaches the bulb itself: battery voltage minus every drop on the power and ground sides.${rev}`};
+    if (sp.lo === L && sp.hi === L + 1){
+      const I = itemI(sp.items[0]);
+      if (I < .02 && Math.abs(V) > 1) return {t:`Voltage across ${ITEM[sp.items[0]].n}`, p:`${fmtV(Math.abs(V))} V with no current flowing. Full voltage across a load that draws nothing means the load itself is open.${rev}`};
+      return {t:`Voltage across ${ITEM[sp.items[0]].n}`, p:`${fmtV(Math.abs(V))} V reaches ${ITEM[sp.items[0]].n} itself: the source voltage minus every drop on the power and ground sides.${rev}`};
+    }
     const powerTP = sp.redLow ? rT : bT;
     const I = itemI(sp.ch.items[L]);
     const below = BATT_V - Math.abs(V);
-    if (I > .05) return {t:`Available voltage at ${nm(powerTP)}`, chip:[`${below.toFixed(2)} V below battery`,'info'], p:`Measured to ground with ${fmtA(I)} A flowing. Close to battery voltage means the power side is delivering. A low reading means voltage is being lost before this point; find it with voltage drop tests.${rev}`};
+    if (I > .05) return {t:`Available voltage at ${nm(powerTP)}`, chip:[`${below.toFixed(2)} V below battery`,'info'], p:`Measured across the load and its ground path with ${fmtA(I)} A flowing. Close to battery voltage means the power side is delivering. A low reading means voltage is being lost before this point; find it with voltage drop tests.${rev}`};
     if (Math.abs(V) < .5) return {t:`No voltage at ${nm(powerTP)}`, p:`0 V with no current flowing: voltage isn’t reaching this point. Work back toward the battery to find where it stops, at an open or a switch that’s off.`};
     return {t:`Available voltage at ${nm(powerTP)}`, chip:['no current','info'], p:`No current is flowing, so nothing drops any voltage yet. This proves voltage is present, not that the circuit can carry current. Check again with the circuit loaded.${rev}`};
   }
   const side = (L < 0 || sp.hi <= L) ? 'power' : 'ground';
   const I = itemI(sp.items[0]);
   if (I < .02){
+    if (side === 'ground' && Math.abs(V) < .5 && GROUND_N.includes(sp.ch.nodes[sp.hi])) return {t:`No voltage at ${nm(sp.redLow ? rT : bT)}`, p:'0 V to ground with no current flowing. This point has a path to ground, but nothing is pushing current through it. If the load should be on, the open is between this point and the power source.'};
     if (Math.abs(V) > 1) return {t:'Voltage across an open', p:`${openWhy(sp.items)} With no current flowing, nothing else drops any voltage, so the full source voltage appears across the open.${rev}`};
     return {t:'No current flowing', p:'A voltage drop test needs current through the section. With no current, even a badly corroded connection reads 0 V. Turn the circuit on.'};
+  }
+  if (sp.items.some(i => ITEM[i].k === 'res')){
+    const only = sp.items.every(i => ITEM[i].k === 'res');
+    return {t:only ? 'Voltage across the speed resistors' : `Voltage drop · ${side} side, including the speed resistors`, chip:['resistors drop voltage on purpose','info'], p:`${fmtV(Math.abs(V))} V dropped with ${fmtA(I)} A flowing. The speed resistors are meant to drop voltage: that’s how the lower speeds slow the motor. Test the wires and connections on their own to judge them.${rev}`};
   }
   const single = sp.items.length === 1;
   const totP = side === 'power' && sp.lo === 0 && (sp.hi === L || sp.hi === L - 1);
@@ -828,7 +1451,7 @@ function interpR(Rth, rT, bT, ohmE){
     return {t:`${nm(rT)} to ${nm(bT)}`, p:`These points are connected. Two separate circuits should read OL to each other, so look for a short between them, or a shared path such as two bulbs that are both still plugged in and share a ground.${leadNote}`};
   }
   const L = sp.ch.load;
-  const toGround = (GROUND_N.includes(rn) || GROUND_N.includes(bn)) && (L < 0 || Math.min(sp.lo, sp.hi) < L) && sp.hi > L;
+  const toGround = (GROUND_N.includes(rn) || GROUND_N.includes(bn)) && (L < 0 || sp.lo <= L) && (L < 0 || sp.hi > L);
   const items = sp.items, single = items.length === 1, it = ITEM[items[0]];
   let spanR = 0;
   for (const id of items) for (const p of parts(id)){
@@ -838,16 +1461,18 @@ function interpR(Rth, rT, bT, ohmE){
   if (toGround){
     if (ol) return {t:'OL to ground', chip:['No short to ground','pass'], p:'No continuity to ground: this wire is not shorted to ground.'};
     if (!isFinite(spanR) || Rth < spanR * .85) return {t:'Continuity to ground', chip:['Short to ground','fail'], p:`A reading this low to ground, with the load out of the path, means a short to ground somewhere in this section.${leadNote}`};
-    return {t:'Reading through the load', p:`You’re measuring through ${ITEM[sp.ch.items[L]].n} to ground, not checking for a short. To test a wire for a short to ground, unplug the load first.${leadNote}`};
+    return {t:'Reading through the load', p:`You’re measuring through ${ITEM[sp.ch.items[L]] ? ITEM[sp.ch.items[L]].n : 'the load'} to ground, not checking for a short. To test a wire for a short to ground, unplug the load first.${leadNote}`};
   }
   if (ol){
     const why = openWhy(items);
     if (single && (it.k === 'wire' || it.k === 'cable')) return {t:`${cap(it.n)}: OL`, chip:[`Fail · ≤ ${SPEC.wire.toFixed(1)} Ω`,'fail'], p:`OL means open: ${it.n} is broken.`};
+    if (single && it.k === 'res') return {t:`${cap(it.n)}: OL`, chip:['Open','fail'], p:`${why || 'No continuity.'} Speed resistors and the thermal limiter must have continuity.`};
     return {t:'OL · open', p:`${why || 'No continuity between the probes.'} OL means infinite resistance.`};
   }
   const parallel = !isFinite(spanR) || Rth < spanR * .85;
   const parNote = parallel ? ' This reads lower than the parts between your probes, so another path is connected in parallel. Unplug or disconnect to isolate the part.' : '';
-  if (single && it.k === 'load') return {t:`${cap(it.n)}, cold`, p:`A cold tungsten filament reads far below the ~6 Ω it has when lit. That’s normal. A burned-out bulb reads OL.${parNote}${leadNote}`};
+  if (single && it.k === 'load') return {t:`${cap(it.n)}${it.ohm === 'lamp' ? ', cold' : ''}`, p:`${OHM_TXT[it.ohm] || ''}${parNote}${leadNote}`};
+  if (single && it.k === 'res') return {t:cap(it.n), chip:[`rated ≈ ${it.nom.toFixed(2)} Ω`,'info'], p:`Speed resistors are supposed to have resistance; they drop voltage to slow the motor. Compare the reading with the rated value. OL means open.${parNote}${leadNote}`};
   if (single){
     const pass = Rth <= SPEC.wire;
     const good = it.k === 'wire' || it.k === 'cable' ? 'A good wire reads well under 1.0 Ω end to end.' : 'A good connection, switch, or fuse reads close to 0 Ω.';
@@ -861,21 +1486,16 @@ function interpA(I, rT, bT){
   if (Math.abs(I) < .005) return {t:'No current through the meter', p:'An ammeter has to be part of the path. Break the circuit and bridge the gap with the leads: pull a fuse and put one probe on each fuse terminal.'};
   const pr = [rn, bn].sort().join();
   const par = R.E.find(e => e.id !== 'dmm' && [e.a, e.b].sort().join() === pr);
-  let t = 'Current through the meter', p = `${fmtA(Math.abs(I))} A flows through the meter.`;
-  for (const k of ['F1','F2']){
-    if (pr === ['BUS', k + 'o'].sort().join() && S.fuse[k] !== 'in'){
-      t = `Circuit ${k[1]} current draw`;
-      p = `${fmtA(Math.abs(I))} A. This lamp normally draws about 2.1 A. Lower means extra resistance; higher means a short or an extra load; 0 A means an open.`;
-    }
-  }
-  if (par) p += ` ${cap(par.id === 'f1' ? 'fuse F1' : par.id === 'f2' ? 'fuse F2' : 'another part')} is still connected across the same points, so the current splits between it and the meter. Remove it to read the full current.`;
-  if (I < 0) p += ' The reading is negative: current is entering the black lead. Swap the leads.';
-  return {t, p};
+  let o = C.drawSpec(pr, I) || {t:'Current through the meter', p:`${fmtA(Math.abs(I))} A flows through the meter.`};
+  o = {...o};
+  if (par) o.p += ` ${par.prot && C.fuseRating[par.dev] ? 'Fuse ' + par.dev : 'Another part'} is still connected across the same points, so the current splits between it and the meter. Remove it to read the full current.`;
+  if (I < 0) o.p += ' The reading is negative: current is entering the black lead. Swap the leads.';
+  return o;
 }
 
 function readMeter(){
   const d = S.dmm, r = S.tips.dmmR, b = S.tips.dmmB, both = !!(r && b);
-  const o = {val:'', unit:'', ann:[], sub:'', it:null, warn:null, ol:false, _ohmE:[]};
+  const o = {val:'', unit:'', ann:[], sub:'', it:null, warn:null, ol:false};
   o.sub = both ? `+ ${nm(r)}   − ${nm(b)}` : (r || b) ? `${r ? '+ ' + nm(r) : '− ' + nm(b)} · place the other probe` : 'Probes in the tray';
   if (d.knob === 'OFF'){ o.off = true; o.sub = 'Meter off'; return o; }
   o.ann.push(['AUTO','on']);
@@ -902,20 +1522,18 @@ function readMeter(){
     }
     if (!both){ o.val = 'OL'; o.ol = true; o.it = {t:'Resistance', p:'Ohmmeter: circuit off, part isolated. Zero the leads first: touch both probes to one point and press REL.'}; return o; }
     const voc = R.v[TP[r].n] - R.v[TP[b].n];
-    const om = solveOhm(TP[r].n, TP[b].n);
-    o._ohmE = om.E;
     if (Math.abs(voc) > .02){
       o.live = true; o.val = '-.--'; o.ann.push(['LIVE','warn']);
       o.it = {t:'Voltage present', p:`There is ${fmtV(Math.abs(voc))} V between your probes. An ohmmeter supplies its own small current, so any voltage already in the circuit makes the reading meaningless and can damage some meters. Turn the circuit off (pull the fuse) and isolate the part.`, warn:true};
       return o;
     }
+    const om = solveOhm(TP[r].n, TP[b].n);
     const shown = om.R >= OL_R ? om.R : om.R + LEAD_R - d.rel;
     o.rawR = om.R + LEAD_R; o.ol = om.R >= OL_R;
     const [vv, uu] = fmtR(shown); o.val = vv; o.unit = uu; o.num = shown;
     o.it = interpR(om.R, r, b, om.E);
     return o;
   }
-  // amps
   o.ann.push(['DC','on'], ['A','on']); o.unit = 'A';
   if (d.jack === 'V'){
     o.val = '0.00';
@@ -935,36 +1553,6 @@ function readMeter(){
 }
 
 /* ================= drawing ================= */
-const STOPS = [[0,[44,62,80]],[.08,[40,110,150]],[.45,[95,212,255]],[1,[255,122,69]]];
-function vcol(v){
-  const t = Math.max(0, Math.min(1, v / BATT_V));
-  for (let i = 1; i < STOPS.length; i++) if (t <= STOPS[i][0]){
-    const [t0, c0] = STOPS[i - 1], [t1, c1] = STOPS[i], f = (t - t0) / (t1 - t0);
-    return `rgb(${c0.map((c, k) => Math.round(c + (c1[k] - c) * f)).join(',')})`;
-  }
-  return 'rgb(255,122,69)';
-}
-const NEUTRAL = '#46525F';
-
-/* wires: element id, nominal nodes, path */
-const WIRES = [
-  {el:'cabP', a:'BP',  b:'BUS',  d:'M55 368 V180 H172', thick:true},
-  {el:'bus',  a:'BUS', b:'BUS',  d:'M190 60 H172 V300 H190 M172 120 H190', noflow:true},
-  {el:'w6',   a:'F3o', b:'HOT',  d:'M250 60 H730'},
-  {el:'w2',   a:'F1o', b:'S1i',  d:'M250 120 H330'},
-  {el:'w3a',  a:'S1o', b:'W3m',  d:'M390 120 H475', brk:{f:'openW3', x:432, y:120}},
-  {el:'w3b',  a:'W3m', b:'C1a',  d:'M475 120 H560'},
-  {el:'w4a',  a:'C1b', b:'W4m',  d:'M582 120 H650'},
-  {el:'w4b',  a:'W4m', b:'L1p',  d:'M650 120 H780 V150'},
-  {el:'w5',   a:'L1n', b:'GE',   d:'M780 220 V246 H948 V440 L926 460', brk:{f:'openW5', x:864, y:246}},
-  {el:'w2_2', a:'F2o', b:'S2i',  d:'M250 300 H330'},
-  {el:'w3_2', a:'S2o', b:'C2a',  d:'M390 300 H560'},
-  {el:'w4a_2',a:'C2b', b:'W4bm', d:'M582 300 H650'},
-  {el:'w4b_2',a:'W4bm',b:'L2p',  d:'M650 300 H780 V330'},
-  {el:'w5_2', a:'L2n', b:'GE',   d:'M780 400 V426 H900 V440 L914 460'},
-  {el:'g101', a:'GE',  b:'BODY', d:'M920 479 V520', thick:true},
-  {el:'cabN', a:'BODY',b:'BN',   d:'M920 520 H140 V354 H105 V368', thick:true},
-];
 function pathEnds(d){
   const tk = d.match(/[MHVL]|-?\d+(\.\d+)?/g); let x = 0, y = 0, cmd = '', first = null; const pts = [];
   for (let i = 0; i < tk.length; i++){
@@ -977,8 +1565,6 @@ function pathEnds(d){
   }
   return {a:first, b:pts[pts.length - 1]};
 }
-WIRES.forEach(w => { const e = pathEnds(w.d); w.p0 = e.a; w.p1 = e.b; w.off = 0; });
-
 function el(tag, attrs, parent){
   const n = document.createElementNS(NS, tag);
   for (const k in attrs) n.setAttribute(k, attrs[k]);
@@ -995,40 +1581,20 @@ function drawStatic(){
   </defs>
   <g id="gBack"></g><g id="gWires"></g><g id="gParts"></g><g id="gFault"></g><g id="gTP"></g><g id="gTray"></g><g id="gCables"></g><g id="gTips"></g>`;
   G = {back:$('#gBack'), wires:$('#gWires'), parts:$('#gParts'), fault:$('#gFault'), tp:$('#gTP'), tray:$('#gTray'), cables:$('#gCables'), tips:$('#gTips')};
-
   G.back.innerHTML = `
-    <rect x="150" y="34" width="122" height="300" rx="10" class="blk2"/>
-    <text x="211" y="350" text-anchor="middle" class="t-sub">FUSE BLOCK</text>
     <rect x="22" y="378" width="116" height="74" rx="8" class="blk"/>
     <rect x="45" y="370" width="20" height="9" rx="2" class="post"/><rect x="95" y="370" width="20" height="9" rx="2" class="post"/>
     <text x="80" y="425" text-anchor="middle" class="t-blk">BATTERY</text>
-    <text x="80" y="441" text-anchor="middle" class="t-mono">12.6 V</text>
-    <text x="736" y="64" class="t-tiny">ALWAYS HOT · TO OTHER CIRCUITS</text>
-    <path d="M726 56 L732 60 L726 64" fill="none" stroke="#4C5968" stroke-width="1.4"/>
-    <text x="520" y="511" text-anchor="middle" class="t-tiny">BODY / CHASSIS GROUND</text>
-    <text x="290" y="111" text-anchor="middle" class="t-wire">W2</text>
-    <text x="512" y="111" text-anchor="middle" class="t-wire">W3</text>
-    <text x="736" y="111" text-anchor="middle" class="t-wire">W4</text>
-    <text x="900" y="238" text-anchor="middle" class="t-wire">W5</text>
-    <text x="400" y="51" text-anchor="middle" class="t-wire">W6</text>
-    <text x="290" y="291" text-anchor="middle" class="t-wire">W7</text>
-    <text x="512" y="291" text-anchor="middle" class="t-wire">W8</text>
-    <text x="736" y="291" text-anchor="middle" class="t-wire">W9</text>
-    <text x="840" y="418" text-anchor="middle" class="t-wire">W10</text>
-    <text x="80" y="170" text-anchor="middle" class="t-tiny">+ CABLE</text>
-    <text x="300" y="166" text-anchor="middle" class="t-tiny">CIRCUIT 1</text>
-    <text x="300" y="346" text-anchor="middle" class="t-tiny">CIRCUIT 2</text>
-    <text x="872" y="182" class="t-blk">LAMP 1</text><text x="872" y="196" class="t-mono">27 W · 2.1 A</text>
-    <text x="872" y="362" class="t-blk">LAMP 2</text><text x="872" y="376" class="t-mono">27 W · 2.1 A</text>
-    <text x="571" y="88" text-anchor="middle" class="t-blk">C1</text>
-    <text x="940" y="486" class="t-tiny">EYELET</text>`;
-
+    <text x="80" y="441" text-anchor="middle" class="t-mono">12.6 V</text>` + C.back;
+  const defs = svg.querySelector('defs');
   for (const w of WIRES){
+    const e = pathEnds(w.d); w.p0 = e.a; w.p1 = e.b; w.off = 0;
     const g = el('g', {}, G.wires);
-    const grad = el('linearGradient', {id:'g-' + w.el, gradientUnits:'userSpaceOnUse', x1:w.p0[0], y1:w.p0[1], x2:w.p1[0], y2:w.p1[1]}, svg.querySelector('defs'));
+    const grad = el('linearGradient', {id:'g-' + w.el + (w.sign ? 't' : ''), gradientUnits:'userSpaceOnUse', x1:w.p0[0], y1:w.p0[1], x2:w.p1[0], y2:w.p1[1] + (w.p0[0] === w.p1[0] && w.p0[1] === w.p1[1] ? 1 : 0)}, defs);
     w.stops = [0, 1, 2, 3].map(() => el('stop', {}, grad));
-    w.glow = el('path', {d:w.d, class:'glow', stroke:`url(#g-${w.el})`}, g);
-    w.line = el('path', {d:w.d, class:'w' + (w.thick ? ' thick' : ''), stroke:`url(#g-${w.el})`}, g);
+    const gid = `url(#g-${w.el}${w.sign ? 't' : ''})`;
+    w.glow = el('path', {d:w.d, class:'glow', stroke:gid}, g);
+    w.line = el('path', {d:w.d, class:'w' + (w.thick ? ' thick' : ''), stroke:gid}, g);
     if (!w.noflow) w.flow = el('path', {d:w.d, class:'flow'}, g);
     if (w.brk){
       const dx = w.p1[0] - w.p0[0], dy = w.p1[1] - w.p0[1];
@@ -1037,103 +1603,23 @@ function drawStatic(){
   }
 }
 
-function fuseSVG(k, y){
-  const st = S.fuse[k], rating = k === 'F3' ? 15 : 10;
-  const body = st === 'out'
-    ? `<rect x="198" y="${y - 9}" width="44" height="18" rx="4" fill="url(#hatch)" stroke="#2A3644" stroke-dasharray="3 3"/><text x="220" y="${y + 3}" text-anchor="middle" class="t-tiny">PULLED</text>`
-    : `<rect x="198" y="${y - 9}" width="44" height="18" rx="4" class="fz${st === 'blown' ? ' blown' : ''}"/>
-       <path d="M204 ${y} C212 ${y - 6} 216 ${y + 6} 220 ${y} S228 ${y - 6} 236 ${y}" class="fzel${st === 'blown' ? ' blown' : ''}"/>`;
-  return `<g class="act" data-act="fuse:${k}" role="button" aria-label="Fuse ${k}">
-    <rect x="186" y="${y - 32}" width="68" height="46" class="hitr"/>
-    <text x="220" y="${y - 15}" text-anchor="middle" class="t-sub" ${st === 'blown' ? 'style="fill:#FF8A80"' : ''}>${k} · ${rating} A${st === 'blown' ? ' · BLOWN' : ''}</text>
-    ${body}</g>`;
-}
-function switchSVG(k, y){
-  const on = S.sw[k], v = R.v[k + 'i'];
-  const col = S.colors ? vcol(v) : NEUTRAL;
-  const burnt = k === 'S1' && S.fault === 'rS1' && showFault();
-  const lev = on ? `M338 ${y} L382 ${y}` : `M338 ${y} L378 ${y - 22}`;
-  return `<g class="act" data-act="sw:${k}" role="button" aria-label="Switch ${k}">
-    <rect x="318" y="${y - 40}" width="84" height="56" rx="8" class="hitr"/>
-    <rect x="320" y="${y - 30}" width="80" height="44" rx="9" fill="none" class="hl" stroke="transparent"/>
-    <text x="360" y="${y - 33}" text-anchor="middle" class="t-sub">${k} · ${on ? 'ON' : 'OFF'}</text>
-    <path d="M330 ${y} H338 M382 ${y} H390" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
-    <path d="${lev}" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>
-    <circle cx="338" cy="${y}" r="3.4" fill="#C9D3DD"/><circle cx="382" cy="${y}" r="3.4" fill="${burnt ? '#7a3a10' : '#C9D3DD'}"/>
-    ${burnt ? `<circle cx="382" cy="${y}" r="7" fill="none" stroke="#B4561C" stroke-width="2" opacity=".8"/>` : ''}</g>`;
-}
-function bulbSVG(n, y0){
-  const plugged = S.plug['L' + n], dx = plugged ? 0 : 24;
-  const b = R.bright['lamp' + n], open = n === 1 && S.fault === 'openBulb';
-  const vp = R.v['LB' + n + 'p'], vn = R.v['LB' + n + 'n'];
-  const cp = S.colors ? vcol(vp) : NEUTRAL, cn = S.colors ? vcol(vn) : NEUTRAL;
-  const fil = b > .01 ? `rgb(255,${Math.round(150 + 90 * Math.min(1, b))},${Math.round(60 + 120 * Math.min(1, b))})` : '#5A5340';
-  const cy = y0 + 35;
-  const filament = open && showFault()
-    ? `<path d="M837 ${cy + 6} L840 ${cy - 2} M850 ${cy - 2} L853 ${cy + 6}" stroke="#5A5340" stroke-width="1.6" fill="none"/>`
-    : `<path d="M837 ${cy + 6} L840 ${cy - 3} L843 ${cy + 3} L846 ${cy - 3} L849 ${cy + 3} L853 ${cy + 6}" stroke="${fil}" stroke-width="1.6" fill="none" stroke-linejoin="round"/>`;
-  return `<g class="act" data-act="plug:L${n}" role="button" aria-label="Lamp ${n} plug">
-    <rect x="766" y="${y0 - 16}" width="104" height="104" class="hitr"/>
-    <rect x="768" y="${y0 - 14}" width="24" height="98" rx="5" class="blk"/>
-    <g transform="translate(${dx} 0)">
-      <circle cx="845" cy="${cy}" r="${36 + 14 * Math.min(1, b)}" fill="url(#gGlow)" opacity="${Math.min(1, b * 1.15)}"/>
-      <rect x="794" y="${y0 - 14}" width="22" height="98" rx="5" class="blk"/>
-      <path d="M804 ${y0} H845 V${cy - 17}" fill="none" stroke="${cp}" stroke-width="2.4"/>
-      <path d="M845 ${cy + 17} V${y0 + 70} H804" fill="none" stroke="${cn}" stroke-width="2.4"/>
-      <circle cx="845" cy="${cy}" r="17" fill="${b > .02 ? 'rgba(255,214,140,' + (0.1 + 0.25 * Math.min(1, b)) + ')' : '#12171D'}" stroke="#7D8A98" stroke-width="1.3"/>
-      ${filament}
-    </g>
-    ${plugged ? '' : `<text x="792" y="${y0 + 98}" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>`}</g>`;
-}
-function c1SVG(){
-  const dx = S.plug.C1 ? 0 : 8;
-  return `<g class="act" data-act="plug:C1" role="button" aria-label="Connector C1">
-    <rect x="536" y="96" width="70" height="230" class="hitr"/>
-    <rect x="${548 - dx}" y="98" width="22" height="224" rx="5" class="blk"/>
-    <rect x="${572 + dx}" y="98" width="22" height="224" rx="5" class="blk"/>
-    ${S.plug.C1 ? '' : '<text x="571" y="338" text-anchor="middle" class="t-tiny" style="fill:var(--warn)">UNPLUGGED</text>'}</g>`;
-}
-function partsSVG(){
-  const gnd = (x, y) => `<path d="M${x - 9} ${y} H${x + 9} M${x - 6} ${y + 4} H${x + 6} M${x - 3} ${y + 8} H${x + 3}" class="gsym"/>`;
-  let h = fuseSVG('F3', 60) + fuseSVG('F1', 120) + fuseSVG('F2', 300) + switchSVG('S1', 120) + switchSVG('S2', 300) + c1SVG() + bulbSVG(1, 150) + bulbSVG(2, 330);
-  const crust = S.fault === 'rG' && showFault();
-  h += `<circle cx="920" cy="468" r="11" fill="#141D27" stroke="#7D8A98" stroke-width="2"/>`;
-  if (crust) h += `<circle cx="913" cy="462" r="3" class="crust"/><circle cx="927" cy="473" r="3.6" class="crust"/><circle cx="926" cy="460" r="2.4" class="crust"/>`;
-  return h;
-}
-const showFault = () => S.mode !== 'mystery' || (S.mystery && S.mystery.revealed);
-function faultSVG(){
-  if (!S.fault || !showFault()) return '';
-  const tag = (x, y, t, cls = 'ftag') => { const w = t.length * 6.2 + 14; return `<g class="${cls}"><rect x="${x - w / 2}" y="${y - 9}" width="${w}" height="16" rx="8"/><text x="${x}" y="${y + 3}" text-anchor="middle">${t}</text></g>`; };
-  const gnd = (x, y) => `<path d="M${x - 9} ${y} H${x + 9} M${x - 6} ${y + 4} H${x + 6} M${x - 3} ${y + 8} H${x + 3}" class="gsym" style="stroke:var(--fail)"/>`;
-  const spark = (x, y) => `<path d="M${x - 5} ${y - 5} L${x + 5} ${y + 5} M${x + 5} ${y - 5} L${x - 5} ${y + 5} M${x} ${y - 7} V${y + 7}" class="spark"/>`;
-  switch (S.fault){
-    case 'rC1': return `<circle cx="566" cy="113" r="3.4" class="crust"/><circle cx="577" cy="127" r="4" class="crust"/><circle cx="572" cy="110" r="2.4" class="crust"/>${tag(571, 360, 'CORROSION ' + S.faultR.toFixed(1) + ' Ω')}`;
-    case 'rS1': return tag(360, 148, 'BURNT ' + S.faultR.toFixed(1) + ' Ω');
-    case 'rG':  return tag(920, 444, 'LOOSE ' + S.faultR.toFixed(1) + ' Ω');
-    case 'strands': return `<rect x="420" y="113" width="24" height="14" rx="3" fill="#080B0F"/><path d="M420 120 C426 114 438 126 444 120 M420 120 C428 125 436 114 444 120 M424 117 l-3 -6 M440 123 l3 6" stroke="#C9A36A" stroke-width="1.2" fill="none"/>${tag(432, 146, 'FEW STRANDS')}`;
-    case 'openW3': return `<rect x="424" y="112" width="16" height="16" fill="#080B0F"/>${tag(432, 146, 'OPEN')}`;
-    case 'openW5': return `<rect x="856" y="238" width="16" height="16" fill="#080B0F"/>${tag(864, 272, 'OPEN')}`;
-    case 'openBulb': return tag(845, 140, 'FILAMENT OPEN');
-    case 'sgW3': return `<path d="M475 120 V156" class="short"/>${gnd(475, 158)}${spark(475, 124)}${tag(475, 186, 'SHORT TO GROUND')}`;
-    case 'sgW4': return `<path d="M705 120 V156" class="short"/>${gnd(705, 158)}${spark(705, 124)}${tag(705, 186, 'SHORT TO GROUND')}`;
-    case 'sB': return `<path d="M690 120 V60" class="short"/>${spark(690, 90)}${tag(690, 88 + 0, 'SHORT TO B+')}`;
-    case 'xf': return `<path d="M650 120 V300" class="short"/>${spark(650, 210)}${tag(650, 230, 'W4 ⇄ W9 SHORT')}`;
-  }
-  return '';
-}
 function trayStatic(){
   const lab = (x, t, s) => `<text x="${x}" y="566" class="trayl">${t}</text><text x="${x}" y="580" class="trays">${s}</text>`;
   const sep = x => `<path d="M${x} 552 V592" class="traysep"/>`;
   const ldIcon = (!S.tips.ldA && !S.tips.ldB) ? `<circle cx="389" cy="566" r="6" fill="#12171D" stroke="#FF9B42" stroke-width="1.3"/><path d="M389 572 V584" stroke="#FF9B42" stroke-width="1.2"/>` : '';
   const jIcon = (!S.tips.jA && !S.tips.jB) ? `<rect x="692" y="562" width="14" height="7" rx="2" fill="#134A44" stroke="#5FD4C4"/>` : '';
+  let spots = '';
+  for (const s of SPOT) if (s.startsWith('tool:')){
+    const tool = s.slice(5);
+    for (const id in TIPS) if (TIPS[id].tool === tool && !S.tips[id]) spots += `<circle class="spotring" cx="${TIPS[id].home[0]}" cy="${TIPS[id].home[1] - 22}" r="18"/>`;
+  }
   return `<rect x="10" y="546" width="980" height="52" rx="12" class="tray"/>
     ${lab(114, 'DMM', 'leads → meter')}${sep(176)}
     ${lab(266, 'TEST LIGHT', '≈ 0.25 A')}${sep(344)}
     ${ldIcon}${lab(424, 'LOAD TOOL', '2.1 A bulb')}${sep(508)}
     ${lab(568, 'POWER PROBE', '8 A breaker')}${sep(656)}
     ${jIcon}${lab(734, 'FUSED JUMPER', '10 A fuse')}${sep(828)}
-    ${lab(886, 'AMP CLAMP', 'no circuit break')}`;
+    ${lab(886, 'AMP CLAMP', 'no circuit break')}${spots}`;
 }
 
 /* tip shapes, drawn pointing at (0,0) with the body toward -y */
@@ -1158,7 +1644,6 @@ function tipShape(id){
       <g class="tbody"><path d="M-3 -14 L3 -14 L6.5 -21 L6.5 -52 Q6.5 -56 0 -56 Q-6.5 -56 -6.5 -52 L-6.5 -21 Z" fill="#2A2140" stroke="#B48CFF" stroke-width="1.1"/>
       <circle cx="0" cy="-42" r="2.8" fill="${led}"/>${S.pp !== 'off' && !S.ppTrip ? `<circle cx="0" cy="-42" r="6" fill="${led}" opacity=".3"/>` : ''}</g>`;
   }
-  // clamp
   return `<g class="tbody"><circle cx="0" cy="0" r="10.5" fill="none" stroke="#8CCBF3" stroke-width="3"/>
     <path d="M-6 -10 L6 -10 L5 -40 Q5 -42 0 -42 Q-5 -42 -5 -40 Z" fill="#14283A" stroke="#8CCBF3" stroke-width="1"/></g>`;
 }
@@ -1168,7 +1653,7 @@ function tipXY(id){
   const at = S.tips[id];
   if (at){
     const p = t.kind === 'clamp' ? CLAMP[at] : tpPos(at);
-    return {x:p.x, y:p.y, ang:t.ang, out:true};
+    if (p) return {x:p.x, y:p.y, ang:t.ang, out:true};
   }
   return {x:t.home[0], y:t.home[1], ang:0, out:false};
 }
@@ -1186,14 +1671,11 @@ function drawTips(){
   let cab = '', tips = '';
   const P = {};
   for (const id in TIPS) P[id] = tipXY(id);
-  // cables to the tray (dmm, power probe, clamp)
   for (const id of ['dmmR','dmmB','ppTip','clamp']) if (P[id].out) cab += `<path d="${cablePath(backOf(id, P[id]), P[id].ang, ANCHOR[id])}" class="cable" stroke="${CABLE_COL[id]}"/>`;
-  // test light clip lead runs to the light's handle
   if (P.tlTip.out || P.tlClip.out){
     const a = backOf('tlTip', P.tlTip), b = backOf('tlClip', P.tlClip);
     cab += `<path d="${cablePath(b, P.tlClip.ang, a, [0, -40])}" class="cable" stroke="${CABLE_COL.tlClip}"/>`;
   }
-  // load tool and fused jumper: two clips joined through a bulb / fuse
   for (const [A, B, kind] of [['ldA','ldB','ld'], ['jA','jB','jmp']]){
     if (!P[A].out && !P[B].out) continue;
     const a = backOf(A, P[A]), b = backOf(B, P[B]);
@@ -1203,7 +1685,7 @@ function drawTips(){
       const br = R.bright.ld || 0;
       cab += `<g transform="translate(${m[0].toFixed(1)} ${m[1].toFixed(1)})"><circle r="${16 + 16 * Math.min(1, br)}" fill="url(#gGlow)" opacity="${Math.min(1, br * 1.2)}"/>
         <circle r="8" fill="${br > .02 ? 'rgba(255,214,140,' + (0.15 + 0.3 * Math.min(1, br)) + ')' : '#12171D'}" stroke="#FF9B42" stroke-width="1.3"/>
-        <path d="M-4 3 L-2.5 -2 L-1 2 L1 -2 L2.5 2 L4 3" fill="none" stroke="${br > .02 ? '#FFE7A8' : '#5A5340'}" stroke-width="1.2"/></g>`;
+        <path d="M-4 3 L-2.5 -2 L-1 2 L1 -2 L2.5 2 L4 3" fill="none" stroke="${br > .004 ? '#FFE7A8' : '#5A5340'}" stroke-width="1.2"/></g>`;
     } else {
       cab += `<g transform="translate(${m[0].toFixed(1)} ${m[1].toFixed(1)})"><rect x="-8" y="-4.5" width="16" height="9" rx="2.5" fill="${S.jmpBlown ? '#2A1512' : '#134A44'}" stroke="${S.jmpBlown ? '#FF5A4E' : '#5FD4C4'}"/>${S.jmpBlown ? '<path d="M-4 0 H-1 M1 0 H4" stroke="#FF5A4E" stroke-width="1.2"/>' : '<path d="M-5 0 H5" stroke="#5FD4C4" stroke-width="1.2"/>'}</g>`;
     }
@@ -1213,7 +1695,8 @@ function drawTips(){
   for (const id of order){
     const p = P[id];
     const cls = 'tip' + (S.sel === id ? ' sel' : '') + (drag && drag.id === id ? ' dragging' : '');
-    tips += `<g class="${cls}" data-tip="${id}" tabindex="0" role="button" aria-label="${TIPS[id].nm}${S.tips[id] ? ' on ' + (TIPS[id].kind === 'clamp' ? CLAMP[S.tips[id]].nm : nm(S.tips[id])) : ' in tray'}" transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.ang})">
+    const where = S.tips[id] ? ' on ' + (TIPS[id].kind === 'clamp' ? (CLAMP[S.tips[id]] || {}).nm : nm(S.tips[id])) : ' in tray';
+    tips += `<g class="${cls}" data-tip="${id}" tabindex="0" role="button" aria-label="${TIPS[id].nm}${where}" transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.ang})">
       ${tipShape(id)}<rect x="-10" y="${-TIPS[id].L}" width="20" height="${TIPS[id].L - (TIPS[id].kind === 'clamp' ? 12 : 9)}" fill="transparent"/></g>`;
   }
   G.tips.innerHTML = tips;
@@ -1228,21 +1711,18 @@ function drawTPs(){
     const spot = SPOT.has('tp:' + id);
     h += `<g class="tp${near === id ? ' near' : ''}${armed && !kindClamp ? ' armed' : ''}" data-tp="${id}" tabindex="0" role="button" aria-label="Test point ${t.nm}" transform="translate(${p.x} ${p.y})">
       <circle class="tph" r="12"/>${spot ? '<circle class="spotring" r="10"/>' : ''}<circle class="tpring" r="9"/><circle class="tpd" r="4.6" fill="${fill}"/></g>`;
-    const lx = (t.lx ?? t.x) + (p.x - t.x), ly = t.ly ?? (t.y + 18);
-    h += `<text x="${lx}" y="${ly}" text-anchor="${t.a || 'middle'}" class="t-tp">${t.l}</text>`;
+    if (t.l){ const lx = (t.lx ?? t.x) + (p.x - t.x), ly = t.ly ?? (t.y + 18); h += `<text x="${lx}" y="${ly}" text-anchor="${t.a || 'middle'}" class="t-tp">${t.l}</text>`; }
   }
   if (kindClamp) for (const id in CLAMP){
     const c = CLAMP[id];
     h += `<g class="tp${near === id ? ' near' : ''} armed" data-clamp="${id}" transform="translate(${c.x} ${c.y})"><circle class="tph" r="13"/><circle class="tpring" r="10" style="opacity:.6;stroke-dasharray:3 3"/></g>`;
   }
-  if (SPOT.has('tool:clamp') && !S.tips.clamp) h += `<circle class="spotring" cx="432" cy="120" r="14"/>`;
+  for (const s of SPOT) if (s.startsWith('cl:') && CLAMP[s.slice(3)] && S.tips.clamp !== s.slice(3)){ const c = CLAMP[s.slice(3)]; h += `<circle class="spotring" cx="${c.x}" cy="${c.y}" r="14"/>`; }
   G.tp.innerHTML = h;
 }
 
 /* ================= render ================= */
-let SPOT = new Set();
-function render(){
-  // wires
+function paintWires(){
   for (const w of WIRES){
     const va = R.v[w.a] ?? 0, vb = R.v[w.b] ?? 0;
     const ca = S.colors ? vcol(va) : NEUTRAL, cb = S.colors ? vcol(vb) : NEUTRAL;
@@ -1252,18 +1732,21 @@ function render(){
     const cols = brk ? [ca, ca, cb, cb] : [ca, mid, mid, cb];
     [0, f, f, 1].forEach((o, i) => { w.stops[i].setAttribute('offset', o); w.stops[i].setAttribute('stop-color', cols[i]); });
     if (w.flow){
-      const I = R.I[w.el] || 0;
+      const I = (R.I[w.el] || 0) * (w.sign || 1);
       w.I = I;
       w.flow.style.opacity = (S.colors && Math.abs(I) > .01) ? Math.min(.95, .35 + Math.abs(I) / 3) : 0;
     }
   }
-  G.parts.innerHTML = partsSVG();
-  G.fault.innerHTML = faultSVG();
+}
+function render(){
+  paintWires();
+  G.parts.innerHTML = C.parts();
+  G.fault.innerHTML = S.fault && showFault() ? C.fault() : '';
   G.tray.innerHTML = trayStatic();
   drawTPs();
   drawTips();
   renderMeter();
-  renderCtrls();
+  $('#ctrls').innerHTML = C.ctrls();
   renderNote();
   renderSpots();
   $('#legend').classList.toggle('off', !S.colors);
@@ -1279,7 +1762,6 @@ function renderMeter(){
   $('#lcdUnit').textContent = RD.off ? '' : RD.unit;
   $('#lcdSub').textContent = RD.sub;
   $('#ann').innerHTML = RD.off ? '' : RD.ann.map(([t, c]) => `<span class="${c}">${t}</span>`).join('');
-  // knob
   const POS = {OFF:-135, V:-45, R:45, A:135};
   const LAB = {OFF:'OFF', V:'V', R:'Ω', A:'A'};
   let k = `<circle cx="52" cy="52" r="27" fill="#0B1015" stroke="#2A3644" stroke-width="1.5"/>
@@ -1297,7 +1779,6 @@ function renderMeter(){
   $('#relBtn').disabled = !(d.knob === 'R' && !RD.live && !RD.ol && S.tips.dmmR && S.tips.dmmB);
   $('#relBtn').classList.toggle('lit', d.knob === 'R' && d.rel > 0);
   $('#recBtn').disabled = RD.off;
-  // interpretation
   const it = RD.it || {t:'Meter off', p:'Turn the knob to a function: V for volts, Ω for resistance, A for amps.'};
   const box = $('#interp');
   box.className = 'interp' + (it.warn ? ' warn' : '');
@@ -1306,11 +1787,10 @@ function renderMeter(){
   if (d.blown) m += `<div class="mistake"><span>Meter fuse blown. Amps read 0 until it’s replaced.</span><button type="button" class="btn small" data-act="meterfuse">Replace meter fuse</button></div>`;
   if (RD.warn) m += `<div class="mistake"><span>${RD.warn}</span></div>`;
   $('#mistake').innerHTML = m;
-  // other tools
   const chips = [];
-  if (S.tips.clamp){
-    const c = CLAMP[S.tips.clamp], I = Math.abs(R.I[c.el] || 0);
-    chips.push(`<span class="tchip"><i style="background:var(--clamp)"></i>Clamp on ${c.nm.replace(/^the /,'')} <b>${I < .05 ? '0.0' : I.toFixed(2)} A</b></span>`);
+  if (S.tips.clamp && CLAMP[S.tips.clamp]){
+    const c = CLAMP[S.tips.clamp], I = Math.abs(R.I[c.el] || 0), note = C.clampNote(c.el, I);
+    chips.push(`<span class="tchip"><i style="background:var(--clamp)"></i>Clamp on ${c.nm.replace(/^the /,'')} <b>${I < .05 ? '0.0' : I.toFixed(2)} A</b>${note ? `<span class="chip ${note.cls}">${note.txt}</span>` : ''}</span>`);
   }
   const br = x => x > .6 ? 'bright' : x > .15 ? 'dim' : x > .004 ? 'faint glow' : 'off';
   if (S.tips.tlTip && S.tips.tlClip) chips.push(`<span class="tchip"><i style="background:var(--tl)"></i>Test light <b>${br(R.bright.tl)}</b></span>`);
@@ -1318,19 +1798,6 @@ function renderMeter(){
   if (S.tips.ppTip) chips.push(`<span class="tchip"><i style="background:var(--pp)"></i>Power probe <b>${S.ppTrip ? 'tripped' : S.pp === 'B' ? '+B on' : S.pp === 'G' ? 'GND on' : 'off'}</b></span>`);
   if (S.tips.jA && S.tips.jB) chips.push(`<span class="tchip"><i style="background:var(--jmp)"></i>Fused jumper <b>${S.jmpBlown ? 'blown' : Math.abs(R.I.jmp || 0).toFixed(2) + ' A'}</b></span>`);
   $('#toolChips').innerHTML = chips.join('');
-}
-
-function renderCtrls(){
-  const tg = (act, lbl, val, cls) => `<button type="button" class="tg ${cls}" data-act="${act}">${lbl} <b>${val}</b></button>`;
-  const fz = k => S.fuse[k] === 'in' ? tg('fuse:' + k, k, 'in', 'on') : S.fuse[k] === 'out' ? tg('fuse:' + k, k, 'pulled', 'off') : tg('fuse:' + k, k, 'blown · replace', 'bad');
-  const sw = k => tg('sw:' + k, k, S.sw[k] ? 'on' : 'off', S.sw[k] ? 'on' : '');
-  const pl = (k, lbl, a, b) => tg('plug:' + k, lbl, S.plug[k] ? a : b, S.plug[k] ? '' : 'off');
-  const pp = ['off','B','G'].map(m => `<button type="button" data-act="pp:${m}" aria-pressed="${S.pp === m}">${m === 'off' ? 'Off' : m === 'B' ? '+B' : 'GND'}</button>`).join('');
-  $('#ctrls').innerHTML = `
-    <div class="cg"><span>Circuit 1</span>${sw('S1')}${fz('F1')}${pl('L1', 'Lamp 1', 'in', 'out')}</div>
-    <div class="cg"><span>Circuit 2</span>${sw('S2')}${fz('F2')}${pl('L2', 'Lamp 2', 'in', 'out')}</div>
-    <div class="cg"><span>Shared</span>${pl('C1', 'C1', 'mated', 'apart')}${fz('F3')}</div>
-    <div class="cg"><span>Probe</span><div class="seg mini">${pp}</div>${S.ppTrip ? tg('pp:reset', 'Breaker', 'reset', 'bad') : ''}</div>`;
 }
 
 function renderSpots(){
@@ -1341,35 +1808,33 @@ function renderSpots(){
   }
 }
 
-/* ================= flow animation ================= */
+/* ================= animation ================= */
 let lastT = 0;
 function tick(t){
   const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t;
-  if (!reduceMotion && R && S.colors) for (const w of WIRES){
-    if (!w.flow || !w.I || Math.abs(w.I) < .01) continue;
-    const sp = Math.min(120, 26 * Math.sqrt(Math.abs(w.I)) + 8);
-    w.off -= Math.sign(w.I) * sp * dt;
-    w.flow.style.strokeDashoffset = w.off.toFixed(1);
+  if (!reduceMotion && R){
+    if (S.colors) for (const w of WIRES){
+      if (!w.flow || !w.I || Math.abs(w.I) < .01) continue;
+      const sp = Math.min(120, 26 * Math.sqrt(Math.abs(w.I)) + 8);
+      w.off -= Math.sign(w.I) * sp * dt;
+      w.flow.style.strokeDashoffset = w.off.toFixed(1);
+    }
+    if (R.rpm > 30){
+      FAN.a = (FAN.a + R.rpm / 22 * dt * 6) % 360;
+      const f = svg.querySelector('#fan');
+      if (f) f.setAttribute('transform', `rotate(${FAN.a.toFixed(1)} 690 170)`);
+    }
   }
   requestAnimationFrame(tick);
 }
 
 /* ================= update cycle ================= */
 function update(o = {}){
-  const r = solveRun();
-  if (!r){ toast('Circuit could not settle. Resetting.', 'bad'); bench({S1:true}); R = solveRun(); }
-  else R = r;
+  let r = solveRun();
+  if (r){ R = r; if (C.after && C.after()){ const ev = r.ev; r = solveRun(); if (r){ r.ev = ev.concat(r.ev); R = r; } } }
+  if (!r){ toast('Circuit could not settle. Resetting.', 'bad'); bench(C.start); R = solveRun(); }
   for (const [m, c] of R.ev) toast(m, c);
-  if (o.keepNote){
-    renderMeter(); G.parts.innerHTML = partsSVG(); G.fault.innerHTML = faultSVG(); drawTips(); drawTPs();
-    for (const w of WIRES){
-      const va = R.v[w.a] ?? 0, vb = R.v[w.b] ?? 0;
-      const ca = S.colors ? vcol(va) : NEUTRAL, cb = S.colors ? vcol(vb) : NEUTRAL, mid = S.colors ? vcol((va + vb) / 2) : NEUTRAL;
-      [ca, mid, mid, cb].forEach((c, i) => w.stops[i].setAttribute('stop-color', c));
-      if (w.flow){ w.I = R.I[w.el] || 0; w.flow.style.opacity = (S.colors && Math.abs(w.I) > .01) ? Math.min(.95, .35 + Math.abs(w.I) / 3) : 0; }
-    }
-    return;
-  }
+  if (o.keepNote){ paintWires(); renderMeter(); G.parts.innerHTML = C.parts(); G.fault.innerHTML = S.fault && showFault() ? C.fault() : ''; drawTips(); drawTPs(); return; }
   render();
 }
 function toast(msg, cls = ''){
@@ -1378,6 +1843,53 @@ function toast(msg, cls = ''){
   box.appendChild(n);
   while (box.children.length > 3) box.firstChild.remove();
   setTimeout(() => { n.classList.add('out'); setTimeout(() => n.remove(), 450); }, 4200);
+}
+
+/* ================= bench state ================= */
+function setFault(id, r){
+  S.fault = id || null;
+  const f = id && FBY[id];
+  S.faultR = r ?? (f && f.adj) ?? 0;
+  if (C.onFault) C.onFault(S.fault);
+  for (const k in S.fuse) if (S.fuse[k] === 'blown') S.fuse[k] = 'in';
+  NLC = {};
+}
+function bench(o = {}){
+  const d = C.defaults;
+  S.sw = {...d.sw}; S.fuse = {...d.fuse}; S.plug = {...d.plug}; S.ign = !!d.ign; S.speed = d.speed || 'OFF';
+  S.fault = null; S.faultR = 0; S.pp = 'off'; S.ppTrip = false; S.jmpBlown = false;
+  S.stuck = false; S.stops = 0; S.motRun = false;
+  S.dmm = {knob:'V', jack:'V', rel:0, blown:false};
+  S.tips = Object.fromEntries(Object.keys(TIPS).map(k => [k, null]));
+  S.sel = null; NLC = {};
+  for (const k in o){
+    if (k in S.sw) S.sw[k] = o[k];
+    else if (k in S.fuse) S.fuse[k] = o[k];
+    else if (k in S.plug) S.plug[k] = o[k];
+  }
+  if (o.ign != null) S.ign = o.ign;
+  if (o.speed) S.speed = o.speed;
+  if (o.fault) setFault(o.fault, o.fr);
+  if (o.knob) S.dmm.knob = o.knob;
+  if (o.jack) S.dmm.jack = o.jack;
+  if (o.tips) Object.assign(S.tips, o.tips);
+}
+function loadCircuit(id){
+  C = CIRCUITS[id] || LAMP; S.cid = C.id;
+  TP = C.TP; TP_IDS = Object.keys(TP); CLAMP = C.CLAMP; WIRES = C.WIRES; FAULTS = C.FAULTS; ITEM = C.ITEM; FTYPES = C.FTYPES;
+  FBY = Object.fromEntries(FAULTS.map(f => [f.id, f]));
+  $('#pickName').textContent = C.name; $('#pickSub').textContent = C.sub;
+  $('#circuit').setAttribute('aria-label', `${C.name} schematic with test points and tool tray`);
+  drawStatic();
+}
+function switchCircuit(id){
+  if (id === S.cid) return;
+  loadCircuit(id);
+  S.lesson = null; S.step = 0; S.snaps = {}; S.answered = {}; SPOT = new Set();
+  if (S.mode === 'mystery'){ S.mystery = null; S.colors = false; }
+  bench(C.start);
+  try { history.replaceState(null, '', '#' + id); } catch (_) {}
+  syncBar(); update();
 }
 
 /* ================= actions ================= */
@@ -1389,6 +1901,12 @@ function act(a){
     else { if (S.fuse[v] === 'blown') toast(`New ${v} installed.`, 'ok'); S.fuse[v] = 'in'; }
   }
   else if (k === 'plug') S.plug[v] = !S.plug[v];
+  else if (k === 'ign') S.ign = v === 'toggle' ? !S.ign : v === '1';
+  else if (k === 'spd') S.speed = v;
+  else if (k === 'tap'){
+    if (S.fault === 'dead' && S.stuck){ S.stuck = false; toast('You tapped the motor. The armature moved off the dead spot.', 'ok'); }
+    else toast('You tapped the motor.');
+  }
   else if (k === 'pp'){ if (v === 'reset') S.ppTrip = false; else S.pp = v; }
   else if (k === 'meterfuse'){ S.dmm.blown = false; toast('Meter fuse replaced.', 'ok'); }
   update();
@@ -1411,11 +1929,7 @@ function nearest(id, x, y){
   } else for (const t of TP_IDS){ const p = tpPos(t), d = Math.hypot(p.x - x, p.y - y); if (d < bd){ bd = d; best = t; } }
   return best;
 }
-function place(id, spot){
-  S.tips[id] = spot; S.sel = null;
-  if (TIPS[id].tool === 'dmm' && S.dmm.knob === 'R' && S.tips.dmmR && S.tips.dmmB && S.tips.dmmR !== S.tips.dmmB) {} // keep REL
-  update();
-}
+function place(id, spot){ S.tips[id] = spot; S.sel = null; update(); }
 svg.addEventListener('pointerdown', e => {
   const g = e.target.closest('[data-tip]');
   if (g){
@@ -1482,12 +1996,11 @@ $('#relBtn').addEventListener('click', () => {
 $('#recBtn').addEventListener('click', () => {
   if (!RD || RD.off) return;
   const fn = {V:'DC V', R:'Ω', A:'DC A'}[S.dmm.knob];
-  const cond = [`S1 ${S.sw.S1 ? 'on' : 'off'}`, `S2 ${S.sw.S2 ? 'on' : 'off'}`];
-  for (const k of ['F1','F2','F3']) if (S.fuse[k] !== 'in') cond.push(`${k} ${S.fuse[k] === 'out' ? 'pulled' : 'blown'}`);
-  if (!S.plug.C1) cond.push('C1 apart'); if (!S.plug.L1) cond.push('lamp 1 out'); if (!S.plug.L2) cond.push('lamp 2 out');
+  const cond = C.cond();
+  for (const k in S.fuse) if (S.fuse[k] !== 'in') cond.push(`${k} ${S.fuse[k] === 'out' ? 'pulled' : 'blown'}`);
   if (S.tips.ldA && S.tips.ldB) cond.push('load tool on');
   if (S.tips.ppTip && S.pp !== 'off') cond.push('power probe ' + (S.pp === 'B' ? '+B' : 'GND'));
-  S.log.push({n:S.log.length + 1, fn, r:S.tips.dmmR ? nm(S.tips.dmmR) : '—', b:S.tips.dmmB ? nm(S.tips.dmmB) : '—', val:`${RD.val} ${RD.unit}`, cond:cond.join(' · ')});
+  S.log.push({n:S.log.length + 1, ckt:C.name, fn, r:S.tips.dmmR ? nm(S.tips.dmmR) : '—', b:S.tips.dmmB ? nm(S.tips.dmmB) : '—', val:`${RD.val} ${RD.unit}`, cond:cond.join(' · ')});
   toast(`Reading ${S.log.length} recorded: ${RD.val} ${RD.unit}`, 'ok');
   renderNote(); renderTabs();
 });
@@ -1496,7 +2009,7 @@ $('#recBtn').addEventListener('click', () => {
 function setMode(m){
   if (S.mode === m) return;
   const was = S.mode; S.mode = m; S.tab = 'main';
-  if (was === 'mystery'){ S.mystery = null; S.fault = null; S.colors = true; }
+  if (was === 'mystery'){ S.mystery = null; S.fault = null; S.colors = true; NLC = {}; }
   if (m === 'guided'){ S.lesson = null; S.step = 0; }
   if (m === 'mystery'){ S.mystery = null; }
   if (m !== 'guided') SPOT = new Set();
@@ -1512,144 +2025,48 @@ function syncBar(){
 $('#modes').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (b) setMode(b.dataset.m); });
 $('#colBtn').addEventListener('click', () => { S.colors = !S.colors; syncBar(); update(); });
 $('#resetBtn').addEventListener('click', () => {
-  if (S.mode === 'mystery' && S.mystery && !S.mystery.revealed){ const f = S.fault, r = S.faultR; bench({S1:false}); S.fault = f; S.faultR = r; }
+  if (S.mode === 'mystery' && S.mystery && !S.mystery.revealed){ const f = S.fault, r = S.faultR; bench(C.mystStart); setFault(f, r); }
   else if (S.mode === 'guided' && S.lesson != null){ enterStep(S.step, true); return; }
-  else bench({S1:true});
-  toast('Bench reset. Tools are back in the tray.');
+  else bench(C.start);
+  toast('Bench reset.');
   update();
 });
 
 /* ---------- circuit picker ---------- */
-const LIB = [
-  {n:'Lamp circuit', s:'Two lamps, shared connector and ground. Every meter test and fault type.', now:true},
-  {n:'Motor circuit', s:'Blower or window motor: higher current, voltage drop under load.'},
-  {n:'Relay circuit', s:'Control side and load side, tested separately.'},
-  {n:'Series / parallel', s:'How one open or short changes the other loads.'},
-];
+function closePop(){ $('#pop').hidden = true; $('#pickBtn').setAttribute('aria-expanded', 'false'); }
 $('#pickBtn').addEventListener('click', e => {
   const pop = $('#pop');
-  if (!pop.hidden){ pop.hidden = true; $('#pickBtn').setAttribute('aria-expanded', 'false'); return; }
-  pop.innerHTML = `<h4>Circuit library <span>1 of 4 built</span></h4><div class="lib">${LIB.map(c => `<button type="button" class="card${c.now ? ' cur' : ''}" ${c.now ? '' : 'aria-disabled="true"'}><span class="ct"><b>${c.n}</b><span class="tag${c.now ? ' now' : ''}">${c.now ? 'Open' : 'Planned'}</span></span><span>${c.s}</span></button>`).join('')}</div>`;
+  if (!pop.hidden){ closePop(); return; }
+  const built = LIB.filter(c => c.id).length;
+  pop.innerHTML = `<h4>Circuit library <span>${built} of ${LIB.length} built</span></h4><div class="lib">${LIB.map(c => {
+    if (c.id){ const k = CIRCUITS[c.id], cur = c.id === S.cid; return `<button type="button" class="card${cur ? ' cur' : ''}" data-c="${c.id}"><span class="ct"><b>${k.name}</b><span class="tag${cur ? ' now' : ''}">${cur ? 'Open' : 'Ready'}</span></span><span>${k.lib}</span></button>`; }
+    return `<button type="button" class="card" aria-disabled="true"><span class="ct"><b>${c.n}</b><span class="tag">Planned</span></span><span>${c.s}</span></button>`;
+  }).join('')}</div>`;
   const r = $('#pickBtn').getBoundingClientRect();
   pop.style.left = Math.max(16, Math.min(r.left, innerWidth - 476)) + 'px';
   pop.style.top = (r.bottom + 8) + 'px';
   pop.hidden = false; $('#pickBtn').setAttribute('aria-expanded', 'true');
   e.stopPropagation();
 });
-document.addEventListener('click', e => { const pop = $('#pop'); if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#pickBtn')){ pop.hidden = true; $('#pickBtn').setAttribute('aria-expanded', 'false'); } });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pop').hidden){ $('#pop').hidden = true; $('#pickBtn').setAttribute('aria-expanded', 'false'); } });
+$('#pop').addEventListener('click', e => { const c = e.target.closest('[data-c]'); if (c){ closePop(); switchCircuit(c.dataset.c); } });
+document.addEventListener('click', e => { const pop = $('#pop'); if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#pickBtn')) closePop(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pop').hidden) closePop(); });
 
 /* ================= lessons ================= */
-const at = (tip, tp) => !!S.tips[tip] && TP[S.tips[tip]] && TP[S.tips[tip]].n === TP[tp].n;
-const gnd = tip => !!S.tips[tip] && TP[S.tips[tip]] && ['BN','BODY','GE'].includes(TP[S.tips[tip]].n);
-const across = (a, b, p, q) => (at(a, p) && at(b, q)) || (at(a, q) && at(b, p));
-const mV = () => S.dmm.knob === 'V' && S.dmm.jack === 'V';
-const mR = () => S.dmm.knob === 'R' && S.dmm.jack === 'V';
-const mA = () => S.dmm.knob === 'A' && S.dmm.jack === 'A';
-const dV = (r, b) => mV() && at('dmmR', r) && (b === 'GND' ? gnd('dmmB') : at('dmmB', b));
-const dR = (p, q) => mR() && across('dmmR', 'dmmB', p, q);
-const loadTo = tp => (at('ldA', tp) && gnd('ldB')) || (at('ldB', tp) && gnd('ldA'));
-
-const LESSONS = [
- {t:'Measure voltage', s:'Available voltage and how a voltmeter connects', steps:[
-  {t:'Meet the bench', set:{S1:true}, b:`Two lamp circuits share connector <b>C1</b> and ground <b>G101</b>. Wire color shows voltage, from slate (0 V) to orange (battery voltage), and moving dots show current. Drag a tool from the tray onto a round test point, or click a tool and then click a test point.`},
-  {t:'Set up the meter', mod:() => { S.dmm.knob = 'OFF'; }, b:`Turn the knob to <b>V</b> (DC volts) and keep the red lead in the <b>VΩ</b> jack. A voltmeter connects in parallel: one probe on each side of what you’re measuring, with the circuit powered.`, goal:['Knob on V, red lead in VΩ', mV], spot:['#knob','#jackV']},
-  {t:'Battery voltage', b:`Put the red probe on <b>BAT+</b> and the black probe on <b>BAT−</b>. A charged battery reads about 12.6 V at rest. With a lamp on, it reads a few hundredths less.`, goal:['Red on BAT+, black on BAT−', () => dV('BATP','BATN')], spot:['tp:BATP','tp:BATN']},
-  {t:'Available voltage at the lamp', b:`Keep black on <b>BAT−</b> and move red to <b>L1+</b>, the lamp socket’s power terminal. It reads a little below battery voltage. That’s normal: it takes a little voltage to push current through the wires and connections.`, goal:['Red on L1+, black on ground', () => dV('L1P','GND')], spot:['tp:L1P']},
-  {t:'Predict: switch off', b:`Leave the probes where they are.`, ask:{q:'With S1 turned off, what will L1+ read?', o:['About 12.6 V','0 V','About 6 V'], a:1, why:'With S1 open, L1+ has no path to the battery. It connects through the bulb to ground, so it sits at 0 V.'}, goal:['Turn S1 off with red still on L1+', () => !S.sw.S1 && at('dmmR','L1P')], spot:['ctl:sw:S1']},
-  {t:'Voltage waits at the open switch', b:`Move red to <b>S1 in</b>.`, ask:{q:'S1 is still off. What does S1 in read?', o:['About 12.6 V','0 V'], a:0, why:'S1 in connects straight back to the battery through W2 and fuse F1. Voltage is there, waiting for the switch to close.'}, goal:['Red on S1 in', () => at('dmmR','S1I')], spot:['tp:S1I']},
-  {t:'Takeaway', b:`A voltmeter only reports the <b>difference</b> between its two probes. Black on a good ground and red on a point gives you the available voltage at that point. It proves voltage is present. It doesn’t prove the circuit can carry current; a voltage drop test checks that.`},
- ]},
- {t:'Voltage drop', s:'Find unwanted resistance while the circuit works', steps:[
-  {t:'What voltage drop tells you', set:{S1:true}, b:`Voltage drop is the voltage lost across part of a circuit <b>while current flows</b>. Put one probe at each end of the section. Specs on this bench: <b>≤ 0.10 V</b> per connection or wire, <b>≤ 0.50 V</b> for the whole power side, and <b>≤ 0.20 V</b> for the whole ground side.`, goal:['Meter on V', mV], spot:['#knob']},
-  {t:'Whole power side', b:`Red on <b>BAT+</b>, black on <b>L1+</b>, S1 on. This adds up every drop between the battery and the lamp.`, goal:['Red on BAT+, black on L1+', () => S.sw.S1 && dV('BATP','L1P')], spot:['tp:BATP','tp:L1P']},
-  {t:'One connection', b:`Now check one connection by itself: red on <b>C1·1a</b>, black on <b>C1·1b</b>. A clean connection loses only a few millivolts.`, goal:['Across C1 pin 1', () => dV('C1A','C1B')], spot:['tp:C1A','tp:C1B']},
-  {t:'Whole ground side', b:`Red on <b>L1−</b>, black on <b>BAT−</b>. Resistance on the ground side hurts as much as on the power side, and the limit is tighter.`, goal:['Red on L1−, black on BAT−', () => dV('L1N','BATN')], spot:['tp:L1N','tp:BATN']},
-  {t:'Predict: no current', b:`Keep the probes on the ground side.`, ask:{q:'Turn S1 off. What does the ground-side drop read?', o:['Same as before','0 V','Battery voltage'], a:1, why:'No current, no voltage drop. A voltage drop test only works with the circuit on and loaded. Even a badly corroded ground reads 0 V when nothing flows.'}, goal:['Turn S1 off', () => !S.sw.S1], spot:['ctl:sw:S1']},
-  {t:'A loose ground', set:{S1:true, fault:'rG', fr:1.0, tips:{dmmR:'L1N', dmmB:'BATN'}}, b:`We loosened ground <b>G101</b>, adding 1 Ω. Lamp 1 is dim. The probes are back on the ground side, L1− to BAT−. Compare this drop with the 0.20 V limit.`, goal:['S1 on, probes on L1− and BAT−', () => S.sw.S1 && dV('L1N','GND')]},
-  {t:'Pin it down', b:`Split the ground side to find the bad spot: red on <b>G101</b>, black on <b>BODY</b>.`, goal:['Red on G101, black on BODY', () => dV('G101','BODY')], ok:'Nearly all of the drop is right there. The fix is to clean and tighten the ground, not to replace parts.', spot:['tp:G101','tp:BODY']},
-  {t:'Shared ground', b:`Lamp 2 uses G101 too.`, ask:{q:'Turn on S2. What happens to lamp 1?', o:['It gets brighter','It gets dimmer','No change'], a:1, why:'Both lamps send their current through G101. More current through the same bad ground means more voltage lost there, so both lamps get dimmer.'}, goal:['Turn S2 on', () => S.sw.S2], spot:['ctl:sw:S2']},
- ]},
- {t:'Measure resistance', s:'Power off, part isolated, leads zeroed', steps:[
-  {t:'How an ohmmeter works', set:{S1:true}, b:`An ohmmeter pushes its own tiny current through the part and measures the voltage it takes. Voltage already in the circuit corrupts that, and any other path in parallel makes the reading too low. The rule: <b>power off, part isolated</b>. Turn the knob to <b>Ω</b>.`, goal:['Knob on Ω', () => S.dmm.knob === 'R'], spot:['#knob']},
-  {t:'Zero the leads', b:`Touch both probes to the <b>same</b> test point, any one. The meter shows about 0.20 Ω: that’s the test leads. Press <b>REL</b> to subtract it from every reading.`, goal:['Leads zeroed with REL', () => S.dmm.rel > .1], spot:['#relBtn']},
-  {t:'The wrong way', b:`With S1 on and F1 installed, measure wire <b>W3</b>: red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['Red on S1 out, black on C1·1a', () => dR('S1O','C1A')], ok:'The meter flags VOLTAGE PRESENT. With current flowing, there’s a small voltage across W3, so the ohmmeter can’t read it.', spot:['tp:S1O','tp:C1A']},
-  {t:'Isolate it', b:`Pull fuse <b>F1</b> and keep the probes on W3. Now nothing powers the circuit and W3 reads by itself. Spec: a wire should read <b>≤ 1.0 Ω</b> end to end.`, goal:['F1 pulled, W3 measured', () => S.fuse.F1 !== 'in' && dR('S1O','C1A')], ok:'A few hundredths of an ohm. W3 is a good wire.', spot:['ctl:fuse:F1']},
-  {t:'A bulb, cold', b:`Unplug lamp 1 and measure the bulb itself: red on <b>B1+</b>, black on <b>B1−</b>.`, ask:{q:'It reads about 0.5 Ω, but a lit bulb runs at about 6 Ω. Is it shorted?', o:['Yes, replace it','No, that’s normal'], a:1, why:'Tungsten has much lower resistance cold. A good bulb reads low; a burned-out bulb reads OL.'}, goal:['Lamp 1 unplugged, bulb measured', () => !S.plug.L1 && dR('B1P','B1N')], spot:['ctl:plug:L1','tp:B1P','tp:B1N']},
-  {t:'A parallel path', b:`Plug lamp 1 back in, then check W4 for a short to ground: red on <b>L1+</b>, black on <b>BODY</b>.`, goal:['Lamp 1 plugged in, L1+ to BODY', () => S.plug.L1 && dR('L1P','BODY')], ok:'About half an ohm. That looks like a short to ground, but it isn’t: you’re reading through the bulb to ground.', spot:['ctl:plug:L1','tp:L1P','tp:BODY']},
-  {t:'Isolate the wire', b:`Unplug lamp 1 again and keep the probes on L1+ and BODY.`, goal:['Lamp 1 unplugged, reading OL', () => !S.plug.L1 && dR('L1P','BODY') && RD.ol], ok:'OL: no short to ground. Always disconnect the load before testing a wire for a short.', spot:['ctl:plug:L1']},
-  {t:'Takeaway', b:`Zero the leads. Power off. Isolate the part. A wire or connection should read <b>≤ 1.0 Ω</b> end to end, and OL means open. A good ohms reading still doesn’t prove a wire can carry current. Lesson 9 shows why.`},
- ]},
- {t:'Measure amperage', s:'Ammeter in series, or use the clamp', steps:[
-  {t:'Series, not parallel', set:{S1:false}, b:`An ammeter has to be <b>in</b> the path, so all of the circuit’s current flows through it. Inside, the 10 A jack connects to a shunt of almost zero ohms. Treat the meter like a jumper wire.`},
-  {t:'Set up for amps', b:`Turn the knob to <b>A</b> and move the red lead to the <b>10 A</b> jack.`, goal:['Knob on A, red lead in 10 A', mA], spot:['#knob','#jackA']},
-  {t:'Break the circuit at the fuse', b:`Pull fuse <b>F1</b>. Put red on <b>F1 in</b> and black on <b>F1 out</b>, then turn S1 on. The meter now carries the whole circuit’s current.`, goal:['F1 pulled, meter across the cavity, S1 on', () => mA() && S.fuse.F1 !== 'in' && across('dmmR','dmmB','F1I','F1O') && S.sw.S1 && Math.abs(R.I.dmm || 0) > 1], ok:'About 2.1 A, this lamp’s normal draw.', spot:['ctl:fuse:F1','tp:F1I','tp:F1O','ctl:sw:S1']},
-  {t:'Read the number', b:`Current tells you how hard the circuit is working.`, ask:{q:'A circuit that should draw 2.1 A draws 1.2 A. What does that point to?', o:['Excessive resistance','A short to ground','An open'], a:0, why:'Less current than normal means something added resistance. A short draws more current and usually blows the fuse. An open draws none.'}},
-  {t:'The classic mistake', b:`Leave the red lead in the 10 A jack and touch the probes straight across the battery: red on <b>BAT+</b>, black on <b>BAT−</b>.`, goal:['Try it', () => S.dmm.blown], ok:'The meter became a dead short across the battery. Hundreds of amps flowed and the meter’s internal fuse blew. On a cheap meter, the meter itself can be ruined. Press Replace meter fuse.', spot:['tp:BATP','tp:BATN']},
-  {t:'No break needed: the amp clamp', set:{S1:true, F1:'in'}, b:`An amp clamp reads the magnetic field around a wire, so you don’t have to break the circuit. Drag the <b>amp clamp</b> onto wire <b>W3</b>.`, goal:['Clamp on W3', () => S.tips.clamp === 'cW3'], ok:'About 2.1 A, the same as the meter in series. Clamps are easiest to read above about 1 A. For small draws, like a parasitic drain, put the meter in series.', spot:['tool:clamp']},
-  {t:'Takeaway', b:`<b>0 A</b> means open. <b>Low</b> means excessive resistance. <b>High</b> means a short or an extra load. Never put an ammeter across a voltage source, and don’t hunt a short with it; a test light is safer (lesson 7).`},
- ]},
- {t:'Excessive resistance', s:'Dim lamp: find it with voltage drop, confirm with ohms', steps:[
-  {t:'Dim lamp', set:{S1:true, fault:'rC1', fr:2}, b:`Lamp 1 is dim. Corrosion, a loose or spread terminal, or a damaged wire adds resistance <b>in series</b> with the bulb. The bulb gets less voltage, so less current flows.`},
-  {t:'Available voltage', b:`Red on <b>L1+</b>, black on <b>BAT−</b>.`, goal:['Red on L1+, black on ground', () => dV('L1P','GND')], ok:'Several volts are missing. The power side is losing voltage somewhere between the battery and the lamp.', spot:['tp:L1P','tp:BATN']},
-  {t:'Whole power side', b:`Red on <b>BAT+</b>, black on <b>L1+</b>.`, goal:['Red on BAT+, black on L1+', () => dV('BATP','L1P')], ok:'Far over the 0.50 V power-side limit.', spot:['tp:BATP','tp:L1P']},
-  {t:'Split it', b:`Measure smaller sections until the drop is in one spot. Try across C1 pin 1: red on <b>C1·1a</b>, black on <b>C1·1b</b>.`, goal:['Across C1 pin 1', () => dV('C1A','C1B')], ok:'Almost all of the drop is across this one connection. The limit for one connection is 0.10 V.', spot:['tp:C1A','tp:C1B']},
-  {t:'Confirm with ohms', b:`Pull fuse <b>F1</b>, set the meter to <b>Ω</b>, and measure the same connection, C1·1a to C1·1b.`, goal:['F1 pulled, Ω across C1 pin 1', () => S.fuse.F1 !== 'in' && dR('C1A','C1B')], ok:'About 2 Ω across one connection. A good connection reads near 0 Ω; anything over 1.0 Ω fails.', spot:['ctl:fuse:F1','#knob']},
-  {t:'Takeaway', b:`Voltage drop finds excessive resistance with the circuit working, which is when the fault shows up. Ohms confirms it once the part is isolated. Clean or repair the terminal; a new bulb won’t fix it.`},
- ]},
- {t:'Opens', s:'Voltage is there up to the break and gone after it', steps:[
-  {t:'Lamp out', set:{S1:true, fault:'openW3'}, b:`Lamp 1 doesn’t light. An open is a break in the path, so no current flows anywhere in that circuit.`},
-  {t:'Start at the load', b:`Red on <b>L1+</b>, black on <b>BAT−</b>.`, goal:['Red on L1+, black on ground', () => dV('L1P','GND')], ok:'0 V. Voltage isn’t reaching the lamp.', spot:['tp:L1P']},
-  {t:'Work back toward the battery', b:`Move red back one point at a time: <b>C1·1b</b>, <b>C1·1a</b>, then <b>S1 out</b>.`, goal:['Red on S1 out', () => mV() && at('dmmR','S1O') && gnd('dmmB')], ok:'Battery voltage at S1 out and 0 V at C1·1a. The open is in wire W3, between those two points.', spot:['tp:C1B','tp:C1A','tp:S1O']},
-  {t:'Voltage across the open', b:`Red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['Across W3', () => dV('S1O','C1A')], ok:'Nearly full battery voltage. With no current, nothing else in the circuit drops any voltage, so all of it shows up across the break.'},
-  {t:'Open on the ground side', set:{S1:true, fault:'openW5'}, b:`Now the break is in ground wire <b>W5</b>. Red on <b>L1−</b>, black on <b>BAT−</b>.`, ask:{q:'Why does the ground side of the bulb read battery voltage?', o:['W5 is shorted to power','No current flows, so the bulb drops no voltage','The leads are reversed'], a:1, why:'With no current, the bulb drops no voltage, so battery voltage passes straight through it to L1−. Battery voltage on the ground side of a load means the ground path is open.'}, goal:['Red on L1−, black on BAT−', () => dV('L1N','BATN')], spot:['tp:L1N','tp:BATN']},
-  {t:'Confirm with ohms', b:`Pull <b>F1</b>, unplug lamp 1, set the meter to <b>Ω</b>, and measure W5: red on <b>L1−</b>, black on <b>G101</b>.`, goal:['Ω across W5, isolated', () => S.fuse.F1 !== 'in' && !S.plug.L1 && dR('L1N','G101')], ok:'OL: W5 is open. A good wire reads ≤ 1.0 Ω.', spot:['ctl:fuse:F1','ctl:plug:L1','tp:L1N','tp:G101']},
-  {t:'Takeaway', b:`Voltage is present up to an open and missing after it. Across the open you read full voltage. An open on the ground side puts battery voltage on the ground side of the load. Ohms reads OL across the break.`},
- ]},
- {t:'Short to ground', s:'Blown fuse: hunt it with a test light, not fuses', steps:[
-  {t:'Blown fuse', set:{S1:false, fault:'sgW4'}, b:`W4 has rubbed through its insulation and touches the body. Turn <b>S1</b> on and watch fuse F1.`, goal:['F1 blown', () => S.fuse.F1 === 'blown'], ok:'Current took the short path to ground and skipped the bulb. With almost no resistance in the path, well over 100 A tried to flow and the fuse blew.', spot:['ctl:sw:S1']},
-  {t:'Test light in the fuse cavity', b:`Don’t keep feeding it fuses, and don’t hunt a short with an ammeter. Put the test light across the F1 cavity: tip on <b>F1 in</b>, clip on <b>F1 out</b>. Keep S1 on.`, goal:['Test light across F1, lit', () => across('tlTip','tlClip','F1I','F1O') && R.bright.tl > .4], ok:'The test light takes the fuse’s place and lights full bright, because the short is still there. It limits the current to about a quarter amp, so nothing is damaged while you search.', spot:['tool:tl','tp:F1I','tp:F1O']},
-  {t:'Isolate', b:`Unplug connector <b>C1</b>.`, goal:['C1 unplugged', () => !S.plug.C1], ok:'The light went out, so the short is on the lamp side of C1: wire W4 or lamp 1. If it had stayed lit, the short would be between the fuse and C1.', spot:['ctl:plug:C1']},
-  {t:'Confirm with ohms', b:`Unplug lamp 1, set the meter to <b>Ω</b>, and measure from <b>C1·1b</b> to <b>BODY</b>.`, goal:['Lamp 1 unplugged, C1·1b to BODY', () => !S.plug.L1 && dR('C1B','BODY')], ok:'Near 0 Ω to ground with the load unplugged: a short to ground. A healthy, isolated power wire reads OL to ground.', spot:['ctl:plug:L1','tp:C1B','tp:BODY']},
-  {t:'Takeaway', b:`Short to ground means a blown fuse. Put a test light (or a short finder) in the fuse cavity and unplug connectors one at a time until it goes out. The short is in the section you just disconnected. Repair the chafed wire, then install a new fuse.`},
- ]},
- {t:'Shorts together', s:'Short to power and cross-fed circuits', steps:[
-  {t:'On with the switch off', set:{S1:false, fault:'sB'}, b:`Lamp 1 is lit with S1 off. Overnight, that drains the battery. W4 has rubbed into an always-hot wire fed by fuse <b>F3</b>.`},
-  {t:'Is it the lamp’s own fuse?', b:`Pull fuse <b>F1</b>.`, goal:['F1 pulled', () => S.fuse.F1 !== 'in'], ok:'Lamp 1 stays on, so its power is coming from somewhere other than its own fuse.', spot:['ctl:fuse:F1']},
-  {t:'Find the section', b:`Unplug connector <b>C1</b>.`, goal:['C1 unplugged', () => !S.plug.C1], ok:'Still on. The power is getting in on the lamp side of C1, so the short is in W4.', spot:['ctl:plug:C1']},
-  {t:'Find the source', b:`Pull fuse <b>F3</b>.`, goal:['F3 pulled', () => S.fuse.F3 !== 'in'], ok:'Lamp 1 goes out. Its power was coming from the F3 circuit. Repair and separate the rubbed wires.', spot:['ctl:fuse:F3']},
-  {t:'Cross-fed circuits', set:{S1:false, S2:false, fault:'xf'}, b:`A different short: W4 and W9 have rubbed through and touch each other. Turn on <b>S2</b> only.`, goal:['S2 on', () => S.sw.S2], ok:'Both lamps light. Either switch now feeds both bulbs.', spot:['ctl:sw:S2']},
-  {t:'Prove it with ohms', b:`Unplug <b>C1</b> and both lamps, set the meter to <b>Ω</b>, and measure from <b>C1·1b</b> to <b>C1·2b</b>.`, goal:['Isolated, C1·1b to C1·2b', () => !S.plug.C1 && !S.plug.L1 && !S.plug.L2 && dR('C1B','C2B')], ok:'Near 0 Ω between two wires that should be separate. Two different circuits should read OL to each other.', spot:['ctl:plug:C1','ctl:plug:L1','ctl:plug:L2','tp:C1B','tp:C2B']},
-  {t:'Watch for the parallel path', b:`One more check of your thinking.`, ask:{q:'On a good harness with both lamps still plugged in, what would C1·1b to C1·2b read?', o:['OL','About 1 Ω','0 Ω'], a:1, why:'You would read through bulb 1, shared ground G101, and bulb 2: two cold filaments in series. Unplug the loads so the only path left is the one you’re testing.'}},
-  {t:'Takeaway', b:`Short to power: the load runs with its switch off. Cross-feed: one switch runs two loads. Pull fuses and unplug connectors to see where the power gets in, then confirm with ohms between the isolated wires.`},
- ]},
- {t:'Good readings, bad circuit', s:'Test light false positive and the load tool', steps:[
-  {t:'Lamp barely glows', set:{S1:true, fault:'strands'}, b:`Lamp 1 barely glows. Run the quick checks that most people stop at.`},
-  {t:'Voltage at the socket', b:`Unplug lamp 1. With the meter on <b>V</b>, red on <b>L1+</b>, black on <b>BAT−</b>.`, goal:['Lamp 1 unplugged, L1+ to ground', () => !S.plug.L1 && dV('L1P','GND')], ok:'Full battery voltage, which looks perfect. With the bulb unplugged no current flows, so nothing drops any voltage, good wire or bad.', spot:['ctl:plug:L1','tp:L1P']},
-  {t:'Ohm the wire', b:`Pull <b>F1</b>, set the meter to <b>Ω</b>, and measure W3: red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['F1 pulled, Ω across W3', () => S.fuse.F1 !== 'in' && dR('S1O','C1A')], ok:'Under 1.0 Ω, so it passes. The meter’s tiny test current gets through the few strands that are left.', spot:['ctl:fuse:F1','tp:S1O','tp:C1A']},
-  {t:'Test light', b:`Put <b>F1</b> back in. Clip the test light to <b>BODY</b> and touch its tip to <b>L1+</b>.`, goal:['F1 in, test light from L1+ to ground', () => S.fuse.F1 === 'in' && at('tlTip','L1P') && gnd('tlClip')], ok:'Bright. A test light only draws about 0.25 A, and the few strands can carry that much. A false positive.', spot:['ctl:fuse:F1','tool:tl','tp:L1P','tp:BODY']},
-  {t:'Load it like the real bulb', b:`Clip the <b>load tool</b> from <b>L1+</b> to <b>BODY</b>. It’s a bulb like lamp 1’s, so it asks for about 2 A.`, goal:['Load tool from L1+ to ground', () => loadTo('L1P')], ok:'It barely glows. The circuit can’t carry the load.', spot:['tool:ld','tp:L1P','tp:BODY']},
-  {t:'Voltage drop under load', b:`Leave the load tool on. Set the meter to <b>V</b> and measure across W3: red on <b>S1 out</b>, black on <b>C1·1a</b>.`, goal:['Load tool on, V across W3', () => loadTo('L1P') && dV('S1O','C1A')], ok:'Most of the battery voltage is lost across W3. Under load, the damaged wire shows itself.', spot:['tp:S1O','tp:C1A']},
-  {t:'Shop method: power probe + load tool', b:`To test one wire by itself, pull <b>F1</b> and unplug <b>C1</b>. Put the <b>power probe</b> tip on <b>S1 out</b> and set it to <b>+B</b>, then clip the load tool from <b>C1·1a</b> to <b>BODY</b>.`, goal:['W3 isolated, powered, and loaded', () => S.fuse.F1 !== 'in' && !S.plug.C1 && at('ppTip','S1O') && S.pp === 'B' && loadTo('C1A')], ok:'The load bulb is dim, so W3 can’t carry current. Try the same on W4 (power probe on C1·1b, load tool from L1+ to BODY): the bulb is bright, so W4 is good.', spot:['ctl:fuse:F1','ctl:plug:C1','tool:pp','tp:S1O','tp:C1A']},
-  {t:'Takeaway', b:`Voltage checks with no load and ohms checks use almost no current, so a wire hanging by a few strands passes both. A test light can pass it too. Prove the circuit <b>under load</b>, with the real component or a load tool, and measure voltage drop while it’s loaded.`},
- ]},
-];
-
 /* Each step saves the bench as the student found it, so Back and Redo step put it back exactly. */
-const SNAP_KEYS = ['sw','fuse','plug','fault','faultR','pp','ppTrip','jmpBlown','dmm','tips'];
+const SNAP_KEYS = ['sw','fuse','plug','ign','speed','fault','faultR','pp','ppTrip','jmpBlown','stuck','stops','motRun','dmm','tips'];
 const snap = () => JSON.parse(JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k => [k, S[k]]))));
 function restore(o){ const c = JSON.parse(JSON.stringify(o)); for (const k of SNAP_KEYS) S[k] = c[k]; NLC = {}; S.sel = null; }
 function enterStep(i, reset){
-  const L = LESSONS[S.lesson];
+  const L = C.lessons[S.lesson];
   S.step = Math.max(0, Math.min(L.steps.length - 1, i));
   const st = L.steps[S.step];
   if (reset && S.snaps[S.step]) restore(S.snaps[S.step]);
   else {
     if (st.set) bench(st.set);
     else if (reset){
-      // no saved state yet (deep link): rebuild from the nearest step that sets up the bench
       let j = S.step; while (j > 0 && !L.steps[j].set) j--;
-      bench(L.steps[j].set || {S1:true});
+      bench(L.steps[j].set || C.start);
       for (let k = j; k < S.step; k++) if (L.steps[k].mod) L.steps[k].mod();
     }
     if (st.mod) st.mod();
@@ -1668,7 +2085,7 @@ $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-ta
 
 function renderNote(){
   const nb = $('#nbody'), top = nb.scrollTop;
-  if (S.tab === 'guide') nb.innerHTML = GUIDE_HTML;
+  if (S.tab === 'guide') nb.innerHTML = guideHTML();
   else if (S.tab === 'log') nb.innerHTML = logHTML();
   else if (S.mode === 'guided') nb.innerHTML = lessonHTML();
   else if (S.mode === 'mystery') nb.innerHTML = mysteryHTML();
@@ -1678,61 +2095,59 @@ function renderNote(){
 
 function faultsHTML(){
   const f = S.fault ? FBY[S.fault] : null;
-  let h = `<div class="nsec"><h3>Inject a fault</h3><span>One at a time. Tools stay where they are.</span></div>`;
+  let h = `<div class="nsec"><h3>Inject a fault</h3><span>${C.name} · one at a time</span></div>`;
   h += `<button type="button" class="fchip none" data-fault="" aria-pressed="${!S.fault}">No fault: circuit working normally</button>`;
   for (const t of FTYPES){
     h += `<div class="fgroup"><h4>${t.n}</h4><div class="faults">${FAULTS.filter(x => x.t === t.k).map(x => `<button type="button" class="fchip" data-fault="${x.id}" aria-pressed="${S.fault === x.id}">${x.n}</button>`).join('')}</div></div>`;
-    if (f && f.t === t.k && f.adj) h += `<div class="hrbox"><div class="top"><small>Added resistance</small><output id="frOut">${S.faultR.toFixed(1)} Ω</output></div><input type="range" id="frRange" min="0.2" max="10" step="0.1" value="${S.faultR}" aria-label="Added resistance in ohms"></div>`;
+    if (f && f.t === t.k && f.rng){
+      const [lo, hi, step, u] = f.rng;
+      h += `<div class="hrbox"><div class="top"><small>${f.lbl || 'Added resistance'}</small><output id="frOut">${faultVal()}</output></div><input type="range" id="frRange" min="${lo}" max="${hi}" step="${step}" value="${S.faultR}" aria-label="${f.lbl || 'Added resistance'} in ${u === '%' ? 'percent' : 'ohms'}"></div>`;
+    }
   }
-  h += `<p class="fine">Watch how each fault changes the lamps, the wire colors, and the meter. Then try Mystery fault mode to diagnose one you can’t see.</p>`;
+  h += `<p class="fine">Watch how each fault changes the loads, the wire colors, and the meter. Then try Mystery fault mode to diagnose one you can’t see.</p>`;
   return h;
 }
 $('#nbody').addEventListener('click', e => {
   const fb = e.target.closest('[data-fault]');
-  if (fb){
-    const id = fb.dataset.fault || null;
-    S.fault = id; if (id && FBY[id].adj) S.faultR = FBY[id].adj;
-    if (id && FBY[id].t === 'sg' && S.fuse.F1 === 'blown') S.fuse.F1 = 'in';
-    NLC = {}; update(); return;
-  }
+  if (fb){ setFault(fb.dataset.fault || null); update(); return; }
   const lc = e.target.closest('[data-lesson]');
   if (lc){ S.lesson = +lc.dataset.lesson; S.answered = {}; S.snaps = {}; enterStep(0); $('#nbody').scrollTop = 0; return; }
   const nav = e.target.closest('[data-nav]');
   if (nav){
     const v = nav.dataset.nav;
     if (v === 'list'){ S.lesson = null; SPOT = new Set(); update(); }
-    else if (v === 'next'){ if (S.step >= LESSONS[S.lesson].steps.length - 1){ S.lesson = null; SPOT = new Set(); toast('Lesson complete.', 'ok'); update(); } else enterStep(S.step + 1); }
+    else if (v === 'next'){ if (S.step >= C.lessons[S.lesson].steps.length - 1){ S.lesson = null; SPOT = new Set(); toast('Lesson complete.', 'ok'); update(); } else enterStep(S.step + 1); }
     else if (v === 'back') enterStep(S.step - 1, true);
     else if (v === 'redo') enterStep(S.step, true);
     $('#nbody').scrollTop = 0;
     return;
   }
   const op = e.target.closest('[data-opt]');
-  if (op){ S.answered[S.lesson + ':' + S.step] = +op.dataset.opt; renderNote(); return; }
+  if (op){ S.answered[S.cid + ':' + S.lesson + ':' + S.step] = +op.dataset.opt; renderNote(); return; }
   const my = e.target.closest('[data-my]');
   if (my) mysteryAct(my.dataset.my);
   const lg = e.target.closest('[data-log]');
   if (lg){
     if (lg.dataset.log === 'clear'){ S.log = []; renderNote(); renderTabs(); }
-    else copyLog(lg);
+    else copyLog();
   }
 });
 $('#nbody').addEventListener('input', e => {
   if (e.target.id === 'frRange'){
-    S.faultR = +e.target.value; $('#frOut').textContent = S.faultR.toFixed(1) + ' Ω'; update({keepNote:true});
+    S.faultR = +e.target.value; $('#frOut').textContent = faultVal(); update({keepNote:true});
   }
 });
 
 function lessonHTML(){
   if (S.lesson == null){
-    return `<div class="nsec"><h3>Guided lessons</h3><span>Work through them in order</span></div>
-      <div class="llist">${LESSONS.map((l, i) => `<button type="button" class="lcard" data-lesson="${i}"><span class="n">${i + 1}</span><b>${l.t}</b><span>${l.s} · ${l.steps.length} steps</span></button>`).join('')}</div>`;
+    return `<div class="nsec"><h3>Guided lessons · ${C.name}</h3><span>Work through them in order</span></div>
+      <div class="llist">${C.lessons.map((l, i) => `<button type="button" class="lcard" data-lesson="${i}"><span class="n">${i + 1}</span><b>${l.t}</b><span>${l.s} · ${l.steps.length} steps</span></button>`).join('')}</div>`;
   }
-  const L = LESSONS[S.lesson], st = L.steps[S.step], n = L.steps.length;
+  const L = C.lessons[S.lesson], st = L.steps[S.step], n = L.steps.length;
   const done = st.goal ? !!safe(st.goal[1]) : true;
-  const ans = S.answered[S.lesson + ':' + S.step];
+  const ans = S.answered[S.cid + ':' + S.lesson + ':' + S.step];
   let h = `<div class="lesson"><div class="l-top"><span class="l-step">Lesson ${S.lesson + 1} · Step ${S.step + 1} of ${n}</span><span class="l-dots">${L.steps.map((_, i) => `<i class="${i <= S.step ? 'on' : ''}"></i>`).join('')}</span></div>
-    <h3>${st.t}</h3><div class="l-body">${st.b}</div>`;
+    <h3>${st.t}</h3>${st.b ? `<div class="l-body">${st.b}</div>` : ''}`;
   if (st.ask){
     h += `<div class="l-ask"><p>${st.ask.q}</p><div class="opts">${st.ask.o.map((o, i) => `<button type="button" class="opt${ans != null ? (i === st.ask.a ? ' right' : i === ans ? ' wrong' : '') : ''}" data-opt="${i}">${o}</button>`).join('')}</div>${ans != null ? `<div class="why">${ans === st.ask.a ? 'Right. ' : 'Not quite. '}${st.ask.why}</div>` : ''}</div>`;
   }
@@ -1740,7 +2155,7 @@ function lessonHTML(){
   if (st.goal && done && st.ok) h += `<div class="why">${st.ok}</div>`;
   const last = S.step === n - 1;
   h += `<div class="l-nav"><button type="button" class="btn small" data-nav="list">All lessons</button><div class="r">
-    <button type="button" class="btn small" data-nav="redo" title="Put the bench back to the start of this step">Redo step</button>
+    <button type="button" class="btn small" data-nav="redo" title="Put the bench back to how this step started">Redo step</button>
     <button type="button" class="btn small" data-nav="back" ${S.step === 0 ? 'disabled' : ''}>Back</button>
     <button type="button" class="btn small${done && (!st.ask || ans != null) ? ' primary' : ''}" data-nav="next">${last ? 'Finish' : 'Next'}</button></div></div></div>`;
   return h;
@@ -1750,8 +2165,8 @@ function safe(fn){ try { return fn(); } catch (_) { return false; } }
 /* ---------- mystery ---------- */
 function mysteryHTML(){
   const M = S.mystery;
-  if (!M) return `<div class="myst"><div class="nsec"><h3>Mystery fault</h3><span>Diagnose it like a real car</span></div>
-    <p class="fine" style="font-size:13.5px;color:var(--soft)">The bench picks a random fault and hides it. Voltage colors and current dots turn off, so the only things you can see are the lamps, the fuses, and your tools. Read the customer concern, test, record your readings, then make the call.</p>
+  if (!M) return `<div class="myst"><div class="nsec"><h3>Mystery fault · ${C.name}</h3><span>Diagnose it like a real car</span></div>
+    <p class="fine" style="font-size:13.5px;color:var(--soft)">The bench picks a random fault and hides it. Voltage colors and current dots turn off, so the only things you can see are the loads, the fuses, and your tools. Read the customer concern, test, record your readings, then make the call.</p>
     <div class="row"><button type="button" class="btn primary" data-my="new">Start a mystery fault</button></div></div>`;
   const f = FBY[M.fault];
   let h = `<div class="myst"><div class="concern"><small>Customer concern</small><p>${f.concern}</p></div>
@@ -1761,7 +2176,7 @@ function mysteryHTML(){
       <div class="row"><button type="button" class="btn primary" data-my="check">Check diagnosis</button><button type="button" class="btn small" data-my="reveal">Show me</button></div>`;
     if (M.wrong) h += `<div class="result no">Not that. Those symptoms could fit, but the readings will tell them apart. Keep testing.</div>`;
   } else {
-    h += `<div class="result ${M.right ? 'ok' : 'no'}">${M.right ? '<b>Correct.</b> ' : ''}The fault was <b>${f.n}</b>${f.adj ? ` (${S.faultR.toFixed(1)} Ω)` : ''}. It’s now shown on the circuit, and voltage colors are back on.${M.tries > 1 ? ` Tries: ${M.tries}.` : ''}</div>
+    h += `<div class="result ${M.right ? 'ok' : 'no'}">${M.right ? '<b>Correct.</b> ' : ''}The fault was <b>${f.n}</b>${f.rng ? ` (${faultVal()})` : ''}. It’s now shown on the circuit, and voltage colors are back on.${M.tries > 1 ? ` Tries: ${M.tries}.` : ''}</div>
       <div class="row"><button type="button" class="btn primary" data-my="new">Next mystery fault</button></div>`;
   }
   return h + '</div>';
@@ -1770,9 +2185,10 @@ function mysteryAct(a){
   const M = S.mystery;
   if (a === 'new'){
     const f = FAULTS[Math.floor(Math.random() * FAULTS.length)];
-    bench({S1:false});
-    S.fault = f.id;
-    if (f.adj) S.faultR = f.id === 'rG' ? +(0.6 + Math.random() * 1.2).toFixed(1) : +(1 + Math.random() * 3).toFixed(1);
+    bench(C.mystStart);
+    let r;
+    if (f.myst){ const [lo, hi] = f.myst, st = f.rng[2]; r = Math.round((lo + Math.random() * (hi - lo)) / st) * st; r = +r.toFixed(3); }
+    setFault(f.id, r);
     S.mystery = {fault:f.id, revealed:false, tries:0, log0:S.log.length};
     S.colors = false;
   } else if (a === 'check'){
@@ -1789,18 +2205,18 @@ function logHTML(){
   if (!S.log.length) return `<div class="nsec"><h3>Readings</h3></div><div class="empty">No readings yet. Set up a test, then press <b>Record</b> on the meter. Each reading saves the probe points and the bench conditions, ready to copy into a job sheet.</div>`;
   return `<div class="nsec"><h3>Readings</h3><span>${S.log.length} recorded</span></div>
     <div class="logwrap"><table class="log"><thead><tr><th>#</th><th>Meter</th><th>Red</th><th>Black</th><th>Reading</th><th>Conditions</th></tr></thead>
-    <tbody>${S.log.map(r => `<tr><td>${r.n}</td><td>${r.fn}</td><td>${r.r}</td><td>${r.b}</td><td class="v">${r.val}</td><td class="c">${r.cond}</td></tr>`).join('')}</tbody></table></div>
+    <tbody>${S.log.map(r => `<tr><td>${r.n}</td><td>${r.fn}</td><td>${r.r}</td><td>${r.b}</td><td class="v">${r.val}</td><td class="c">${r.ckt} · ${r.cond}</td></tr>`).join('')}</tbody></table></div>
     <div class="row"><button type="button" class="btn small" data-log="copy">Copy as table</button><button type="button" class="btn small" data-log="clear">Clear</button></div>
     <textarea id="logText" readonly hidden style="width:100%;height:90px;font:12px var(--f-mono);background:var(--raise);color:var(--fg);border:1px solid var(--line-2);border-radius:8px"></textarea>`;
 }
-function copyLog(btn){
-  const txt = ['#\tMeter\tRed\tBlack\tReading\tConditions', ...S.log.map(r => [r.n, r.fn, r.r, r.b, r.val, r.cond].join('\t'))].join('\n');
+function copyLog(){
+  const txt = ['#\tCircuit\tMeter\tRed\tBlack\tReading\tConditions', ...S.log.map(r => [r.n, r.ckt, r.fn, r.r, r.b, r.val, r.cond].join('\t'))].join('\n');
   const fallback = () => { const ta = $('#logText'); ta.hidden = false; ta.value = txt; ta.select(); toast('Select-all is ready: press Ctrl+C to copy.'); };
   try { navigator.clipboard.writeText(txt).then(() => toast('Readings copied. Paste them into a sheet or doc.', 'ok'), fallback); } catch (_) { fallback(); }
 }
 
 /* ---------- field guide ---------- */
-const GUIDE_HTML = `<div class="guide">
+const GUIDE_HTML = `
   <div class="gcard"><span class="gk">Bench specs</span>
     <table class="spec"><tbody>
       <tr><td>Wire or connection, end to end (ohms, isolated)</td><td>≤ ${SPEC.wire.toFixed(1)} Ω</td></tr>
@@ -1821,7 +2237,7 @@ const GUIDE_HTML = `<div class="guide">
   <div class="gcard"><h4><i style="background:#FF7A45"></i>Amperage</h4><ul>
     <li>Meter in <b>series</b>: break the circuit (pull the fuse, probe both terminals). Red lead in <b>10 A</b>.</li>
     <li><b>Never</b> across a voltage: the meter is a near-zero-ohm jumper and its fuse will blow.</li>
-    <li>Amp clamp: no break needed. Best above about 1 A.</li>
+    <li>Over 10 A (a blower on high, a fuel pump, a starter): use the amp clamp.</li>
     <li>0 A = open · low = excessive resistance · high = short or extra load.</li></ul></div>
   <div class="gcard"><span class="gk">Failure types</span>
     <h4>Excessive resistance</h4><p><b>Symptom:</b> dim lamp, slow motor, hot connector. <b>V:</b> voltage drop over spec under load. <b>Ω:</b> over 1.0 Ω end to end. <b>A:</b> lower than normal. Causes: corrosion, loose or spread terminals, damaged wire, a bad ground.</p>
@@ -1832,17 +2248,17 @@ const GUIDE_HTML = `<div class="guide">
   <div class="gcard"><span class="gk">Tools</span><ul>
     <li><b>Test light</b> (about 0.25 A): quick power and ground checks; stands in for a fuse when hunting shorts. Its light draw can give false positives. Don’t use it on computer or sensor circuits.</li>
     <li><b>Load tool</b>: a bulb on alligator clips (about 2 A). Proves a circuit can carry real current.</li>
-    <li><b>Power probe</b>: applies battery voltage (+B) or ground to a point, with an 8 A breaker. Use it on load circuits like this one, never on module or sensor circuits.</li>
+    <li><b>Power probe</b>: applies battery voltage (+B) or ground to a point, with an 8 A breaker. Use it on load circuits, never on module or sensor circuits.</li>
     <li><b>Fused jumper</b>: bypasses a switch or suspect wire to prove a section. Always fused.</li>
-    <li><b>Amp clamp</b>: reads current without breaking the circuit.</li></ul></div>
-</div>`;
+    <li><b>Amp clamp</b>: reads current without breaking the circuit.</li></ul></div>`;
+const guideHTML = () => `<div class="guide">${C.guide}${GUIDE_HTML}</div>`;
 
 /* ================= boot ================= */
-drawStatic();
-bench({S1:true, tips:{dmmR:'L1P', dmmB:'BATN'}});
 const hash = location.hash.replace('#', '');
-const m = hash.match(/^lesson(\d)$/);
-if (m && LESSONS[+m[1] - 1]){ S.mode = 'guided'; S.lesson = +m[1] - 1; enterStep(0); }
+const hm = hash.match(/^(lamp|blower)?-?(?:lesson(\d))?$/) || [];
+loadCircuit(hm[1] || 'lamp');
+bench(C.start);
+if (hm[2] && C.lessons[+hm[2] - 1]){ S.mode = 'guided'; S.lesson = +hm[2] - 1; enterStep(0); }
 else if (hash === 'guided') S.mode = 'guided';
 else if (hash === 'mystery') S.mode = 'mystery';
 syncBar();
@@ -1850,10 +2266,11 @@ update();
 requestAnimationFrame(tick);
 
 /* test hook */
-window.__etb = {S, update, bench, get R(){ return R; }, get RD(){ return RD; }, act, setMode, enterStep, LESSONS,
+window.__etb = {S, update, bench, setFault, act, setMode, enterStep, switchCircuit, get C(){ return C; }, get R(){ return R; }, get RD(){ return RD; }, get LESSONS(){ return C.lessons; },
   probe(r, b, knob, jack){ S.tips.dmmR = r; S.tips.dmmB = b; if (knob) S.dmm.knob = knob; if (jack) S.dmm.jack = jack; update(); return {val:RD.val, unit:RD.unit, t:RD.it && RD.it.t, chip:RD.it && RD.it.chip && RD.it.chip[0], p:RD.it && RD.it.p}; }};
 })();
 </script>
+
 
 </body>
 </html>
