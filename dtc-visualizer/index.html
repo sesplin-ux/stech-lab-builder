@@ -185,8 +185,9 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .l-nav .r{display:flex;gap:8px}
 
 /* ---------- mystery fault ---------- */
-#mysDock{height:164px;display:flex;flex-direction:column;padding-bottom:7px}
-#mysDock[hidden]{display:none}
+#mysDock{flex:none;display:flex;flex-direction:column;margin:12px 12px 0;padding:9px 11px 10px;border:1px solid rgba(255,178,36,.38);border-radius:14px;background:linear-gradient(180deg,rgba(255,178,36,.05),#090D12)}
+#mysDock[hidden],#meterPanel[hidden],#logicPanel[hidden]{display:none}
+#mysDock .result.reveal{max-height:190px;overflow-y:auto}
 .mys-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;flex:none}
 .mys-top h3{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font:600 10.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--warn)}
 .mys-top .r{display:flex;align-items:center;gap:8px;min-width:0}
@@ -194,16 +195,12 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .mdots{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
 .mdots i{width:12px;height:4px;border-radius:2px;background:var(--line-2)}
 .mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.s{background:var(--fail)} .mdots i.cur{background:var(--accent)}
-#myBody{display:grid;gap:6px;align-content:start;flex:1;min-height:0;overflow-y:auto;padding-right:2px}
+#myBody{display:grid;gap:7px;align-content:start}
 .concern{padding:6px 9px;border-radius:10px;border:1px solid rgba(255,178,36,.45);background:linear-gradient(180deg,rgba(255,178,36,.08),var(--raise))}
 .concern small{display:block;font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
 .concern p{margin:0;font:600 14px/1.25 var(--f-label);letter-spacing:.01em}
 .mrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .mrow select{flex:1 1 150px;min-width:0;font:500 13px var(--f-ui);color:var(--fg);background:var(--raise);border:1px solid var(--line-2);border-radius:8px;padding:6px 8px}
-.meter{flex:none;display:inline-flex;align-items:baseline;gap:8px;padding:6px 9px;border-radius:8px;border:1px solid var(--line-2);background:#090D12}
-.meter .ml{font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
-.meter b{font:600 15px/1 var(--f-mono);color:#EAFBFF;min-width:7ch;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.meter b.idle{font:500 11.5px/1 var(--f-ui);color:var(--warn)}
 .result{padding:6px 9px;border-radius:10px;font-size:13px;line-height:1.4}
 .result.ok{border:1px solid rgba(61,220,151,.5);background:rgba(61,220,151,.08);color:#C8F5E0}
 .result.no{border:1px solid rgba(255,90,78,.5);background:rgba(255,90,78,.08);color:#FFC4BE}
@@ -217,9 +214,65 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 body.mys .phit{display:inline;pointer-events:stroke;cursor:crosshair}
 body.mys .phit:hover{stroke:rgba(255,90,78,.13)}
 body.mys #circuit .hit{pointer-events:none}
-#probeMk{pointer-events:none}
-#probeMk .pm-halo{fill:rgba(255,90,78,.18);stroke:#FF5A4E;stroke-width:1.2}
-#probeMk .pm-dot{fill:#FF5A4E;stroke:#080B0F;stroke-width:1.5}
+/* DMM (same instrument as the Electrical Test Bench) */
+.mbody{display:grid;grid-template-columns:minmax(0,216px) minmax(0,1fr);gap:10px}
+.dmm>*{min-width:0}
+.dmm{border-radius:18px;padding:9px;background:linear-gradient(180deg,#1A232D,#0F151B);border:1px solid var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 14px 30px -18px rgba(0,0,0,.9);display:grid;gap:8px;align-content:start}
+.lcd{border-radius:10px;padding:7px 10px 6px;background:linear-gradient(180deg,#071118,#050B10);border:1px solid #1F3242;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.lann{display:flex;gap:6px;font:700 8.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:#203345;min-height:9px}
+.lann .on{color:#7FC4EE}
+.lann .warn{color:var(--fail)}
+.lmain{display:flex;align-items:baseline;justify-content:flex-end;gap:6px;height:44px;overflow:hidden}
+.lmain b{font:500 36px/44px var(--f-mono);font-variant-numeric:tabular-nums;color:#E3F3FF;letter-spacing:-.02em;white-space:nowrap;text-shadow:0 0 14px rgba(127,196,238,.25)}
+.lmain i{font:600 15px/1 var(--f-mono);font-style:normal;color:#7FC4EE;min-width:26px}
+.lcd.dark .lmain b,.lcd.dark .lmain i{color:#16242F;text-shadow:none}
+.lcd.live .lmain b{color:#FF8A80}
+.lsub{font:500 10.5px/1.2 var(--f-mono);color:#4F6B80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:13px}
+.dctl{display:grid;grid-template-columns:104px minmax(0,1fr);gap:6px;align-items:center}
+#knob{width:104px;height:104px;display:block}
+#knob text{font-family:var(--f-label);font-weight:700;font-size:10.5px;letter-spacing:.04em;fill:var(--dim)}
+#knob .kp{cursor:pointer}
+#knob .kp:hover text{fill:var(--fg)}
+#knob .kp.cur text{fill:#fff}
+#knob .kp:focus-visible{outline:none}
+#knob .kp:focus-visible circle{stroke:var(--accent);stroke-width:1.5}
+.jacks{display:grid;gap:8px}
+.jack{display:flex;align-items:center;gap:7px;padding:4px 6px;font:700 10px/1.15 var(--f-label);letter-spacing:.12em;color:var(--dim)}
+.jack i{width:16px;height:16px;border-radius:50%;background:#05080B;border:2px solid #3A4757;flex:none;box-shadow:inset 0 2px 3px rgba(0,0,0,.8)}
+.jack.red i{border-color:#E8384F;background:radial-gradient(circle,#E8384F 40%,#05080B 45%)}
+.jack.blk i{border-color:#9AA7B5;background:radial-gradient(circle,#2c343d 40%,#05080B 45%)}
+.jack small{font:500 9.5px/1 var(--f-ui);letter-spacing:0;color:var(--faint)}
+.minfo{min-width:0;display:grid;gap:8px;align-content:start}
+.interp{padding:9px 11px;border-radius:12px;background:var(--raise);border:1px solid var(--line);display:grid;gap:5px}
+.interp b{font:600 14px/1.2 var(--f-label);letter-spacing:.02em}
+.interp p{margin:0;font-size:12.5px;line-height:1.45;color:var(--soft)}
+.interp p b{font:inherit;font-weight:600;color:var(--fg)}
+.interp.warn{border-color:rgba(255,90,78,.55);background:linear-gradient(180deg,rgba(255,90,78,.09),var(--raise))}
+.interp.warn b{color:#FFB3AC}
+#meterScope:empty{display:none}
+body.mys #chartTitle::before{content:'Lab scope · ';color:var(--accent)}
+/* tool tray + leads inside the schematic */
+#trayG,#cableG,#snapG,#leadG{display:none}
+body.mys #trayG,body.mys #cableG,body.mys #snapG,body.mys #leadG{display:inline}
+.tray{fill:rgba(10,15,20,.92);stroke:var(--line-2)}
+#circuit .trayl{font-weight:700;font-size:9px;letter-spacing:.14em;fill:var(--soft)}
+#circuit .trays{font-family:var(--f-mono)!important;font-size:8px;fill:var(--faint)}
+.traysep{stroke:var(--line);stroke-width:1}
+.gstud{cursor:pointer}
+.studo{fill:#1A222B;stroke:#8A98A8;stroke-width:1.4}
+.studi{fill:#5C6A79}
+.tip{cursor:grab}
+.tip.dragging{cursor:grabbing}
+.tip.sel .tbody{filter:drop-shadow(0 0 5px rgba(47,155,224,1))}
+.cable{fill:none;stroke-width:2;stroke-linecap:round;opacity:.45;pointer-events:none}
+.snapr{fill:none;stroke:#EAFBFF;stroke-width:1.4;stroke-dasharray:3 2;pointer-events:none}
+/* collapsible scan tool sections */
+#scanPanel .sbody h4{justify-content:flex-start;cursor:pointer;user-select:none}
+.sbody h4::before{content:'▾';font-size:10px;width:10px;color:var(--dim)}
+#scanPanel .sbody h4 .btn{margin-left:auto}
+.sbody h4:hover{color:var(--soft)}
+.sbody>div.coll>:not(h4){display:none}
+.sbody>div.coll>h4::before{content:'▸'}
 body.mz #circuit .w{stroke:#3A4757!important}
 body.mz #circuit .glow,body.mz #circuit .flow,body.mz #circuit .mys-x{display:none!important}
 body.mz #circuit .tpdot{fill:#5C6A79!important}
@@ -349,8 +402,6 @@ body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono)
 /* ---------- responsive ---------- */
 @media (max-width:1180px){
   .app{height:auto;min-height:100%}
-  #mysDock{height:auto}
-  #myBody{overflow:visible}
   .bench{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   #scanPanel{grid-column:1/-1}
   .cwrap{flex:none}
@@ -360,6 +411,7 @@ body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono)
 }
 @media (max-width:780px){
   .bench{grid-template-columns:minmax(0,1fr)}
+  .mbody{grid-template-columns:minmax(0,1fr)}
   .faults{grid-template-columns:repeat(2,minmax(0,1fr))}
   .reads{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .read:last-child{grid-column:1/-1}
@@ -438,11 +490,6 @@ body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono)
         <div class="dfoot"><span id="faultSummary">Circuit is healthy.</span><button class="btn small" id="clearFaults">Repair all</button></div>
       </div>
 
-      <div class="dock" id="mysDock" hidden>
-        <div class="mys-top"><h3>Mystery fault<span id="myProg"></span></h3><div class="r"><div class="mdots" id="myDots" aria-label="Round progress"></div><span id="myNext"></span></div></div>
-        <div id="myBody"></div>
-      </div>
-
       <div class="dock" id="lessonDock" hidden>
         <div class="lesson">
           <div class="l-top"><span class="l-step" id="lStep">Step 1</span><div class="l-dots" id="lDots"></div></div>
@@ -502,8 +549,30 @@ body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono)
       </div>
     </section>
 
+    <!-- ======================= METER (Mystery mode) ======================= -->
+    <section class="panel" id="meterPanel" hidden>
+      <div class="phead"><h2>Meter</h2><span>Auto-ranging DMM · back-probe leads</span></div>
+      <div class="scroll">
+        <div class="mbody">
+          <div class="dmm">
+            <div class="lcd" id="lcd"><div class="lann" id="lann"></div><div class="lmain"><b id="lcdVal">0.000</b><i id="lcdUnit">V</i></div><div class="lsub" id="lcdSub"></div></div>
+            <div class="dctl">
+              <svg id="knob" viewBox="0 0 104 104" role="radiogroup" aria-label="Function knob"></svg>
+              <div class="jacks"><span class="jack blk"><i></i><span>COM<br><small>black lead</small></span></span><span class="jack red"><i></i><span>VΩ<br><small>red lead</small></span></span></div>
+            </div>
+          </div>
+          <div class="minfo"><div class="interp" id="interp"></div><p class="fine">Drag a lead from the tray under the circuit onto any wire, or click a lead and then a wire. Clicking a wire on its own moves the red lead there.</p></div>
+        </div>
+        <div id="meterScope"></div>
+      </div>
+    </section>
+
     <!-- ======================= SCAN TOOL ======================= -->
     <section class="panel" id="scanPanel">
+      <div id="mysDock" hidden>
+        <div class="mys-top"><h3>Mystery fault<span id="myProg"></span></h3><div class="r"><div class="mdots" id="myDots" aria-label="Round progress"></div><span id="myNext"></span></div></div>
+        <div id="myBody"></div>
+      </div>
       <div class="dash" id="dash">
         <svg class="gauge" viewBox="0 0 120 74" aria-label="Gauge">
           <path d="M14 64 A46 46 0 0 1 106 64" fill="none" stroke="#1D2732" stroke-width="7" stroke-linecap="round"/>
@@ -560,7 +629,9 @@ const on = () => S.key !== 'off';
 
 /* Nodal analysis. E = [nodeA, nodeB, ohms, name]; fixed = known node voltages;
    J = [from, to, amps] current sources (a series EMF + resistance becomes a Norton source). */
+let NETCAP = null;   // while a circuit solves, every resistor network it builds is kept for the ohmmeter
 function nodal(nodes, E, fixed, J = []) {
+  if (NETCAP) NETCAP.push(E);
   const all = E.concat(nodes.map(n => [n, 'G', 1e10, 'leak']));
   const n = nodes.length, idx = Object.fromEntries(nodes.map((k, i) => [k, i]));
   const M = Array.from({ length: n }, () => new Float64Array(n + 1));
@@ -2838,13 +2909,13 @@ const CKP_SVG = `
 ${Array.from({ length: 24 }, (_, i) => `<rect id="cl${i}" x="${222 + (i % 8) * 9.5}" y="${393 + Math.floor(i / 8) * 10}" width="7" height="7" rx="1.5" fill="#18212B"/>`).join('')}
 <text x="222" y="435" class="t-mono" id="revLbl" style="font-size:10px">—</text>
 <g>
-  <path class="w" data-n="KE" d="M70 122 V256"/>
-  <path class="w" data-n="KE" id="br-kpUp" d="M70 256 V264"/>
-  <path class="w" data-n="KS" d="M70 264 V404 H94"/>
-  <path class="w" data-n="KS" d="M94 404 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0"/>
-  <path class="w" data-n="KS" d="M166 404 H190 V264"/>
-  <path class="w" data-n="KE" id="br-kmUp" d="M190 256 V264"/>
-  <path class="w" data-n="KE" d="M190 122 V256"/>
+  <path class="w" data-n="KE" data-m="KP_E" d="M70 122 V256"/>
+  <path class="w" data-n="KE" data-m="KP_E" id="br-kpUp" d="M70 256 V264"/>
+  <path class="w" data-n="KS" data-m="KP_S" d="M70 264 V404 H94"/>
+  <path class="w" data-n="KS" data-m="-" d="M94 404 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0 a6 6 0 0 1 12 0"/>
+  <path class="w" data-n="KS" data-m="KM_S" d="M166 404 H190 V264"/>
+  <path class="w" data-n="KE" data-m="KM_E" id="br-kmUp" d="M190 256 V264"/>
+  <path class="w" data-n="KE" data-m="KM_E" d="M190 122 V256"/>
   <path class="w" data-n="RP" d="M312 92 V256"/>
   <path class="w" data-n="RP" id="br-crUp" d="M312 256 V264"/>
   <path class="w" data-n="RA" d="M312 264 V406 H330"/>
@@ -4152,6 +4223,15 @@ CKP.mystery = {
       tell: 'P0016 with both sensor circuits healthy. On the scope, the cam edge lands about 18° late compared with the crank gap. The signals are fine; their timing relationship isn’t.' },
   ],
 };
+/* the two VR wires share one color node, so the meter gets its own nodes for them: AC across the pair, 0 V DC, and the 850 Ω coil */
+CKP.meter = {
+  dc: m => /^K[PM]_/.test(m) ? 0 : undefined,
+  ac(a, b) {
+    const ph = m => ({ KP_S: S.ck.vs / 2, KM_S: -S.ck.vs / 2, KP_E: S.ck.ve / 2, KM_E: -S.ck.ve / 2 })[m] ?? 0;
+    return Math.abs(ph(a) - ph(b)) / Math.SQRT2;
+  },
+  ohmEdges: () => [['KP_E', 'KP_S', S.f.kpUp ? OPEN : WIRE, 'm_kp'], ['KM_E', 'KM_S', S.f.kmUp ? OPEN : WIRE, 'm_km'], ['KP_S', 'KM_S', CK_R, 'm_coil'], ['KP_E', 'KM_E', 20e3, 'm_in']],
+};
 FP.mystery = {
   tools: [{ id: 'f1', label: 'Replace fuse F1', go() {
     if (!S.f.fuse) { toast('F1 checks good. You put it back.'); return; }
@@ -4246,7 +4326,7 @@ function makeState(def) {
   s.M = Object.fromEntries(s.mons.map(m => [m.code, m]));
   return s;
 }
-function solve() { S.batt = S.key === 'run' ? 14.2 : 12.6; D.solve(); }
+function solve() { S.batt = S.key === 'run' ? 14.2 : 12.6; NETCAP = []; try { D.solve(); } finally { S.net = NETCAP; NETCAP = null; } }
 function fail(m) {
   m.failing = true; m.failedTrip = true; m.passTrips = 0;
   if (m.confirmed) {
@@ -4612,7 +4692,7 @@ function renderAll() {
   asShown(() => D.text()); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
   D.syncInputs?.();
   if (MODE === 'lesson') renderGoal();
-  if (MODE === 'mystery') renderMeter();
+  if (MODE === 'mystery') renderDMM();
   syncMysClass();
 }
 
@@ -4648,7 +4728,7 @@ function buildSensorUI() {
   wireEls.forEach(el => { if (el.dataset.g) el.style.stroke = `url(#${el.dataset.g})`; });
   flowEls = D.flows.map(([id, fn]) => ({ el: $('#' + id), fn, off: 0 }));
   svg.querySelectorAll('.hit').forEach(h => h.addEventListener('click', () => { const k = h.dataset.open; setFault(k, !S.f[k]); }));
-  buildProbe(svg);
+  buildProbe(svg); syncViewBox();
   const ir = $('#inputRow');
   ir.hidden = !D.inputHTML;
   ir.innerHTML = D.inputHTML || '';
@@ -4729,8 +4809,8 @@ function setMode(mode) {
   $('#mysDock').hidden = mode !== 'mystery';
   clearSpots();
   if (mode === 'lesson') { L.answered = {}; goStep(0); }
-  if (mode === 'mystery') { PROBE = null; placeProbe(); renderMyst(); }
-  setHash(); syncMysClass();
+  if (mode === 'mystery') renderMyst();
+  setHash(); syncMysClass(); syncMysLayout();
 }
 function setHash() { try { history.replaceState(null, '', '#' + D.id + (MODE === 'mystery' ? '-mystery' : '')); } catch (e) {} }
 function clearSpots() { $$('.spot').forEach(e => e.classList.remove('spot')); }
@@ -4792,7 +4872,7 @@ $('#lAlt').addEventListener('click', () => { const s = D.lesson[L.i]; if (s.alt)
    trips so codes and freeze frames are stored, and hides voltage colors and fault graphics. Students diagnose
    with the scan tool, the test points and a back-probe meter (click any wire). Shuffle bag per circuit: every
    case comes up once per round before any repeat; a new round never opens with the case that closed the last. */
-let MYS = {}, PROBE = null, QUIET = false;
+let MYS = {}, QUIET = false;
 const MZ = () => MODE === 'mystery' && !!MYS[D.id] && !MYS[D.id].revealed;
 function syncMysClass() { document.body.classList.toggle('mys', MODE === 'mystery'); document.body.classList.toggle('mz', MZ()); }
 /* Draw with a healthy fault set while the mystery is hidden, so no fault graphic or label gives it away.
@@ -4856,7 +4936,6 @@ function mysStart(forceId) {
     D.mystery.after?.();
   } finally { QUIET = false; }
   MYS[D.id] = { id: c.id, vals, revealed: false, tries: 0, pick: '' };
-  PROBE = null; placeProbe();
   syncFaultUI(); syncTop(); renderMyst(); renderAll();
 }
 function finishMystery(right) {
@@ -4884,7 +4963,7 @@ function mysteryAct(a) {
 function leaveMystery() {
   for (const id of Object.keys(MYS)) if (id !== D.id) delete STATES[id];
   const had = !!MYS[D.id];
-  MYS = {}; PROBE = null; placeProbe();
+  MYS = {};
   if (had) fullReset();
 }
 function renderMyst() {
@@ -4892,10 +4971,9 @@ function renderMyst() {
   const done = Object.keys(g.res).length, first = Object.values(g.res).filter(r => r.right && r.tries === 1).length, complete = g.i >= n;
   $('#myProg').textContent = `Round ${g.round} · ${done} of ${n} done`;
   $('#myDots').innerHTML = bagDots(g, M && M.id);
-  const meter = `<span class="meter" title="Back-probe meter: red lead on the wire you click, black lead on chassis ground"><span class="ml">DMM</span><b id="mVal"></b></span>`;
   let h;
   if (!M) {
-    h = `<p class="mys-fine">The bench hides one of this circuit’s <b>${n} faults</b> and runs the car for a couple of trips, so it arrives with its codes and freeze frame stored. Voltage colors are off. Use the scan tool, the test points, and the back-probe meter (click any wire) to make the call.</p>
+    h = `<p class="mys-fine">The bench hides one of this circuit’s <b>${n} faults</b> and runs the car for a couple of trips, so it arrives with its codes and freeze frame stored. Voltage colors are off. Use the scan tool and the DMM: drag its leads from the tray onto any wire.</p>
       ${complete ? `<div class="result ok"><b>Set complete.</b> Correct on the first try: ${first} of ${n}.</div>` : ''}
       <div class="mrow"><button class="btn primary" data-my="new">${complete ? `Start round ${g.round + 1}` : done ? `Next mystery fault (${done + 1} of ${n})` : 'Start a mystery fault'}</button>${done ? '<button class="btn small" data-my="restart">Restart this set</button>' : ''}</div>`;
   } else {
@@ -4903,7 +4981,7 @@ function renderMyst() {
     if (!M.revealed) {
       const groups = [...new Set(cases.map(x => x.t))];
       h = `<div class="concern"><small>Customer concern · fault ${g.order.indexOf(M.id) + 1} of ${n}${M.tries ? ` · ${M.tries} ${M.tries === 1 ? 'try' : 'tries'} so far` : ''}</small><p>${c.concern}</p></div>
-        <div class="mrow">${meter}<select id="diag" aria-label="Your diagnosis"><option value="">Your diagnosis…</option>${groups.map(t => `<optgroup label="${t}">${cases.filter(x => x.t === t).map(x => `<option value="${x.id}" ${M.pick === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary small" data-my="check">Check</button><button class="btn small" data-my="reveal">Show me</button>${(D.mystery.tools || []).map(t => `<button class="btn small" data-my="${t.id}">${t.label}</button>`).join('')}</div>`;
+        <div class="mrow"><select id="diag" aria-label="Your diagnosis"><option value="">Your diagnosis…</option>${groups.map(t => `<optgroup label="${t}">${cases.filter(x => x.t === t).map(x => `<option value="${x.id}" ${M.pick === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary small" data-my="check">Check</button><button class="btn small" data-my="reveal">Show me</button>${(D.mystery.tools || []).map(t => `<button class="btn small" data-my="${t.id}">${t.label}</button>`).join('')}</div>`;
     } else {
       const detail = variantText(M.vals);
       h = `<div class="result reveal ${M.right ? 'ok' : 'no'}">${M.right ? `<b class="ans">Correct${M.tries > 1 ? ` in ${M.tries} tries` : ', first try'}.</b> ` : ''}It was <b class="ans">${c.n}</b>${detail ? ` (${detail})` : ''}. Voltage colors are back on.<br><b>The tell:</b> ${c.tell}</div>
@@ -4912,50 +4990,240 @@ function renderMyst() {
   }
   setHTML($('#myBody'), h);
   setHTML($('#myNext'), M && M.revealed ? `<button class="btn primary small" data-my="new">${complete ? `Start round ${g.round + 1}` : 'Next fault'}</button>` : '');
-  renderMeter();
 }
-/* back-probe meter: red lead on the clicked wire, black lead on chassis ground */
+/* ================= DMM + tool tray (Mystery mode) =================
+   Same instrument as the Electrical Test Bench: drag the red and black leads from the tray onto any wire
+   (they snap to the nearest point), or click a lead and then a wire. DC volts and AC volts come from the live
+   solution; ohms are solved on the circuit's own resistor network (captured from nodal()) with the key off. */
+const TRAY_H = 66, TIP_K = 0.72;
+const LEAD = { r: { fill: '#E8384F', edge: '#FF95A0', ang: -28, cable: '#E8384F', nm: 'Red lead' }, b: { fill: '#1B2128', edge: '#A3AFBC', ang: 28, cable: '#6B7785', nm: 'Black lead' } };
+const DMM = { knob: 'V' };
+let LEADS = { r: null, b: null }, LSEL = null, LDRAG = null, SNAPS = null, TRAY = null;
+const vbOf = () => D.viewBox.split(/\s+/).map(Number);
+function syncViewBox() {
+  const [x, y, w, h] = vbOf(), svg = $('#circuit');
+  svg.setAttribute('viewBox', MODE === 'mystery' ? `${x} ${y} ${w} ${h + TRAY_H}` : D.viewBox);
+}
 function buildProbe(svg) {
   svg.querySelectorAll('.w[data-n]').forEach(w => {
-    if (w.closest('.jump, [id^="om-"], .mys-x')) return;
+    if (w.closest('.jump, [id^="om-"], .mys-x') || w.dataset.m === '-') return;
     const h = w.cloneNode(); h.removeAttribute('id'); h.removeAttribute('style'); h.setAttribute('class', 'phit');
-    h.addEventListener('click', e => probeAt(h, e));
+    h.dataset.m = w.dataset.m || w.dataset.n;
+    h.addEventListener('click', e => { if (!LDRAG) leadToWire(LSEL || 'r', h, e); });
     w.parentNode.insertBefore(h, w.nextSibling);
   });
-  svg.insertAdjacentHTML('beforeend', '<g id="probeMk" style="display:none"><circle class="pm-halo" r="8"/><circle class="pm-dot" r="3.6"/></g>');
   (D.mystery?.hide || []).forEach(sel => svg.querySelectorAll(sel).forEach(e => e.classList.add('mys-x')));
-  PROBE = null;
+  const [x, y, w, h] = vbOf(), ty = y + h + 4;
+  TRAY = { ty, gnd: { x: x + 40, y: ty + 30 }, home: { r: [x + 104, ty + 56], b: [x + 128, ty + 56] }, anchor: [x + 116, ty + 60] };
+  svg.insertAdjacentHTML('beforeend', `<g id="trayG"><rect x="${x + 6}" y="${ty}" width="${w - 12}" height="${TRAY_H - 8}" rx="11" class="tray"/>
+    <g class="gstud" data-gnd="1"><circle cx="${TRAY.gnd.x}" cy="${TRAY.gnd.y}" r="9" class="studo"/><circle cx="${TRAY.gnd.x}" cy="${TRAY.gnd.y}" r="4" class="studi"/>
+    <path class="gnd" d="M${TRAY.gnd.x - 7} ${TRAY.gnd.y + 15} H${TRAY.gnd.x + 7} M${TRAY.gnd.x - 4.5} ${TRAY.gnd.y + 18.5} H${TRAY.gnd.x + 4.5} M${TRAY.gnd.x - 2} ${TRAY.gnd.y + 22} H${TRAY.gnd.x + 2}"/></g>
+    <text x="${x + 56}" y="${ty + 20}" class="trayl">CHASSIS</text><text x="${x + 56}" y="${ty + 32}" class="trayl">GROUND</text>
+    <path d="M${x + 88} ${ty + 8} V${ty + 50}" class="traysep"/>
+    <text x="${x + 146}" y="${ty + 24}" class="trayl">DMM LEADS</text><text x="${x + 146}" y="${ty + 37}" class="trays">drag onto any wire</text>
+    <path d="M${x + 238} ${ty + 8} V${ty + 50}" class="traysep"/>
+    <text x="${x + 250}" y="${ty + 21}" class="trays">No test light or power probe on ECM</text><text x="${x + 250}" y="${ty + 33}" class="trays">circuits: they can load or damage the</text><text x="${x + 250}" y="${ty + 45}" class="trays">module. Back-probe with the DMM.</text></g>
+    <g id="cableG"></g><g id="snapG"></g><g id="leadG"></g>`);
+  SNAPS = null; LSEL = null; LDRAG = null;
+  LEADS = { r: null, b: { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true } };
+  drawLeads();
 }
-function probeAt(h, e) {
+/* snap points along every probe-able wire, in root SVG units (computed once per build, after layout) */
+function snapPoints() {
+  if (SNAPS) return SNAPS;
+  const svg = $('#circuit'), inv = svg.getScreenCTM()?.inverse(); if (!inv) return [];
+  SNAPS = [];
+  svg.querySelectorAll('.phit').forEach(h => {
+    const L = h.getTotalLength(), M = inv.multiply(h.getScreenCTM());
+    for (let s = 0; s <= L; s += 3) { const q = h.getPointAtLength(s); SNAPS.push({ x: M.a * q.x + M.c * q.y + M.e, y: M.b * q.x + M.d * q.y + M.f, n: h.dataset.n, m: h.dataset.m }); }
+  });
+  return SNAPS;
+}
+function svgPt(e) { const svg = $('#circuit'), p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+function snapAt(x, y, r = 16) {
+  if (Math.hypot(x - TRAY.gnd.x, y - TRAY.gnd.y) < 16) return { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true };
+  let best = null, bd = r;
+  for (const s of snapPoints()) { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = s; } }
+  return best && { ...best };
+}
+function leadToWire(id, h, e) {
+  if (MODE !== 'mystery') return;
+  let p = e && e.clientX != null ? svgPt(e) : null;
+  if (!p) { const b = h.getBBox(), M = $('#circuit').getScreenCTM().inverse().multiply(h.getScreenCTM()), cx = b.x + b.width / 2, cy = b.y + b.height / 2; p = { x: M.a * cx + M.c * cy + M.e, y: M.b * cx + M.d * cy + M.f }; }
+  let at = null, bd = Infinity;
+  for (const s of snapPoints()) if (s.m === h.dataset.m) { const d = Math.hypot(s.x - p.x, s.y - p.y); if (d < bd) { bd = d; at = s; } }
+  if (!at) return;
+  LEADS[id] = { ...at }; LSEL = null; drawLeads(); renderDMM();
+}
+function tipXY(id) {
+  if (LDRAG && LDRAG.id === id && LDRAG.moved) return { x: LDRAG.x, y: LDRAG.y, ang: LEAD[id].ang, out: true };
+  const at = LEADS[id];
+  return at ? { x: at.x, y: at.y, ang: LEAD[id].ang, out: true } : { x: TRAY.home[id][0], y: TRAY.home[id][1], ang: 0, out: false };
+}
+function drawLeads() {
+  if (!TRAY) return;
+  let cab = '', tips = '';
+  for (const id of ['b', 'r']) {
+    const t = LEAD[id], p = tipXY(id), a = p.ang * Math.PI / 180, L = 46 * TIP_K;
+    if (p.out) {
+      const bx = p.x + L * Math.sin(a), by = p.y - L * Math.cos(a), [ex, ey] = TRAY.anchor;
+      cab += `<path class="cable" stroke="${t.cable}" d="M${bx.toFixed(1)} ${by.toFixed(1)} C${(bx + Math.sin(a) * 34).toFixed(1)} ${(by - Math.cos(a) * 34).toFixed(1)} ${ex} ${ey - 60} ${ex} ${ey}"/>`;
+    }
+    tips += `<g class="tip${LSEL === id ? ' sel' : ''}${LDRAG && LDRAG.id === id ? ' dragging' : ''}" data-tip="${id}" tabindex="0" role="button" aria-label="${t.nm} ${LEADS[id] ? (LEADS[id].gnd ? 'on chassis ground' : 'on a wire') : 'in the tray'}" transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.ang}) scale(${TIP_K})">
+      <line x1="0" y1="0" x2="0" y2="-13" stroke="#D7DEE6" stroke-width="1.6" stroke-linecap="round" pointer-events="none"/>
+      <g class="tbody"><path d="M-2.6 -13 L2.6 -13 L4.4 -18 L4.4 -42 Q4.4 -46 0 -46 Q-4.4 -46 -4.4 -42 L-4.4 -18 Z" fill="${t.fill}" stroke="${t.edge}" stroke-width="1"/>
+      <rect x="-6" y="-22" width="12" height="3" rx="1.5" fill="${t.fill}" stroke="${t.edge}" stroke-width=".8"/></g>
+      <rect x="-10" y="-46" width="20" height="40" fill="transparent"/></g>`;
+  }
+  $('#cableG').innerHTML = cab; $('#leadG').innerHTML = tips;
+  const s = LDRAG && LDRAG.snap;
+  $('#snapG').innerHTML = s ? `<circle class="snapr" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}" r="7"/>` : '';
+}
+/* readings */
+function vAt(l) { if (!l || l.m === 'G') return 0; const d = D.meter?.dc?.(l.m); return d ?? S.v[l.n] ?? 0; }
+function netEdges() {
+  const best = new Map();
+  for (const E of S.net || []) for (const e of E) { const k = e[3] || e[0] + '|' + e[1], p = best.get(k); if (!p || e[2] > p[2]) best.set(k, e); }
+  return [...best.values()].concat(D.meter?.ohmEdges?.() || []).filter(e => e[2] < 1e11);
+}
+function ohms(a, b) {
+  if (a === b) return 0;
+  const E = netEdges(), nodes = new Set();
+  E.forEach(([x, y]) => { nodes.add(x); nodes.add(y); });
+  if (!nodes.has(a) || !nodes.has(b)) return Infinity;
+  const unk = [...nodes].filter(k => k !== b), n = unk.length, idx = Object.fromEntries(unk.map((k, i) => [k, i]));
+  const M = Array.from({ length: n }, (_, i) => { const r = new Float64Array(n + 1); r[i] = 1e-9; return r; });
+  for (const [x, y, r] of E) {
+    const g = 1 / Math.max(r, 1e-4), i = idx[x], j = idx[y];
+    if (i != null) M[i][i] += g;
+    if (j != null) M[j][j] += g;
+    if (i != null && j != null) { M[i][j] -= g; M[j][i] -= g; }
+  }
+  M[idx[a]][n] = 1;
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < n; r++) { if (r === c) continue; const f = M[r][c] / M[c][c]; if (f) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M[idx[a]][n] / M[idx[a]][idx[a]];
+}
+const fmtDV = v => { const a = Math.abs(v); return (a < 0.0005 ? 0 : v).toFixed(a >= 100 ? 1 : a >= 10 ? 2 : 3); };
+function fmtOhm(r) {
+  if (!(r < 4e7)) return ['OL', 'MΩ'];
+  if (r < 1000) return [r.toFixed(r < 100 ? 2 : 1), 'Ω'];
+  if (r < 1e6) return [(r / 1000).toFixed(r < 1e4 ? 3 : r < 1e5 ? 2 : 1), 'kΩ'];
+  return [(r / 1e6).toFixed(2), 'MΩ'];
+}
+function readMeter() {
+  const k = DMM.knob, r = LEADS.r, b = LEADS.b;
+  if (k === 'OFF') return { off: true };
+  const where = !r && !b ? 'Both leads in the tray' : !r ? 'Red lead in the tray' : !b ? 'Black lead in the tray' : `Red on ${r.gnd ? 'chassis ground' : 'a wire'} · black on ${b.gnd ? 'chassis ground' : 'a wire'}`;
+  if (k === 'V' || k === 'AC') {
+    const ac = k === 'AC', v = !r || !b ? 0 : ac ? (D.meter?.ac?.(r.m, b.m) ?? 0) : vAt(r) - vAt(b);
+    return { val: fmtDV(v), unit: 'V', ann: [['AUTO', 'on'], [ac ? 'AC' : 'DC', 'on'], ['V', 'on']], sub: where };
+  }
+  const live = on() || (r && Math.abs(vAt(r)) > 0.3) || (b && Math.abs(vAt(b)) > 0.3) || (r && b && Math.abs(vAt(r) - vAt(b)) > 0.05);
+  if (!r || !b) return { val: 'OL', unit: 'MΩ', ann: [['AUTO', 'on'], ['Ω', 'on']], sub: where };
+  if (live) return { val: '- . - -', unit: 'Ω', live: true, ann: [['AUTO', 'on'], ['Ω', 'on'], ['VOLTS PRESENT', 'warn']], sub: where,
+    warn: on() ? 'Ohms needs the circuit unpowered. Turn the key off first.' : 'There’s voltage on this circuit even with the key off (it’s a battery circuit). An ohmmeter can’t read a live circuit.' };
+  const [val, unit] = fmtOhm(ohms(r.m, b.m));
+  return { val, unit, ann: [['AUTO', 'on'], ['Ω', 'on']], sub: where };
+}
+const DMM_IT = {
+  OFF: ['Meter off', 'Turn the knob: <b>V⎓</b> for DC volts, <b>V~</b> for AC volts, <b>Ω</b> for resistance.'],
+  V: ['DC volts', 'Back-probe with the circuit powered. Black on chassis ground reads the voltage at a point. One lead at each end of a wire or connection reads the <b>voltage drop</b> across it.'],
+  AC: ['AC volts', 'For signals that alternate, like a VR crank sensor. Measure across the sensor’s two wires with the engine cranking or running.'],
+  R: ['Resistance', 'Key off, no voltage on the circuit. A wire end to end should read under 1 Ω, a wire to ground should read OL, and a sensor or coil reads its own resistance across its terminals.'],
+};
+function renderDMM() {
+  if (MODE !== 'mystery') return;
+  const RD = readMeter(), k = DMM.knob;
+  $('#lcd').classList.toggle('dark', !!RD.off); $('#lcd').classList.toggle('live', !!RD.live);
+  const val = RD.off ? '8.8.8.8' : RD.val;
+  if ($('#lcdVal').textContent !== val) $('#lcdVal').textContent = val;
+  $('#lcdUnit').textContent = RD.off ? '' : RD.unit;
+  $('#lcdSub').textContent = RD.off ? '' : RD.sub;
+  setHTML($('#lann'), RD.off ? '' : RD.ann.map(([t, c]) => `<span class="${c}">${t}</span>`).join(''));
+  const POS = { OFF: -135, V: -45, AC: 45, R: 135 }, LAB = { OFF: 'OFF', V: 'V⎓', AC: 'V~', R: 'Ω' }, ARIA = { OFF: 'Off', V: 'DC volts', AC: 'AC volts', R: 'Ohms' };
+  let kn = `<circle cx="52" cy="52" r="27" fill="#0B1015" stroke="#2A3644" stroke-width="1.5"/><circle cx="52" cy="52" r="20" fill="#1B2530" stroke="#3A4757"/>
+    <g transform="rotate(${POS[k]} 52 52)"><path d="M52 34 V46" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g>`;
+  for (const p in POS) {
+    const a = POS[p] * Math.PI / 180, x = 52 + 41 * Math.sin(a), y = 52 - 41 * Math.cos(a) + 3.5;
+    kn += `<g class="kp${k === p ? ' cur' : ''}" data-k="${p}" tabindex="0" role="radio" aria-checked="${k === p}" aria-label="${ARIA[p]}"><circle cx="${x}" cy="${y - 3}" r="12" fill="transparent" stroke="transparent"/><text x="${x}" y="${y}" text-anchor="middle">${LAB[p]}</text></g>`;
+  }
+  setHTML($('#knob'), kn);
+  const [t, p] = DMM_IT[k];
+  setHTML($('#interp'), `<div class="it"><b>${RD.warn ? 'Can’t read ohms here' : t}</b></div><p>${RD.warn || p}</p>`);
+  $('#interp').classList.toggle('warn', !!RD.warn);
+}
+/* lead dragging */
+function initLeads() {
   const svg = $('#circuit');
-  let x, y;
-  if (e && e.clientX != null && h.getTotalLength) {
-    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
-    const lp = pt.matrixTransform(h.getScreenCTM().inverse()), L = h.getTotalLength();
-    let best = 0, bd = Infinity;
-    for (let s = 0; s <= L; s += 1.5) { const q = h.getPointAtLength(s), d = (q.x - lp.x) ** 2 + (q.y - lp.y) ** 2; if (d < bd) { bd = d; best = s; } }
-    const q = h.getPointAtLength(best), sp = svg.createSVGPoint(); sp.x = q.x; sp.y = q.y;
-    const r = sp.matrixTransform(h.getScreenCTM()).matrixTransform(svg.getScreenCTM().inverse()); x = r.x; y = r.y;
-  } else { const b = h.getBBox(); x = b.x + b.width / 2; y = b.y + b.height / 2; }
-  PROBE = { n: h.dataset.n, x, y };
-  placeProbe(); renderMeter();
+  svg.addEventListener('pointerdown', e => {
+    const g = e.target.closest('[data-tip]');
+    if (!g || MODE !== 'mystery') return;
+    e.preventDefault();
+    const p = svgPt(e);
+    LDRAG = { id: g.dataset.tip, x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, snap: null };
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!LDRAG) return;
+    const p = svgPt(e);
+    if (!LDRAG.moved && Math.hypot(p.x - LDRAG.sx, p.y - LDRAG.sy) < 4) return;
+    LDRAG.moved = true; LDRAG.snap = snapAt(p.x, p.y);
+    LDRAG.x = LDRAG.snap ? LDRAG.snap.x : p.x; LDRAG.y = LDRAG.snap ? LDRAG.snap.y : p.y;
+    drawLeads();
+  });
+  const end = e => {
+    if (!LDRAG) return;
+    const d = LDRAG; LDRAG = null;
+    try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (!d.moved) LSEL = LSEL === d.id ? null : d.id;
+    else { LEADS[d.id] = d.snap || null; LSEL = null; }
+    drawLeads(); renderDMM();
+    e.stopPropagation();
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('click', e => {
+    if (MODE !== 'mystery' || !LSEL || e.target.closest('[data-tip], .phit')) return;
+    const p = svgPt(e), [, y, , h] = vbOf();
+    if (e.target.closest('[data-gnd]')) LEADS[LSEL] = snapAt(TRAY.gnd.x, TRAY.gnd.y);
+    else if (p.y > y + h) LEADS[LSEL] = null;
+    else return;
+    LSEL = null; drawLeads(); renderDMM();
+  });
+  svg.addEventListener('keydown', e => {
+    const g = e.target.closest('[data-tip]');
+    if (e.key === 'Escape' && LSEL) { LSEL = null; drawLeads(); return; }
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); LSEL = LSEL === g.dataset.tip ? null : g.dataset.tip; drawLeads(); }
+  });
+  $('#knob').addEventListener('click', e => { const k = e.target.closest('[data-k]'); if (k) { DMM.knob = k.dataset.k; renderDMM(); } });
+  $('#knob').addEventListener('keydown', e => { const k = e.target.closest('[data-k]'); if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); DMM.knob = k.dataset.k; renderDMM(); } });
 }
-function placeProbe() {
-  const mk = $('#probeMk'); if (!mk) return;
-  mk.style.display = PROBE ? '' : 'none';
-  if (PROBE) mk.setAttribute('transform', `translate(${PROBE.x.toFixed(1)} ${PROBE.y.toFixed(1)})`);
-}
-function renderMeter() {
-  const b = $('#mVal'); if (!b) return;
-  const v = PROBE ? S.v[PROBE.n] : null, txt = PROBE && v != null ? fmtV(v) : 'Click any wire';
-  if (b.textContent !== txt) b.textContent = txt;
-  b.classList.toggle('idle', !PROBE);
+/* Mystery layout: the meter panel replaces Inside the ECM, the scope moves under the meter as a lab scope */
+function syncMysLayout() {
+  const m = MODE === 'mystery';
+  $('#logicPanel').hidden = m; $('#meterPanel').hidden = !m;
+  if (m) $('#meterScope').appendChild($('#chartBox'));
+  else $('#logicPanel .reads').after($('#chartBox'));
+  syncViewBox(); SNAPS = null;
+  if (m) { drawLeads(); renderDMM(); }
 }
 
 /* ================= wiring ================= */
 $('#mExplore').addEventListener('click', () => setMode('explore'));
 $('#mLesson').addEventListener('click', () => setMode('lesson'));
 $('#mMyst').addEventListener('click', () => setMode('mystery'));
+initLeads();
+/* scan tool sections fold open and closed (click the heading) */
+$$('.sbody > div > h4').forEach(h => {
+  h.tabIndex = 0; h.setAttribute('role', 'button'); h.setAttribute('aria-expanded', 'true');
+  const tog = () => { const c = h.parentNode.classList.toggle('coll'); h.setAttribute('aria-expanded', String(!c)); };
+  h.addEventListener('click', e => { if (!e.target.closest('button')) tog(); });
+  h.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('button')) { e.preventDefault(); tog(); } });
+});
 $('#mysDock').addEventListener('click', e => { const b = e.target.closest('[data-my]'); if (b) mysteryAct(b.dataset.my); });
 $('#myBody').addEventListener('change', e => { if (e.target.id === 'diag' && MYS[D.id]) MYS[D.id].pick = e.target.value; });
 $$('[data-key]').forEach(b => b.addEventListener('click', () => setKey(b.dataset.key)));
@@ -4981,7 +5249,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get PROBE() { return PROBE; }, setMode, mysteryAct, mysStart, probeAt, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
+window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get LEADS() { return LEADS; }, DMM, readMeter, ohms, snapAt, leadToWire, setMode, mysteryAct, mysStart, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
 })();
 </script>
 
