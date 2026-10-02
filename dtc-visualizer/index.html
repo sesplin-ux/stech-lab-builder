@@ -257,6 +257,20 @@ body.mys #circuit .hit{pointer-events:none}
 .interp.warn{border-color:rgba(255,90,78,.55);background:linear-gradient(180deg,rgba(255,90,78,.09),var(--raise))}
 .interp.warn b{color:#FFB3AC}
 #meterScope:empty{display:none}
+.plugs{display:grid;gap:6px;padding:7px 9px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.plugs>small{font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.plugs>div{display:flex;gap:5px;flex-wrap:wrap}
+.pbtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 7px;border-radius:8px;border:1px solid var(--line-2);background:#0B1116;font:600 10.5px/1.1 var(--f-label);letter-spacing:.06em;color:var(--soft)}
+.pbtn:hover{border-color:#3a4a5c}
+.pbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pbtn i{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.pbtn[aria-pressed="true"]{border-color:rgba(255,178,36,.6);background:rgba(255,178,36,.08);color:#FFD48A}
+.pbtn[aria-pressed="true"] i{background:var(--warn)}
+#plugG{display:none}
+body.mys #plugG{display:inline}
+.ppill rect{fill:rgba(255,178,36,.16);stroke:var(--warn)}
+.ppill text{fill:#FFD48A;font-weight:700;font-size:8.5px;letter-spacing:.14em}
+.ppill{cursor:pointer}
 body.mys #chartTitle::before{content:'Lab scope · ';color:var(--accent)}
 /* tool tray + leads inside the schematic */
 #trayG,#cableG,#snapG,#leadG{display:none}
@@ -568,7 +582,7 @@ body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono)
               <div class="jacks"><span class="jack blk"><i></i><span>COM<br><small>black lead</small></span></span><span class="jack red"><i></i><span>VΩ<br><small>red lead</small></span></span></div>
             </div>
           </div>
-          <div class="minfo"><div class="interp" id="interp"></div><p class="fine">Drag a lead from the tray onto a test point: an ECM pin, either half of a connector, or a component terminal. Or click a lead, then a test point. Clicking a test point on its own moves the red lead there.</p></div>
+          <div class="minfo"><div class="interp" id="interp"></div><div class="plugs" id="plugRow"></div></div>
         </div>
         <div id="meterScope"></div>
       </div>
@@ -4395,6 +4409,60 @@ RF.tps = [
   ['BP', 440, 372, '', 'APP connector · APP 2 5 V ref, harness side'], ['BS', 470, 372, '', 'APP connector · APP 2 signal, harness side'], ['BL', 494, 372, '', 'APP connector · APP 2 low ref, harness side'],
 ];
 
+/* ================= connectors (unplug for ohms testing) =================
+   Key off only. Unplugging a connector changes the ohmmeter's network at each cavity:
+   ['e', edge] opens an edge that runs through the connector; ['s', node, [far edges]] splits a node that is the
+   same wire on both halves, so the far-side edges move to node~ID. A test point written 'node@ID' sits on the
+   far side of connector ID. key: an unplug that the circuit already models live (the 5 V ref sensors). */
+ECT.plugs = [
+  { id: 'C1', n: 'C1', at: [265, 333], cav: [['e', 'hr'], ['s', 'RB', ['rlo']]] },
+  { id: 'S', n: 'ECT sensor', at: [265, 440], cav: [['s', 'SA', ['th']], ['s', 'SB', ['th']]] },
+  { id: 'ECM', n: 'ECM connector', at: [265, 200], cav: [['s', 'P', ['pu']], ['s', 'L', ['lg']]] },
+];
+TPS.plugs = [
+  { id: 'C1', n: 'C1', at: [200, 333], cav: [['e', 'hr'], ['s', 'SX', ['slo', 's5']], ['s', 'GC', ['glo']]] },
+  { id: 'S', n: 'TPS', at: [200, 440], cav: [['s', 'TA', ['tt']], ['s', 'W', ['wip']], ['s', 'TC', ['tb']]] },
+  { id: 'ECM', n: 'ECM connector', at: [200, 200], cav: [['s', 'R5', ['reg']], ['s', 'P', ['pd']], ['s', 'L', ['lg']]] },
+];
+O2.plugs = [
+  { id: 'C1', n: 'C1', at: [250, 333], cav: [['s', 'SX', ['slo']], ['s', 'RX', ['rlo']], ['s', 'CX', ['clo']], ['s', 'FX', ['flo']]] },
+  { id: 'S', n: 'O2 sensor', at: [250, 436], cav: [['s', 'SP', ['ri']], ['s', 'SM', ['ri']], ['s', 'HC', ['htr']], ['s', 'FC', ['htr']]] },
+  { id: 'ECM', n: 'ECM connector', at: [160, 200], cav: [['s', 'P', ['rb']], ['s', 'L', ['lg']], ['s', 'CP', ['sense', 'drv']]] },
+];
+INJ.plugs = [
+  { id: 'C1', n: 'C1', at: [340, 333], cav: [['e', 'hr'], ['e', 'c1']] },
+  { id: 'S', n: 'Injector', at: [340, 440], cav: [['s', 'FC', ['coil']], ['s', 'HC', ['coil']]] },
+  { id: 'ECM', n: 'ECM connector', at: [150, 200], cav: [['s', 'CP', ['bias', 'drv']]] },
+];
+CAN.plugs = [
+  { id: 'C1', n: 'C1', at: [250, 333], cav: [['e', 'c1h'], ['e', 'hr']] },
+  { id: 'I', n: 'Cluster (IPC)', at: [250, 528], cav: [['s', 'IH', ['ti']], ['s', 'IL', ['ti']]] },
+  { id: 'ECM', n: 'ECM connector', at: [130, 200], cav: [['s', 'EH', ['te']], ['s', 'EL', ['te']]] },
+];
+CKP.plugs = [
+  { id: 'C1', n: 'C1 (CKP)', at: [130, 310], cav: [['s', 'KP_S', ['m_coil']], ['s', 'KM_S', ['m_coil']]] },
+  { id: 'C2', n: 'C2 (CMP)', at: [360, 310], cav: [['s', 'RA', ['hall']], ['s', 'SA', ['c2s']], ['s', 'GA', ['c2g']]] },
+  { id: 'ECM', n: 'ECM connector', at: [250, 200], cav: [['s', 'KP_E', ['m_in']], ['s', 'KM_E', ['m_in']], ['s', 'RP', ['reg']], ['s', 'SP', ['pu']], ['s', 'LP', ['lg']]] },
+];
+FP.plugs = [
+  { id: 'K', n: 'FP relay', at: [429, 276], cav: [['e', 'coil'], ['e', 'sw']] },
+  { id: 'C1', n: 'C1', at: [446, 381], cav: [['e', 'c1']] },
+  { id: 'P', n: 'Pump', at: [400, 424], cav: [['s', 'PP', ['pump']], ['s', 'PG', ['pump']]] },
+  { id: 'ECM', n: 'ECM connector', at: [150, 200], cav: [['s', 'SN', ['snin']], ['s', 'CP', ['bias', 'drv']]] },
+];
+RF.plugs = [
+  { id: 'M', n: 'MAP', key: 'uMap' }, { id: 'T', n: 'TPS', key: 'uTps' }, { id: 'A', n: 'APP', key: 'uApp' },
+  { id: 'ECM', n: 'ECM connector', at: [250, 200], cav: [['s', 'RP', ['reg']], ['s', 'LP', ['lg']], ['s', 'MP', ['mpd']], ['s', 'TP', ['tpd']], ['s', 'AP', ['apd']], ['s', 'BP', ['regB']], ['s', 'BS', ['bpd']], ['s', 'BL', ['blg']]] },
+];
+/* far-side test points */
+const farTP = (D0, plug, list) => list.forEach(i => { D0.tps[i][0] += '@' + plug; });
+farTP(ECT, 'C1', [5]); farTP(ECT, 'S', [6, 7]);
+farTP(TPS, 'C1', [6, 8]); farTP(TPS, 'S', [9, 10, 11]);
+farTP(O2, 'C1', [5, 7, 9, 11]); farTP(O2, 'S', [12, 13, 14, 15]);
+farTP(INJ, 'S', [6, 7]);
+farTP(CKP, 'C1', [6, 8, 15, 16]); farTP(CKP, 'C2', [10, 12, 14, 17, 18, 19]);
+farTP(FP, 'P', [12, 13]);
+
 const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN, ckp: CKP, fp: FP, ref5: RF };
 const PLANNED = [];
 
@@ -4443,6 +4511,7 @@ function endTrip() {
 }
 function setKey(k) {
   if (k === S.key) return;
+  if (k !== 'off' && !QUIET && MODE === 'mystery' && plugsOut()) { toast('Plug the connectors back in before you turn the key on.', 'warn'); syncTop(); return; }
   if (k === 'off') {
     if (S.tripOpen && S.ranThisTrip) endTrip();
     S.tripOpen = false; S.ranThisTrip = false; S.run = 0;
@@ -4466,6 +4535,7 @@ function setKey(k) {
 }
 function coldStart() { setKey('off'); D.soak?.(); setKey('on'); setKey('run'); }
 function nextTrip() {
+  if (MODE === 'mystery' && plugsOut()) { toast('Plug the connectors back in before you start the car.', 'warn'); return; }
   setKey('off'); D.soak?.();
   setKey('on'); setKey('run');
   toast(`Trip ${S.trip}: key off, overnight soak, restart.`);
@@ -4778,7 +4848,7 @@ function renderAll() {
   asShown(() => D.text()); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
   D.syncInputs?.();
   if (MODE === 'lesson') renderGoal();
-  if (MODE === 'mystery') renderDMM();
+  if (MODE === 'mystery') { renderDMM(); if (D.plugs?.some(P => P.key)) renderPlugs(); }
   syncMysClass();
 }
 
@@ -5011,7 +5081,7 @@ function mysStart(forceId) {
   if (g.i >= g.order.length) { bagNewRound(); g = bag(); }
   const c = myCase(forceId || g.order[g.i]);
   let vals;
-  QUIET = true;
+  QUIET = true; PLUGS = {};
   try {
     S = STATES[D.id] = makeState(D);
     buildMonitors(); setChart(S.chart);
@@ -5022,7 +5092,7 @@ function mysStart(forceId) {
     D.mystery.after?.();
   } finally { QUIET = false; }
   MYS[D.id] = { id: c.id, vals, revealed: false, tries: 0, pick: '' };
-  syncFaultUI(); syncTop(); renderMyst(); renderAll();
+  syncFaultUI(); syncTop(); renderMyst(); renderPlugs(); renderAll();
 }
 function finishMystery(right) {
   const M = MYS[D.id], g = bag();
@@ -5084,7 +5154,7 @@ function renderMyst() {
 const TRAY_H = 66, TIP_K = 0.72;
 const LEAD = { r: { fill: '#E8384F', edge: '#FF95A0', ang: -28, cable: '#E8384F', nm: 'Red lead' }, b: { fill: '#1B2128', edge: '#A3AFBC', ang: 28, cable: '#6B7785', nm: 'Black lead' } };
 const DMM = { knob: 'V' };
-let LEADS = { r: null, b: null }, LSEL = null, LDRAG = null, TRAY = null;
+let LEADS = { r: null, b: null }, LSEL = null, LDRAG = null, TRAY = null, PLUGS = {};
 const vbOf = () => D.viewBox.split(/\s+/).map(Number);
 function syncViewBox() {
   const [x, y, w, h] = vbOf(), svg = $('#circuit');
@@ -5105,13 +5175,27 @@ function buildProbe(svg) {
     <text x="${x + 146}" y="${ty + 24}" class="trayl">DMM LEADS</text><text x="${x + 146}" y="${ty + 37}" class="trays">drag to a test point</text>
     <path d="M${x + 242} ${ty + 8} V${ty + 50}" class="traysep"/>
     <text x="${x + 250}" y="${ty + 21}" class="trays">No test light or power probe on ECM</text><text x="${x + 250}" y="${ty + 33}" class="trays">circuits: they can load or damage the</text><text x="${x + 250}" y="${ty + 45}" class="trays">module. Back-probe with the DMM.</text></g>
-    <g id="tpG">${(D.tps || []).map((t, i) => `<g class="tpx" data-tpi="${i}" tabindex="0" role="button" aria-label="Test point: ${t[4]}" transform="translate(${t[1]} ${t[2]})"><title>${t[4]}</title><circle class="tph" r="11"/><circle class="tpring" r="6.2"/><circle class="tpd" r="2.9" fill="#8A98A8"/></g>`).join('')}${(D.tps || []).map(lab).join('')}</g>
+    <g id="plugG"></g><g id="tpG">${(D.tps || []).map((t, i) => `<g class="tpx" data-tpi="${i}" tabindex="0" role="button" aria-label="Test point: ${t[4]}" transform="translate(${t[1]} ${t[2]})"><title>${t[4]}</title><circle class="tph" r="11"/><circle class="tpring" r="6.2"/><circle class="tpd" r="2.9" fill="#8A98A8"/></g>`).join('')}${(D.tps || []).map(lab).join('')}</g>
     <g id="cableG"></g><g id="snapG"></g><g id="leadG"></g>`);
-  LSEL = null; LDRAG = null;
+  LSEL = null; LDRAG = null; PLUGS = {};
   LEADS = { r: null, b: { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true, nm: 'chassis ground' } };
   drawLeads();
 }
-const tpAt = i => { const t = D.tps[i]; return { m: t[0], n: t[0], x: t[1], y: t[2], nm: t[4], i }; };
+const tpAt = i => { const t = D.tps[i], [n, pl] = t[0].split('@'); return { m: pl && PLUGS[pl] ? n + '~' + pl : n, n, x: t[1], y: t[2], nm: t[4], i }; };
+const plugsOut = () => Object.values(PLUGS).some(Boolean);
+function togglePlug(id) {
+  const P = (D.plugs || []).find(x => x.id === id); if (!P) return;
+  if (P.key) setFault(P.key, !S.f[P.key]);
+  else if (on() && !PLUGS[id]) { toast('Turn the key off before you unplug a connector.', 'warn'); return; }
+  else PLUGS[id] = !PLUGS[id];
+  renderPlugs(); renderDMM();
+}
+function renderPlugs() {
+  if (MODE !== 'mystery') return;
+  const L = D.plugs || [], out = P => P.key ? !!S.f[P.key] : !!PLUGS[P.id];
+  setHTML($('#plugRow'), L.length ? `<small>Connectors · key off to unplug</small><div>${L.map(P => `<button class="pbtn" data-plug="${P.id}" aria-pressed="${out(P)}" title="${P.n}: ${out(P) ? 'unplugged. Click to plug it back in' : 'plugged in. Click to unplug it'}"><i></i>${P.n}${out(P) ? ' · out' : ''}</button>`).join('')}</div>` : '');
+  setHTML($('#plugG'), L.filter(P => P.at && out(P)).map(P => { const t = `${P.n.toUpperCase()} · UNPLUGGED`, w = t.length * 6.4 + 16; return `<g class="ppill" data-plug="${P.id}" transform="translate(${P.at[0]} ${P.at[1]})"><title>Click to plug ${P.n} back in</title><rect x="${-w / 2}" y="-8" width="${w}" height="16" rx="8"/><text y="3" text-anchor="middle">${t}</text></g>`; }).join(''));
+}
 function snapAt(x, y, r = 18) {
   if (Math.hypot(x - TRAY.gnd.x, y - TRAY.gnd.y) < r) return { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true, nm: 'chassis ground' };
   let best = null, bd = r;
@@ -5149,11 +5233,16 @@ function drawLeads() {
   $('#tpG')?.classList.toggle('armed', !!(LSEL || (LDRAG && LDRAG.moved)));
 }
 /* readings */
-function vAt(l) { if (!l || l.m === 'G') return 0; const d = D.meter?.dc?.(l.m); return d ?? S.v[l.n] ?? 0; }
+function vAt(l) { if (!l || l.m === 'G' || l.m.includes('~')) return 0; const d = D.meter?.dc?.(l.m); return d ?? S.v[l.n] ?? 0; }   // a disconnected half reads 0 V (connectors only come apart with the key off)
 function netEdges() {
   const best = new Map();
   for (const E of S.net || []) for (const e of E) { const k = e[3] || e[0] + '|' + e[1], p = best.get(k); if (!p || e[2] > p[2]) best.set(k, e); }
-  return [...best.values()].concat(D.meter?.ohmEdges?.() || []).filter(e => e[2] < 1e11);
+  let E = [...best.values()].concat(D.meter?.ohmEdges?.() || []).filter(e => e[2] < 1e11);
+  for (const P of D.plugs || []) if (!P.key && PLUGS[P.id]) for (const c of P.cav) {
+    if (c[0] === 'e') E = E.filter(e => e[3] !== c[1]);
+    else { const [, nd, far] = c, nn = nd + '~' + P.id; E = E.map(e => far.includes(e[3]) ? [e[0] === nd ? nn : e[0], e[1] === nd ? nn : e[1], e[2], e[3]] : e); }
+  }
+  return E;
 }
 function ohms(a, b) {
   if (a === b) return 0;
@@ -5184,16 +5273,16 @@ function fmtOhm(r) {
   return [(r / 1e6).toFixed(2), 'MΩ'];
 }
 function readMeter() {
-  const k = DMM.knob, r = LEADS.r, b = LEADS.b;
+  const k = DMM.knob, live = l => l && l.i != null ? tpAt(l.i) : l, r = live(LEADS.r), b = live(LEADS.b);
   if (k === 'OFF') return { off: true };
   const where = !r && !b ? 'Both leads in the tray' : !r ? 'Red lead in the tray' : !b ? 'Black lead in the tray' : `Red: ${r.nm} · Black: ${b.nm}`;
   if (k === 'V' || k === 'AC') {
     const ac = k === 'AC', v = !r || !b ? 0 : ac ? (D.meter?.ac?.(r.m, b.m) ?? 0) : vAt(r) - vAt(b);
     return { val: fmtDV(v), unit: 'V', ann: [['AUTO', 'on'], [ac ? 'AC' : 'DC', 'on'], ['V', 'on']], sub: where };
   }
-  const live = on() || (r && Math.abs(vAt(r)) > 0.3) || (b && Math.abs(vAt(b)) > 0.3) || (r && b && Math.abs(vAt(r) - vAt(b)) > 0.05);
+  const hot = on() || (r && Math.abs(vAt(r)) > 0.3) || (b && Math.abs(vAt(b)) > 0.3) || (r && b && Math.abs(vAt(r) - vAt(b)) > 0.05);
   if (!r || !b) return { val: 'OL', unit: 'MΩ', ann: [['AUTO', 'on'], ['Ω', 'on']], sub: where };
-  if (live) return { val: '- . - -', unit: 'Ω', live: true, ann: [['AUTO', 'on'], ['Ω', 'on'], ['VOLTS PRESENT', 'warn']], sub: where,
+  if (hot) return { val: '- . - -', unit: 'Ω', live: true, ann: [['AUTO', 'on'], ['Ω', 'on'], ['VOLTS PRESENT', 'warn']], sub: where,
     warn: on() ? 'Ohms needs the circuit unpowered. Turn the key off first.' : 'There’s voltage on this circuit even with the key off (it’s a battery circuit). An ohmmeter can’t read a live circuit.' };
   const [val, unit] = fmtOhm(ohms(r.m, b.m));
   return { val, unit, ann: [['AUTO', 'on'], ['Ω', 'on']], sub: where };
@@ -5202,7 +5291,7 @@ const DMM_IT = {
   OFF: ['Meter off', 'Turn the knob: <b>V⎓</b> for DC volts, <b>V~</b> for AC volts, <b>Ω</b> for resistance.'],
   V: ['DC volts', 'Back-probe with the circuit powered. Black on chassis ground reads the voltage at a point. One lead at each end of a wire or connection reads the <b>voltage drop</b> across it.'],
   AC: ['AC volts', 'For signals that alternate, like a VR crank sensor. Measure across the sensor’s two wires with the engine cranking or running.'],
-  R: ['Resistance', 'Key off, no voltage on the circuit. A wire end to end should read under 1 Ω, a wire to ground should read OL, and a sensor or coil reads its own resistance across its terminals.'],
+  R: ['Resistance', 'Key off, no voltage on the circuit. A wire end to end should read under 1 Ω and a wire to ground should read OL. Unplug connectors to isolate a part, or the reading includes everything else connected to it.'],
 };
 function renderDMM() {
   if (MODE !== 'mystery') return;
@@ -5275,17 +5364,20 @@ function initLeads() {
     const tp = e.target.closest('[data-tpi]');
     if (tp && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); leadToTP(LSEL || 'r', +tp.dataset.tpi); }
   });
+  $('#plugRow').addEventListener('click', e => { const b = e.target.closest('[data-plug]'); if (b) togglePlug(b.dataset.plug); });
+  svg.addEventListener('click', e => { const g = e.target.closest('.ppill'); if (g) togglePlug(g.dataset.plug); });
   $('#knob').addEventListener('click', e => { const k = e.target.closest('[data-k]'); if (k) { DMM.knob = k.dataset.k; renderDMM(); } });
   $('#knob').addEventListener('keydown', e => { const k = e.target.closest('[data-k]'); if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); DMM.knob = k.dataset.k; renderDMM(); } });
 }
 /* Mystery layout: the meter panel replaces Inside the ECM, the scope moves under the meter as a lab scope */
 function syncMysLayout() {
   const m = MODE === 'mystery';
+  if (!m) PLUGS = {};
   $('#logicPanel').hidden = m; $('#meterPanel').hidden = !m;
   if (m) $('#meterScope').appendChild($('#chartBox'));
   else $('#logicPanel .reads').after($('#chartBox'));
   syncViewBox();
-  if (m) { drawLeads(); renderDMM(); }
+  if (m) { drawLeads(); renderDMM(); renderPlugs(); }
 }
 
 /* ================= wiring ================= */
@@ -5325,7 +5417,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get LEADS() { return LEADS; }, DMM, readMeter, ohms, snapAt, leadToTP, setMode, mysteryAct, mysStart, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
+window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get LEADS() { return LEADS; }, DMM, readMeter, ohms, snapAt, leadToTP, togglePlug, get PLUGS() { return PLUGS; }, setMode, mysteryAct, mysStart, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
 })();
 </script>
 
