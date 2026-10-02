@@ -49,6 +49,9 @@ button{font:inherit;color:inherit}
 .seg button[aria-pressed="true"] .dot.run{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .seg button[aria-pressed="true"] .dot.on{background:var(--warn)}
 .modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.bar .seg button{padding-inline:9px}
+.brand{flex:1 1 250px}  /* line breaks use 250 px, so a long circuit subtitle truncates instead of wrapping the bar */
+.brand h1,.brand p{overflow:hidden;text-overflow:ellipsis}
 .clock{display:inline-block;min-width:28ch;font:500 12px/1 var(--f-mono);color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}  /* fixed width: changing text never re-wraps the bar */
 .slow{position:absolute;top:8px;right:12px;z-index:2;pointer-events:none;font:600 10px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--warn);background:var(--panel);border:1px solid rgba(255,178,36,.4);padding:5px 8px;border-radius:99px;white-space:nowrap}  /* overlay: showing/hiding never shifts layout */
 .btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);transition:border-color .15s,background .15s}
@@ -181,6 +184,48 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .l-nav{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .l-nav .r{display:flex;gap:8px}
 
+/* ---------- mystery fault ---------- */
+#mysDock{height:164px;display:flex;flex-direction:column;padding-bottom:7px}
+#mysDock[hidden]{display:none}
+.mys-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;flex:none}
+.mys-top h3{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font:600 10.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--warn)}
+.mys-top .r{display:flex;align-items:center;gap:8px;min-width:0}
+.mys-top h3 span{margin-left:8px;letter-spacing:.04em;text-transform:none;font:500 11.5px var(--f-ui);color:var(--faint)}
+.mdots{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
+.mdots i{width:12px;height:4px;border-radius:2px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.s{background:var(--fail)} .mdots i.cur{background:var(--accent)}
+#myBody{display:grid;gap:6px;align-content:start;flex:1;min-height:0;overflow-y:auto;padding-right:2px}
+.concern{padding:6px 9px;border-radius:10px;border:1px solid rgba(255,178,36,.45);background:linear-gradient(180deg,rgba(255,178,36,.08),var(--raise))}
+.concern small{display:block;font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.concern p{margin:0;font:600 14px/1.25 var(--f-label);letter-spacing:.01em}
+.mrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.mrow select{flex:1 1 150px;min-width:0;font:500 13px var(--f-ui);color:var(--fg);background:var(--raise);border:1px solid var(--line-2);border-radius:8px;padding:6px 8px}
+.meter{flex:none;display:inline-flex;align-items:baseline;gap:8px;padding:6px 9px;border-radius:8px;border:1px solid var(--line-2);background:#090D12}
+.meter .ml{font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.meter b{font:600 15px/1 var(--f-mono);color:#EAFBFF;min-width:7ch;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.meter b.idle{font:500 11.5px/1 var(--f-ui);color:var(--warn)}
+.result{padding:6px 9px;border-radius:10px;font-size:13px;line-height:1.4}
+.result.ok{border:1px solid rgba(61,220,151,.5);background:rgba(61,220,151,.08);color:#C8F5E0}
+.result.no{border:1px solid rgba(255,90,78,.5);background:rgba(255,90,78,.08);color:#FFC4BE}
+.result b{color:#fff}
+.result.reveal{font-size:12.5px;line-height:1.4;color:var(--soft)}
+.result.reveal b{color:var(--fg)}
+.result.reveal .ans{color:#fff}
+.mys-fine{margin:0;font-size:13px;line-height:1.45;color:var(--soft)}
+.mys-fine b{color:var(--fg)}
+.phit{fill:none;stroke:transparent;stroke-width:16;stroke-linecap:round;display:none;pointer-events:none}
+body.mys .phit{display:inline;pointer-events:stroke;cursor:crosshair}
+body.mys .phit:hover{stroke:rgba(255,90,78,.13)}
+body.mys #circuit .hit{pointer-events:none}
+#probeMk{pointer-events:none}
+#probeMk .pm-halo{fill:rgba(255,90,78,.18);stroke:#FF5A4E;stroke-width:1.2}
+#probeMk .pm-dot{fill:#FF5A4E;stroke:#080B0F;stroke-width:1.5}
+body.mz #circuit .w{stroke:#3A4757!important}
+body.mz #circuit .glow,body.mz #circuit .flow,body.mz #circuit .mys-x{display:none!important}
+body.mz #circuit .tpdot{fill:#5C6A79!important}
+body.mz .legend>*{display:none}
+body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono);color:var(--warn)}
+
 /* ---------- inside the ECM ---------- */
 .scroll{overflow:auto;min-height:0;flex:1;padding:0 14px 12px;display:flex;flex-direction:column;gap:10px}
 .reads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -304,6 +349,8 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 /* ---------- responsive ---------- */
 @media (max-width:1180px){
   .app{height:auto;min-height:100%}
+  #mysDock{height:auto}
+  #myBody{overflow:visible}
   .bench{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   #scanPanel{grid-column:1/-1}
   .cwrap{flex:none}
@@ -343,6 +390,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
     <div class="seg modes" role="group" aria-label="Mode">
       <button id="mExplore" aria-pressed="true">Explore</button>
       <button id="mLesson" aria-pressed="false">Guided lesson</button>
+      <button id="mMyst" aria-pressed="false">Mystery</button>
     </div>
     <div class="grp"><label>Ignition</label>
       <div class="seg" role="group" aria-label="Ignition">
@@ -388,6 +436,11 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
         <h3 class="dh">Inject a fault <span>Tip: click any harness wire to open it</span></h3>
         <div class="faults" id="faults"></div>
         <div class="dfoot"><span id="faultSummary">Circuit is healthy.</span><button class="btn small" id="clearFaults">Repair all</button></div>
+      </div>
+
+      <div class="dock" id="mysDock" hidden>
+        <div class="mys-top"><h3>Mystery fault<span id="myProg"></span></h3><div class="r"><div class="mdots" id="myDots" aria-label="Round progress"></div><span id="myNext"></span></div></div>
+        <div id="myBody"></div>
       </div>
 
       <div class="dock" id="lessonDock" hidden>
@@ -2694,7 +2747,7 @@ function ckAnnot(mode) {
         h += hit ? `<circle cx="${X.toFixed(1)}" cy="${y0.toFixed(1)}" r="2.3" fill="${GRN}"/>` : `<path d="M${(X - 2.5).toFixed(1)} ${(y0 - 2.5).toFixed(1)}l5 5m0 -5l-5 5" stroke="${RED}" stroke-width="1.3"/>`;
       }
       h += tx(cx(50), ay(R * 0.82), 'GAP', YEL, 'middle') + tx(cx(60) + 5, ay(R * 0.82), 'TOOTH 1', BLU);
-      if (S.f.tooth) h += tx(cx(10), ay(R * 0.62), 'WEAK TOOTH · MISSED', RED, 'middle');
+      if (S.f.tooth && !MZ()) h += tx(cx(10), ay(R * 0.62), 'WEAK TOOTH · MISSED', RED, 'middle');
       h += tx(CH.x0 + 4, CH.y1 - 5, '● = TOOTH COUNTED', GRN);
     }
   }
@@ -3170,7 +3223,7 @@ function fpAnnot(mode) {
     } else {
       const hz = fpPrpm() / 60 * 8;
       h += tx(CH.x0 + 4, CH.y0 + 9, `${s.ip.toFixed(1)} A AVERAGE · ${Math.round(hz)} HZ RIPPLE`, DIM) + tx(CH.x0 + 4, CH.y0 + 20, `8 SEGMENTS × ${Math.round(fpPrpm()).toLocaleString()} PUMP RPM`, DIM);
-      if (f.worn) { const T = 60000 / fpPrpm() / 8; for (let k = 0; k < 40; k++) { const t = (k * 8 + 3 - p.cph + 0.5) * T; if (t > 0.3 && t < 19.7) h += tx(cx(t), cy(s.ip * 0.8) + 12, '▲', RED, 'middle'); } h += tx(CH.x1 - 4, CH.y1 - 5, '▲ WEAK SEGMENT · SAME SPOT EVERY TURN', RED, 'end'); }
+      if (f.worn && !MZ()) { const T = 60000 / fpPrpm() / 8; for (let k = 0; k < 40; k++) { const t = (k * 8 + 3 - p.cph + 0.5) * T; if (t > 0.3 && t < 19.7) h += tx(cx(t), cy(s.ip * 0.8) + 12, '▲', RED, 'middle'); } h += tx(CH.x1 - 4, CH.y1 - 5, '▲ WEAK SEGMENT · SAME SPOT EVERY TURN', RED, 'end'); }
       if (!on()) h += tx(cx(10), cy(s.ip) - 14, 'KEY OFF · PUMP STILL RUNNING', RED, 'middle');
     }
   } else {
@@ -3353,7 +3406,7 @@ const FP = {
     const ls = nodal(['R30', 'R87', 'SPL', 'SN', 'FB', 'PP', 'PG', 'GW'], lE, { BAT: S.batt, G: 0 });
     if (Math.abs(ls.I.f1) > 30 && !f.fuse) {                                      // a dead short blows F1 in milliseconds
       f.fuse = true; syncFaultUI();
-      toast(`F1 blew: about ${Math.round(Math.abs(ls.I.f1))} A through the shorted feed. Find the short before replacing the fuse.`, 'bad');
+      toast(MZ() ? 'F1 blew as soon as the pump was commanded on.' : `F1 blew: about ${Math.round(Math.abs(ls.I.f1))} A through the shorted feed. Find the short before replacing the fuse.`, 'bad');
       return FP.solve();
     }
     S.v = { ...off.v, ...cs.v, ...ls.v }; S.I = { ...cs.I, ...ls.I };
@@ -3919,6 +3972,263 @@ RF.lesson = [
     final: true, alt: { label: '◂ Back to ECT', go() { switchSensor('ect'); } } },
 ];
 
+/* ================= mystery fault cases =================
+   One entry per diagnosis a student can make from the scan tool, the test points and the back-probe meter.
+   set: the fault keys to inject. An array gives variants with the same symptoms (e.g. the open on either side of C1);
+   [lo, hi, step] randomizes a value. prep: seconds of driving per trip before the car "arrives". hide: labels that
+   would name the fault. keep: student controls kept visible. tools: extra mystery buttons. */
+ECT.mystery = {
+  prep: [600, 600],
+  cases: [
+    { id: 'sig', t: 'Open', n: 'Signal circuit open', set: [{ sigUp: true }, { sigLo: true }],
+      concern: 'The check engine light is on, and the cooling fans run all the time, even first thing in the morning.',
+      tell: 'P0118 (circuit high) with 5 V at the ECM signal pin but 0 V at sensor terminal A. The ECM’s pull-up holds its side of the break at 5 V, and the thermistor holds the sensor’s side at ground. Probe along the yellow wire to find where the voltage changes.' },
+    { id: 'ref', t: 'Open', n: 'Low reference circuit open', set: [{ refUp: true }, { refLo: true }],
+      concern: 'The check engine light is on, and the cooling fans never shut off.',
+      tell: 'P0118 again, but this time both sensor terminals read 5 V, including the low reference. Voltage passes right through the thermistor, so the break is on the ground side. The ECM’s low reference pin reads 0 V, so the break is in the black wire.' },
+    { id: 'sg', t: 'Short', n: 'Signal shorted to ground', set: { shortG: true },
+      concern: 'The check engine light is on and the fans run all the time. The scan tool says the coolant is 302 °F on a cold engine.',
+      tell: 'P0117 (circuit low) with 0 V on the whole signal circuit, even at the ECM pin. The ECM reads 0 V as extremely hot. A grounded signal wire can’t be pulled up by the 2.49 kΩ pull-up.' },
+    { id: 'sb', t: 'Short', n: 'Signal shorted to B+', set: { shortB: true },
+      concern: 'The check engine light came on after some wiring repair near the alternator. The fans run all the time.',
+      tell: 'P0118, but the signal pin reads battery voltage, about 14 V. That’s far above the ECM’s own 5 V pull-up, so only a short to a B+ circuit can explain it.' },
+    { id: 'hr', t: 'Resistance', n: 'High resistance at connector C1', set: { hiRes: [800, 1500, 50] },
+      concern: 'Fuel economy is down, and the check engine light came on after a long drive. The temperature gauge seems normal.',
+      tell: 'P0128 with no circuit code. The ECM pin reads higher than sensor terminal A: that difference is voltage dropped across a bad connection at C1. On the chart, the reading sits colder than the actual coolant temperature.' },
+    { id: 'int', t: 'Intermittent', n: 'Loose terminal (intermittent open)', set: { inter: true },
+      concern: 'The check engine light comes and goes. Sometimes the cooling fans kick on for no reason.',
+      tell: 'P0119 (intermittent) with good readings almost all the time. Watch the scope: the signal jumps to 5 V for an instant, then comes right back. That’s a terminal losing contact.' },
+    { id: 'th', t: 'Mechanical', n: 'Thermostat stuck open', set: { thermo: true },
+      concern: 'The heater blows lukewarm air on the highway, and the temperature gauge sits low.',
+      tell: 'P0128, but the circuit is perfect. The pin and terminal A agree, and the reading matches the actual coolant temperature. The engine really is running cold, so the problem is mechanical.' },
+  ],
+};
+TPS.mystery = {
+  cases: [
+    { id: 'ref', t: 'Open', n: '5 V reference circuit open', set: [{ refUp: true }, { refLo: true }],
+      concern: 'The check engine light is on. The engine idles, but it won’t rev past a fast idle.',
+      tell: 'P0122 (circuit low) with 5 V at the ECM’s reference pin but 0 V at sensor terminal A. The reference never reaches the sensor, so the signal has nothing to divide.' },
+    { id: 'sig', t: 'Open', n: 'Signal circuit open', set: [{ sigUp: true }, { sigLo: true }],
+      concern: 'The check engine light is on, and the engine is stuck at a high idle with poor throttle response.',
+      tell: 'P0122 with a good 5 V at terminal A. Back-probe the signal wire at the sensor: it still moves with the throttle, but the ECM pin reads 0 V (its pull-down). The break is between those two points.' },
+    { id: 'sg', t: 'Short', n: 'Signal shorted to ground', set: { shortG: true },
+      concern: 'The check engine light is on and the throttle barely responds.',
+      tell: 'P0122, and the signal reads 0 V even at the sensor. The reference at terminal A is good, but the sensor can’t pull a grounded wire up, so the signal never moves with the throttle.' },
+    { id: 'gnd', t: 'Open', n: 'Low reference circuit open', set: [{ gndUp: true }, { gndLo: true }],
+      concern: 'The check engine light is on, and the engine is in reduced power.',
+      tell: 'P0123 (circuit high): the signal sits near 5 V no matter where the throttle is. With no ground, no current flows through the track, so every point on it reads the full reference. The sensor’s low reference terminal reads 5 V too, while the ECM’s GND pin reads 0 V, so the break is in the wire.' },
+    { id: 's5', t: 'Short', n: 'Signal shorted to the 5 V reference', set: { shortS5: true },
+      concern: 'The check engine light is on and the engine won’t rev.',
+      tell: 'P0123 with the signal pinned to the reference voltage. But the sensor’s low reference terminal reads 0 V, a good ground, so it isn’t an open ground. The signal is tied straight to the 5 V wire.' },
+    { id: 'rg', t: 'Short', n: '5 V reference shorted to ground', set: { shortR: true },
+      concern: 'The check engine light is on, the engine runs poorly, and there are several codes.',
+      tell: 'P0642 with P0122: the reference itself collapsed to about 0 V, and the MAP sensor on the same reference reads 0 V too. One short took out every sensor on that reference.' },
+    { id: 'hr', t: 'Resistance', n: 'High resistance in the 5 V reference at C1', set: { hiRes: [800, 1500, 50] },
+      concern: 'The engine feels flat. At full throttle, the scan tool never shows the TPS reaching 100 %.',
+      tell: 'No circuit code. The ECM’s 5 V pin reads 5 V, but terminal A at the sensor reads less, so voltage is lost in a connection. The sensor divides whatever reference it gets, so every reading comes out low.' },
+    { id: 'worn', t: 'Wear', n: 'Worn spot on the sensor track', set: { worn: true },
+      concern: 'The engine stumbles at the same pedal position every time, at about one-fifth throttle.',
+      tell: 'The reference, ground and signal wires all test good. Sweep the throttle slowly and watch the scope: the signal drops out at the same spot every time, near 20 %. That’s the resistive track inside the sensor.' },
+  ],
+};
+O2.mystery = {
+  hide: ['#htrLbl'],
+  cases: [
+    { id: 'sig', t: 'Open', n: 'Signal circuit open', set: [{ sigUp: true }, { sigLo: true }], prep: [300, 300],
+      concern: 'The check engine light is on and fuel economy dropped. The engine runs fine otherwise.',
+      tell: 'P0134 (no activity): the ECM pin sits at its own 0.45 V bias. Back-probe the signal wire at the sensor: it reads the sensor’s real voltage, which doesn’t match the pin. The break is between them.' },
+    { id: 'low', t: 'Open', n: 'Signal low circuit open', set: [{ refUp: true }, { refLo: true }], prep: [300, 300],
+      concern: 'The check engine light is on and fuel economy is down.',
+      tell: 'P0134 with the pin parked at 0.45 V. The ECM’s low pin reads 0 V, but the sensor’s signal-low terminal doesn’t: with no return path, the sensor floats and can’t push a signal through its circuit.' },
+    { id: 'sg', t: 'Short', n: 'Signal shorted to ground', set: { shortG: true },
+      concern: 'The check engine light is on and the engine smells rich.',
+      tell: 'P0131 (circuit low): the signal reads 0 V steady, as lean as it gets, even when the engine is rich. Long-term fuel trim goes to the limit adding fuel the engine doesn’t need.' },
+    { id: 'sb', t: 'Short', n: 'Signal shorted to heater B+', set: { shortB: true },
+      concern: 'The check engine light came on after an exhaust repair. The engine runs lean.',
+      tell: 'P0132 (circuit high) with battery voltage on the signal pin. A zirconia sensor can only make about 1 V, so anything higher is a short, here to the heater feed in the same harness.' },
+    { id: 'feed', t: 'Heater', n: 'Heater B+ feed open', set: [{ feedUp: true }, { feedLo: true }],
+      concern: 'The check engine light is on. Takes a while to go into closed loop after a cold start.',
+      tell: 'P0031 with 0 A of heater current. FEED at the fuse reads battery voltage, but the heater’s B+ terminal at the sensor reads 0 V. The feed wire is open between them.' },
+    { id: 'el', t: 'Heater', n: 'Heater element open', set: { htrOpen: true },
+      concern: 'The check engine light is on. The engine runs fine once it’s warm.',
+      tell: 'P0031 with battery voltage on the heater’s B+ terminal at the sensor, but 0 V on its control terminal. Voltage goes in and nothing comes out the other side: the element is open.' },
+    { id: 'ctl', t: 'Heater', n: 'Heater control circuit open', set: [{ ctrlUp: true }, { ctrlLo: true }],
+      concern: 'The check engine light is on. It’s slow to enter closed loop on cold mornings.',
+      tell: 'P0031 with battery voltage on both heater terminals at the sensor, so the element passes voltage and is good. The ECM’s control pin reads 0 V, so the break is in the control wire.' },
+    { id: 'lazy', t: 'Sensor', n: 'Slow (contaminated) sensor', set: { lazy: true },
+      concern: 'The check engine light is on. The engine burned some coolant a while back.',
+      tell: 'P0133 (slow response) with every circuit voltage good. The signal still switches, but slowly: on the scope, the rich-to-lean swings are lazy and rounded. Contamination has coated the sensor.' },
+    { id: 'leak', t: 'Mechanical', n: 'Exhaust leak ahead of the sensor', set: { leak: [85, 100, 5] }, prep: [300, 300],
+      concern: 'The check engine light is on, and there’s a ticking from the exhaust manifold on a cold start.',
+      tell: 'P0171 (lean) with long-term fuel trim at the limit. The sensor and all its wiring test good. Outside air pulled in by the leak makes the sensor read lean, so the ECM adds fuel the engine doesn’t need.' },
+  ],
+};
+INJ.mystery = {
+  hide: ['#coilLbl'],
+  cases: [
+    { id: 'feed', t: 'Open', n: 'Injector B+ feed open', set: [{ feedUp: true }, { feedLo: true }],
+      concern: 'The engine runs rough and the check engine light is on.',
+      tell: 'P0201 with P0301. INJ+ reads only about 3 V, the ECM’s off-state bias, instead of battery voltage, while FEED at the fuse is good. The B+ feed is open between them.' },
+    { id: 'ctl', t: 'Open', n: 'Injector control circuit open', set: [{ ctrlUp: true }, { ctrlLo: true }],
+      concern: 'The engine runs rough and the check engine light is on.',
+      tell: 'P0201 with B+ on both injector terminals, so the coil passes voltage and is good. The ECM’s control pin reads only its 3 V bias. The break is in the control wire.' },
+    { id: 'coil', t: 'Open', n: 'Injector coil open', set: { coil: true },
+      concern: 'The engine runs rough and shakes at idle. The check engine light is on.',
+      tell: 'P0201 with B+ on INJ+ but only the 3 V bias on INJ−. Voltage goes into the injector and doesn’t come out: the coil is open.' },
+    { id: 'sg', t: 'Short', n: 'Control circuit shorted to ground', set: { shortG: true },
+      concern: 'Black smoke, a strong fuel smell and a rough idle. The check engine light is on.',
+      tell: 'P0261 (circuit low): the control pin reads near 0 V even with the driver off. On the scope, the pin never rises between pulses, because the injector is grounded full time. It’s stuck open and floods the cylinder.' },
+    { id: 'sb', t: 'Short', n: 'Control circuit shorted to B+', set: { shortB: true },
+      concern: 'The engine misses on one cylinder and the check engine light is on.',
+      tell: 'P0262 (circuit high): the control pin sits at battery voltage. When the driver turns on, it shorts B+ to ground, sees overcurrent, and shuts itself off, so the injector never fires.' },
+    { id: 'int', t: 'Intermittent', n: 'Loose terminal at C1', set: { inter: true },
+      concern: 'An occasional miss at idle. The check engine light comes on now and then.',
+      tell: 'P0301 with no circuit code, and the voltages are good almost all the time. Watch the scope: most pulses are perfect, but every so often one drops out. A connection is opening for an instant.' },
+    { id: 'clog', t: 'Mechanical', n: 'Clogged injector', set: { clog: true },
+      concern: 'A steady miss at idle that gets better at higher rpm. The check engine light is on.',
+      tell: 'P0301 with a perfect electrical pattern: a clean pulse, a full voltage spike and normal current. The circuit and coil are fine, so the fault is in fuel flow through the injector.' },
+    { id: 'hr', t: 'Resistance', n: 'High resistance in the B+ feed at C1', set: { hiRes: [4, 10, 0.5] },
+      concern: 'An occasional miss, worse when the engine is cold. The check engine light is on.',
+      tell: 'P0301 with no circuit code. On the current scope, the coil current rises slower and peaks lower than normal, and INJ+ reads below FEED: the feed loses voltage across C1 whenever current flows.' },
+  ],
+};
+CAN.mystery = {
+  cases: [
+    { id: 'ecm', t: 'Open', n: 'CAN wire open at the ECM', set: [{ hUp: true }, { lUp: true }],
+      concern: 'The check engine light is on and the scan tool shows communication codes in the ECM.',
+      tell: 'The ECM lost all three modules (U0121, U0140, U0155), but the network scan shows the other modules talking to each other just fine. Only the ECM is cut off, so the break is between the ECM and the bus. Key off, DLC 6 to 14 reads about 120 Ω, because the ECM’s terminator is cut off with it.' },
+    { id: 'ipc', t: 'Open', n: 'Bus open to the instrument cluster', set: [{ hLo: true }, { lLo: true }],
+      concern: 'The gauges are dead and the cluster lights are out, but the engine runs.',
+      tell: 'Only the cluster is missing (U0155). Key off, DLC 6 to 14 reads about 120 Ω instead of 60 Ω, because the cluster’s terminator is cut off along with it.' },
+    { id: 'hg', t: 'Short', n: 'CAN-H shorted to ground', set: { shortHG: true },
+      concern: 'The dash lights up like a Christmas tree and the scan tool can’t talk to anything reliably.',
+      tell: 'U0073 (bus off). CAN-H reads 0 V at the ECM. With CAN-H held at ground, no module can drive the bus dominant, so no message gets through.' },
+    { id: 'lb', t: 'Short', n: 'CAN-L shorted to B+', set: { shortLB: true },
+      concern: 'Every warning light is on and several systems stopped working after a trailer wiring install.',
+      tell: 'U0073 with CAN-L at battery voltage. The bus can’t idle at 2.5 V or switch, so every module goes bus-off.' },
+    { id: 'hl', t: 'Short', n: 'CAN-H shorted to CAN-L', set: { shortHL: true },
+      concern: 'Multiple warning lights, no communication with several modules.',
+      tell: 'U0073 with CAN-H and CAN-L both at exactly 2.5 V. The two wires are tied together, so there’s no difference voltage to carry bits. Key off, DLC 6 to 14 reads near 0 Ω.' },
+    { id: 'term', t: 'Open', n: 'Terminator open in the cluster', set: { termOpen: true },
+      concern: 'Another shop says there are no codes, but the network was flagged on a pre-delivery inspection.',
+      tell: 'No codes, and everything communicates on this short bus. But key off, DLC 6 to 14 reads about 120 Ω instead of 60 Ω, and the scope shows ringing at every edge. One of the two 120 Ω terminators is missing.' },
+    { id: 'bcm', t: 'Power', n: 'BCM lost its ground', set: { bcmOff: true },
+      concern: 'The power locks and interior lights don’t work. Everything else seems fine.',
+      tell: 'Only the BCM is missing (U0140), and DLC resistance is a normal 60 Ω, so the bus wiring is fine. The BCM isn’t powered up: check its power and ground circuits.' },
+    { id: 'hr', t: 'Resistance', n: 'High resistance in CAN-L at C1', set: { hiRes: [120, 250, 10] },
+      concern: 'Gauges drop out for a second now and then. No warning lights stay on.',
+      tell: 'No codes yet, but the error counters climb (TEC and REC well above 0). Messages get through with errors. A connection is adding resistance to one bus wire.' },
+  ],
+};
+CKP.mystery = {
+  hide: ['#gapLbl', '#chainLbl'],
+  cases: [
+    { id: 'open', t: 'Crank sensor', n: 'CKP circuit open', set: [{ kpUp: true }, { kmUp: true }],
+      concern: 'Cranks but won’t start. It ran fine yesterday.',
+      tell: 'P0335 and 0 rpm on the scan tool while the starter turns the engine. The ECM sees 0 V AC from the crank sensor, so no signal is reaching it.' },
+    { id: 'gap', t: 'Crank sensor', n: 'CKP air gap too wide', set: { gap: [0.75, 0.95, 0.05] },
+      concern: 'Stumbles and sometimes stalls at idle. It always restarts.',
+      tell: 'No hard code, but the crank sensor’s AC voltage at the ECM is well below normal, and the scope shows a weak pattern. The ECM misses teeth and has to resync. A weak VR signal with good wiring points to the sensor’s distance from the reluctor.' },
+    { id: 'tooth', t: 'Crank sensor', n: 'Damaged reluctor tooth', set: { tooth: true },
+      concern: 'Runs rough at idle and the check engine light is on.',
+      tell: 'P0336 with a strong crank signal, except one tooth that’s weak in the same spot every turn on the scope. Same spot every revolution means the wheel, not the wiring.' },
+    { id: 'int', t: 'Crank sensor', n: 'Loose CKP terminal', set: { inter: true },
+      concern: 'The engine cuts out for an instant, and sometimes stalls. Check engine light is on.',
+      tell: 'P0336 with the resync counter climbing. On the scope, the whole signal drops out at random moments, not at one tooth. Random dropouts point to a connection.' },
+    { id: 'cref', t: 'Cam sensor', n: 'CMP 5 V reference open', set: { crUp: true },
+      concern: 'The check engine light is on and it takes a little longer to start.',
+      tell: 'P0340 with the ECM’s signal pin sitting at 5 V. Back-probe the cam sensor: its 5 V reference terminal reads 0 V while the ECM’s 5 V pin is good. The reference wire is open.' },
+    { id: 'csig', t: 'Cam sensor', n: 'CMP signal circuit open', set: { csUp: true },
+      concern: 'The check engine light is on, and the engine is slow to start.',
+      tell: 'P0340 with the ECM’s signal pin stuck at 5 V, its pull-up. At the sensor, the signal terminal reads 0 V: the Hall sensor needs the ECM’s pull-up to make a signal, and the break cut it off. Reference and ground at the sensor are good.' },
+    { id: 'cgnd', t: 'Cam sensor', n: 'CMP low reference open', set: { cgUp: true },
+      concern: 'The check engine light is on and it takes longer to start than it used to.',
+      tell: 'P0340 with the signal pin at 5 V. At the sensor, the low reference terminal reads close to 5 V instead of 0 V: with no ground, the sensor floats up to its supply and can’t switch.' },
+    { id: 'csg', t: 'Cam sensor', n: 'CMP signal shorted to ground', set: { csG: true },
+      concern: 'The check engine light is on and it’s slow to start.',
+      tell: 'P0340 with the ECM’s signal pin at 0 V, so the pull-up can’t raise it. The sensor can only pull the signal low, so a grounded wire looks like a sensor that never switches off.' },
+    { id: 'chain', t: 'Mechanical', n: 'Timing chain jumped a tooth', set: { chain: true },
+      concern: 'Runs rough and down on power. The customer heard a rattle on a cold start last week.',
+      tell: 'P0016 with both sensor circuits healthy. On the scope, the cam edge lands about 18° late compared with the crank gap. The signals are fine; their timing relationship isn’t.' },
+  ],
+};
+FP.mystery = {
+  tools: [{ id: 'f1', label: 'Replace fuse F1', go() {
+    if (!S.f.fuse) { toast('F1 checks good. You put it back.'); return; }
+    S.f.fuse = false; solve(); toast('New 15 A fuse installed in F1.', 'ok');
+  } }],
+  cases: [
+    { id: 'cf', t: 'Relay control', n: 'Relay coil feed open', set: { cfOpen: true },
+      concern: 'Cranks but won’t start. You can’t hear the fuel pump prime at key on.',
+      tell: 'P0230 (relay control circuit). Back-probe relay terminal 86, the coil feed: it reads only the ECM’s 3 V bias leaking back through the coil, not battery voltage. The coil’s feed is open.' },
+    { id: 'coil', t: 'Relay control', n: 'Relay coil open', set: { coil: true },
+      concern: 'Cranks but won’t start, and no pump prime at key on.',
+      tell: 'P0230 with battery voltage on terminal 86, but only the ECM’s 3 V bias on terminal 85. Voltage goes into the coil and nothing comes out: the coil is open.' },
+    { id: 'ctl', t: 'Relay control', n: 'Relay control wire open', set: { ctlUp: true },
+      concern: 'Cranks but won’t start. No pump prime.',
+      tell: 'P0230 with battery voltage on both coil terminals at the relay, so the coil passes voltage and is good. The ECM’s control pin reads only its 3 V bias. The break is in the control wire.' },
+    { id: 'fuse', t: 'Pump power', n: 'Fuse F1 open', set: { fuse: true },
+      concern: 'Cranks but won’t start. It died while driving.',
+      tell: 'P0231: the ECM commands the pump, but FP MON sees nothing. Battery voltage on one side of F1 and 0 V on the other. A new fuse fixes it and doesn’t blow again.' },
+    { id: 'sg', t: 'Pump power', n: 'Pump feed shorted to ground', set: { shortG: true },
+      concern: 'Cranks but won’t start. Another shop replaced a fuse and it quit again right away.',
+      tell: 'Same symptoms as an open F1, but a new fuse blows the moment the pump is commanded on. Never just replace a blown fuse: find the short first.' },
+    { id: 'feed', t: 'Pump power', n: 'Pump feed wire open', set: [{ feedUp: true }, { feedLo: true }],
+      concern: 'Cranks but won’t start. No pump hum from the tank.',
+      tell: 'Back-probe along the pump feed during the key-on prime: battery voltage at the relay output, 0 V farther toward the pump. The break is between the last good reading and the first bad one.' },
+    { id: 'gnd', t: 'Pump power', n: 'Pump ground open', set: { gOpen: true },
+      concern: 'Cranks but won’t start. No pump hum.',
+      tell: 'P0087 (low rail pressure). During prime, the pump’s B+ terminal has battery voltage and so does its GND terminal. With the ground open, the ground side floats up to battery voltage and no current flows.' },
+    { id: 'mot', t: 'Pump', n: 'Pump motor open', set: { pOpen: true },
+      concern: 'Cranks but won’t start. No pump hum from the tank.',
+      tell: 'P0087. During prime, battery voltage reaches the pump’s B+ terminal and its GND terminal reads 0 V, a good ground. Power in, good ground, no current: the motor is open.' },
+    { id: 'stuck', t: 'Relay control', n: 'Relay contacts welded shut', set: { stuck: true },
+      concern: 'The battery is dead every morning. The customer can hear the fuel pump humming with the key off.',
+      tell: 'No codes. With the key off, the pump keeps running: FP MON has battery voltage while the ECM isn’t commanding the relay on. The relay contacts are stuck closed.' },
+    { id: 'worn', t: 'Pump', n: 'Worn fuel pump', set: { worn: true },
+      concern: 'Hesitates and falls on its face at full throttle, then recovers.',
+      tell: 'Voltage and ground at the pump test good. Open the throttle and watch rail pressure fall below desired, and look at the pump current scope: a weak segment repeats every turn of the motor.' },
+    { id: 'hr', t: 'Resistance', n: 'High resistance at ground G103', set: { hiRes: [0.3, 0.6, 0.05] },
+      concern: 'Long cranks when the engine is hot, and the pump sounds weaker than it used to.',
+      tell: 'The pump’s GND terminal reads well above 0 V while the pump runs. That voltage is lost across a bad ground, so the pump gets less than full voltage and runs slower.' },
+  ],
+};
+RF.mystery = {
+  keep: ['uMap', 'uTps', 'uApp'],
+  cases: [
+    { id: 'mapin', t: 'Sensor', n: 'MAP sensor shorted internally', set: { mapIn: true },
+      concern: 'The check engine light is on, the engine is in reduced power, and there are four codes.',
+      tell: 'Four codes from one cause: Ref A collapsed (P0642) and took every sensor on it down. Unplug the sensors one at a time. When the MAP comes off, Ref A jumps back to 5 V.' },
+    { id: 'tpsin', t: 'Sensor', n: 'TPS shorted internally', set: { tpsIn: true },
+      concern: 'Reduced engine power with four codes stored.',
+      tell: 'The same four codes as a shorted MAP sensor. Unplug the sensors one at a time: Ref A comes back to 5 V only when the TPS is unplugged.' },
+    { id: 'rg', t: 'Harness', n: 'Ref A shorted to ground', set: { refG: true },
+      concern: 'Reduced engine power, four codes. The car was just in for body work.',
+      tell: 'The same four codes, but Ref A stays near 0 V even with all three sensors unplugged. With nothing left connected, the short has to be in the wiring.' },
+    { id: 'rb', t: 'Harness', n: 'Ref A shorted to B+', set: { refB: true },
+      concern: 'Reduced engine power. The readings on the scan tool look strange.',
+      tell: 'P0643 (reference high): Ref A reads about 13 V, far above what the regulator can make. The sensor readings are all skewed high. Ref A is shorted to a B+ circuit.' },
+    { id: 'low', t: 'Harness', n: 'Shared low reference open', set: { lowUp: true },
+      concern: 'Reduced engine power and three codes stored.',
+      tell: 'P0108, P0123 and P2123: every sensor on the shared ground reads high, and there’s no reference code because Ref A is fine. The common point is the low reference splice.' },
+    { id: 'ropen', t: 'Harness', n: 'Ref A open before the splice', set: { refUp: true },
+      concern: 'Reduced engine power and three codes.',
+      tell: 'Three low codes and no reference code. The ECM’s Ref A pin reads 5 V, but every sensor on the splice gets 0 V at its reference terminal. The break is between the ECM pin and the splice.' },
+    { id: 'mapo', t: 'Signal', n: 'MAP signal circuit open', set: { mapUp: true },
+      concern: 'The check engine light is on and the engine hesitates.',
+      tell: 'P0107 alone. Ref A and the shared ground are fine. At the sensor, the MAP signal wire reads a normal voltage, but the ECM sees 0 V (its pull-down). The break is in the signal wire.' },
+    { id: 'mapg', t: 'Signal', n: 'MAP signal shorted to ground', set: { mapG: true },
+      concern: 'The check engine light is on and the engine hesitates.',
+      tell: 'P0107 alone, and the MAP signal reads 0 V even at the sensor. The reference reaches the sensor, but it can’t pull a grounded wire up.' },
+    { id: 'tpso', t: 'Signal', n: 'TPS signal circuit open', set: { tpsUp: true },
+      concern: 'Reduced engine power. The engine idles a little fast.',
+      tell: 'P0122 alone, with reduced power. Ref A is good. At the TPS, the signal wire reads a normal voltage, but the ECM pin reads 0 V. The break is in the TPS signal wire.' },
+    { id: 'hr', t: 'Harness', n: 'High resistance in Ref A before the splice', set: { hiRes: [100, 250, 10] },
+      concern: 'Hesitation, and the MAP reading on the scan tool looks low at idle. No codes.',
+      tell: 'No code, because the ECM checks Ref A at its own pin, which reads 5 V. At each sensor, the reference is lower, so every reading comes out low. Compare the reference at the ECM with the reference at a sensor.' },
+  ],
+};
+
 const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN, ckp: CKP, fp: FP, ref5: RF };
 const PLANNED = [];
 
@@ -4299,9 +4609,11 @@ function syncTop() {
   $('#pauseIco').innerHTML = S.paused ? '<path d="M2 1l7 4-7 4z" fill="currentColor"/>' : '<path d="M2 1h2v8H2zM6 1h2v8H6z" fill="currentColor"/>';
 }
 function renderAll() {
-  D.text(); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
+  asShown(() => D.text()); renderChart(); renderReadouts(); renderMonitors(); renderScan(); renderDash(); renderBar();
   D.syncInputs?.();
   if (MODE === 'lesson') renderGoal();
+  if (MODE === 'mystery') renderMeter();
+  syncMysClass();
 }
 
 /* faults dock */
@@ -4336,6 +4648,7 @@ function buildSensorUI() {
   wireEls.forEach(el => { if (el.dataset.g) el.style.stroke = `url(#${el.dataset.g})`; });
   flowEls = D.flows.map(([id, fn]) => ({ el: $('#' + id), fn, off: 0 }));
   svg.querySelectorAll('.hit').forEach(h => h.addEventListener('click', () => { const k = h.dataset.open; setFault(k, !S.f[k]); }));
+  buildProbe(svg);
   const ir = $('#inputRow');
   ir.hidden = !D.inputHTML;
   ir.innerHTML = D.inputHTML || '';
@@ -4362,9 +4675,10 @@ function switchSensor(id) {
   S = STATES[id] || (STATES[id] = makeState(D));
   buildSensorUI();
   if (first) setKey('run');
-  try { history.replaceState(null, '', '#' + id); } catch (e) {}
+  setHash();
   closePop();
   if (MODE === 'lesson') { L.answered = {}; goStep(0); }
+  if (MODE === 'mystery') renderMyst();
   renderAll();
 }
 
@@ -4393,6 +4707,7 @@ addEventListener('resize', closePop);
 
 /* ================= toasts ================= */
 function toast(msg, tone = '') {
+  if (QUIET) return;
   const el = document.createElement('div');
   el.className = 'toast ' + tone; el.innerHTML = '<i></i><span></span>';
   el.lastChild.textContent = msg;
@@ -4404,14 +4719,20 @@ function toast(msg, tone = '') {
 /* ================= guided lesson ================= */
 const L = { i: 0, answered: {} };
 function setMode(mode) {
+  if (MODE === 'mystery' && mode !== 'mystery') leaveMystery();
   MODE = mode;
   $('#mExplore').setAttribute('aria-pressed', mode === 'explore');
   $('#mLesson').setAttribute('aria-pressed', mode === 'lesson');
+  $('#mMyst').setAttribute('aria-pressed', mode === 'mystery');
   $('#faultDock').hidden = mode !== 'explore';
   $('#lessonDock').hidden = mode !== 'lesson';
+  $('#mysDock').hidden = mode !== 'mystery';
   clearSpots();
   if (mode === 'lesson') { L.answered = {}; goStep(0); }
+  if (mode === 'mystery') { PROBE = null; placeProbe(); renderMyst(); }
+  setHash(); syncMysClass();
 }
+function setHash() { try { history.replaceState(null, '', '#' + D.id + (MODE === 'mystery' ? '-mystery' : '')); } catch (e) {} }
 function clearSpots() { $$('.spot').forEach(e => e.classList.remove('spot')); }
 function goStep(i) {
   const LESSON = D.lesson;
@@ -4466,9 +4787,177 @@ $('#lNext').addEventListener('click', () => {
 $('#lBack').addEventListener('click', () => { delete L.answered[L.i - 1]; goStep(L.i - 1); });
 $('#lAlt').addEventListener('click', () => { const s = D.lesson[L.i]; if (s.alt) s.alt.go(); });
 
+/* ================= mystery fault ================= */
+/* The bench hides one fault from the circuit's case list (D.mystery.cases), runs the car through a couple of
+   trips so codes and freeze frames are stored, and hides voltage colors and fault graphics. Students diagnose
+   with the scan tool, the test points and a back-probe meter (click any wire). Shuffle bag per circuit: every
+   case comes up once per round before any repeat; a new round never opens with the case that closed the last. */
+let MYS = {}, PROBE = null, QUIET = false;
+const MZ = () => MODE === 'mystery' && !!MYS[D.id] && !MYS[D.id].revealed;
+function syncMysClass() { document.body.classList.toggle('mys', MODE === 'mystery'); document.body.classList.toggle('mz', MZ()); }
+/* Draw with a healthy fault set while the mystery is hidden, so no fault graphic or label gives it away.
+   Physics and test-point values still come from the real faults. D.mystery.keep = student controls (unplugged sensors). */
+function asShown(fn) {
+  if (!MZ()) return fn();
+  const real = S.f;
+  S.f = D.faultDefaults(); (D.mystery.keep || []).forEach(k => { S.f[k] = real[k]; });
+  try { return fn(); } finally { S.f = real; }
+}
+const BAG_KEY = 'dtc-mystery-v1';
+let BAGS = {};
+try { BAGS = JSON.parse(localStorage.getItem(BAG_KEY) || '{}') || {}; } catch (_) { BAGS = {}; }
+const saveBags = () => { try { localStorage.setItem(BAG_KEY, JSON.stringify(BAGS)); } catch (_) {} };
+const myCases = () => D.mystery.cases;
+const myCase = id => myCases().find(c => c.id === id);
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bag() {
+  const ids = myCases().map(c => c.id);
+  let g = BAGS[D.id];
+  const valid = g && Array.isArray(g.order) && g.order.length === ids.length && ids.every(id => g.order.includes(id));
+  if (!valid) { g = BAGS[D.id] = { order: shuffled(ids), i: 0, round: 1, res: {} }; saveBags(); }
+  return g;
+}
+function bagNewRound() {
+  const g = bag(), last = g.order[g.order.length - 1];
+  g.order = shuffled(myCases().map(c => c.id), last); g.i = 0; g.round++; g.res = {}; saveBags();
+}
+function bagDots(g, cur) {
+  return g.order.map((id, k) => {
+    const r = g.res[id], cls = r ? (r.right && r.tries === 1 ? 'r' : r.right ? 't' : 's') : '';
+    return `<i class="${cls}${id === cur && !r ? ' cur' : ''}" title="Fault ${k + 1}${r ? (r.right ? (r.tries === 1 ? ': correct, first try' : `: correct in ${r.tries} tries`) : ': shown') : ''}"></i>`;
+  }).join('');
+}
+/* a case's fault set: one variant (same symptoms, different location), with any [lo, hi, step] value randomized */
+function pickVariant(c) {
+  const sets = Array.isArray(c.set) ? c.set : [c.set], v = sets[Math.floor(Math.random() * sets.length)], out = {};
+  for (const [k, x] of Object.entries(v)) out[k] = Array.isArray(x) ? +(Math.round((x[0] + Math.random() * (x[1] - x[0])) / x[2]) * x[2]).toFixed(3) : x;
+  return out;
+}
+const variantText = vals => Object.entries(vals).map(([k, v]) => { const n = D.names[k]; return typeof n === 'function' ? n(v) : n; }).filter(Boolean).join(', ');
+function advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); }
+function mysStart(forceId) {
+  let g = bag();
+  if (g.i >= g.order.length) { bagNewRound(); g = bag(); }
+  const c = myCase(forceId || g.order[g.i]);
+  let vals;
+  QUIET = true;
+  try {
+    S = STATES[D.id] = makeState(D);
+    buildMonitors(); setChart(S.chart);
+    vals = pickVariant(c);
+    Object.entries(vals).forEach(([k, v]) => setFault(k, v));
+    setKey('on'); setKey('run');
+    (c.prep || D.mystery.prep || [60, 60]).forEach((sec, i) => { if (i) nextTrip(); advance(sec); });
+    D.mystery.after?.();
+  } finally { QUIET = false; }
+  MYS[D.id] = { id: c.id, vals, revealed: false, tries: 0, pick: '' };
+  PROBE = null; placeProbe();
+  syncFaultUI(); syncTop(); renderMyst(); renderAll();
+}
+function finishMystery(right) {
+  const M = MYS[D.id], g = bag();
+  M.revealed = true; M.right = right;
+  if (!g.res[M.id]) { g.res[M.id] = { right, tries: M.tries }; g.i = Math.max(g.i, g.order.indexOf(M.id) + 1); saveBags(); }
+  if (g.i >= g.order.length) toast(`Set complete: all ${g.order.length} ${D.name} faults done.`, 'ok');
+}
+function mysteryAct(a) {
+  const M = MYS[D.id];
+  if (a === 'new') { mysStart(); return; }
+  if (a === 'restart') { const g = bag(); g.order = shuffled(myCases().map(c => c.id), g.order[Math.max(0, g.i - 1)]); g.i = 0; g.res = {}; saveBags(); leaveMystery(); renderMyst(); renderAll(); return; }
+  if (!M) return;
+  if (a === 'check') {
+    const v = M.pick || $('#diag')?.value;
+    if (!v) { toast('Choose a fault first.', 'warn'); return; }
+    M.tries++; M.pick = v;
+    if (v === M.id) { finishMystery(true); toast('Correct diagnosis.', 'ok'); }
+    else toast('Not that one. Those symptoms could fit, but your readings will tell them apart. Keep testing.', 'warn');
+  } else if (a === 'reveal') { if (!M.tries) M.tries = 1; finishMystery(false); }
+  else { const t = (D.mystery.tools || []).find(x => x.id === a); if (t) t.go(); }
+  renderMyst(); renderAll();
+}
+/* leaving Mystery mode repairs every car that still has a mystery in it, so Explore starts clean */
+function leaveMystery() {
+  for (const id of Object.keys(MYS)) if (id !== D.id) delete STATES[id];
+  const had = !!MYS[D.id];
+  MYS = {}; PROBE = null; placeProbe();
+  if (had) fullReset();
+}
+function renderMyst() {
+  const M = MYS[D.id], g = bag(), n = g.order.length, cases = myCases();
+  const done = Object.keys(g.res).length, first = Object.values(g.res).filter(r => r.right && r.tries === 1).length, complete = g.i >= n;
+  $('#myProg').textContent = `Round ${g.round} · ${done} of ${n} done`;
+  $('#myDots').innerHTML = bagDots(g, M && M.id);
+  const meter = `<span class="meter" title="Back-probe meter: red lead on the wire you click, black lead on chassis ground"><span class="ml">DMM</span><b id="mVal"></b></span>`;
+  let h;
+  if (!M) {
+    h = `<p class="mys-fine">The bench hides one of this circuit’s <b>${n} faults</b> and runs the car for a couple of trips, so it arrives with its codes and freeze frame stored. Voltage colors are off. Use the scan tool, the test points, and the back-probe meter (click any wire) to make the call.</p>
+      ${complete ? `<div class="result ok"><b>Set complete.</b> Correct on the first try: ${first} of ${n}.</div>` : ''}
+      <div class="mrow"><button class="btn primary" data-my="new">${complete ? `Start round ${g.round + 1}` : done ? `Next mystery fault (${done + 1} of ${n})` : 'Start a mystery fault'}</button>${done ? '<button class="btn small" data-my="restart">Restart this set</button>' : ''}</div>`;
+  } else {
+    const c = myCase(M.id);
+    if (!M.revealed) {
+      const groups = [...new Set(cases.map(x => x.t))];
+      h = `<div class="concern"><small>Customer concern · fault ${g.order.indexOf(M.id) + 1} of ${n}${M.tries ? ` · ${M.tries} ${M.tries === 1 ? 'try' : 'tries'} so far` : ''}</small><p>${c.concern}</p></div>
+        <div class="mrow">${meter}<select id="diag" aria-label="Your diagnosis"><option value="">Your diagnosis…</option>${groups.map(t => `<optgroup label="${t}">${cases.filter(x => x.t === t).map(x => `<option value="${x.id}" ${M.pick === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary small" data-my="check">Check</button><button class="btn small" data-my="reveal">Show me</button>${(D.mystery.tools || []).map(t => `<button class="btn small" data-my="${t.id}">${t.label}</button>`).join('')}</div>`;
+    } else {
+      const detail = variantText(M.vals);
+      h = `<div class="result reveal ${M.right ? 'ok' : 'no'}">${M.right ? `<b class="ans">Correct${M.tries > 1 ? ` in ${M.tries} tries` : ', first try'}.</b> ` : ''}It was <b class="ans">${c.n}</b>${detail ? ` (${detail})` : ''}. Voltage colors are back on.<br><b>The tell:</b> ${c.tell}</div>
+        ${complete ? `<div class="result ok"><b>Set complete!</b> All ${n} ${D.name} faults done. Correct on the first try: ${first} of ${n}.</div>` : ''}`;
+    }
+  }
+  setHTML($('#myBody'), h);
+  setHTML($('#myNext'), M && M.revealed ? `<button class="btn primary small" data-my="new">${complete ? `Start round ${g.round + 1}` : 'Next fault'}</button>` : '');
+  renderMeter();
+}
+/* back-probe meter: red lead on the clicked wire, black lead on chassis ground */
+function buildProbe(svg) {
+  svg.querySelectorAll('.w[data-n]').forEach(w => {
+    if (w.closest('.jump, [id^="om-"], .mys-x')) return;
+    const h = w.cloneNode(); h.removeAttribute('id'); h.removeAttribute('style'); h.setAttribute('class', 'phit');
+    h.addEventListener('click', e => probeAt(h, e));
+    w.parentNode.insertBefore(h, w.nextSibling);
+  });
+  svg.insertAdjacentHTML('beforeend', '<g id="probeMk" style="display:none"><circle class="pm-halo" r="8"/><circle class="pm-dot" r="3.6"/></g>');
+  (D.mystery?.hide || []).forEach(sel => svg.querySelectorAll(sel).forEach(e => e.classList.add('mys-x')));
+  PROBE = null;
+}
+function probeAt(h, e) {
+  const svg = $('#circuit');
+  let x, y;
+  if (e && e.clientX != null && h.getTotalLength) {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const lp = pt.matrixTransform(h.getScreenCTM().inverse()), L = h.getTotalLength();
+    let best = 0, bd = Infinity;
+    for (let s = 0; s <= L; s += 1.5) { const q = h.getPointAtLength(s), d = (q.x - lp.x) ** 2 + (q.y - lp.y) ** 2; if (d < bd) { bd = d; best = s; } }
+    const q = h.getPointAtLength(best), sp = svg.createSVGPoint(); sp.x = q.x; sp.y = q.y;
+    const r = sp.matrixTransform(h.getScreenCTM()).matrixTransform(svg.getScreenCTM().inverse()); x = r.x; y = r.y;
+  } else { const b = h.getBBox(); x = b.x + b.width / 2; y = b.y + b.height / 2; }
+  PROBE = { n: h.dataset.n, x, y };
+  placeProbe(); renderMeter();
+}
+function placeProbe() {
+  const mk = $('#probeMk'); if (!mk) return;
+  mk.style.display = PROBE ? '' : 'none';
+  if (PROBE) mk.setAttribute('transform', `translate(${PROBE.x.toFixed(1)} ${PROBE.y.toFixed(1)})`);
+}
+function renderMeter() {
+  const b = $('#mVal'); if (!b) return;
+  const v = PROBE ? S.v[PROBE.n] : null, txt = PROBE && v != null ? fmtV(v) : 'Click any wire';
+  if (b.textContent !== txt) b.textContent = txt;
+  b.classList.toggle('idle', !PROBE);
+}
+
 /* ================= wiring ================= */
 $('#mExplore').addEventListener('click', () => setMode('explore'));
 $('#mLesson').addEventListener('click', () => setMode('lesson'));
+$('#mMyst').addEventListener('click', () => setMode('mystery'));
+$('#mysDock').addEventListener('click', e => { const b = e.target.closest('[data-my]'); if (b) mysteryAct(b.dataset.my); });
+$('#myBody').addEventListener('change', e => { if (e.target.id === 'diag' && MYS[D.id]) MYS[D.id].pick = e.target.value; });
 $$('[data-key]').forEach(b => b.addEventListener('click', () => setKey(b.dataset.key)));
 $$('[data-speed]').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
 $$('[data-chart]').forEach(b => b.addEventListener('click', () => setChart(b.dataset.chart)));
@@ -4479,19 +4968,20 @@ $('#clr').addEventListener('click', () => clearDTCs());
 $('#dtcBox').addEventListener('click', e => { const b = e.target.closest('.dtc'); if (b) { S.sel = b.dataset.code; renderScan(); } });
 
 /* ================= boot ================= */
-const start = (location.hash || '').slice(1);
-switchSensor(SENSORS[start] ? start : 'ect');
+const start = (location.hash || '').slice(1), [startId, startMode] = start.split('-');
+switchSensor(SENSORS[startId] ? startId : 'ect');
+if (startMode === 'mystery' || start === 'mystery') setMode('mystery');
 let last = performance.now(), acc = 1;
 function frame(now) {
   const dtReal = Math.min(0.05, (now - last) / 1000); last = now;
   tick(dtReal);
-  renderCircuit(dtReal);
+  asShown(() => renderCircuit(dtReal));
   acc += dtReal;
   if (acc >= 0.1) { acc = 0; renderAll(); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__dtc = { get S() { return S; }, get D() { return D; }, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
+window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get PROBE() { return PROBE; }, setMode, mysteryAct, mysStart, probeAt, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
 })();
 </script>
 
