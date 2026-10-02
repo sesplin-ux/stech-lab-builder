@@ -210,9 +210,16 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .result.reveal .ans{color:#fff}
 .mys-fine{margin:0;font-size:13px;line-height:1.45;color:var(--soft)}
 .mys-fine b{color:var(--fg)}
-.phit{fill:none;stroke:transparent;stroke-width:16;stroke-linecap:round;display:none;pointer-events:none}
-body.mys .phit{display:inline;pointer-events:stroke;cursor:crosshair}
-body.mys .phit:hover{stroke:rgba(255,90,78,.13)}
+#tpG{display:none}
+body.mys #tpG{display:inline}
+body.mys #circuit .badge{display:none}
+.tpx{cursor:pointer}
+.tpx .tph{fill:transparent}
+.tpx .tpring{fill:rgba(8,12,17,.85);stroke:#5C6A79;stroke-width:1.3}
+.tpx .tpd{stroke:#080B0F;stroke-width:1}
+.tpx:hover .tpring,.tpx.near .tpring{stroke:#EAFBFF;stroke-width:1.8}
+#tpG.armed .tpring{stroke:#8CCBF3}
+#circuit .t-tpx{font-weight:700;font-size:8.5px;letter-spacing:.08em;fill:#8CCBF3;pointer-events:none}
 body.mys #circuit .hit{pointer-events:none}
 /* DMM (same instrument as the Electrical Test Bench) */
 .mbody{display:grid;grid-template-columns:minmax(0,216px) minmax(0,1fr);gap:10px}
@@ -561,7 +568,7 @@ body.mz .legend::after{content:'Voltages hidden';font:500 10.5px/1 var(--f-mono)
               <div class="jacks"><span class="jack blk"><i></i><span>COM<br><small>black lead</small></span></span><span class="jack red"><i></i><span>VΩ<br><small>red lead</small></span></span></div>
             </div>
           </div>
-          <div class="minfo"><div class="interp" id="interp"></div><p class="fine">Drag a lead from the tray under the circuit onto any wire, or click a lead and then a wire. Clicking a wire on its own moves the red lead there.</p></div>
+          <div class="minfo"><div class="interp" id="interp"></div><p class="fine">Drag a lead from the tray onto a test point: an ECM pin, either half of a connector, or a component terminal. Or click a lead, then a test point. Clicking a test point on its own moves the red lead there.</p></div>
         </div>
         <div id="meterScope"></div>
       </div>
@@ -4050,10 +4057,11 @@ RF.lesson = [
    would name the fault. keep: student controls kept visible. tools: extra mystery buttons. */
 ECT.mystery = {
   prep: [600, 600],
+  hide: ['#rVal'],
   cases: [
     { id: 'sig', t: 'Open', n: 'Signal circuit open', set: [{ sigUp: true }, { sigLo: true }],
       concern: 'The check engine light is on, and the cooling fans run all the time, even first thing in the morning.',
-      tell: 'P0118 (circuit high) with 5 V at the ECM signal pin but 0 V at sensor terminal A. The ECM’s pull-up holds its side of the break at 5 V, and the thermistor holds the sensor’s side at ground. Probe along the yellow wire to find where the voltage changes.' },
+      tell: 'P0118 (circuit high) with 5 V at the ECM signal pin but 0 V at sensor terminal A. The ECM’s pull-up holds its side of the break at 5 V, and the thermistor holds the sensor’s side at ground. Check both halves of C1 to see which side of the connector the break is on.' },
     { id: 'ref', t: 'Open', n: 'Low reference circuit open', set: [{ refUp: true }, { refLo: true }],
       concern: 'The check engine light is on, and the cooling fans never shut off.',
       tell: 'P0118 again, but this time both sensor terminals read 5 V, including the low reference. Voltage passes right through the thermistor, so the break is on the ground side. The ECM’s low reference pin reads 0 V, so the break is in the black wire.' },
@@ -4065,7 +4073,7 @@ ECT.mystery = {
       tell: 'P0118, but the signal pin reads battery voltage, about 14 V. That’s far above the ECM’s own 5 V pull-up, so only a short to a B+ circuit can explain it.' },
     { id: 'hr', t: 'Resistance', n: 'High resistance at connector C1', set: { hiRes: [800, 1500, 50] },
       concern: 'Fuel economy is down, and the check engine light came on after a long drive. The temperature gauge seems normal.',
-      tell: 'P0128 with no circuit code. The ECM pin reads higher than sensor terminal A: that difference is voltage dropped across a bad connection at C1. On the chart, the reading sits colder than the actual coolant temperature.' },
+      tell: 'P0128 with no circuit code. The two halves of C1 terminal A read different voltages: that difference is voltage dropped across a bad connection. On the chart, the reading sits colder than the actual coolant temperature.' },
     { id: 'int', t: 'Intermittent', n: 'Loose terminal (intermittent open)', set: { inter: true },
       concern: 'The check engine light comes and goes. Sometimes the cooling fans kick on for no reason.',
       tell: 'P0119 (intermittent) with good readings almost all the time. Watch the scope: the signal jumps to 5 V for an instant, then comes right back. That’s a terminal losing contact.' },
@@ -4103,7 +4111,7 @@ TPS.mystery = {
   ],
 };
 O2.mystery = {
-  hide: ['#htrLbl'],
+  hide: ['#htrLbl', '#emfLbl'],
   cases: [
     { id: 'sig', t: 'Open', n: 'Signal circuit open', set: [{ sigUp: true }, { sigLo: true }], prep: [300, 300],
       concern: 'The check engine light is on and fuel economy dropped. The engine runs fine otherwise.',
@@ -4119,7 +4127,7 @@ O2.mystery = {
       tell: 'P0132 (circuit high) with battery voltage on the signal pin. A zirconia sensor can only make about 1 V, so anything higher is a short, here to the heater feed in the same harness.' },
     { id: 'feed', t: 'Heater', n: 'Heater B+ feed open', set: [{ feedUp: true }, { feedLo: true }],
       concern: 'The check engine light is on. Takes a while to go into closed loop after a cold start.',
-      tell: 'P0031 with 0 A of heater current. FEED at the fuse reads battery voltage, but the heater’s B+ terminal at the sensor reads 0 V. The feed wire is open between them.' },
+      tell: 'P0031 with 0 A of heater current. The fuse output reads battery voltage, but the heater’s B+ terminal at the sensor reads 0 V. Check both halves of C1 terminal D to see which side the break is on.' },
     { id: 'el', t: 'Heater', n: 'Heater element open', set: { htrOpen: true },
       concern: 'The check engine light is on. The engine runs fine once it’s warm.',
       tell: 'P0031 with battery voltage on the heater’s B+ terminal at the sensor, but 0 V on its control terminal. Voltage goes in and nothing comes out the other side: the element is open.' },
@@ -4139,13 +4147,13 @@ INJ.mystery = {
   cases: [
     { id: 'feed', t: 'Open', n: 'Injector B+ feed open', set: [{ feedUp: true }, { feedLo: true }],
       concern: 'The engine runs rough and the check engine light is on.',
-      tell: 'P0201 with P0301. INJ+ reads only about 3 V, the ECM’s off-state bias, instead of battery voltage, while FEED at the fuse is good. The B+ feed is open between them.' },
+      tell: 'P0201 with P0301. The injector’s + terminal reads only about 3 V, the ECM’s off-state bias, instead of battery voltage, while the fuse output is good. Check both halves of C1 to see which side of the connector the break is on.' },
     { id: 'ctl', t: 'Open', n: 'Injector control circuit open', set: [{ ctrlUp: true }, { ctrlLo: true }],
       concern: 'The engine runs rough and the check engine light is on.',
       tell: 'P0201 with B+ on both injector terminals, so the coil passes voltage and is good. The ECM’s control pin reads only its 3 V bias. The break is in the control wire.' },
     { id: 'coil', t: 'Open', n: 'Injector coil open', set: { coil: true },
       concern: 'The engine runs rough and shakes at idle. The check engine light is on.',
-      tell: 'P0201 with B+ on INJ+ but only the 3 V bias on INJ−. Voltage goes into the injector and doesn’t come out: the coil is open.' },
+      tell: 'P0201 with B+ on the injector’s + terminal but only the 3 V bias on its − terminal. Voltage goes into the injector and doesn’t come out: the coil is open.' },
     { id: 'sg', t: 'Short', n: 'Control circuit shorted to ground', set: { shortG: true },
       concern: 'Black smoke, a strong fuel smell and a rough idle. The check engine light is on.',
       tell: 'P0261 (circuit low): the control pin reads near 0 V even with the driver off. On the scope, the pin never rises between pulses, because the injector is grounded full time. It’s stuck open and floods the cylinder.' },
@@ -4160,10 +4168,11 @@ INJ.mystery = {
       tell: 'P0301 with a perfect electrical pattern: a clean pulse, a full voltage spike and normal current. The circuit and coil are fine, so the fault is in fuel flow through the injector.' },
     { id: 'hr', t: 'Resistance', n: 'High resistance in the B+ feed at C1', set: { hiRes: [4, 10, 0.5] },
       concern: 'An occasional miss, worse when the engine is cold. The check engine light is on.',
-      tell: 'P0301 with no circuit code. On the current scope, the coil current rises slower and peaks lower than normal, and INJ+ reads below FEED: the feed loses voltage across C1 whenever current flows.' },
+      tell: 'P0301 with no circuit code. On the current scope, the coil current rises slower and peaks lower than normal, and the two halves of C1 terminal B read different voltages: the feed loses voltage across that connection whenever current flows.' },
   ],
 };
 CAN.mystery = {
+  hide: ['#dlcV', '#dlcR'],
   cases: [
     { id: 'ecm', t: 'Open', n: 'CAN wire open at the ECM', set: [{ hUp: true }, { lUp: true }],
       concern: 'The check engine light is on and the scan tool shows communication codes in the ECM.',
@@ -4188,7 +4197,7 @@ CAN.mystery = {
       tell: 'Only the BCM is missing (U0140), and DLC resistance is a normal 60 Ω, so the bus wiring is fine. The BCM isn’t powered up: check its power and ground circuits.' },
     { id: 'hr', t: 'Resistance', n: 'High resistance in CAN-L at C1', set: { hiRes: [120, 250, 10] },
       concern: 'Gauges drop out for a second now and then. No warning lights stay on.',
-      tell: 'No codes yet, but the error counters climb (TEC and REC well above 0). Messages get through with errors. A connection is adding resistance to one bus wire.' },
+      tell: 'No codes yet, but the error counters climb (TEC and REC well above 0). The two halves of C1 CAN-L read different voltages, and key off, DLC 6 to 14 reads about 80 Ω instead of 60 Ω. A connection is adding resistance to one bus wire.' },
   ],
 };
 CKP.mystery = {
@@ -4255,7 +4264,7 @@ FP.mystery = {
       tell: 'Same symptoms as an open F1, but a new fuse blows the moment the pump is commanded on. Never just replace a blown fuse: find the short first.' },
     { id: 'feed', t: 'Pump power', n: 'Pump feed wire open', set: [{ feedUp: true }, { feedLo: true }],
       concern: 'Cranks but won’t start. No pump hum from the tank.',
-      tell: 'Back-probe along the pump feed during the key-on prime: battery voltage at the relay output, 0 V farther toward the pump. The break is between the last good reading and the first bad one.' },
+      tell: 'Back-probe during the key-on prime: relay terminal 87, then both halves of C1, then the pump’s + terminal. The break is between the last good reading and the first bad one.' },
     { id: 'gnd', t: 'Pump power', n: 'Pump ground open', set: { gOpen: true },
       concern: 'Cranks but won’t start. No pump hum.',
       tell: 'P0087 (low rail pressure). During prime, the pump’s B+ terminal has battery voltage and so does its GND terminal. With the ground open, the ground side floats up to battery voltage and no current flows.' },
@@ -4270,11 +4279,12 @@ FP.mystery = {
       tell: 'Voltage and ground at the pump test good. Open the throttle and watch rail pressure fall below desired, and look at the pump current scope: a weak segment repeats every turn of the motor.' },
     { id: 'hr', t: 'Resistance', n: 'High resistance at ground G103', set: { hiRes: [0.3, 0.6, 0.05] },
       concern: 'Long cranks when the engine is hot, and the pump sounds weaker than it used to.',
-      tell: 'The pump’s GND terminal reads well above 0 V while the pump runs. That voltage is lost across a bad ground, so the pump gets less than full voltage and runs slower.' },
+      tell: 'The pump’s − terminal and the G103 eyelet read well above 0 V while the pump runs. That voltage is lost across a bad ground, so the pump gets less than full voltage and runs slower.' },
   ],
 };
 RF.mystery = {
   keep: ['uMap', 'uTps', 'uApp'],
+  hide: ['#rfmR', '#rfmS', '#rftR', '#rftS', '#rfaR', '#rfaS', '#rfbR', '#rfbS'],
   cases: [
     { id: 'mapin', t: 'Sensor', n: 'MAP sensor shorted internally', set: { mapIn: true },
       concern: 'The check engine light is on, the engine is in reduced power, and there are four codes.',
@@ -4308,6 +4318,82 @@ RF.mystery = {
       tell: 'No code, because the ECM checks Ref A at its own pin, which reads 5 V. At each sensor, the reference is lower, so every reading comes out low. Compare the reference at the ECM with the reference at a sensor.' },
   ],
 };
+
+/* ================= DMM test points =================
+   Like the Electrical Test Bench, the leads only land where a tech can really back-probe: ECM pins, both halves
+   of each connector cavity, component terminals, fuses, relay terminals and the DLC. Each entry is
+   [meter node, x, y, label, full name, label side]. Label side: r (default), l, t or b; an empty label means
+   the schematic already names the point. */
+ECT.tps = [
+  ['P', 380, 216, '', 'ECM pin · ECT signal'], ['L', 150, 216, '', 'ECM pin · low reference'],
+  ['A', 380, 318, '', 'C1 terminal A, ECM side'], ['X', 380, 348, '', 'C1 terminal A, sensor side'],
+  ['RB', 150, 318, '', 'C1 terminal B, ECM side'], ['RB', 150, 348, '', 'C1 terminal B, sensor side'],
+  ['SA', 380, 452, 'A', 'ECT sensor terminal A (signal)', 'l'], ['SB', 150, 452, 'B', 'ECT sensor terminal B (low reference)'],
+];
+TPS.tps = [
+  ['R5', 130, 216, '', 'ECM pin · 5 V reference'], ['P', 270, 216, '', 'ECM pin · TPS signal'], ['L', 410, 216, '', 'ECM pin · low reference'],
+  ['RA', 130, 318, 'A', 'C1 terminal A (5 V ref), ECM side', 'l'], ['RB', 130, 348, 'A', 'C1 terminal A (5 V ref), sensor side', 'l'],
+  ['SX', 270, 318, 'B', 'C1 terminal B (signal), ECM side', 'l'], ['SX', 270, 348, 'B', 'C1 terminal B (signal), sensor side', 'l'],
+  ['GC', 410, 318, 'C', 'C1 terminal C (low ref), ECM side'], ['GC', 410, 348, 'C', 'C1 terminal C (low ref), sensor side'],
+  ['TA', 130, 452, 'A', 'TPS terminal A (5 V reference)', 'l'], ['W', 270, 452, 'B', 'TPS terminal B (signal)', 'l'], ['TC', 410, 452, 'C', 'TPS terminal C (low reference)'],
+];
+O2.tps = [
+  ['P', 120, 216, '', 'ECM pin · O2 signal'], ['L', 200, 216, '', 'ECM pin · O2 signal low'], ['CP', 300, 216, '', 'ECM pin · heater control'],
+  ['FB', 440, 119, 'OUT', 'Heater fuse, output side', 'l'],
+  ['SX', 120, 318, 'A', 'C1 terminal A (signal), ECM side', 'l'], ['SX', 120, 348, 'A', 'C1 terminal A (signal), sensor side', 'l'],
+  ['RX', 200, 318, 'B', 'C1 terminal B (signal low), ECM side'], ['RX', 200, 348, 'B', 'C1 terminal B (signal low), sensor side'],
+  ['CX', 300, 318, 'C', 'C1 terminal C (heater control), ECM side'], ['CX', 300, 348, 'C', 'C1 terminal C (heater control), sensor side'],
+  ['FX', 440, 318, 'D', 'C1 terminal D (heater B+), ECM side', 'l'], ['FX', 440, 348, 'D', 'C1 terminal D (heater B+), sensor side', 'l'],
+  ['SP', 120, 448, 'A', 'O2 sensor terminal A (signal)', 'l'], ['SM', 200, 448, 'B', 'O2 sensor terminal B (signal low)'],
+  ['HC', 300, 448, 'C', 'O2 sensor terminal C (heater control)', 'l'], ['FC', 440, 448, 'D', 'O2 sensor terminal D (heater B+)', 'l'],
+];
+INJ.tps = [
+  ['CP', 240, 216, '', 'ECM pin · injector 1 control'], ['FB', 440, 115, 'OUT', 'Injector fuse, output side', 'l'],
+  ['CA', 240, 318, 'A', 'C1 terminal A (control), ECM side', 'l'], ['CX', 240, 348, 'A', 'C1 terminal A (control), injector side', 'l'],
+  ['FA', 440, 318, 'B', 'C1 terminal B (B+ feed), fuse side', 'l'], ['FX', 440, 348, 'B', 'C1 terminal B (B+ feed), injector side', 'l'],
+  ['HC', 240, 452, '−', 'Injector terminal − (control)', 'l'], ['FC', 440, 452, '+', 'Injector terminal + (B+ feed)'],
+];
+CAN.tps = [
+  ['EH', 220, 216, '', 'ECM pin · CAN-H'], ['EL', 280, 216, '', 'ECM pin · CAN-L'],
+  ['XH', 220, 318, 'H', 'C1 CAN-H, ECM side', 'l'], ['YH', 220, 348, 'H', 'C1 CAN-H, bus side', 'l'],
+  ['XL', 280, 318, 'L', 'C1 CAN-L, ECM side'], ['YL', 280, 348, 'L', 'C1 CAN-L, bus side'],
+  ['YH', 150, 372, '6', 'DLC pin 6 (CAN-H)', 'l'], ['YL', 150, 392, '14', 'DLC pin 14 (CAN-L)', 'l'],
+  ['YH', 350, 372, '', 'ABS connector · CAN-H'], ['YL', 350, 392, '', 'ABS connector · CAN-L'],
+  ['YH', 350, 436, '', 'BCM connector · CAN-H'], ['YL', 350, 452, '', 'BCM connector · CAN-L'],
+  ['IH', 220, 508, 'H', 'Cluster connector · CAN-H', 'l'], ['IL', 280, 508, 'L', 'Cluster connector · CAN-L'],
+];
+CKP.tps = [
+  ['KP_E', 70, 216, '', 'ECM pin · CKP +'], ['KM_E', 190, 216, '', 'ECM pin · CKP −'],
+  ['RP', 312, 216, '', 'ECM pin · CMP 5 V reference'], ['SP', 404, 216, '', 'ECM pin · CMP signal'], ['LP', 486, 216, '', 'ECM pin · CMP low reference'],
+  ['KP_S', 70, 296, '+', 'C1 terminal + , ECM side', 'l'], ['KP_S', 70, 324, '+', 'C1 terminal +, sensor side', 'l'],
+  ['KM_S', 190, 296, '−', 'C1 terminal −, ECM side'], ['KM_S', 190, 324, '−', 'C1 terminal −, sensor side'],
+  ['RA', 312, 296, 'A', 'C2 terminal A (5 V ref), ECM side', 'l'], ['RA', 312, 324, 'A', 'C2 terminal A (5 V ref), sensor side', 'l'],
+  ['SA', 404, 296, 'B', 'C2 terminal B (signal), ECM side', 'l'], ['SA', 404, 324, 'B', 'C2 terminal B (signal), sensor side', 'l'],
+  ['GA', 486, 296, 'C', 'C2 terminal C (low ref), ECM side', 'l'], ['GA', 486, 324, 'C', 'C2 terminal C (low ref), sensor side', 'l'],
+  ['KP_S', 86, 404, '+', 'CKP sensor terminal +', 't'], ['KM_S', 174, 404, '−', 'CKP sensor terminal −', 't'],
+  ['RA', 322, 406, 'A', 'CMP sensor terminal A (5 V ref)', 't'], ['SA', 404, 392, 'B', 'CMP sensor terminal B (signal)', 'l'], ['GA', 478, 406, 'C', 'CMP sensor terminal C (low ref)', 't'],
+];
+FP.tps = [
+  ['SN', 200, 216, '', 'ECM pin · FP MON (pump feed sense)'], ['CP', 290, 216, '', 'ECM pin · relay control'],
+  ['IGN', 384, 56, 'IN', 'Fuse F2, input side', 'l'], ['IG2', 384, 100, 'OUT', 'Fuse F2, output side', 'l'],
+  ['BAT', 474, 56, 'IN', 'Fuse F1, input side (battery)'], ['R30', 474, 104, 'OUT', 'Fuse F1, output side'],
+  ['C86', 384, 176, '', 'Relay terminal 86 (coil feed)'], ['C85', 384, 248, '', 'Relay terminal 85 (coil control)'],
+  ['R30', 474, 176, '', 'Relay terminal 30 (fused B+)'], ['R87', 474, 248, '', 'Relay terminal 87 (pump feed out)'],
+  ['SPL', 474, 340, '', 'C1 pump feed, relay side'], ['FB', 474, 366, '', 'C1 pump feed, pump side'],
+  ['PP', 474, 446, '+', 'Pump terminal +'], ['PG', 474, 494, '−', 'Pump terminal −'], ['GW', 300, 506, 'G103', 'Ground eyelet G103', 'b'],
+];
+RF.tps = [
+  ['RP', 60, 216, '', 'ECM pin · 5 V reference A'], ['LP', 146, 216, '', 'ECM pin · shared low reference'],
+  ['MP', 200, 216, '', 'ECM pin · MAP signal'], ['TP', 300, 216, '', 'ECM pin · TPS signal'], ['AP', 400, 216, '', 'ECM pin · APP 1 signal'],
+  ['BP', 440, 216, '', 'ECM pin · 5 V reference B'], ['BS', 470, 216, '', 'ECM pin · APP 2 signal'], ['BL', 494, 216, '', 'ECM pin · APP 2 low reference'],
+  ['RS', 180, 372, '', 'MAP connector · 5 V ref, harness side'], ['MP', 200, 372, '', 'MAP connector · signal, harness side'],
+  ['mR', 180, 390, '', 'MAP connector · 5 V ref, sensor side'], ['mW', 200, 390, '', 'MAP connector · signal, sensor side'], ['mL', 220, 470, '', 'MAP sensor · low reference terminal'],
+  ['RS', 280, 372, '', 'TPS connector · 5 V ref, harness side'], ['TP', 300, 372, '', 'TPS connector · signal, harness side'],
+  ['tR', 280, 390, '', 'TPS connector · 5 V ref, sensor side'], ['tW', 300, 390, '', 'TPS connector · signal, sensor side'], ['tL', 320, 470, '', 'TPS sensor · low reference terminal'],
+  ['RS', 380, 372, '', 'APP connector · APP 1 5 V ref, harness side'], ['AP', 400, 372, '', 'APP connector · APP 1 signal, harness side'],
+  ['aR', 380, 390, '', 'APP connector · APP 1 5 V ref, sensor side'], ['aW', 400, 390, '', 'APP connector · APP 1 signal, sensor side'], ['aL', 420, 470, '', 'APP sensor · APP 1 low reference terminal'],
+  ['BP', 440, 372, '', 'APP connector · APP 2 5 V ref, harness side'], ['BS', 470, 372, '', 'APP connector · APP 2 signal, harness side'], ['BL', 494, 372, '', 'APP connector · APP 2 low ref, harness side'],
+];
 
 const SENSORS = { ect: ECT, tps: TPS, o2: O2, inj: INJ, can: CAN, ckp: CKP, fp: FP, ref5: RF };
 const PLANNED = [];
@@ -4973,7 +5059,7 @@ function renderMyst() {
   $('#myDots').innerHTML = bagDots(g, M && M.id);
   let h;
   if (!M) {
-    h = `<p class="mys-fine">The bench hides one of this circuit’s <b>${n} faults</b> and runs the car for a couple of trips, so it arrives with its codes and freeze frame stored. Voltage colors are off. Use the scan tool and the DMM: drag its leads from the tray onto any wire.</p>
+    h = `<p class="mys-fine">The bench hides one of this circuit’s <b>${n} faults</b> and runs the car for a couple of trips, so it arrives with its codes and freeze frame stored. Voltage colors are off. Use the scan tool and the DMM: back-probe at the ECM pins, the connectors and the components, just like on the car.</p>
       ${complete ? `<div class="result ok"><b>Set complete.</b> Correct on the first try: ${first} of ${n}.</div>` : ''}
       <div class="mrow"><button class="btn primary" data-my="new">${complete ? `Start round ${g.round + 1}` : done ? `Next mystery fault (${done + 1} of ${n})` : 'Start a mystery fault'}</button>${done ? '<button class="btn small" data-my="restart">Restart this set</button>' : ''}</div>`;
   } else {
@@ -4998,62 +5084,44 @@ function renderMyst() {
 const TRAY_H = 66, TIP_K = 0.72;
 const LEAD = { r: { fill: '#E8384F', edge: '#FF95A0', ang: -28, cable: '#E8384F', nm: 'Red lead' }, b: { fill: '#1B2128', edge: '#A3AFBC', ang: 28, cable: '#6B7785', nm: 'Black lead' } };
 const DMM = { knob: 'V' };
-let LEADS = { r: null, b: null }, LSEL = null, LDRAG = null, SNAPS = null, TRAY = null;
+let LEADS = { r: null, b: null }, LSEL = null, LDRAG = null, TRAY = null;
 const vbOf = () => D.viewBox.split(/\s+/).map(Number);
 function syncViewBox() {
   const [x, y, w, h] = vbOf(), svg = $('#circuit');
   svg.setAttribute('viewBox', MODE === 'mystery' ? `${x} ${y} ${w} ${h + TRAY_H}` : D.viewBox);
 }
 function buildProbe(svg) {
-  svg.querySelectorAll('.w[data-n]').forEach(w => {
-    if (w.closest('.jump, [id^="om-"], .mys-x') || w.dataset.m === '-') return;
-    const h = w.cloneNode(); h.removeAttribute('id'); h.removeAttribute('style'); h.setAttribute('class', 'phit');
-    h.dataset.m = w.dataset.m || w.dataset.n;
-    h.addEventListener('click', e => { if (!LDRAG) leadToWire(LSEL || 'r', h, e); });
-    w.parentNode.insertBefore(h, w.nextSibling);
-  });
   (D.mystery?.hide || []).forEach(sel => svg.querySelectorAll(sel).forEach(e => e.classList.add('mys-x')));
   const [x, y, w, h] = vbOf(), ty = y + h + 4;
   TRAY = { ty, gnd: { x: x + 40, y: ty + 30 }, home: { r: [x + 104, ty + 56], b: [x + 128, ty + 56] }, anchor: [x + 116, ty + 60] };
+  const lab = ([, tx, ty2, l, , side = 'r']) => !l ? '' : side === 'l' ? `<text class="t-tpx" x="${tx - 10}" y="${ty2 + 3}" text-anchor="end">${l}</text>`
+    : side === 't' ? `<text class="t-tpx" x="${tx}" y="${ty2 - 10}" text-anchor="middle">${l}</text>` : side === 'b' ? `<text class="t-tpx" x="${tx}" y="${ty2 + 17}" text-anchor="middle">${l}</text>`
+    : `<text class="t-tpx" x="${tx + 10}" y="${ty2 + 3}">${l}</text>`;
   svg.insertAdjacentHTML('beforeend', `<g id="trayG"><rect x="${x + 6}" y="${ty}" width="${w - 12}" height="${TRAY_H - 8}" rx="11" class="tray"/>
     <g class="gstud" data-gnd="1"><circle cx="${TRAY.gnd.x}" cy="${TRAY.gnd.y}" r="9" class="studo"/><circle cx="${TRAY.gnd.x}" cy="${TRAY.gnd.y}" r="4" class="studi"/>
     <path class="gnd" d="M${TRAY.gnd.x - 7} ${TRAY.gnd.y + 15} H${TRAY.gnd.x + 7} M${TRAY.gnd.x - 4.5} ${TRAY.gnd.y + 18.5} H${TRAY.gnd.x + 4.5} M${TRAY.gnd.x - 2} ${TRAY.gnd.y + 22} H${TRAY.gnd.x + 2}"/></g>
     <text x="${x + 56}" y="${ty + 20}" class="trayl">CHASSIS</text><text x="${x + 56}" y="${ty + 32}" class="trayl">GROUND</text>
     <path d="M${x + 88} ${ty + 8} V${ty + 50}" class="traysep"/>
-    <text x="${x + 146}" y="${ty + 24}" class="trayl">DMM LEADS</text><text x="${x + 146}" y="${ty + 37}" class="trays">drag onto any wire</text>
-    <path d="M${x + 238} ${ty + 8} V${ty + 50}" class="traysep"/>
+    <text x="${x + 146}" y="${ty + 24}" class="trayl">DMM LEADS</text><text x="${x + 146}" y="${ty + 37}" class="trays">drag to a test point</text>
+    <path d="M${x + 242} ${ty + 8} V${ty + 50}" class="traysep"/>
     <text x="${x + 250}" y="${ty + 21}" class="trays">No test light or power probe on ECM</text><text x="${x + 250}" y="${ty + 33}" class="trays">circuits: they can load or damage the</text><text x="${x + 250}" y="${ty + 45}" class="trays">module. Back-probe with the DMM.</text></g>
+    <g id="tpG">${(D.tps || []).map((t, i) => `<g class="tpx" data-tpi="${i}" tabindex="0" role="button" aria-label="Test point: ${t[4]}" transform="translate(${t[1]} ${t[2]})"><title>${t[4]}</title><circle class="tph" r="11"/><circle class="tpring" r="6.2"/><circle class="tpd" r="2.9" fill="#8A98A8"/></g>`).join('')}${(D.tps || []).map(lab).join('')}</g>
     <g id="cableG"></g><g id="snapG"></g><g id="leadG"></g>`);
-  SNAPS = null; LSEL = null; LDRAG = null;
-  LEADS = { r: null, b: { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true } };
+  LSEL = null; LDRAG = null;
+  LEADS = { r: null, b: { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true, nm: 'chassis ground' } };
   drawLeads();
 }
-/* snap points along every probe-able wire, in root SVG units (computed once per build, after layout) */
-function snapPoints() {
-  if (SNAPS) return SNAPS;
-  const svg = $('#circuit'), inv = svg.getScreenCTM()?.inverse(); if (!inv) return [];
-  SNAPS = [];
-  svg.querySelectorAll('.phit').forEach(h => {
-    const L = h.getTotalLength(), M = inv.multiply(h.getScreenCTM());
-    for (let s = 0; s <= L; s += 3) { const q = h.getPointAtLength(s); SNAPS.push({ x: M.a * q.x + M.c * q.y + M.e, y: M.b * q.x + M.d * q.y + M.f, n: h.dataset.n, m: h.dataset.m }); }
-  });
-  return SNAPS;
+const tpAt = i => { const t = D.tps[i]; return { m: t[0], n: t[0], x: t[1], y: t[2], nm: t[4], i }; };
+function snapAt(x, y, r = 18) {
+  if (Math.hypot(x - TRAY.gnd.x, y - TRAY.gnd.y) < r) return { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true, nm: 'chassis ground' };
+  let best = null, bd = r;
+  (D.tps || []).forEach((t, i) => { const d = Math.hypot(t[1] - x, t[2] - y); if (d < bd) { bd = d; best = tpAt(i); } });
+  return best;
 }
 function svgPt(e) { const svg = $('#circuit'), p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
-function snapAt(x, y, r = 16) {
-  if (Math.hypot(x - TRAY.gnd.x, y - TRAY.gnd.y) < 16) return { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true };
-  let best = null, bd = r;
-  for (const s of snapPoints()) { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = s; } }
-  return best && { ...best };
-}
-function leadToWire(id, h, e) {
+function leadToTP(id, i) {
   if (MODE !== 'mystery') return;
-  let p = e && e.clientX != null ? svgPt(e) : null;
-  if (!p) { const b = h.getBBox(), M = $('#circuit').getScreenCTM().inverse().multiply(h.getScreenCTM()), cx = b.x + b.width / 2, cy = b.y + b.height / 2; p = { x: M.a * cx + M.c * cy + M.e, y: M.b * cx + M.d * cy + M.f }; }
-  let at = null, bd = Infinity;
-  for (const s of snapPoints()) if (s.m === h.dataset.m) { const d = Math.hypot(s.x - p.x, s.y - p.y); if (d < bd) { bd = d; at = s; } }
-  if (!at) return;
-  LEADS[id] = { ...at }; LSEL = null; drawLeads(); renderDMM();
+  LEADS[id] = i === 'gnd' ? snapAt(TRAY.gnd.x, TRAY.gnd.y) : tpAt(i); LSEL = null; drawLeads(); renderDMM();
 }
 function tipXY(id) {
   if (LDRAG && LDRAG.id === id && LDRAG.moved) return { x: LDRAG.x, y: LDRAG.y, ang: LEAD[id].ang, out: true };
@@ -5077,7 +5145,8 @@ function drawLeads() {
   }
   $('#cableG').innerHTML = cab; $('#leadG').innerHTML = tips;
   const s = LDRAG && LDRAG.snap;
-  $('#snapG').innerHTML = s ? `<circle class="snapr" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}" r="7"/>` : '';
+  $('#snapG').innerHTML = s ? `<circle class="snapr" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}" r="9"/>` : '';
+  $('#tpG')?.classList.toggle('armed', !!(LSEL || (LDRAG && LDRAG.moved)));
 }
 /* readings */
 function vAt(l) { if (!l || l.m === 'G') return 0; const d = D.meter?.dc?.(l.m); return d ?? S.v[l.n] ?? 0; }
@@ -5117,7 +5186,7 @@ function fmtOhm(r) {
 function readMeter() {
   const k = DMM.knob, r = LEADS.r, b = LEADS.b;
   if (k === 'OFF') return { off: true };
-  const where = !r && !b ? 'Both leads in the tray' : !r ? 'Red lead in the tray' : !b ? 'Black lead in the tray' : `Red on ${r.gnd ? 'chassis ground' : 'a wire'} · black on ${b.gnd ? 'chassis ground' : 'a wire'}`;
+  const where = !r && !b ? 'Both leads in the tray' : !r ? 'Red lead in the tray' : !b ? 'Black lead in the tray' : `Red: ${r.nm} · Black: ${b.nm}`;
   if (k === 'V' || k === 'AC') {
     const ac = k === 'AC', v = !r || !b ? 0 : ac ? (D.meter?.ac?.(r.m, b.m) ?? 0) : vAt(r) - vAt(b);
     return { val: fmtDV(v), unit: 'V', ann: [['AUTO', 'on'], [ac ? 'AC' : 'DC', 'on'], ['V', 'on']], sub: where };
@@ -5137,6 +5206,8 @@ const DMM_IT = {
 };
 function renderDMM() {
   if (MODE !== 'mystery') return;
+  const hid = MZ();
+  $$('#tpG .tpx').forEach(g => { const f = hid ? '#8A98A8' : vColor(vAt(tpAt(+g.dataset.tpi))); if (g._f !== f) { g.lastChild.setAttribute('fill', f); g._f = f; } });
   const RD = readMeter(), k = DMM.knob;
   $('#lcd').classList.toggle('dark', !!RD.off); $('#lcd').classList.toggle('live', !!RD.live);
   const val = RD.off ? '8.8.8.8' : RD.val;
@@ -5187,7 +5258,10 @@ function initLeads() {
   svg.addEventListener('pointerup', end);
   svg.addEventListener('pointercancel', end);
   svg.addEventListener('click', e => {
-    if (MODE !== 'mystery' || !LSEL || e.target.closest('[data-tip], .phit')) return;
+    if (MODE !== 'mystery' || e.target.closest('[data-tip]')) return;
+    const tp = e.target.closest('[data-tpi]');
+    if (tp) { leadToTP(LSEL || 'r', +tp.dataset.tpi); return; }
+    if (!LSEL) return;
     const p = svgPt(e), [, y, , h] = vbOf();
     if (e.target.closest('[data-gnd]')) LEADS[LSEL] = snapAt(TRAY.gnd.x, TRAY.gnd.y);
     else if (p.y > y + h) LEADS[LSEL] = null;
@@ -5198,6 +5272,8 @@ function initLeads() {
     const g = e.target.closest('[data-tip]');
     if (e.key === 'Escape' && LSEL) { LSEL = null; drawLeads(); return; }
     if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); LSEL = LSEL === g.dataset.tip ? null : g.dataset.tip; drawLeads(); }
+    const tp = e.target.closest('[data-tpi]');
+    if (tp && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); leadToTP(LSEL || 'r', +tp.dataset.tpi); }
   });
   $('#knob').addEventListener('click', e => { const k = e.target.closest('[data-k]'); if (k) { DMM.knob = k.dataset.k; renderDMM(); } });
   $('#knob').addEventListener('keydown', e => { const k = e.target.closest('[data-k]'); if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); DMM.knob = k.dataset.k; renderDMM(); } });
@@ -5208,7 +5284,7 @@ function syncMysLayout() {
   $('#logicPanel').hidden = m; $('#meterPanel').hidden = !m;
   if (m) $('#meterScope').appendChild($('#chartBox'));
   else $('#logicPanel .reads').after($('#chartBox'));
-  syncViewBox(); SNAPS = null;
+  syncViewBox();
   if (m) { drawLeads(); renderDMM(); }
 }
 
@@ -5249,7 +5325,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get LEADS() { return LEADS; }, DMM, readMeter, ohms, snapAt, leadToWire, setMode, mysteryAct, mysStart, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
+window.__dtc = { get S() { return S; }, get D() { return D; }, get MYS() { return MYS; }, get BAGS() { return BAGS; }, get LEADS() { return LEADS; }, DMM, readMeter, ohms, snapAt, leadToTP, setMode, mysteryAct, mysStart, switchSensor, setFault, setKey, setThrottle, clearFaults, clearDTCs, nextTrip, coldStart, setSpeed, setRpm, setChart, advance(sec) { for (let t = 0; t < sec; t += 0.05) step(0.05); } };
 })();
 </script>
 
