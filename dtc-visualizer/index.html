@@ -219,6 +219,9 @@ body.mys #circuit .badge{display:none}
 .tpx .tpd{stroke:#080B0F;stroke-width:1}
 .tpx:hover .tpring,.tpx.near .tpring{stroke:#EAFBFF;stroke-width:1.8}
 #tpG.armed .tpring{stroke:#8CCBF3}
+.tpx.tw{display:none}
+.tpx.tw.on{display:inline}
+.tpx.tw .tpring{stroke:#FFB224;stroke-dasharray:2 1.6}
 #circuit .t-tpx{font-weight:700;font-size:8.5px;letter-spacing:.08em;fill:#8CCBF3;pointer-events:none}
 body.mys #circuit .hit{pointer-events:none}
 /* DMM (same instrument as the Electrical Test Bench) */
@@ -652,6 +655,8 @@ const on = () => S.key !== 'off';
    J = [from, to, amps] current sources (a series EMF + resistance becomes a Norton source). */
 let NETCAP = null;   // while a circuit solves, every resistor network it builds is kept for the ohmmeter
 function nodal(nodes, E, fixed, J = []) {
+  const px = typeof plugEdit === 'function' ? plugEdit(nodes, E, J) : null;
+  if (px) ({ nodes, E, J } = px);
   if (NETCAP) NETCAP.push(E);
   const all = E.concat(nodes.map(n => [n, 'G', 1e10, 'leak']));
   const n = nodes.length, idx = Object.fromEntries(nodes.map((k, i) => [k, i]));
@@ -2725,7 +2730,7 @@ const CM_PU = 2000, CM_RQ = 1000, CM_RON = 30, CM_EDGE = 90, CM_SPAN = 180;     
 const CK_EST = { off: 'Off', crank: 'Cranking', run: 'Running', dying: 'Stalling', stall: 'Stalled' };
 const CKA = 7.3, CKH = 2.3, CKB = 0.9, CKS = 0.56, CK_T0 = 30;                  // dual scope: channel A center/half-height, channel B zero/scale, gap offset (display units)
 const ckVpk = rpm => 3.2 * rpm / 700 * Math.exp(-S.f.gap / 0.93);               // VR output, volts peak: rises with speed, falls fast with air gap
-const ckLinked = () => !S.f.kpUp && !S.f.kmUp;
+const ckLinked = () => !S.f.kpUp && !S.f.kmUp && !(typeof PLUGS !== 'undefined' && PLUGS.C1 && MODE === 'mystery');
 const ckPt = V => clamp((V - 0.11) / 0.30, 0, 1);                                // chance the ECM catches a tooth at this amplitude
 const ckThr = V => Math.max(0.10, 0.3 * V);                                      // adaptive arming threshold
 const ckSigNow = () => S.t - S.p.lastCkT < 0.5;
@@ -4250,7 +4255,7 @@ CKP.mystery = {
 CKP.meter = {
   dc: m => /^K[PM]_/.test(m) ? 0 : undefined,
   ac(a, b) {
-    const ph = m => ({ KP_S: S.ck.vs / 2, KM_S: -S.ck.vs / 2, KP_E: S.ck.ve / 2, KM_E: -S.ck.ve / 2 })[m] ?? 0;
+    const c1 = PLUGS.C1, ph = m => ({ 'KP_S~C1': S.ck.vs / 2, 'KM_S~C1': -S.ck.vs / 2, KP_S: (c1 ? S.ck.ve : S.ck.vs) / 2, KM_S: -(c1 ? S.ck.ve : S.ck.vs) / 2, KP_E: S.ck.ve / 2, KM_E: -S.ck.ve / 2 })[m] ?? 0;
     return Math.abs(ph(a) - ph(b)) / Math.SQRT2;
   },
   ohmEdges: () => [['KP_E', 'KP_S', S.f.kpUp ? OPEN : WIRE, 'm_kp'], ['KM_E', 'KM_S', S.f.kmUp ? OPEN : WIRE, 'm_km'], ['KP_S', 'KM_S', CK_R, 'm_coil'], ['KP_E', 'KM_E', 20e3, 'm_in']],
@@ -4417,42 +4422,42 @@ RF.tps = [
 ECT.plugs = [
   { id: 'C1', n: 'C1', at: [265, 333], cav: [['e', 'hr'], ['s', 'RB', ['rlo']]] },
   { id: 'S', n: 'ECT sensor', at: [265, 440], cav: [['s', 'SA', ['th']], ['s', 'SB', ['th']]] },
-  { id: 'ECM', n: 'ECM connector', at: [265, 200], cav: [['s', 'P', ['pu']], ['s', 'L', ['lg']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [265, 200], cav: [['s', 'P', ['pu']], ['s', 'L', ['lg']]] },
 ];
 TPS.plugs = [
   { id: 'C1', n: 'C1', at: [200, 333], cav: [['e', 'hr'], ['s', 'SX', ['slo', 's5']], ['s', 'GC', ['glo']]] },
   { id: 'S', n: 'TPS', at: [200, 440], cav: [['s', 'TA', ['tt']], ['s', 'W', ['wip']], ['s', 'TC', ['tb']]] },
-  { id: 'ECM', n: 'ECM connector', at: [200, 200], cav: [['s', 'R5', ['reg']], ['s', 'P', ['pd']], ['s', 'L', ['lg']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [200, 200], cav: [['s', 'R5', ['reg']], ['s', 'P', ['pd']], ['s', 'L', ['lg']]] },
 ];
 O2.plugs = [
   { id: 'C1', n: 'C1', at: [250, 333], cav: [['s', 'SX', ['slo']], ['s', 'RX', ['rlo']], ['s', 'CX', ['clo']], ['s', 'FX', ['flo']]] },
-  { id: 'S', n: 'O2 sensor', at: [250, 436], cav: [['s', 'SP', ['ri']], ['s', 'SM', ['ri']], ['s', 'HC', ['htr']], ['s', 'FC', ['htr']]] },
-  { id: 'ECM', n: 'ECM connector', at: [160, 200], cav: [['s', 'P', ['rb']], ['s', 'L', ['lg']], ['s', 'CP', ['sense', 'drv']]] },
+  { id: 'S', n: 'O2 sensor', at: [250, 488], cav: [['s', 'SP', ['ri']], ['s', 'SM', ['ri']], ['s', 'HC', ['htr']], ['s', 'FC', ['htr']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [160, 200], cav: [['s', 'P', ['rb']], ['s', 'L', ['lg']], ['s', 'CP', ['sense', 'drv']]] },
 ];
 INJ.plugs = [
   { id: 'C1', n: 'C1', at: [340, 333], cav: [['e', 'hr'], ['e', 'c1']] },
   { id: 'S', n: 'Injector', at: [340, 440], cav: [['s', 'FC', ['coil']], ['s', 'HC', ['coil']]] },
-  { id: 'ECM', n: 'ECM connector', at: [150, 200], cav: [['s', 'CP', ['bias', 'drv']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [150, 200], cav: [['s', 'CP', ['bias', 'drv']]] },
 ];
 CAN.plugs = [
   { id: 'C1', n: 'C1', at: [250, 333], cav: [['e', 'c1h'], ['e', 'hr']] },
-  { id: 'I', n: 'Cluster (IPC)', at: [250, 528], cav: [['s', 'IH', ['ti']], ['s', 'IL', ['ti']]] },
-  { id: 'ECM', n: 'ECM connector', at: [130, 200], cav: [['s', 'EH', ['te']], ['s', 'EL', ['te']]] },
+  { id: 'I', n: 'Cluster (IPC)', at: [250, 528], cav: [['e', 'hlo'], ['e', 'llo']], alias: { IH: 'YH', IL: 'YL' } },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [130, 200], cav: [['s', 'EH', ['te']], ['s', 'EL', ['te']]] },
 ];
 CKP.plugs = [
   { id: 'C1', n: 'C1 (CKP)', at: [130, 310], cav: [['s', 'KP_S', ['m_coil']], ['s', 'KM_S', ['m_coil']]] },
   { id: 'C2', n: 'C2 (CMP)', at: [360, 310], cav: [['s', 'RA', ['hall']], ['s', 'SA', ['c2s']], ['s', 'GA', ['c2g']]] },
-  { id: 'ECM', n: 'ECM connector', at: [250, 200], cav: [['s', 'KP_E', ['m_in']], ['s', 'KM_E', ['m_in']], ['s', 'RP', ['reg']], ['s', 'SP', ['pu']], ['s', 'LP', ['lg']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [250, 200], cav: [['s', 'KP_E', ['m_in']], ['s', 'KM_E', ['m_in']], ['s', 'RP', ['reg']], ['s', 'SP', ['pu']], ['s', 'LP', ['lg']]] },
 ];
 FP.plugs = [
   { id: 'K', n: 'FP relay', at: [429, 276], cav: [['e', 'coil'], ['e', 'sw']] },
   { id: 'C1', n: 'C1', at: [446, 381], cav: [['e', 'c1']] },
   { id: 'P', n: 'Pump', at: [400, 424], cav: [['s', 'PP', ['pump']], ['s', 'PG', ['pump']]] },
-  { id: 'ECM', n: 'ECM connector', at: [150, 200], cav: [['s', 'SN', ['snin']], ['s', 'CP', ['bias', 'drv']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [150, 200], cav: [['s', 'SN', ['snin']], ['s', 'CP', ['bias', 'drv']]] },
 ];
 RF.plugs = [
   { id: 'M', n: 'MAP', key: 'uMap' }, { id: 'T', n: 'TPS', key: 'uTps' }, { id: 'A', n: 'APP', key: 'uApp' },
-  { id: 'ECM', n: 'ECM connector', at: [250, 200], cav: [['s', 'RP', ['reg']], ['s', 'LP', ['lg']], ['s', 'MP', ['mpd']], ['s', 'TP', ['tpd']], ['s', 'AP', ['apd']], ['s', 'BP', ['regB']], ['s', 'BS', ['bpd']], ['s', 'BL', ['blg']]] },
+  { id: 'ECM', n: 'ECM connector', module: true, at: [250, 200], cav: [['s', 'RP', ['reg']], ['s', 'LP', ['lg']], ['s', 'MP', ['mpd']], ['s', 'TP', ['tpd']], ['s', 'AP', ['apd']], ['s', 'BP', ['regB']], ['s', 'BS', ['bpd']], ['s', 'BL', ['blg']]] },
 ];
 /* far-side test points */
 const farTP = (D0, plug, list) => list.forEach(i => { D0.tps[i][0] += '@' + plug; });
@@ -4460,6 +4465,15 @@ farTP(ECT, 'C1', [5]); farTP(ECT, 'S', [6, 7]);
 farTP(TPS, 'C1', [6, 8]); farTP(TPS, 'S', [9, 10, 11]);
 farTP(O2, 'C1', [5, 7, 9, 11]); farTP(O2, 'S', [12, 13, 14, 15]);
 farTP(INJ, 'S', [6, 7]);
+farTP(CAN, 'I', [12, 13]);
+/* With a component connector unplugged, its pins stay probe-able (ohms on the part) and a harness-side test point
+   appears beside each one (voltage at the open connector, key on). Entry: [tp index, dy]. Twin = [node, x, y, '', name, 'r', plug, pin index]. */
+const twinTP = (D0, plug, list) => list.forEach(([i, dy]) => { const t = D0.tps[i]; D0.tps.push([t[0].split('@')[0], t[1], t[2] + dy, '', 'Harness side of ' + (/^[A-Z][a-z]/.test(t[4]) ? t[4][0].toLowerCase() + t[4].slice(1) : t[4]), 'r', plug, i]); });
+twinTP(ECT, 'S', [[6, -18], [7, -18]]);
+twinTP(TPS, 'S', [[9, -18], [10, -18], [11, -18]]);
+twinTP(O2, 'S', [[12, -20], [13, -20], [14, -20], [15, -20]]);
+twinTP(INJ, 'S', [[6, -18], [7, -18]]);
+twinTP(FP, 'P', [[12, -18], [13, 12]]);
 farTP(CKP, 'C1', [6, 8, 15, 16]); farTP(CKP, 'C2', [10, 12, 14, 17, 18, 19]);
 farTP(FP, 'P', [12, 13]);
 
@@ -4511,7 +4525,7 @@ function endTrip() {
 }
 function setKey(k) {
   if (k === S.key) return;
-  if (k !== 'off' && !QUIET && MODE === 'mystery' && plugsOut()) { toast('Plug the connectors back in before you turn the key on.', 'warn'); syncTop(); return; }
+  if (k !== 'off' && !QUIET && MODE === 'mystery' && modOut()) { toast('Plug the module connector back in before you turn the key on.', 'warn'); syncTop(); return; }
   if (k === 'off') {
     if (S.tripOpen && S.ranThisTrip) endTrip();
     S.tripOpen = false; S.ranThisTrip = false; S.run = 0;
@@ -4535,7 +4549,7 @@ function setKey(k) {
 }
 function coldStart() { setKey('off'); D.soak?.(); setKey('on'); setKey('run'); }
 function nextTrip() {
-  if (MODE === 'mystery' && plugsOut()) { toast('Plug the connectors back in before you start the car.', 'warn'); return; }
+  if (MODE === 'mystery' && modOut()) { toast('Plug the module connector back in before you start the car.', 'warn'); return; }
   setKey('off'); D.soak?.();
   setKey('on'); setKey('run');
   toast(`Trip ${S.trip}: key off, overnight soak, restart.`);
@@ -5175,31 +5189,54 @@ function buildProbe(svg) {
     <text x="${x + 146}" y="${ty + 24}" class="trayl">DMM LEADS</text><text x="${x + 146}" y="${ty + 37}" class="trays">drag to a test point</text>
     <path d="M${x + 242} ${ty + 8} V${ty + 50}" class="traysep"/>
     <text x="${x + 250}" y="${ty + 21}" class="trays">No test light or power probe on ECM</text><text x="${x + 250}" y="${ty + 33}" class="trays">circuits: they can load or damage the</text><text x="${x + 250}" y="${ty + 45}" class="trays">module. Back-probe with the DMM.</text></g>
-    <g id="plugG"></g><g id="tpG">${(D.tps || []).map((t, i) => `<g class="tpx" data-tpi="${i}" tabindex="0" role="button" aria-label="Test point: ${t[4]}" transform="translate(${t[1]} ${t[2]})"><title>${t[4]}</title><circle class="tph" r="11"/><circle class="tpring" r="6.2"/><circle class="tpd" r="2.9" fill="#8A98A8"/></g>`).join('')}${(D.tps || []).map(lab).join('')}</g>
+    <g id="plugG"></g><g id="tpG">${(D.tps || []).map((t, i) => `<g class="tpx${t[6] ? ' tw' : ''}" data-tpi="${i}" tabindex="0" role="button" aria-label="Test point: ${t[4]}" transform="translate(${t[1]} ${t[2]})"><title>${t[4]}</title><circle class="tph" r="11"/><circle class="tpring" r="6.2"/><circle class="tpd" r="2.9" fill="#8A98A8"/></g>`).join('')}${(D.tps || []).map(lab).join('')}</g>
     <g id="cableG"></g><g id="snapG"></g><g id="leadG"></g>`);
   LSEL = null; LDRAG = null; PLUGS = {};
   LEADS = { r: null, b: { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true, nm: 'chassis ground' } };
   drawLeads();
 }
-const tpAt = i => { const t = D.tps[i], [n, pl] = t[0].split('@'); return { m: pl && PLUGS[pl] ? n + '~' + pl : n, n, x: t[1], y: t[2], nm: t[4], i }; };
-const plugsOut = () => Object.values(PLUGS).some(Boolean);
+const tpAt = i => {
+  const t = D.tps[i], [n, pl] = t[0].split('@');
+  let m = n;
+  if (pl && PLUGS[pl]) { const P = (D.plugs || []).find(x => x.id === pl); m = P?.alias?.[n] || n + '~' + pl; }
+  return { m, n, x: t[1], y: t[2], nm: t[4], i };
+};
+const modOut = () => (D.plugs || []).some(P => P.module && PLUGS[P.id]);   // only a module connector keeps the key off
+/* Unplugged connectors, applied to every network the circuit solves (live voltages, codes and the ohmmeter alike).
+   'e' opens an edge; 's' moves the far-side edges (and any current source, which always sits inside a part) to node~ID. */
+function plugEdit(nodes, E, J) {
+  if (MODE !== 'mystery' || !D?.plugs || !Object.values(PLUGS).some(Boolean)) return null;
+  const out = D.plugs.filter(P => !P.key && PLUGS[P.id]); if (!out.length) return null;
+  nodes = nodes.slice(); E = E.map(e => e.slice()); J = J.map(j => j.slice());
+  for (const P of out) for (const c of P.cav) {
+    if (c[0] === 'e') { for (const e of E) if (e[3] === c[1]) e[2] = OPEN; continue; }
+    const [, nd, far] = c, nn = nd + '~' + P.id;
+    if (!nodes.includes(nd)) continue;
+    for (const e of E) if (far.includes(e[3])) { if (e[0] === nd) e[0] = nn; if (e[1] === nd) e[1] = nn; }
+    for (const j of J) { if (j[0] === nd) j[0] = nn; if (j[1] === nd) j[1] = nn; }
+    if (!nodes.includes(nn)) nodes.push(nn);
+  }
+  return { nodes, E, J };
+}
 function togglePlug(id) {
   const P = (D.plugs || []).find(x => x.id === id); if (!P) return;
   if (P.key) setFault(P.key, !S.f[P.key]);
-  else if (on() && !PLUGS[id]) { toast('Turn the key off before you unplug a connector.', 'warn'); return; }
+  else if (P.module && on() && !PLUGS[id]) { toast('Turn the key off before you unplug a module connector.', 'warn'); return; }
   else PLUGS[id] = !PLUGS[id];
-  renderPlugs(); renderDMM();
+  if (!PLUGS[id]) for (const k of ['r', 'b']) { const l = LEADS[k], t = l && l.i != null && D.tps[l.i]; if (t && t[6] === id) LEADS[k] = tpAt(t[7]); }   // a lead on a vanishing harness point goes to the pin
+  solve(); renderPlugs(); drawLeads(); renderDMM(); renderAll();
 }
 function renderPlugs() {
   if (MODE !== 'mystery') return;
   const L = D.plugs || [], out = P => P.key ? !!S.f[P.key] : !!PLUGS[P.id];
-  setHTML($('#plugRow'), L.length ? `<small>Connectors · key off to unplug</small><div>${L.map(P => `<button class="pbtn" data-plug="${P.id}" aria-pressed="${out(P)}" title="${P.n}: ${out(P) ? 'unplugged. Click to plug it back in' : 'plugged in. Click to unplug it'}"><i></i>${P.n}${out(P) ? ' · out' : ''}</button>`).join('')}</div>` : '');
+  setHTML($('#plugRow'), L.length ? `<small>Connectors · ECM: key off only</small><div>${L.map(P => `<button class="pbtn" data-plug="${P.id}" aria-pressed="${out(P)}" title="${P.n}: ${out(P) ? 'unplugged. Click to plug it back in' : 'plugged in. Click to unplug it'}"><i></i>${P.n}${out(P) ? ' · out' : ''}</button>`).join('')}</div>` : '');
+  $$('#tpG .tw').forEach(g => g.classList.toggle('on', !!PLUGS[D.tps[+g.dataset.tpi][6]]));
   setHTML($('#plugG'), L.filter(P => P.at && out(P)).map(P => { const t = `${P.n.toUpperCase()} · UNPLUGGED`, w = t.length * 6.4 + 16; return `<g class="ppill" data-plug="${P.id}" transform="translate(${P.at[0]} ${P.at[1]})"><title>Click to plug ${P.n} back in</title><rect x="${-w / 2}" y="-8" width="${w}" height="16" rx="8"/><text y="3" text-anchor="middle">${t}</text></g>`; }).join(''));
 }
 function snapAt(x, y, r = 18) {
   if (Math.hypot(x - TRAY.gnd.x, y - TRAY.gnd.y) < r) return { m: 'G', n: 'G', x: TRAY.gnd.x, y: TRAY.gnd.y, gnd: true, nm: 'chassis ground' };
   let best = null, bd = r;
-  (D.tps || []).forEach((t, i) => { const d = Math.hypot(t[1] - x, t[2] - y); if (d < bd) { bd = d; best = tpAt(i); } });
+  (D.tps || []).forEach((t, i) => { if (t[6] && !PLUGS[t[6]]) return; const d = Math.hypot(t[1] - x, t[2] - y); if (d < bd) { bd = d; best = tpAt(i); } });
   return best;
 }
 function svgPt(e) { const svg = $('#circuit'), p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
@@ -5233,13 +5270,13 @@ function drawLeads() {
   $('#tpG')?.classList.toggle('armed', !!(LSEL || (LDRAG && LDRAG.moved)));
 }
 /* readings */
-function vAt(l) { if (!l || l.m === 'G' || l.m.includes('~')) return 0; const d = D.meter?.dc?.(l.m); return d ?? S.v[l.n] ?? 0; }   // a disconnected half reads 0 V (connectors only come apart with the key off)
+function vAt(l) { if (!l || l.m === 'G') return 0; const d = D.meter?.dc?.(l.m); return d ?? S.v[l.m] ?? S.v[l.n] ?? 0; }
 function netEdges() {
   const best = new Map();
   for (const E of S.net || []) for (const e of E) { const k = e[3] || e[0] + '|' + e[1], p = best.get(k); if (!p || e[2] > p[2]) best.set(k, e); }
   let E = [...best.values()].concat(D.meter?.ohmEdges?.() || []).filter(e => e[2] < 1e11);
   for (const P of D.plugs || []) if (!P.key && PLUGS[P.id]) for (const c of P.cav) {
-    if (c[0] === 'e') E = E.filter(e => e[3] !== c[1]);
+    if (c[0] === 'e') E = E.filter(e => e[3] !== c[1]);   // (the captured networks already carry these edits; repeating them is harmless and covers D.meter.ohmEdges)
     else { const [, nd, far] = c, nn = nd + '~' + P.id; E = E.map(e => far.includes(e[3]) ? [e[0] === nd ? nn : e[0], e[1] === nd ? nn : e[1], e[2], e[3]] : e); }
   }
   return E;
