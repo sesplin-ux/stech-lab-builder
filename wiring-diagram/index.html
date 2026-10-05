@@ -1,0 +1,2346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive wiring diagrams: decode symbols, wire labels and connector pin views, trace current, and find what is shared.">
+<title>Wiring Diagram Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: diagram sheet (left, wide) | inspector over notebook (right). Same single-theme dark
+   "instrument" look as the DTC Visualizer and Electrical Test Bench. The diagram itself is drawn on a
+   light service-manual sheet, because that is what students read in real service information. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0;           /* STECH blue #047BC1, lifted for a dark ground */
+  --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --paper:#F6F4EE; --ink:#1B2129; --ink-2:#4A5562; --ink-3:#7C8691;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding-inline:16px;padding-block:10px 12px;
+  background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),radial-gradient(900px 500px at 100% 110%,rgba(47,155,224,.05),transparent 60%),var(--bg)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+
+/* ---------- top bar ---------- */
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.grp{display:flex;align-items:center;gap:7px}
+.grp>label{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 11px;border-radius:7px;font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.35;cursor:not-allowed}
+.seg.mini{padding:2px;border-radius:8px}
+.seg.mini button{padding:5px 8px;font-size:10px;border-radius:6px}
+.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.small{padding:5px 9px;font-size:10.5px}
+.btn.lit{border-color:rgba(47,155,224,.6);background:rgba(47,155,224,.12);color:#BFE3FA}
+.btn.danger{border-color:rgba(255,90,78,.5);color:#FFB3AC}
+.btn.danger.lit{background:rgba(255,90,78,.14);border-color:var(--fail);color:#FFD2CD}
+
+/* ---------- layout ---------- */
+.bench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}
+.side{min-height:0;display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1.05fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{position:relative;display:flex;align-items:center;gap:10px;padding:10px 14px 8px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead>span{font-size:12.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.hint{font-size:12px;color:var(--faint)}
+.legend{margin-left:auto;display:flex;align-items:center;gap:6px;font:500 10.5px/1 var(--f-mono);color:var(--dim);white-space:nowrap}
+.legend i{display:block;width:72px;height:6px;border-radius:3px;background:linear-gradient(90deg,#2457B8,#14969F 17%,#D9A000 40%,#D62839)}
+.legend em{font-style:normal;display:inline-flex;align-items:center;gap:5px;margin-left:8px}
+.legend em::before{content:"";width:16px;border-top:2px dashed #A0A7AF}
+
+/* ---------- picker ---------- */
+#pickBtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:6px 10px 6px 11px;border-radius:9px;border:1px solid rgba(47,155,224,.45);background:linear-gradient(180deg,#132030,#0f1822);min-width:0;transition:border-color .15s}
+#pickBtn:hover{border-color:var(--accent)}
+#pickBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#pickName{font:600 13.5px/1 var(--f-label);letter-spacing:.03em;white-space:nowrap}
+#pickSub{font-size:12px;color:var(--dim);white-space:nowrap}
+#pickBtn svg{color:var(--accent);flex:none}
+.pop{position:fixed;z-index:30;padding:12px;border-radius:14px;background:rgba(13,18,24,.98);border:1px solid var(--line-2);box-shadow:0 30px 70px -20px rgba(0,0,0,.95);display:grid;gap:10px;width:min(460px,calc(100% - 32px))}
+.pop h4{margin:0;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.lib{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.card{all:unset;cursor:pointer;min-width:0;padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise);display:grid;gap:4px;align-content:start;transition:border-color .15s,background .15s}
+.card:hover{border-color:#3a4a5c}
+.card.cur{border-color:var(--accent);background:linear-gradient(180deg,#132232,#101820)}
+.card b{font:600 14.5px/1.15 var(--f-label);letter-spacing:.02em}
+.card span{font-size:12px;color:var(--dim)}
+.card[aria-disabled="true"]{cursor:default;opacity:.5}
+.tag{justify-self:start;font:700 8.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;padding:3px 6px;border-radius:5px;color:var(--dim);background:#18212B;white-space:nowrap}
+.tag.now{color:#fff;background:var(--accent)}
+
+/* ---------- diagram sheet ---------- */
+.sheetwrap{position:relative;flex:1;min-height:0;margin:0 10px;border-radius:10px;overflow:hidden;background:var(--paper);box-shadow:inset 0 0 0 1px #d9d4c7}
+#dg{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;cursor:default}
+#dg.panning{cursor:grabbing}
+#dg text{font-family:var(--f-label)}
+.zoom{position:absolute;right:8px;top:8px;display:flex;gap:4px}
+.zoom button{all:unset;cursor:pointer;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.92);border:1px solid #cfc9bb;color:#2b333d;font:600 16px/1 var(--f-label);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.zoom button:hover{border-color:#8f9aa6}
+.zoom button:focus-visible{outline:2px solid var(--accent)}
+.zoom button.fit{font-size:9.5px;letter-spacing:.08em}
+
+/* sheet drawing classes (light paper) */
+.s-ln{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.s-thin{fill:none;stroke:var(--ink-2);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+.s-int{fill:none;stroke:var(--ink-2);stroke-width:1.3;stroke-dasharray:4 3;stroke-linecap:round;stroke-linejoin:round}
+.s-box{fill:rgba(27,33,41,.025);stroke:#7C8691;stroke-width:1.3;stroke-dasharray:7 5}
+.s-mod{fill:rgba(255,255,255,.55);stroke:var(--ink);stroke-width:1.7}
+.s-body{fill:var(--paper);stroke:var(--ink);stroke-width:1.6}
+.s-fill{fill:var(--ink)}
+.t-ref{font-weight:700;font-size:12px;letter-spacing:.05em;fill:var(--ink)}
+.t-nm{font-weight:600;font-size:10.5px;letter-spacing:.08em;fill:var(--ink)}
+.t-sub{font-weight:500;font-size:9.5px;letter-spacing:.04em;fill:var(--ink-3)}
+.t-bus{font-weight:700;font-size:10.5px;letter-spacing:.14em;fill:var(--ink)}
+.t-pin{font-weight:700;font-size:9.5px;fill:var(--ink-2)}
+.t-wl{font-weight:600;font-size:10px;letter-spacing:.03em;fill:var(--ink-2)}
+.t-wl tspan.ck{fill:var(--ink-3);font-weight:500}
+.t-box{font-weight:700;font-size:10px;letter-spacing:.18em;fill:#6B7480}
+.t-live{font-family:var(--f-mono)!important;font-weight:600;font-size:9.5px;fill:#0F5E9C}
+.t-tb{font-weight:700;font-size:11px;letter-spacing:.12em;fill:var(--ink)}
+.t-tbs{font-weight:500;font-size:9px;letter-spacing:.04em;fill:var(--ink-3)}
+.wbase{fill:none;stroke:var(--ink);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.wedge{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.wcol{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.wstripe{fill:none;stroke-width:3;stroke-dasharray:5 6;stroke-linecap:butt;stroke-linejoin:round}
+.wtrace{fill:none;stroke:var(--ink-2);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.wfloat{stroke-dasharray:5 5}
+.flow{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:1.5 11;pointer-events:none;animation:flow .9s linear infinite}
+.flow.rev{animation-direction:reverse}
+@keyframes flow{to{stroke-dashoffset:-12.5}}
+.hit{fill:none;stroke:transparent;stroke-width:16;stroke-linecap:round;stroke-linejoin:round;pointer-events:stroke}
+.hitbox{fill:transparent;stroke:none}
+.it:hover>.hitbox{fill:rgba(47,155,224,.08)}
+.it{cursor:pointer;outline:none}
+.it:hover .hov{stroke:rgba(47,155,224,.28)}
+.hov{fill:none;stroke:transparent;stroke-width:12;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.it:focus-visible .hov{stroke:rgba(47,155,224,.45)}
+.halo-sel{fill:none;stroke:rgba(47,155,224,.42);stroke-width:13;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.halo-net{fill:none;stroke:rgba(47,155,224,.16);stroke-width:11;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.halo-box{fill:rgba(47,155,224,.12);stroke:rgba(47,155,224,.65);stroke-width:1.6;pointer-events:none}
+.halo-spot{fill:none;stroke:#F5A500;stroke-width:3;stroke-dasharray:6 5;pointer-events:none;animation:spot 1.4s ease-in-out infinite}
+.halo-spotw{fill:none;stroke:rgba(245,165,0,.45);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;animation:spotw 1.4s ease-in-out infinite}
+@keyframes spot{50%{stroke-opacity:.35}}
+@keyframes spotw{50%{stroke-opacity:.12}}
+.halo-sus{fill:rgba(255,120,40,.13);stroke:#E8641B;stroke-width:2;pointer-events:none}
+.halo-susw{fill:none;stroke:rgba(232,100,27,.45);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.halo-bad{fill:none;stroke:rgba(214,40,57,.6);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;animation:bad .7s ease-out forwards}
+.halo-badb{fill:rgba(214,40,57,.12);stroke:#D62839;stroke-width:2;pointer-events:none;animation:bad .7s ease-out forwards}
+@keyframes bad{to{opacity:0}}
+.halo-good{fill:none;stroke:rgba(31,150,90,.5);stroke-width:12;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.halo-goodb{fill:rgba(31,150,90,.1);stroke:#1F965A;stroke-width:2;pointer-events:none}
+.badge circle{fill:#1F965A;stroke:#fff;stroke-width:1.5}
+.badge text{fill:#fff;font-weight:700;font-size:10px;text-anchor:middle;dominant-baseline:central}
+.brk line{stroke:#D62839;stroke-width:2.6;stroke-linecap:round}
+.brk circle{fill:#fff;stroke:#D62839;stroke-width:1.6}
+.spin{transform-box:fill-box;transform-origin:center;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wave{fill:none;stroke:#D62839;stroke-width:1.6;stroke-linecap:round;animation:wave .6s ease-in-out infinite alternate}
+@keyframes wave{from{opacity:.25}to{opacity:1}}
+
+/* ---------- controls under the diagram ---------- */
+.ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:9px 14px 11px;min-height:50px}
+.ctl{display:flex;align-items:center;gap:8px}
+.ctl>label,.ctl>span.l{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.ctl input[type=range]{width:150px;accent-color:var(--accent)}
+.ctl output{font:600 13px/1 var(--f-mono);color:var(--soft);min-width:58px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.chip.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.chip.warn{border-color:rgba(255,178,36,.5);color:#FFD58A}
+.chip.warn i{background:var(--warn)}
+.chip.bad{border-color:rgba(255,90,78,.5);color:#FFB3AC}
+.chip.bad i{background:var(--fail)}
+
+/* ---------- inspector ---------- */
+.ibody{flex:1;min-height:0;overflow:auto;padding:2px 14px 14px;display:grid;gap:10px;align-content:start}
+.ibody::-webkit-scrollbar,.nbody::-webkit-scrollbar{width:9px}
+.ibody::-webkit-scrollbar-thumb,.nbody::-webkit-scrollbar-thumb{background:#1f2a35;border-radius:9px;border:2px solid transparent;background-clip:padding-box}
+.ititle{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ititle b{font:600 18px/1.15 var(--f-label);letter-spacing:.02em}
+.ititle span{font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.itext{margin:0;font-size:13.5px;color:var(--soft)}
+.itext b{color:var(--fg)}
+.dec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.dec div{padding:8px 9px;border-radius:10px;background:var(--raise);border:1px solid var(--line);display:grid;gap:4px;min-width:0}
+.dec small{font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dec b{font:600 15px/1.1 var(--f-label);display:flex;align-items:center;gap:6px;min-width:0}
+.dec span{font-size:11.5px;color:var(--dim);line-height:1.3}
+.sw{display:inline-block;width:22px;height:9px;border-radius:5px;border:1px solid rgba(255,255,255,.25);flex:none}
+.rows{display:grid;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.rows div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:7px 10px;font-size:12.5px;border-top:1px solid var(--line)}
+.rows div:first-child{border-top:0}
+.rows dt{font:600 10px/1.5 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0}
+.rows dd{margin:0;color:var(--soft)}
+.live{display:flex;flex-wrap:wrap;gap:6px}
+.live span{font:600 12px/1 var(--f-mono);padding:6px 8px;border-radius:8px;background:#0b1a26;border:1px solid #17384f;color:#9CD3F5}
+.live span.z{color:var(--dim);background:var(--raise);border-color:var(--line)}
+.live span.f{color:#C7CED6;background:var(--raise);border-color:var(--line);font-family:var(--f-ui)}
+.cview{border:1px solid var(--line);border-radius:12px;background:var(--panel-2);padding:10px;display:grid;gap:8px}
+.cview .ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cview .ch b{font:600 13px/1 var(--f-label);letter-spacing:.04em}
+.cview .ch span{font-size:11.5px;color:var(--dim)}
+.cview svg{width:100%;height:auto;display:block}
+.cview .note{font-size:11.5px;color:var(--dim);margin:0}
+.ptab{width:100%;border-collapse:collapse;font-size:12px}
+.ptab th{font:700 9px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+.ptab td{padding:6px;border-bottom:1px solid var(--line);color:var(--soft);vertical-align:top}
+.ptab tr.cur td{background:rgba(47,155,224,.1);color:var(--fg)}
+.ptab tr{cursor:pointer}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.empty{display:grid;gap:10px;color:var(--dim);font-size:13px}
+.anat{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch}
+.anat div{flex:1 1 90px;padding:9px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line);display:grid;gap:3px}
+.anat b{font:600 17px/1 var(--f-mono);color:var(--fg)}
+.anat small{font-size:11.5px;color:var(--dim);line-height:1.3}
+
+/* ---------- notebook ---------- */
+.tabs{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tabs button:focus-visible{outline:2px solid var(--accent)}
+.nbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 14px;display:grid;gap:11px;align-content:start}
+.nbody h3{margin:0;font:600 16px/1.2 var(--f-label);letter-spacing:.02em}
+.nbody h4{margin:4px 0 0;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.nbody p{margin:0;font-size:13.5px;color:var(--soft)}
+.nbody p b{color:var(--fg)}
+.nbody ul{margin:0;padding-left:18px;font-size:13px;color:var(--soft);display:grid;gap:4px}
+.les{display:grid;gap:6px}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard:focus-visible{outline:2px solid var(--accent)}
+.lcard .n{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:#18212B;font:700 12px/1 var(--f-label);color:var(--dim)}
+.lcard.done .n{background:rgba(61,220,151,.15);color:var(--ok)}
+.lcard b{font:600 14px/1.2 var(--f-label);display:block}
+.lcard span{font-size:12px;color:var(--dim)}
+.lcard .dg{font:700 8.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.lhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lhead .k{font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.dots{display:flex;gap:4px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:#1f2a35}
+.dots i.on{background:var(--accent)}
+.dots i.done{background:#2b6b54}
+.goal{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-radius:10px;border:1px dashed rgba(245,165,0,.55);background:rgba(245,165,0,.07);font-size:13px;color:#FFE0A3}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.45);background:rgba(61,220,151,.08);color:#B8F5D9}
+.goal svg{flex:none;margin-top:2px}
+.mc{display:grid;gap:6px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover{border-color:#3a4a5c;color:var(--fg)}
+.mc button:focus-visible{outline:2px solid var(--accent)}
+.mc button.right{border-color:rgba(61,220,151,.6);background:rgba(61,220,151,.1);color:#CFFBE7}
+.mc button.wrong{border-color:rgba(255,90,78,.55);background:rgba(255,90,78,.08);color:#FFC9C3}
+.mc button[disabled]{cursor:default}
+.why{padding:10px 12px;border-radius:10px;background:#0f1b26;border:1px solid #1d3346;font-size:13px;color:var(--soft)}
+.why b{color:var(--fg)}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav .sp{flex:1}
+.score{display:flex;gap:8px;flex-wrap:wrap}
+.score div{flex:1 1 80px;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line);display:grid;gap:3px}
+.score small{font:700 9px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 18px/1 var(--f-label)}
+.qk{font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;padding:4px 7px;border-radius:6px;background:#18212B;color:var(--dim);justify-self:start}
+.qq{font:600 16px/1.3 var(--f-label);letter-spacing:.01em;color:var(--fg);margin:0}
+.syms{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sym{all:unset;cursor:default;border:1px solid var(--line);border-radius:11px;background:var(--raise);overflow:hidden;display:grid}
+.sym svg{display:block;width:100%;height:auto;background:var(--paper)}
+.sym div{padding:8px 10px;display:grid;gap:3px}
+.sym b{font:600 13.5px/1.15 var(--f-label)}
+.sym span{font-size:11.5px;color:var(--dim);line-height:1.35}
+.ctab{width:100%;border-collapse:collapse;font-size:12.5px}
+.ctab td{padding:5px 6px;border-bottom:1px solid var(--line);color:var(--soft)}
+.ctab td:first-child{font:600 12px var(--f-mono);color:var(--fg);width:62px}
+
+/* ---------- toasts ---------- */
+.toasts{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:grid;gap:8px;z-index:40;pointer-events:none;width:min(520px,calc(100% - 32px))}
+.toast{padding:10px 14px;border-radius:11px;background:rgba(17,24,32,.97);border:1px solid var(--line-2);font-size:13px;color:var(--soft);box-shadow:0 18px 40px -16px rgba(0,0,0,.9);animation:tin .2s ease-out}
+.toast.good{border-color:rgba(61,220,151,.5)}
+.toast.bad{border-color:rgba(255,90,78,.5)}
+@keyframes tin{from{opacity:0;transform:translateY(6px)}}
+
+@media (max-width:1100px){
+  .bench{grid-template-columns:1fr;grid-template-rows:auto auto}
+  .app{height:auto;min-height:100%}
+  .sheetwrap{aspect-ratio:1000/680;height:auto;flex:none}
+  .side{grid-template-rows:auto auto}
+  .side .panel{max-height:none}
+  .ibody,.nbody{overflow:visible}
+}
+@media (max-width:640px){
+  .brand p{display:none}
+  .dec{grid-template-columns:1fr}
+  .seg button{padding:7px 8px}
+}
+@media (prefers-reduced-motion:reduce){
+  .flow,.spin,.wave,.halo-spot,.halo-spotw{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 3h5v4h4V3h5M8 7v10M12 7v6h5" stroke="#2F9BE0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="1.6" fill="#2F9BE0"/><path d="M5 17h6" stroke="#2F9BE0" stroke-width="1.5" stroke-linecap="round" opacity=".6"/></svg>
+      </div>
+      <div><h1>Wiring Diagram Reader</h1><p>STECH Automotive · Symbols · Circuits · Connectors</p></div>
+    </div>
+    <div class="grp"><label>Mode</label>
+      <div class="seg modes" id="modes" role="group" aria-label="Mode">
+        <button type="button" data-m="explore">Explore</button>
+        <button type="button" data-m="guided">Guided</button>
+        <button type="button" data-m="practice">Practice</button>
+      </div>
+    </div>
+    <div class="grp"><label>Color</label>
+      <div class="seg" id="colors" role="group" aria-label="Wire coloring">
+        <button type="button" data-c="plain" title="Black and white, like a printed manual">Plain</button>
+        <button type="button" data-c="wires" title="Draw each wire in its insulation color">Wire colors</button>
+        <button type="button" data-c="volt" title="Color every wire by its live voltage">Voltage</button>
+      </div>
+    </div>
+    <button type="button" class="btn" id="resetBtn">Reset</button>
+  </header>
+
+  <main class="bench">
+    <section class="panel" id="dgPanel" aria-label="Wiring diagram">
+      <div class="phead">
+        <button type="button" id="pickBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="pickName">Horn circuit</span><span id="pickSub"></span>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <span class="hint" id="dHint">Tap any symbol, wire or connector</span>
+        <div class="legend" id="legend" hidden>0 V <i></i> 12.6 V <em>no reference</em></div>
+      </div>
+      <div class="sheetwrap">
+        <svg id="dg" viewBox="0 0 1000 680" role="application" aria-label="Wiring diagram"></svg>
+        <div class="zoom">
+          <button type="button" id="zIn" aria-label="Zoom in">+</button>
+          <button type="button" id="zOut" aria-label="Zoom out">−</button>
+          <button type="button" class="fit" id="zFit" aria-label="Fit diagram">FIT</button>
+        </div>
+      </div>
+      <div class="ctrls" id="ctrls"></div>
+    </section>
+
+    <div class="side">
+      <section class="panel" id="insPanel" aria-label="Inspector">
+        <div class="phead"><h2>Inspector</h2><span id="insSub">What you tapped, decoded</span></div>
+        <div class="ibody" id="ibody"></div>
+      </section>
+      <section class="panel" id="notePanel" aria-label="Notebook">
+        <div class="tabs" id="tabs" role="tablist"></div>
+        <div class="nbody" id="nbody"></div>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="pop" id="pop" hidden></div>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================= reference tables ================= */
+/* Insulation colors. Abbreviation style matches most modern service info (main color / stripe). */
+const COLORS = {
+  'BK':{n:'Black', hex:'#1C1C1C'}, 'WH':{n:'White', hex:'#F4F4F2'}, 'RD':{n:'Red', hex:'#D3262E'},
+  'YE':{n:'Yellow', hex:'#F2C318'}, 'GN':{n:'Green', hex:'#2E9E44'}, 'DK GN':{n:'Dark green', hex:'#1E6A33'},
+  'LT GN':{n:'Light green', hex:'#8BD17C'}, 'BU':{n:'Blue', hex:'#2B6CD0'}, 'DK BU':{n:'Dark blue', hex:'#1C3F8F'},
+  'LT BU':{n:'Light blue', hex:'#7DB7F0'}, 'BN':{n:'Brown', hex:'#7A4A26'}, 'OG':{n:'Orange', hex:'#F08A1C'},
+  'PK':{n:'Pink', hex:'#F28DB2'}, 'VT':{n:'Violet', hex:'#7B4FC9'}, 'GY':{n:'Gray', hex:'#8C939B'}, 'TN':{n:'Tan', hex:'#C9A878'},
+};
+/* Metric wire size (mm²) → nearest AWG. */
+const AWG = {'0.35':'22', '0.5':'20', '0.8':'18', '1.0':'16–18', '2.0':'14', '3.0':'12', '5.0':'10', '16':'6', '50':'1/0'};
+function parseColor(c){ const [main, stripe] = c.split('/'); return {main, stripe: stripe || null}; }
+function colorName(c){ const p = parseColor(c); return COLORS[p.main].n + (p.stripe ? ' with a ' + COLORS[p.stripe].n.toLowerCase() + ' stripe' : ' (solid)'); }
+
+/* Symbol library: one entry per component type. Shown in the inspector and the Symbols tab. */
+const SYM = {
+  bus:   {n:'Power bus', what:'A bar that supplies voltage to several fuses. Its label says <b>when</b> it is hot: at all times, or only with the key in certain positions.'},
+  fuse:  {n:'Fuse', what:'Protects the wiring <b>downstream</b> of it. It opens (blows) when current goes over its rating, usually because of a short to ground.'},
+  relay: {n:'Relay', what:'A switch worked by an electromagnet. A small current through the <b>coil</b> (control side, pins 85/86) closes the <b>contacts</b> (load side, pins 30/87) that carry the big current.'},
+  coil:  {n:'Relay coil', what:'The control side of a relay (pins 86 and 85). About 0.15 A through the coil makes a magnetic field that pulls the contacts closed. Drawn as a box with a diagonal line.'},
+  contacts:{n:'Relay contacts', what:'The load side of a relay (pins 30 and 87). A switch drawn in its <b>resting</b> position: normally open (NO) contacts are drawn open.'},
+  switch:{n:'Momentary switch (NO)', what:'Normally open: the circuit is broken until someone presses it. Diagrams always draw switches at rest (key off, nothing pressed).'},
+  horn:  {n:'Horn', what:'A load. Current through its coil vibrates a diaphragm to make sound. Loads turn electrical energy into work, and they drop almost all of the voltage.'},
+  motor: {n:'Motor', what:'A load drawn as a circle with an M. A cooling fan motor can draw 10 to 20 A, so it gets heavy wires and its own relay.'},
+  sensor:{n:'Thermistor (temperature sensor)', what:'A resistor whose value changes with temperature. The arrow through the symbol means variable. An NTC thermistor drops resistance as it heats up.'},
+  clockspring:{n:'Clock spring', what:'A coiled flat ribbon cable inside the steering column. It keeps the horn, airbag and wheel-control circuits connected while the wheel turns.'},
+  module:{n:'Control module', what:'A computer (PCM, BCM…). Diagrams draw a box with only the pins that matter for this circuit. Dashed lines inside show what the module does at each pin.'},
+  splice:{n:'Splice', what:'A permanent joint inside the harness where wires join. Every wire at a splice is the <b>same circuit</b>. There is no connector there to unplug.'},
+  ground:{n:'Ground', what:'Where a circuit connects to the vehicle body or engine block, which is wired back to the battery negative. The G-number points to its location in the service info.'},
+  conn:  {n:'Connector', what:'Joins two harnesses, or a harness to a component, so parts can be unplugged. The C-number names the connector; the number or letter beside the wire is the cavity (pin).'},
+  wire:  {n:'Wire', what:'Labeled with its <b>size</b> (mm²), <b>insulation color</b> (main/stripe) and <b>circuit number</b>.'},
+  trace: {n:'Internal circuit', what:'A bus bar or circuit-board trace inside a fuse block or module. It has no wire color because it isn\'t a wire.'},
+  pullup:{n:'Pull-up resistor (inside module)', what:'The module sends its 5 V reference through this fixed resistor to the signal pin. The sensor and the pull-up form a voltage divider; the module reads the voltage between them.'},
+  driver:{n:'Low-side driver (inside module)', what:'A transistor the module turns on to complete a circuit <b>to ground</b>. When it is off, the pin floats up to whatever voltage comes through the load.'},
+  psu:   {n:'Module power supply', what:'Where the module takes its ignition power. It needs both power <b>and</b> ground to run; it makes its own regulated 5 V reference from them.'},
+  lowref:{n:'Low reference (sensor ground)', what:'The module grounds the sensor through its own internal ground, so sensor readings are not upset by electrical noise on body grounds.'},
+  battery:{n:'Battery', what:'Stores energy for cranking and for everything that runs with the engine off. The long plate is positive (+), the short plate negative (−). Its negative cable grounds it to the engine block.'},
+  starter:{n:'Starter', what:'A powerful motor (100–200 A) with a solenoid on top. The solenoid works like a heavy-duty relay: its coil (S terminal) pulls in the main contacts that connect the battery cable (B terminal) to the motor.'},
+  solenoid:{n:'Starter solenoid', what:'Its coil is fed through the S terminal. When energized it closes the main contacts and pushes the drive gear into the flywheel.'},
+  stcontacts:{n:'Solenoid main contacts', what:'Connect the battery cable (B terminal) to the starter motor. They carry the full cranking current.'},
+  startmotor:{n:'Starter motor', what:'Draws 100–200 A while cranking. Low battery voltage or resistance in either battery cable makes it crank slowly.'},
+  alternator:{n:'Generator (alternator)', what:'Spins with the engine. Diodes turn its AC into DC and the voltage regulator (VR) holds the output near 14 V. It only charges with the engine running and its ignition input on.'},
+  ignsw:{n:'Ignition switch', what:'A multi-position switch. Each position connects the battery feed to different outputs: RUN powers ignition circuits; START also powers the starter relay.'},
+  lamp:{n:'Lamp (bulb)', what:'A load. The filament glows when current flows. A low beam draws about 4.6 A; a park lamp about 0.45 A.'},
+  hsw:{n:'Headlamp switch (input)', what:'Here the switch is only an <b>input</b>. Each position grounds a BCM input; the BCM decides which lamps to turn on. No lamp current flows through it.'},
+  bcmin:{n:'Switch inputs (inside module)', what:'Each input is pulled up to 5 V through a 10 kΩ resistor. When the switch grounds it, the input drops near 0 V and the module sees the request.'},
+  hdriver:{n:'High-side driver (inside module)', what:'A transistor that switches <b>power</b> to a load. The load has its own fixed ground. Compare the low-side driver, which switches the ground side.'},
+};
+
+/* ================= diagrams =================
+   Coordinates are in sheet units (viewBox 1000 × 680). Node names join parts electrically: a wire from
+   node 'X' to node 'Y' connects whatever else sits on those nodes. Connector cavities have two sides
+   (…a / …b) joined by the mated terminals, so a single cavity can be opened as a fault. */
+const DIAGRAMS = {
+horn: {
+  id:'horn', name:'Horn circuit', sub:'Relay · 2 horns · clock spring', level:'Beginner',
+  title:'HORN CIRCUIT',
+  boxes:[{x:40, y:18, w:560, h:232, label:'UNDERHOOD FUSE BLOCK', lx:52, ly:36}],
+  buses:[{id:'busB', x1:80, x2:560, y:58, label:'HOT AT ALL TIMES', node:'B+', src:'batt', lx:80, ly:50,
+    desc:'Connected straight to the battery (through the main fuse link on the power distribution diagram). It has voltage even with the key off.'}],
+  comps:[
+    {id:'F20', type:'fuse', x:150, y1:58, y2:132, ref:'F20', amps:15, name:'HORN', a:'B+', b:'F20o',
+      loc:'Underhood fuse block', desc:'Protects the whole horn circuit: both the relay coil and the horn feed come off its output.'},
+    {id:'K12', type:'relay', x:300, y:150, w:200, h:80, cx:340, sx:460, ref:'K12', name:'HORN RELAY',
+      n86:'K12.86', n85:'K12.85', n30:'K12.30', n87:'K12.87', coilR:85, loc:'Underhood fuse block',
+      desc:'Lets a small switch in the steering wheel control the 10 A the horns need.'},
+    {id:'CS', type:'clockspring', x:290, y:410, w:110, h:70, px:340, a:'C201.2b', b:'C202.1a', name:'CLOCK SPRING', sub:'Steering column', side:'left',
+      loc:'Behind the steering wheel', desc:'Carries the horn switch circuit from the column (C201) to the turning steering wheel (C202).'},
+    {id:'SW', type:'switch', x:340, y1:530, y2:590, name:'HORN SWITCH', sub:'Steering wheel pad', a:'SW.a', b:'SW.b', ctl:'horn',
+      loc:'Steering wheel, under the horn pad', desc:'Grounds the relay coil while pressed. This vehicle grounds the switch through the steering column; others use a ground wire or send the request to the BCM.'},
+    {id:'HL', type:'horn', x:660, y1:400, y2:500, name:'LH HORN', sub:'Behind LH grille', a:'C110.Ab', b:'C110.Bb', R:2.4, side:'left',
+      loc:'Front of vehicle, behind the LH grille', desc:'Low-tone horn, about 5 A.'},
+    {id:'HR', type:'horn', x:860, y1:400, y2:500, name:'RH HORN', sub:'Behind RH grille', a:'C111.Ab', b:'C111.Bb', R:2.4, side:'right',
+      loc:'Front of vehicle, behind the RH grille', desc:'High-tone horn, about 5 A.'},
+    {id:'S110', type:'splice', x:660, y:300, node:'S110', lx:668, ly:290,
+      loc:'Engine harness, near the LH headlamp', desc:'Splits the horn feed (circuit 1240) to the two horns.'},
+    {id:'G101', type:'ground', x:660, y:600, node:'G101', loc:'LH front frame rail', desc:'Ground for the LH horn only.'},
+    {id:'G102', type:'ground', x:860, y:600, node:'G102', loc:'RH front frame rail', desc:'Ground for the RH horn only.'},
+    {id:'G201', type:'ground', x:340, y:630, node:'G201', loc:'Steering column', desc:'Grounds the horn switch through the column.'},
+  ],
+  dots:[[340,132]],
+  wires:[
+    {id:'tA', kind:'trace', a:'F20o', b:'J1', pts:[[150,132],[340,132]], desc:'Fuse F20 output, inside the fuse block.'},
+    {id:'tB', kind:'trace', a:'J1', b:'K12.30', pts:[[340,132],[460,132],[460,150]], desc:'Feeds relay pin 30 (load side) from F20.'},
+    {id:'tC', kind:'trace', a:'J1', b:'K12.86', pts:[[340,132],[340,150]], desc:'Feeds relay pin 86 (coil) from F20.'},
+    {id:'tD', kind:'trace', a:'K12.85', b:'C102.5a', pts:[[340,230],[340,250]], desc:'Relay pin 85 (coil ground side) out to connector C102.'},
+    {id:'tE', kind:'trace', a:'K12.87', b:'C102.6a', pts:[[460,230],[460,250]], desc:'Relay pin 87 (switched output) out to connector C102.'},
+    {id:'w1', a:'C102.5b', b:'C200.12a', pts:[[340,250],[340,330]], size:'0.5', color:'YE/BK', ckt:'1235', lab:[348,294],
+      fn:'Horn relay control: the ground side of the relay coil, out to the horn switch'},
+    {id:'w2', a:'C200.12b', b:'C201.2a', pts:[[340,330],[340,410]], size:'0.5', color:'BN/WH', ckt:'1235', lab:[348,374],
+      fn:'Horn relay control, instrument panel harness. Same circuit as the YE/BK wire: the color changes at C200'},
+    {id:'w3', a:'C202.1b', b:'SW.a', pts:[[340,480],[340,530]], size:'0.35', color:'YE', ckt:'1235', lab:[348,512],
+      fn:'Horn relay control, steering wheel lead to the horn switch'},
+    {id:'w4', a:'SW.b', b:'G201', pts:[[340,590],[340,630]], size:'0.5', color:'BK', ckt:'1150', lab:[348,614],
+      fn:'Horn switch ground'},
+    {id:'h1', a:'C102.6b', b:'S110', pts:[[460,250],[460,300],[660,300]], size:'2.0', color:'DK GN', ckt:'1240', lab:[478,292],
+      fn:'Horn feed from relay pin 87 to splice S110 (carries both horns, about 10 A)'},
+    {id:'h2', a:'S110', b:'C110.Aa', pts:[[660,300],[660,400]], size:'0.8', color:'DK GN', ckt:'1240', lab:[668,352],
+      fn:'Horn feed to the LH horn'},
+    {id:'h3', a:'S110', b:'C111.Aa', pts:[[660,300],[860,300],[860,400]], size:'0.8', color:'DK GN', ckt:'1240', lab:[868,352],
+      fn:'Horn feed to the RH horn'},
+    {id:'h4', a:'C110.Ba', b:'G101', pts:[[660,500],[660,600]], size:'0.8', color:'BK', ckt:'1150', lab:[668,556],
+      fn:'LH horn ground'},
+    {id:'h5', a:'C111.Ba', b:'G102', pts:[[860,500],[860,600]], size:'0.8', color:'BK', ckt:'1150', lab:[868,556],
+      fn:'RH horn ground'},
+  ],
+  conns:[
+    {id:'C102', name:'Fuse block harness connector', kind:'comp', rows:2, cols:6, loc:'Bottom of the underhood fuse block',
+      lab:[318,262,'end'], pins:[{p:'5', x:340, y:250}, {p:'6', x:460, y:250}],
+      sides:['Fuse block side', 'Engine harness side']},
+    {id:'C200', name:'Engine harness to I/P harness', kind:'inline', rows:2, cols:8, loc:'Behind the LH kick panel',
+      lab:[328,334,'end'], pins:[{p:'12', x:340, y:330}], sides:['Engine harness side', 'I/P harness side']},
+    {id:'C201', name:'Clock spring, column side', kind:'comp', rows:1, cols:4, loc:'Steering column, below the clock spring',
+      lab:[330,404,'end'], pins:[{p:'2', x:340, y:410}], sides:['I/P harness side', 'Clock spring side']},
+    {id:'C202', name:'Clock spring, wheel side', kind:'comp', rows:1, cols:3, loc:'Steering wheel, behind the horn pad',
+      lab:[330,494,'end'], pins:[{p:'1', x:340, y:480}], sides:['Clock spring side', 'Steering wheel side']},
+    {id:'C110', name:'LH horn connector', kind:'comp', rows:1, cols:2, labels:['A','B'], loc:'At the LH horn',
+      lab:[650,396,'end'], pins:[{p:'A', x:660, y:400}, {p:'B', x:660, y:500, t:[8,-6]}], sides:['Harness side', 'Horn side']},
+    {id:'C111', name:'RH horn connector', kind:'comp', rows:1, cols:2, labels:['A','B'], loc:'At the RH horn',
+      lab:[850,396,'end'], pins:[{p:'A', x:860, y:400}, {p:'B', x:860, y:500, t:[8,-6]}], sides:['Harness side', 'Horn side']},
+  ],
+  controls:['horn'],
+},
+
+fan: {
+  id:'fan', name:'Cooling fan circuit', sub:'PCM-controlled relay · ECT sensor', level:'Intermediate',
+  title:'ENGINE COOLING FAN',
+  boxes:[{x:40, y:18, w:640, h:232, label:'UNDERHOOD FUSE BLOCK', lx:52, ly:36}],
+  buses:[
+    {id:'busR', x1:80, x2:290, y:58, label:'HOT IN RUN OR START', node:'BR', src:'run', lx:80, ly:50,
+      desc:'Fed by the ignition relay (see the power distribution diagram). It only has voltage with the key in RUN or START.'},
+    {id:'busB', x1:420, x2:640, y:58, label:'HOT AT ALL TIMES', node:'B+', src:'batt', lx:420, ly:50,
+      desc:'Connected straight to the battery through the main fuse link. It has voltage even with the key off.'},
+  ],
+  comps:[
+    {id:'F15', type:'fuse', x:160, y1:58, y2:132, ref:'F15', amps:10, name:'PCM/IGN', a:'BR', b:'F15o',
+      loc:'Underhood fuse block', desc:'Feeds the PCM ignition input and the fan relay coil. If it blows, the PCM shuts down too.'},
+    {id:'F8', type:'fuse', x:560, y1:58, y2:150, ref:'F8', amps:30, name:'COOL FAN', a:'B+', b:'K5.30',
+      loc:'Underhood fuse block', desc:'Feeds the fan relay contacts (load side). It is hot at all times.'},
+    {id:'K5', type:'relay', x:330, y:150, w:260, h:80, cx:380, sx:560, ref:'K5', name:'FAN RELAY',
+      n86:'K5.86', n85:'K5.85', n30:'K5.30', n87:'K5.87', coilR:80, loc:'Underhood fuse block',
+      desc:'The PCM switches the coil on its ground side; the contacts carry the fan motor current.'},
+    {id:'FM', type:'motor', x:840, y1:400, y2:500, name:'COOLING FAN MOTOR', sub:'Behind radiator', a:'C150.1b', b:'C150.2b', R:0.9, side:'right',
+      loc:'Behind the radiator', desc:'Draws about 13 A when running.'},
+    {id:'ECT', type:'sensor', x:680, y1:440, y2:500, name:'ECT SENSOR', sub:'Engine coolant temp', a:'C151.Ab', b:'C151.Bb', side:'right',
+      loc:'Thermostat housing', desc:'Two-wire NTC thermistor: about 3.5 kΩ at 68 °F and about 170 Ω at 220 °F.'},
+    {id:'PCM', type:'module', x:100, y:400, w:420, h:160, name:'PCM', sub:'Powertrain control module',
+      loc:'Engine compartment, LH side', desc:'Reads coolant temperature, decides, and grounds the fan relay coil. Commands the fan on at 220 °F and off at 212 °F.'},
+    {id:'S130', type:'splice', x:240, y:600, node:'S130', lx:250, ly:596,
+      loc:'Engine harness, near the PCM', desc:'Joins the two PCM ground wires into one ground wire.'},
+    {id:'G103', type:'ground', x:240, y:630, node:'G103', loc:'Engine block, LH rear', desc:'PCM ground. Both PCM ground pins end here.'},
+    {id:'G104', type:'ground', x:840, y:600, node:'G104', loc:'Radiator support, RH', desc:'Fan motor ground.'},
+  ],
+  dots:[[160,132]],
+  wires:[
+    {id:'tA', kind:'trace', a:'F15o', b:'K5.86', pts:[[160,132],[380,132],[380,150]], desc:'F15 output to relay pin 86 (coil feed).'},
+    {id:'tB', kind:'trace', a:'F15o', b:'C103.3a', pts:[[160,132],[160,250]], desc:'F15 output to connector C103, then on to the PCM ignition input.'},
+    {id:'tD', kind:'trace', a:'K5.85', b:'C103.4a', pts:[[380,230],[380,250]], desc:'Relay pin 85 (coil ground side) out to C103.'},
+    {id:'tE', kind:'trace', a:'K5.87', b:'C103.1a', pts:[[560,230],[560,250]], desc:'Relay pin 87 (switched output) out to C103.'},
+    {id:'f1', a:'C103.3b', b:'C160.20a', pts:[[160,250],[160,400]], size:'0.5', color:'PK', ckt:'2390', lab:[168,330],
+      fn:'PCM ignition feed (hot in RUN or START through F15)'},
+    {id:'f2', a:'C103.4b', b:'C160.52a', pts:[[380,250],[380,400]], size:'0.5', color:'DK BU/WH', ckt:'2310', lab:[388,330],
+      fn:'Fan relay control: the coil ground side, switched by the PCM'},
+    {id:'f3', a:'C103.1b', b:'C150.1a', pts:[[560,250],[560,290],[840,290],[840,400]], size:'3.0', color:'GN', ckt:'2300', lab:[600,282],
+      fn:'Fan motor feed from relay pin 87 (about 13 A)'},
+    {id:'f4', a:'C150.2a', b:'G104', pts:[[840,500],[840,600]], size:'3.0', color:'BK', ckt:'1150', lab:[848,556],
+      fn:'Fan motor ground'},
+    {id:'f5', a:'C160.1a', b:'S130', pts:[[200,560],[200,600],[240,600]], size:'0.8', color:'BK', ckt:'1150', lab:[192,592,'end'],
+      fn:'PCM ground, pin 1'},
+    {id:'f6', a:'C160.2a', b:'S130', pts:[[280,560],[280,600],[240,600]], size:'0.8', color:'BK', ckt:'1150', lab:[288,592],
+      fn:'PCM ground, pin 2'},
+    {id:'f7', a:'S130', b:'G103', pts:[[240,600],[240,630]], size:'2.0', color:'BK', ckt:'1150', lab:[250,622],
+      fn:'PCM ground, from S130 to G103'},
+    {id:'f8', a:'C160.47a', b:'C151.Aa', pts:[[520,440],[680,440]], size:'0.5', color:'YE', ckt:'410', lab:[560,432],
+      fn:'ECT signal: the PCM reads coolant temperature as a voltage here'},
+    {id:'f9', a:'C151.Ba', b:'C160.48a', pts:[[680,500],[520,500]], size:'0.5', color:'BK/WH', ckt:'452', lab:[560,516],
+      fn:'ECT low reference (sensor ground through the PCM)'},
+  ],
+  conns:[
+    {id:'C103', name:'Fuse block harness connector', kind:'comp', rows:2, cols:6, loc:'Bottom of the underhood fuse block',
+      lab:[148,264,'end'], pins:[{p:'3', x:160, y:250}, {p:'4', x:380, y:250}, {p:'1', x:560, y:250}],
+      sides:['Fuse block side', 'Engine harness side']},
+    {id:'C150', name:'Cooling fan motor connector', kind:'comp', rows:1, cols:2, loc:'At the fan motor',
+      lab:[830,396,'end'], pins:[{p:'1', x:840, y:400}, {p:'2', x:840, y:500, t:[8,-6]}], sides:['Harness side', 'Motor side']},
+    {id:'C151', name:'ECT sensor connector', kind:'comp', rows:1, cols:2, labels:['A','B'], loc:'At the ECT sensor',
+      lab:[690,430,'start'], pins:[{p:'A', x:680, y:440, t:[-14,16,'end']}, {p:'B', x:680, y:500, t:[-14,-6,'end']}], sides:['Harness side', 'Sensor side']},
+    {id:'C160', name:'PCM connector', kind:'comp', rows:4, cols:16, loc:'At the PCM',
+      lab:[104,392,'start'], pins:[{p:'20', x:160, y:400, t:[6,-6]}, {p:'52', x:380, y:400, t:[6,-6]},
+        {p:'47', x:520, y:440, t:[6,-6]}, {p:'48', x:520, y:500, t:[6,14]}, {p:'1', x:200, y:560, t:[6,14]}, {p:'2', x:280, y:560, t:[6,14]}],
+      sides:['Harness side', 'PCM side']},
+  ],
+  controls:['key', 'temp'],
+},
+
+start: {
+  id:'start', name:'Starting & charging', sub:'Starter relay · solenoid · generator', level:'Beginner',
+  title:'STARTING & CHARGING',
+  boxes:[{x:300, y:18, w:420, h:232, label:'UNDERHOOD FUSE BLOCK', lx:312, ly:36}],
+  buses:[{id:'busB', x1:320, x2:700, y:70, label:'HOT AT ALL TIMES', node:'B+', src:'none', lx:440, ly:62,
+    desc:'Fed by the 5.0 RD wire straight from the battery positive post, so it has voltage even with the key off. Its voltage sags while the starter cranks.'}],
+  comps:[
+    {id:'BAT', type:'battery', x:100, y1:520, y2:600, pos:'BAT+', neg:'BAT-', name:'BATTERY', sub:'12 V · LH front',
+      loc:'Engine compartment, LH front', desc:'Supplies everything while the engine is off and about 140 A while cranking. With the engine running, the generator charges it.'},
+    {id:'F3', type:'fuse', x:360, y1:70, y2:250, ref:'F3', amps:30, name:'IGN SW', a:'B+', b:'C104.1a',
+      loc:'Underhood fuse block', desc:'Feeds the ignition switch, which feeds the starter relay coil (START) and the generator ignition input (RUN).'},
+    {id:'F12', type:'fuse', x:560, y1:70, y2:150, ref:'F12', amps:30, name:'STARTER', a:'B+', b:'K3.30',
+      loc:'Underhood fuse block', desc:'Feeds the starter relay contacts, which power the starter solenoid.'},
+    {id:'K3', type:'relay', x:440, y:150, w:150, h:80, cx:470, sx:560, ref:'K3', name:'STARTER RELAY',
+      n86:'K3.86', n85:'K3.85', n30:'K3.30', n87:'K3.87', coilR:75, loc:'Underhood fuse block',
+      desc:'Lets the small ignition-switch START circuit control the solenoid, which draws about 12 A.'},
+    {id:'IGN', type:'ignsw', x:150, y:300, w:120, h:80, nB:'IGN.B', nS:'IGN.S', nR:'IGN.R', name:'IGNITION SWITCH', sub:'Steering column',
+      loc:'Steering column', desc:'BATT is the feed from F3. RUN is hot in RUN and START; START is hot only while the key is held in START.'},
+    {id:'PNP', type:'switch', x:470, y1:300, y2:360, name:'PARK/NEUTRAL SW', sub:'Closed in P or N', a:'PNP.a', b:'PNP.b', ctl:'gear', side:'right',
+      loc:'Transmission range switch, LH side of transmission', desc:'Grounds the starter relay coil only in Park or Neutral, so the engine can\'t crank in gear.'},
+    {id:'ST', type:'starter', x:560, y:480, w:140, h:120, nB:'ST.B', nS:'ST.S', nM:'ST.M', nG:'G101', name:'STARTER', sub:'Engine, LH rear',
+      loc:'Engine, LH rear, bolted to the transmission bell housing', desc:'The solenoid (S terminal) closes the main contacts that connect the battery cable (B terminal) to the motor.'},
+    {id:'ALT', type:'alternator', x:780, y:500, w:150, h:90, nI:'C130.1b', nB:'ALT.B', nG:'G103', name:'GENERATOR', sub:'Alternator · engine, RH front',
+      loc:'Engine, RH front', desc:'Charges at about 14 V once the engine runs and its ignition input (circuit 1630) is hot.'},
+    {id:'G100', type:'ground', x:100, y:640, node:'G100', loc:'Engine block, LH front', desc:'The battery negative cable bolts to the engine block here. Every ground on the car returns through this cable.'},
+    {id:'G101', type:'ground', x:530, y:590, node:'G101', loc:'Starter case', desc:'The starter grounds through its mounting bolts to the engine block.'},
+    {id:'G103', type:'ground', x:960, y:580, node:'G103', loc:'Generator case', desc:'The generator grounds through its mounting bracket to the engine.'},
+    {id:'G202', type:'ground', x:470, y:400, node:'G202', loc:'Body, behind the console', desc:'Ground for the park/neutral switch (starter relay control).'},
+  ],
+  dots:[],
+  wires:[
+    {id:'tA', kind:'trace', a:'C104.2a', b:'K3.86', pts:[[420,250],[420,140],[470,140],[470,150]], desc:'Ignition START input from C104 up to relay pin 86 (coil feed).'},
+    {id:'tB', kind:'trace', a:'K3.85', b:'C104.3a', pts:[[470,230],[470,250]], desc:'Relay pin 85 (coil ground side) out to C104.'},
+    {id:'tC', kind:'trace', a:'K3.87', b:'C104.4a', pts:[[560,230],[560,250]], desc:'Relay pin 87 (switched output) out to C104.'},
+    {id:'m1', a:'BAT+', b:'B+', pts:[[100,520],[50,520],[50,70],[320,70]], size:'5.0', color:'RD', ckt:'2', lab:[58,200],
+      fn:'Battery feed to the fuse block bus (hot at all times)'},
+    {id:'c1', a:'BAT+', b:'ST.B', pts:[[100,520],[260,520],[260,630],[720,630],[720,540]], size:'50', color:'RD', ckt:'2', lab:[300,624], R:0.0015,
+      fn:'Battery positive cable to the starter B terminal (about 140 A while cranking)'},
+    {id:'c2', a:'BAT-', b:'G100', pts:[[100,600],[100,640]], size:'50', color:'BK', ckt:'1150', lab:[108,626], R:0.0015,
+      fn:'Battery negative cable to the engine block. It carries the same current back as the positive cable'},
+    {id:'c3', a:'ALT.B', b:'ST.B', pts:[[780,540],[720,540]], size:'16', color:'RD', ckt:'2', lab:[750,532,'middle'], R:0.002,
+      fn:'Generator output to the starter B terminal, which is cabled to the battery'},
+    {id:'i1', a:'C104.1b', b:'IGN.B', pts:[[360,250],[360,280],[210,280],[210,300]], size:'5.0', color:'RD/WH', ckt:'1610', lab:[226,274],
+      fn:'Ignition switch battery feed from F3'},
+    {id:'i2', a:'IGN.S', b:'C104.2b', pts:[[170,380],[170,420],[420,420],[420,250]], size:'0.8', color:'VT', ckt:'1620', lab:[290,414],
+      fn:'Ignition switch START output to the starter relay coil'},
+    {id:'i3', a:'IGN.R', b:'C130.1a', pts:[[250,380],[250,440],[860,440],[860,500]], size:'0.8', color:'BN', ckt:'1630', lab:[620,434],
+      fn:'Ignition switch RUN output to the generator ignition input. It crosses the yellow solenoid wire without a dot: not connected'},
+    {id:'p1', a:'C104.3b', b:'PNP.a', pts:[[470,250],[470,300]], size:'0.8', color:'YE/BK', ckt:'1625', lab:[478,290],
+      fn:'Starter relay coil ground side, out to the park/neutral switch'},
+    {id:'p2', a:'PNP.b', b:'G202', pts:[[470,360],[470,400]], size:'0.8', color:'BK', ckt:'1150', lab:[478,386],
+      fn:'Park/neutral switch ground'},
+    {id:'s1', a:'C104.4b', b:'ST.S', pts:[[560,250],[560,270],[740,270],[740,470],[590,470],[590,480]], size:'2.0', color:'YE', ckt:'1640', lab:[600,264],
+      fn:'Starter relay output to the solenoid S terminal (about 12 A while cranking)'},
+  ],
+  conns:[
+    {id:'C104', name:'Fuse block harness connector', kind:'comp', rows:2, cols:6, loc:'Bottom of the underhood fuse block',
+      lab:[348,266,'end'], pins:[{p:'1', x:360, y:250}, {p:'2', x:420, y:250}, {p:'3', x:470, y:250}, {p:'4', x:560, y:250}],
+      sides:['Fuse block side', 'Engine harness side']},
+    {id:'C130', name:'Generator connector', kind:'comp', rows:1, cols:2, loc:'At the generator',
+      lab:[850,494,'end'], pins:[{p:'1', x:860, y:500}], sides:['Harness side', 'Generator side']},
+  ],
+  controls:['key3', 'gear'],
+},
+
+light: {
+  id:'light', name:'Exterior lighting', sub:'BCM high-side drivers · shared grounds', level:'Intermediate',
+  title:'HEADLAMPS & PARK LAMPS',
+  boxes:[{x:220, y:18, w:340, h:162, label:'UNDERHOOD FUSE BLOCK', lx:232, ly:36}],
+  buses:[{id:'busB', x1:240, x2:540, y:62, label:'HOT AT ALL TIMES', node:'B+', src:'batt', lx:240, ly:54,
+    desc:'Connected to the battery through the main fuse link. Lighting works with the key off, so the BCM lamp feed is hot at all times.'}],
+  comps:[
+    {id:'F30', type:'fuse', x:300, y1:62, y2:180, ref:'F30', amps:25, name:'BCM LAMPS', a:'B+', b:'C105.1a',
+      loc:'Underhood fuse block', desc:'Feeds the BCM, which powers all four lamps through its drivers.'},
+    {id:'HSW', type:'hsw', x:20, y:270, w:80, h:110, n1:'C210.1b', n2:'C210.2b', n3:'C210.3b', name:'HEADLAMP SWITCH', sub:'Instrument panel, LH',
+      loc:'Instrument panel, left of the steering column', desc:'PARK grounds the BCM park input. HEAD grounds both inputs. No lamp current flows through this switch.'},
+    {id:'BCM', type:'module', kind:'bcm', x:200, y:240, w:420, h:150, name:'BCM', sub:'Body control module',
+      loc:'Behind the instrument panel, LH', desc:'Reads the headlamp switch inputs and powers the lamps with high-side drivers. PARK turns on the park lamps; HEAD turns on park lamps and low beams.'},
+    {id:'LHL', type:'lamp', x:300, y1:470, y2:550, a:'C120.1b', b:'C120.2b', R:2.7, name:'LH HEADLAMP', sub:'Low beam · 55 W', side:'left',
+      loc:'LH headlamp assembly', desc:'Low-beam bulb, about 4.6 A.'},
+    {id:'LPK', type:'lamp', x:400, y1:470, y2:550, a:'C121.1b', b:'C121.2b', R:28, name:'LH PARK LAMP', sub:'5 W', side:'right',
+      loc:'LH headlamp assembly', desc:'Park lamp bulb, about 0.45 A.'},
+    {id:'RPK', type:'lamp', x:700, y1:470, y2:550, a:'C123.1b', b:'C123.2b', R:28, name:'RH PARK LAMP', sub:'5 W', side:'left',
+      loc:'RH headlamp assembly', desc:'Park lamp bulb, about 0.45 A.'},
+    {id:'RHL', type:'lamp', x:800, y1:470, y2:550, a:'C124.1b', b:'C124.2b', R:2.7, name:'RH HEADLAMP', sub:'Low beam · 55 W', side:'right',
+      loc:'RH headlamp assembly', desc:'Low-beam bulb, about 4.6 A.'},
+    {id:'S150', type:'splice', x:545, y:430, node:'S150', lx:553, ly:447,
+      loc:'Front harness, center', desc:'Splits the BCM park lamp output to both sides.'},
+    {id:'S151', type:'splice', x:350, y:575, node:'S151', lx:358, ly:569,
+      loc:'Front harness, LH', desc:'Joins the LH headlamp and LH park lamp grounds into one wire to G101.'},
+    {id:'S152', type:'splice', x:750, y:575, node:'S152', lx:758, ly:569,
+      loc:'Front harness, RH', desc:'Joins the RH headlamp and RH park lamp grounds into one wire to G102.'},
+    {id:'G101', type:'ground', x:350, y:600, node:'G101', loc:'LH radiator support', desc:'Shared ground for the LH headlamp and LH park lamp.'},
+    {id:'G102', type:'ground', x:750, y:600, node:'G102', loc:'RH radiator support', desc:'Shared ground for the RH headlamp and RH park lamp.'},
+    {id:'G201', type:'ground', x:255, y:430, node:'G201', loc:'Instrument panel, LH', desc:'BCM ground.'},
+    {id:'G202', type:'ground', x:60, y:420, node:'G202', loc:'Instrument panel, LH', desc:'Headlamp switch ground. The switch grounds the BCM inputs through it.'},
+  ],
+  dots:[],
+  wires:[
+    {id:'b1', a:'C105.1b', b:'C140.1a', pts:[[300,180],[300,210],[260,210],[260,240]], size:'2.0', color:'RD/WH', ckt:'1702', lab:[268,228],
+      fn:'BCM battery feed for the lamp drivers'},
+    {id:'hs1', a:'C210.1a', b:'C140.20a', pts:[[100,305],[200,305]], size:'0.35', color:'GN', ckt:'1710', lab:[106,299],
+      fn:'Park lamp request: the switch grounds this BCM input in PARK and HEAD'},
+    {id:'hs2', a:'C210.2a', b:'C140.21a', pts:[[100,345],[200,345]], size:'0.35', color:'YE', ckt:'1711', lab:[106,339],
+      fn:'Headlamp request: the switch grounds this BCM input in HEAD'},
+    {id:'hs3', a:'C210.3a', b:'G202', pts:[[60,380],[60,420]], size:'0.5', color:'BK', ckt:'1150', lab:[68,410],
+      fn:'Headlamp switch ground'},
+    {id:'bg', a:'C140.2a', b:'G201', pts:[[255,390],[255,430]], size:'1.0', color:'BK', ckt:'1150', lab:[248,420,'end'],
+      fn:'BCM ground'},
+    {id:'l1', a:'C140.10a', b:'C120.1a', pts:[[480,390],[480,420],[300,420],[300,470]], size:'1.0', color:'VT', ckt:'1720', lab:[316,414],
+      fn:'LH low beam feed from the BCM high-side driver'},
+    {id:'pk1', a:'C140.12a', b:'S150', pts:[[545,390],[545,430]], size:'1.0', color:'BN', ckt:'1730', lab:[539,418,'end'],
+      fn:'Park lamp feed from the BCM to splice S150 (both sides)'},
+    {id:'pk2', a:'S150', b:'C121.1a', pts:[[545,430],[400,430],[400,470]], size:'0.5', color:'BN', ckt:'1730', lab:[408,452],
+      fn:'Park lamp feed to the LH park lamp'},
+    {id:'pk3', a:'S150', b:'C123.1a', pts:[[545,430],[700,430],[700,470]], size:'0.5', color:'BN', ckt:'1730', lab:[708,452],
+      fn:'Park lamp feed to the RH park lamp'},
+    {id:'l3', a:'C140.11a', b:'C124.1a', pts:[[605,390],[605,410],[800,410],[800,470]], size:'1.0', color:'DK GN', ckt:'1721', lab:[808,442],
+      fn:'RH low beam feed from the BCM high-side driver'},
+    {id:'g1', a:'C120.2a', b:'S151', pts:[[300,550],[300,575],[350,575]], size:'1.0', color:'BK', ckt:'1150', lab:[292,568,'end'],
+      fn:'LH headlamp ground to splice S151'},
+    {id:'g2', a:'C121.2a', b:'S151', pts:[[400,550],[400,575],[350,575]], size:'0.5', color:'BK', ckt:'1150', lab:[408,568],
+      fn:'LH park lamp ground to splice S151'},
+    {id:'g3', a:'S151', b:'G101', pts:[[350,575],[350,600]], size:'2.0', color:'BK', ckt:'1150', lab:[358,594],
+      fn:'Shared LH ground, S151 to G101'},
+    {id:'g4', a:'C124.2a', b:'S152', pts:[[800,550],[800,575],[750,575]], size:'1.0', color:'BK', ckt:'1150', lab:[808,568],
+      fn:'RH headlamp ground to splice S152'},
+    {id:'g5', a:'C123.2a', b:'S152', pts:[[700,550],[700,575],[750,575]], size:'0.5', color:'BK', ckt:'1150', lab:[692,568,'end'],
+      fn:'RH park lamp ground to splice S152'},
+    {id:'g6', a:'S152', b:'G102', pts:[[750,575],[750,600]], size:'2.0', color:'BK', ckt:'1150', lab:[758,594],
+      fn:'Shared RH ground, S152 to G102'},
+  ],
+  conns:[
+    {id:'C105', name:'Fuse block harness connector', kind:'comp', rows:2, cols:6, loc:'Bottom of the underhood fuse block',
+      lab:[288,196,'end'], pins:[{p:'1', x:300, y:180}], sides:['Fuse block side', 'Harness side']},
+    {id:'C140', name:'BCM connector', kind:'comp', rows:4, cols:13, loc:'At the BCM',
+      lab:[204,234,'start'], pins:[{p:'1', x:260, y:240, t:[6,-6]}, {p:'20', x:200, y:305, t:[6,-6]}, {p:'21', x:200, y:345, t:[6,-6]},
+        {p:'2', x:255, y:390, t:[6,14]}, {p:'10', x:480, y:390, t:[6,14]}, {p:'12', x:545, y:390, t:[6,14]}, {p:'11', x:605, y:390, t:[6,14]}],
+      sides:['Harness side', 'BCM side']},
+    {id:'C120', name:'LH headlamp connector', kind:'comp', rows:1, cols:2, loc:'At the LH headlamp',
+      lab:[290,466,'end'], pins:[{p:'1', x:300, y:470}, {p:'2', x:300, y:550, t:[8,-6]}], sides:['Harness side', 'Lamp side']},
+    {id:'C121', name:'LH park lamp connector', kind:'comp', rows:1, cols:2, loc:'At the LH park lamp',
+      lab:[390,466,'end'], pins:[{p:'1', x:400, y:470}, {p:'2', x:400, y:550, t:[8,-6]}], sides:['Harness side', 'Lamp side']},
+    {id:'C123', name:'RH park lamp connector', kind:'comp', rows:1, cols:2, loc:'At the RH park lamp',
+      lab:[690,466,'end'], pins:[{p:'1', x:700, y:470}, {p:'2', x:700, y:550, t:[8,-6]}], sides:['Harness side', 'Lamp side']},
+    {id:'C124', name:'RH headlamp connector', kind:'comp', rows:1, cols:2, loc:'At the RH headlamp',
+      lab:[790,466,'end'], pins:[{p:'1', x:800, y:470}, {p:'2', x:800, y:550, t:[8,-6]}], sides:['Harness side', 'Lamp side']},
+    {id:'C210', name:'Headlamp switch connector', kind:'comp', rows:1, cols:4, loc:'Behind the headlamp switch',
+      lab:[52,396,'end'], pins:[{p:'1', x:100, y:305, t:[6,14]}, {p:'2', x:100, y:345, t:[6,14]}, {p:'3', x:60, y:380, t:[7,14]}],
+      sides:['Harness side', 'Switch side']},
+  ],
+  controls:['lsw'],
+},
+};
+const DG_ORDER = ['horn', 'start', 'fan', 'light'];
+const DG_SOON = [];
+
+/* ================= state ================= */
+const S = {
+  dg:'horn', mode:'explore', color:'wires', tab:null, sel:null, flip:false, half:null,
+  ctl:{horn:false}, key:'off', temp:195, open:new Set(), unplug:new Set(),
+  relay:{}, pcm:{powered:false, drv:false}, bcm:{powered:false, park:false, head:false},
+  gear:'pn', lsw:'off', running:false, cranked:false, alt:false, chg:false,
+  spot:[], sus:new Set(), picks:[], flash:null,
+  lesson:null, step:0, stepOk:false, mcPick:null, done:new Set(),
+  prac:null,
+};
+let DG = DIAGRAMS.horn;
+let ITEMS = {};      // id → {id, kind, d, parent}
+let NODE_DESC = {};  // node → human description
+let NET = {};        // wire id → net key (wires joined by conductors only)
+let RES = null;      // last simulation result
+let BB = {};         // id → bbox after render
+let VIEW = {x:0, y:0, w:1000, h:680};
+
+/* ================= model ================= */
+const ECT_RPU = 2490, ECT_R0 = 3520, ECT_T0 = 293.15, ECT_B = 3950;   // same thermistor as the DTC Visualizer
+const fToK = f => (f - 32) * 5 / 9 + 273.15, kToF = k => (k - 273.15) * 9 / 5 + 32;
+const ectR = f => ECT_R0 * Math.exp(ECT_B * (1 / fToK(f) - 1 / ECT_T0));
+const ectF = v => { const r = ECT_RPU * v / (5 - v); return kToF(1 / (1 / ECT_T0 + Math.log(r / ECT_R0) / ECT_B)); };
+const FAN_ON = 220, FAN_OFF = 212;
+const BATT = 12.6;
+
+const swOn = c => c.ctl === 'gear' ? S.gear === 'pn' : !!S.ctl[c.ctl];
+const keyRun = () => S.key === 'run' || S.key === 'start';
+
+function buildEls(D, st){
+  const E = [], open = S.open;
+  const R = (id, a, b, r, kind) => { if (!open.has(id)) E.push({id, a, b, R:r, kind}); };
+  const V = (id, a, b, v) => E.push({id, a, b, V:v});
+  D.buses.forEach(b => { if (b.src === 'batt' || (b.src === 'run' && keyRun())) V(b.id, b.node, '0', BATT); });
+  D.comps.forEach(c => {
+    switch (c.type){
+      case 'fuse': R(c.id, c.a, c.b, 0.005, 'fuse'); break;
+      case 'relay':
+        R(c.id + '.coil', c.n86, c.n85, c.coilR, 'coil');
+        if (st.closed[c.id]) R(c.id + '.sw', c.n30, c.n87, 0.01, 'contacts');
+        break;
+      case 'clockspring': R(c.id, c.a, c.b, 0.1, 'cs'); break;
+      case 'switch': if (swOn(c)) R(c.id, c.a, c.b, 0.02, 'switch'); break;
+      case 'horn': case 'motor': case 'lamp': R(c.id, c.a, c.b, c.R, 'load'); break;
+      case 'sensor': R(c.id, c.a, c.b, ectR(S.temp), 'sensor'); break;
+      case 'ground': R(c.id, c.node, '0', 0.002, 'ground'); break;
+      case 'battery':
+        /* EMF behind a small internal resistance; a charging battery accepts current less readily */
+        if (!open.has(c.id)) { V(c.id + '.emf', 'BATi', c.neg, BATT); R(c.id, 'BATi', c.pos, st.chg ? 0.06 : 0.012, 'battery'); }
+        break;
+      case 'starter':
+        R(c.id + '.sol', c.nS, c.nG, 0.9, 'sol');
+        if (st.closed[c.id]) R(c.id + '.sw', c.nB, c.nM, 0.0008, 'contacts');
+        R(c.id + '.mot', c.nM, c.nG, 0.07, 'load');
+        break;
+      case 'alternator':
+        R(c.id + '.fld', c.nI, c.nG, 40, 'alt');
+        if (S.running && st.alt && !open.has(c.id)) { V(c.id + '.emf', 'ALTi', c.nG, 14.6); E.push({id:c.id + '.out', a:'ALTi', b:c.nB, R:0.015, kind:'alt'}); }
+        break;
+      case 'ignsw':
+        if (keyRun()) R(c.id + '.run', c.nB, c.nR, 0.01, 'switch');
+        if (S.key === 'start') R(c.id + '.st', c.nB, c.nS, 0.01, 'switch');
+        break;
+      case 'hsw':
+        if (S.lsw !== 'off') R(c.id + '.park', c.n1, c.n3, 0.02, 'switch');
+        if (S.lsw === 'head') R(c.id + '.head', c.n2, c.n3, 0.02, 'switch');
+        break;
+      case 'module': (c.kind === 'bcm' ? bcmEls : pcmEls)(R, V, st); break;
+    }
+  });
+  D.wires.forEach(w => R(w.id, w.a, w.b, w.R || 0.004, w.kind || 'wire'));
+  D.conns.forEach(c => { if (S.unplug.has(c.id)) return; c.pins.forEach(p => R(c.id + '.' + p.p, c.id + '.' + p.p + 'a', c.id + '.' + p.p + 'b', 0.002, 'pin')); });
+  return E;
+}
+function pcmEls(R, V, st){
+  const pcm = st.pcm;
+  R('PCM.psu', 'C160.20b', 'PG', 30, 'mod');
+  R('PCM.g1', 'PG', 'C160.1b', 0.001, 'mod'); R('PCM.g2', 'PG', 'C160.2b', 0.001, 'mod');
+  R('PCM.pu', 'VREF', 'C160.47b', ECT_RPU, 'mod');
+  R('PCM.lr', 'C160.48b', 'PG', 5, 'mod');
+  if (pcm.drv) R('PCM.drv', 'C160.52b', 'PG', 0.15, 'mod');
+  if (pcm.powered) V('PCM.vref', 'VREF', 'PG', 5);
+}
+function bcmEls(R, V, st){
+  const b = st.bcm;
+  R('BCM.psu', 'C140.1b', 'BG', 40, 'mod'); R('BCM.g', 'BG', 'C140.2b', 0.001, 'mod');
+  R('BCM.pu20', 'BV5', 'C140.20b', 10000, 'mod'); R('BCM.pu21', 'BV5', 'C140.21b', 10000, 'mod');
+  if (b.powered) V('BCM.vref', 'BV5', 'BG', 5);
+  if (b.park) R('BCM.d12', 'C140.1b', 'C140.12b', 0.05, 'mod');
+  if (b.head) { R('BCM.d10', 'C140.1b', 'C140.10b', 0.05, 'mod'); R('BCM.d11', 'C140.1b', 'C140.11b', 0.05, 'mod'); }
+}
+
+/* Modified nodal analysis: node voltages + voltage-source currents, Gaussian elimination. */
+function solveNet(els){
+  const idx = new Map(), names = [];
+  const add = n => { if (n !== '0' && !idx.has(n)) { idx.set(n, names.length); names.push(n); } };
+  els.forEach(e => { add(e.a); add(e.b); });
+  const n = names.length, vs = els.filter(e => e.V != null), N = n + vs.length;
+  const A = Array.from({length:N}, () => new Float64Array(N)), z = new Float64Array(N);
+  const ix = nm => nm === '0' ? -1 : idx.get(nm);
+  for (let i = 0; i < n; i++) A[i][i] += 1e-9;              // tiny leak so floating islands stay solvable
+  els.forEach(e => {
+    if (e.V != null) return;
+    const g = 1 / e.R, a = ix(e.a), b = ix(e.b);
+    if (a >= 0) A[a][a] += g; if (b >= 0) A[b][b] += g;
+    if (a >= 0 && b >= 0) { A[a][b] -= g; A[b][a] -= g; }
+  });
+  vs.forEach((e, k) => {
+    const r = n + k, a = ix(e.a), b = ix(e.b);
+    if (a >= 0) { A[r][a] += 1; A[a][r] += 1; }
+    if (b >= 0) { A[r][b] -= 1; A[b][r] -= 1; }
+    z[r] = e.V;
+  });
+  for (let c = 0; c < N; c++){
+    let p = c, mx = Math.abs(A[c][c]);
+    for (let r = c + 1; r < N; r++) { const v = Math.abs(A[r][c]); if (v > mx) { mx = v; p = r; } }
+    if (mx < 1e-18) continue;
+    if (p !== c) { const t = A[p]; A[p] = A[c]; A[c] = t; const tz = z[p]; z[p] = z[c]; z[c] = tz; }
+    for (let r = c + 1; r < N; r++){
+      const f = A[r][c] / A[c][c]; if (!f) continue;
+      for (let k = c; k < N; k++) A[r][k] -= f * A[c][k];
+      z[r] -= f * z[c];
+    }
+  }
+  const x = new Float64Array(N);
+  for (let r = N - 1; r >= 0; r--){
+    let s = z[r]; for (let k = r + 1; k < N; k++) s -= A[r][k] * x[k];
+    x[r] = Math.abs(A[r][r]) < 1e-18 ? 0 : s / A[r][r];
+  }
+  const v = {'0':0}; names.forEach((nm, i) => v[nm] = x[i]);
+  const I = {}; els.forEach(e => { if (e.V == null) I[e.id] = (v[e.a] - v[e.b]) / e.R; });
+  /* nodes with no conductive path to chassis ground have no voltage reference ("floating") */
+  const par = {}; const f = a => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+  ['0', ...names].forEach(nm => par[nm] = nm);
+  els.forEach(e => { par[f(e.a)] = f(e.b); });
+  const root = f('0'), fl = new Set(names.filter(nm => f(nm) !== root));
+  return {v, I, fl};
+}
+
+function pcmLogic(res, prev){
+  const pgRef = !res.fl.has('PG');
+  const vIgn = (res.v['C160.20b'] ?? 0) - (res.v.PG ?? 0);
+  const powered = pgRef && !res.fl.has('C160.20b') && vIgn > 9;
+  if (!powered) return {powered:false, drv:false, ectV:null, ectF:null, fault:null};
+  if (!prev.powered) return {powered:true, drv:false, ectV:null, ectF:null, fault:null};
+  const ectV = (res.v['C160.47b'] ?? 0) - res.v.PG;
+  let fault = null, tf = null;
+  if (ectV > 4.85) fault = 'high'; else if (ectV < 0.15) fault = 'low'; else tf = ectF(ectV);
+  const drv = fault ? true : (prev.drv ? tf > FAN_OFF : tf >= FAN_ON);
+  return {powered:true, drv, ectV, ectF:tf, fault};
+}
+
+function bcmLogic(res, prev){
+  const ref = !res.fl.has('BG'), vb = (res.v['C140.1b'] ?? 0) - (res.v.BG ?? 0);
+  const powered = ref && !res.fl.has('C140.1b') && vb > 9;
+  if (!powered) return {powered:false, park:false, head:false, inP:null, inH:null};
+  if (!prev.powered) return {powered:true, park:false, head:false, inP:null, inH:null};
+  const vin = n => res.fl.has(n) ? 5 : (res.v[n] ?? 5) - res.v.BG;
+  const inP = vin('C140.20b'), inH = vin('C140.21b'), pReq = inP < 1.5, hReq = inH < 1.5;
+  return {powered:true, park:pReq || hReq, head:hReq, inP, inH};
+}
+
+function simulate(){
+  const D = DG;
+  if (S.key === 'off') { S.running = false; S.cranked = false; }
+  const st = {closed:{...S.relay}, pcm:{...S.pcm}, bcm:{...S.bcm}, alt:S.alt, chg:S.chg};
+  let res = null;
+  for (let it = 0; it < 16; it++){
+    res = solveNet(buildEls(D, st));
+    let changed = false;
+    const flip = (obj, key, on) => { if (on !== !!obj[key]) { obj[key] = on; changed = true; } };
+    D.comps.forEach(c => {
+      if (c.type === 'relay'){ const i = Math.abs(res.I[c.id + '.coil'] || 0); flip(st.closed, c.id, st.closed[c.id] ? i > 0.03 : i > 0.07); }
+      if (c.type === 'starter'){ const i = Math.abs(res.I[c.id + '.sol'] || 0); flip(st.closed, c.id, st.closed[c.id] ? i > 3 : i > 6); }
+      if (c.type === 'alternator') flip(st, 'alt', !res.fl.has(c.nI) && (res.v[c.nI] - (res.v[c.nG] ?? 0)) > 8);
+      if (c.type === 'battery') flip(st, 'chg', (res.I[c.id] || 0) < -0.5);
+      if (c.type === 'module'){
+        if (c.kind === 'bcm'){
+          const nb = bcmLogic(res, st.bcm);
+          if (nb.powered !== st.bcm.powered || nb.park !== st.bcm.park || nb.head !== st.bcm.head) changed = true;
+          st.bcm = nb;
+        } else {
+          const np = pcmLogic(res, st.pcm);
+          if (np.powered !== st.pcm.powered || np.drv !== st.pcm.drv) changed = true;
+          st.pcm = np;
+        }
+      }
+    });
+    /* the engine starts once it has cranked and the key comes back to RUN */
+    if (D.id === 'start'){
+      if (S.key === 'start' && Math.abs(res.I['ST.mot'] || 0) > 50) S.cranked = true;
+      if (S.key === 'run' && S.cranked && !S.running) { S.running = true; changed = true; }
+    }
+    if (!changed) break;
+  }
+  S.relay = st.closed; S.pcm = st.pcm; S.bcm = st.bcm; S.alt = st.alt; S.chg = st.chg;
+  RES = {...res, pcm:st.pcm, bcm:st.bcm};
+}
+const battV = () => { const a = nodeV('BAT+'), b = nodeV('BAT-'); return a == null || b == null ? null : a - b; };
+
+/* per-item live values */
+const nodeV = n => RES.fl.has(n) ? null : RES.v[n] ?? null;
+function wireLive(w){
+  const va = nodeV(w.a), vb = nodeV(w.b);
+  const cut = S.open.has(w.id);
+  return {va, vb, cut, i: cut ? 0 : (RES.I[w.id] || 0)};
+}
+
+/* ================= registry ================= */
+function loadDiagram(id){
+  DG = DIAGRAMS[id]; S.dg = id;
+  ITEMS = {}; NODE_DESC = {};
+  const reg = (id, kind, d, parent) => ITEMS[id] = {id, kind, d, parent};
+  DG.buses.forEach(b => { reg(b.id, 'bus', b); NODE_DESC[b.node] = b.label.toLowerCase().replace(/^./, c => c.toUpperCase()) + ' bus'; });
+  DG.comps.forEach(c => {
+    reg(c.id, 'comp', c);
+    if (c.type === 'relay'){
+      reg(c.id + '.coil', 'sub', {type:'coil', name:c.ref + ' coil', parent:c}, c.id);
+      reg(c.id + '.sw', 'sub', {type:'contacts', name:c.ref + ' contacts', parent:c}, c.id);
+      NODE_DESC[c.n86] = c.ref + ' pin 86 (coil feed)'; NODE_DESC[c.n85] = c.ref + ' pin 85 (coil ground side)';
+      NODE_DESC[c.n30] = c.ref + ' pin 30 (contact feed)'; NODE_DESC[c.n87] = c.ref + ' pin 87 (switched output)';
+    }
+    if (c.type === 'starter'){
+      reg('ST.sol', 'sub', {type:'solenoid', name:'Starter solenoid', parent:c}, c.id);
+      reg('ST.sw', 'sub', {type:'stcontacts', name:'Solenoid main contacts', parent:c}, c.id);
+      reg('ST.mot', 'sub', {type:'startmotor', name:'Starter motor', parent:c}, c.id);
+      NODE_DESC[c.nB] = 'Starter B terminal'; NODE_DESC[c.nS] = 'Starter S terminal (solenoid)';
+    }
+    if (c.type === 'battery'){ NODE_DESC[c.pos] = 'Battery positive post'; NODE_DESC[c.neg] = 'Battery negative post'; }
+    if (c.type === 'alternator') NODE_DESC[c.nB] = 'Generator B+ output stud';
+    if (c.type === 'ignsw'){ NODE_DESC[c.nB] = 'Ignition switch BATT terminal'; NODE_DESC[c.nS] = 'Ignition switch START output'; NODE_DESC[c.nR] = 'Ignition switch RUN output'; }
+    if (c.type === 'module' && c.kind === 'bcm'){
+      reg('BCM.psu', 'sub', {type:'psu', txt:'bpsu', name:'BCM power supply', parent:c}, c.id);
+      reg('BCM.in', 'sub', {type:'bcmin', name:'Switch inputs', parent:c}, c.id);
+      reg('BCM.d10', 'sub', {type:'hdriver', name:'LH low beam driver (pin 10)', pin:'10', parent:c}, c.id);
+      reg('BCM.d12', 'sub', {type:'hdriver', name:'Park lamp driver (pin 12)', pin:'12', parent:c}, c.id);
+      reg('BCM.d11', 'sub', {type:'hdriver', name:'RH low beam driver (pin 11)', pin:'11', parent:c}, c.id);
+    }
+    if (c.type === 'module' && c.kind !== 'bcm'){
+      reg('PCM.psu', 'sub', {type:'psu', name:'PCM power supply', parent:c}, c.id);
+      reg('PCM.pu', 'sub', {type:'pullup', name:'5 V reference and pull-up', parent:c}, c.id);
+      reg('PCM.drv', 'sub', {type:'driver', name:'Fan relay driver', parent:c}, c.id);
+      reg('PCM.lr', 'sub', {type:'lowref', name:'Low reference', parent:c}, c.id);
+    }
+    if (c.type === 'splice') NODE_DESC[c.node] = 'Splice ' + c.id;
+    if (c.type === 'ground') NODE_DESC[c.node] = 'Ground ' + c.id;
+    if (c.type === 'fuse') NODE_DESC[c.b] = NODE_DESC[c.b] || c.ref + ' output';
+    if (c.type === 'switch') { NODE_DESC[c.a] = c.name.toLowerCase().replace(/^./, x => x.toUpperCase()); NODE_DESC[c.b] = NODE_DESC[c.a]; }
+  });
+  DG.wires.forEach(w => reg(w.id, w.kind === 'trace' ? 'trace' : 'wire', w));
+  DG.conns.forEach(c => {
+    reg(c.id, 'conn', c);
+    c.pins.forEach(p => { reg(c.id + '.' + p.p, 'pin', {conn:c, pin:p}, c.id); NODE_DESC[c.id + '.' + p.p + 'a'] = NODE_DESC[c.id + '.' + p.p + 'b'] = c.id + ' pin ' + p.p; });
+  });
+  NODE_DESC.F20o = NODE_DESC.F20o || 'F20 output'; NODE_DESC.F15o = NODE_DESC.F15o || 'F15 output'; NODE_DESC.J1 = 'F20 output';
+  /* nets: wires and traces joined through connector cavities and splices */
+  const par = {}; const f = a => { par[a] ??= a; while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+  const join = (a, b) => { par[f(a)] = f(b); };
+  DG.wires.forEach(w => join(w.a, w.b));
+  DG.conns.forEach(c => c.pins.forEach(p => join(c.id + '.' + p.p + 'a', c.id + '.' + p.p + 'b')));
+  NET = {}; DG.wires.forEach(w => NET[w.id] = f(w.a));
+  VIEW = {x:0, y:0, w:1000, h:680};
+}
+const wiresAt = node => DG.wires.filter(w => w.a === node || w.b === node);
+function pinWires(c, p){
+  const a = wiresAt(c.id + '.' + p + 'a'), b = wiresAt(c.id + '.' + p + 'b');
+  return {a: a[0] || null, b: b[0] || null};
+}
+const isTop = id => !!ITEMS[id];
+const topOf = id => ITEMS[id]?.parent || id;
+/* tapped id satisfies goal id if it is that item or one of its parts */
+const matches = (goal, tapped) => tapped === goal || tapped.startsWith(goal + '.');
+
+/* ================= drawing ================= */
+const P = pts => 'M' + pts.map(p => p[0] + ',' + p[1]).join('L');
+function polyLen(pts){ let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]); return L; }
+function polySplit(pts){
+  const half = polyLen(pts) / 2; let acc = 0;
+  for (let i = 1; i < pts.length; i++){
+    const [x0, y0] = pts[i-1], [x1, y1] = pts[i], seg = Math.hypot(x1 - x0, y1 - y0);
+    if (acc + seg >= half){
+      const t = (half - acc) / seg, m = [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t];
+      return [pts.slice(0, i).concat([m]), [m].concat(pts.slice(i)), m];
+    }
+    acc += seg;
+  }
+  return [pts, pts, pts[0]];
+}
+function vcol(v){
+  if (v == null) return '#A0A7AF';
+  const stops = [[0, [36,87,184]], [0.17, [20,150,159]], [0.4, [217,160,0]], [1, [214,40,57]]];
+  const t = Math.max(0, Math.min(1, v / BATT));
+  for (let i = 1; i < stops.length; i++){
+    if (t <= stops[i][0]){
+      const [t0, c0] = stops[i-1], [t1, c1] = stops[i], k = (t - t0) / (t1 - t0);
+      return 'rgb(' + c0.map((c, j) => Math.round(c + (c1[j] - c) * k)).join(',') + ')';
+    }
+  }
+  return 'rgb(214,40,57)';
+}
+const fmtV = v => v == null ? 'no reference' : (Math.abs(v) < 1 ? v.toFixed(2) : v.toFixed(1)) + ' V';
+const fmtA = i => { const a = Math.abs(i); return a < 0.00005 ? '0 A' : a < 0.01 ? (a * 1000).toFixed(1) + ' mA' : a < 1 ? (a * 1000).toFixed(0) + ' mA' : a.toFixed(1) + ' A'; };
+const T = (x, y, cls, s, anchor) => `<text class="${cls}" x="${x}" y="${y}"${anchor && anchor !== 'start' ? ` text-anchor="${anchor}"` : ''}>${s}</text>`;
+const itOpen = (id, label) => `<g class="it" data-id="${id}" tabindex="0" role="button" aria-label="${esc(label)}">`;
+
+function drawWire(w){
+  const L = wireLive(w), mode = S.color, trace = w.kind === 'trace';
+  let s = itOpen(w.id, trace ? 'Internal circuit' : `Wire ${w.size} ${w.color}, circuit ${w.ckt}`);
+  s += `<path class="hov" d="${P(w.pts)}"/>`;
+  const segs = L.cut ? polySplit(w.pts).slice(0, 2) : [w.pts];
+  const vs = L.cut ? [L.va, L.vb] : [L.va != null && L.vb != null ? (L.va + L.vb) / 2 : (L.va ?? L.vb)];
+  segs.forEach((pts, k) => {
+    const d = P(pts);
+    if (mode === 'volt'){
+      const v = L.cut ? vs[k] : (L.va == null || L.vb == null ? null : vs[0]);
+      if (v == null) s += `<path class="wcol wfloat" d="${d}" stroke="#A0A7AF" stroke-width="${trace ? 2 : 2.6}"/>`;
+      else { if (!trace) s += `<path class="wedge" d="${d}" stroke-width="4.6"/>`; s += `<path class="wcol" d="${d}" stroke="${vcol(v)}" stroke-width="${trace ? 2.4 : 3}"/>`; }
+    } else if (trace) s += `<path class="wtrace" d="${d}"/>`;
+    else if (mode === 'plain') s += `<path class="wbase" d="${d}"/>`;
+    else {
+      const c = parseColor(w.color);
+      s += `<path class="wedge" d="${d}"/><path class="wcol" d="${d}" stroke="${COLORS[c.main].hex}"/>`;
+      if (c.stripe) s += `<path class="wstripe" d="${d}" stroke="${COLORS[c.stripe].hex}"/>`;
+    }
+  });
+  if (mode === 'volt' && !L.cut && Math.abs(L.i) > 0.02 && !reduceMotion)
+    s += `<path class="flow${L.i < 0 ? ' rev' : ''}" d="${P(w.pts)}"/>`;
+  s += `<path class="hit" d="${P(w.pts)}"/>`;
+  if (!trace && w.lab){
+    const [x, y, an] = w.lab;
+    s += `<text class="t-wl" x="${x}" y="${y}"${an ? ` text-anchor="${an}"` : ''}>${w.size} ${w.color} <tspan class="ck">${w.ckt}</tspan></text>`;
+  }
+  return s + '</g>';
+}
+
+function drawFuse(c){
+  const {x, y1, y2} = c, t = y1 + 18, b = y1 + 54, blown = S.open.has(c.id);
+  let s = itOpen(c.id, `Fuse ${c.ref} ${c.amps} amp`);
+  s += `<rect class="hitbox" x="${x - 12}" y="${y1 + 4}" width="64" height="${b - y1 + 6}"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${t}M${x},${b}V${y2}"/><rect class="s-body" x="${x - 6}" y="${t}" width="12" height="36" rx="2"/>`;
+  s += blown ? `<path class="s-ln" stroke="#D62839" d="M${x},${t}C${x + 6},${t + 6} ${x + 4},${t + 12} ${x + 2},${t + 15}M${x - 2},${b - 15}C${x - 4},${b - 12} ${x - 6},${b - 6} ${x},${b}"/>`
+             : `<path class="s-ln" d="M${x},${t}C${x + 8},${t + 10} ${x - 8},${b - 10} ${x},${b}"/>`;
+  s += T(x + 12, t + 12, 't-ref', c.ref) + T(x + 12, t + 25, 't-nm', c.amps + 'A') + T(x + 12, t + 37, 't-sub', c.name);
+  return s + '</g>';
+}
+
+function drawRelay(c){
+  const {x, y, w, h, cx, sx} = c, yb = y + h, ym = y + h / 2, closed = !!S.relay[c.id];
+  const ci = Math.abs(RES.I[c.id + '.coil'] || 0), hot = ci > 0.03;
+  let s = itOpen(c.id, `Relay ${c.ref} ${c.name}`);
+  s += `<rect class="s-box" style="stroke-dasharray:4 3" x="${x}" y="${y}" width="${w}" height="${h}" rx="5"/>`;
+  s += T(x + w + 10, ym - 3, 't-ref', c.ref) + T(x + w + 10, ym + 11, 't-nm', c.name);
+  /* coil */
+  s += itOpen(c.id + '.coil', `${c.ref} coil, control side`);
+  s += `<rect class="hitbox" x="${cx - 24}" y="${y + 2}" width="44" height="${h - 4}"/>`;
+  s += `<path class="s-ln" d="M${cx},${y}V${y + 18}M${cx},${yb - 18}V${yb}"/>`;
+  s += `<rect class="s-body" x="${cx - 10}" y="${y + 18}" width="20" height="${h - 36}" ${hot ? 'style="fill:#FFE39A"' : ''}/>`;
+  s += `<path class="s-ln" d="M${cx - 10},${yb - 18}L${cx + 10},${y + 18}"/>`;
+  s += T(cx - 14, y + 14, 't-pin', '86', 'end') + T(cx - 14, yb - 6, 't-pin', '85', 'end');
+  s += '</g>';
+  /* contacts */
+  const px = sx, py = yb - 20, ex = closed ? sx : sx - 16, ey = closed ? y + 22 : y + 26;
+  const k = (py - ym) / (py - ey), bx = px + (ex - px) * k;
+  s += `<path class="s-thin" stroke-dasharray="3 3" d="M${cx + 10},${ym}H${bx - 2}"/>`;
+  s += itOpen(c.id + '.sw', `${c.ref} contacts, load side`);
+  s += `<rect class="hitbox" x="${sx - 26}" y="${y + 2}" width="46" height="${h - 4}"/>`;
+  s += `<path class="s-ln" d="M${sx},${y}V${y + 20}M${sx},${yb}V${py}M${px},${py}L${ex},${ey}"/>`;
+  s += `<circle class="s-fill" cx="${sx}" cy="${y + 20}" r="2.4"/><circle class="s-fill" cx="${px}" cy="${py}" r="2.4"/>`;
+  s += T(sx + 8, y + 14, 't-pin', '30') + T(sx + 8, yb - 6, 't-pin', '87');
+  s += '</g>';
+  return s + '</g>';
+}
+
+function drawSwitch(c){
+  const {x, y1, y2} = c, ym = (y1 + y2) / 2, ct = ym - 12, cb = ym + 12, on = swOn(c), bx = on ? x : x + 10;
+  let s = itOpen(c.id, c.name);
+  s += `<rect class="hitbox" x="${x - 14}" y="${y1}" width="48" height="${y2 - y1}"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${ct}M${x},${y2}V${cb}"/>`;
+  s += `<circle class="s-body" cx="${x}" cy="${ct}" r="2.6"/><circle class="s-body" cx="${x}" cy="${cb}" r="2.6"/>`;
+  s += `<path class="s-ln" d="M${bx},${ct - 4}V${cb + 4}M${bx},${ym}H${x + 26}M${x + 26},${ym - 6}V${ym + 6}"/>`;
+  if (c.side === 'right') s += T(x + 34, ym - 2, 't-nm', c.name) + T(x + 34, ym + 11, 't-sub', c.sub);
+  else s += T(x - 14, ym - 2, 't-nm', c.name, 'end') + T(x - 14, ym + 11, 't-sub', c.sub, 'end');
+  return s + '</g>';
+}
+
+function drawHorn(c){
+  const {x, y1, y2} = c, ym = (y1 + y2) / 2, on = Math.abs(RES.I[c.id] || 0) > 1;
+  let s = itOpen(c.id, c.name);
+  s += `<rect class="hitbox" x="${x - 12}" y="${ym - 22}" width="${on ? 64 : 44}" height="44"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${ym - 14}M${x},${y2}V${ym + 14}"/>`;
+  s += `<rect class="s-body" x="${x - 8}" y="${ym - 14}" width="16" height="28" rx="2"/>`;
+  s += `<path class="s-body" stroke-linejoin="round" d="M${x + 8},${ym - 7}L${x + 26},${ym - 17}V${ym + 17}L${x + 8},${ym + 7}Z"/>`;
+  if (on) s += `<path class="wave" d="M${x + 32},${ym - 9}Q${x + 38},${ym} ${x + 32},${ym + 9}M${x + 38},${ym - 14}Q${x + 46},${ym} ${x + 38},${ym + 14}"/>`;
+  if (c.side === 'left') s += T(x - 14, ym - 2, 't-nm', c.name, 'end') + T(x - 14, ym + 11, 't-sub', c.sub, 'end');
+  else s += T(x + 50, ym - 2, 't-nm', c.name) + T(x + 50, ym + 11, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawMotor(c){
+  const {x, y1, y2} = c, ym = (y1 + y2) / 2, on = Math.abs(RES.I[c.id] || 0) > 2;
+  let s = itOpen(c.id, c.name);
+  s += `<rect class="hitbox" x="${x - 30}" y="${ym - 30}" width="60" height="60"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${ym - 24}M${x},${y2}V${ym + 24}"/>`;
+  s += `<circle class="s-body" cx="${x}" cy="${ym}" r="24"/>`;
+  s += `<text x="${x}" y="${ym + 6}" text-anchor="middle" style="font-weight:700;font-size:17px;fill:#1B2129">M</text>`;
+  if (on) s += `<g class="spin"><path d="M${x + 30},${ym}A30,30 0 0 1 ${x},${ym + 30}" fill="none" stroke="#1F965A" stroke-width="2.2" stroke-linecap="round"/><path d="M${x + 3},${ym + 25}L${x - 3},${ym + 30}L${x + 3},${ym + 35}" fill="none" stroke="#1F965A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${x}" cy="${ym}" r="31" fill="none" stroke="none"/></g>`;
+  s += T(x + 36, ym - 2, 't-nm', c.name) + T(x + 36, ym + 11, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawSensor(c){
+  const {x, y1, y2} = c, ym = (y1 + y2) / 2;
+  let s = itOpen(c.id, c.name);
+  s += `<rect class="hitbox" x="${x - 18}" y="${ym - 24}" width="40" height="48"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${ym - 20}M${x},${y2}V${ym + 20}"/>`;
+  s += `<rect class="s-body" x="${x - 9}" y="${ym - 20}" width="18" height="40"/>`;
+  s += `<path class="s-ln" d="M${x - 15},${ym + 16}L${x + 13},${ym - 14}M${x + 13},${ym - 14}l-7,1.5M${x + 13},${ym - 14}l-1.5,7"/>`;
+  s += T(x + 11, ym + 19, 't-sub', 't°');
+  s += T(x + 22, ym - 2, 't-nm', c.name) + T(x + 22, ym + 11, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawClockspring(c){
+  const {x, y, w, h, px} = c, ym = y + h / 2, sx = x + w - 30;
+  let s = itOpen(c.id, c.name);
+  s += `<rect class="s-body" x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/>`;
+  s += `<path class="s-ln" d="M${px},${y}V${y + h}"/>`;
+  s += `<path class="s-thin" d="M${sx},${ym}m-2,0a2,2 0 1,1 4,0a4,4 0 1,1 -8,0a6,6 0 1,1 12,0a8,8 0 1,1 -16,0a10,10 0 1,1 20,0"/>`;
+  s += T(x - 10, ym - 2, 't-nm', c.name, 'end') + T(x - 10, ym + 11, 't-sub', c.sub, 'end');
+  return s + '</g>';
+}
+
+function drawGround(c){
+  const {x, y} = c;
+  let s = itOpen(c.id, 'Ground ' + c.id);
+  s += `<rect class="hitbox" x="${x - 16}" y="${y - 4}" width="32" height="38"/>`;
+  s += `<path class="s-ln" d="M${x - 12},${y}H${x + 12}M${x - 8},${y + 5}H${x + 8}M${x - 4},${y + 10}H${x + 4}"/>`;
+  s += T(x, y + 27, 't-ref', c.id, 'middle');
+  return s + '</g>';
+}
+
+function drawSplice(c){
+  let s = itOpen(c.id, 'Splice ' + c.id);
+  s += `<circle class="hitbox" cx="${c.x}" cy="${c.y}" r="11"/><circle class="s-fill" cx="${c.x}" cy="${c.y}" r="5"/>`;
+  s += T(c.lx, c.ly, 't-ref', c.id);
+  return s + '</g>';
+}
+
+function drawBus(b){
+  let s = itOpen(b.id, b.label + ' bus');
+  s += `<rect class="hitbox" x="${b.x1 - 4}" y="${b.ly - 12}" width="${b.x2 - b.x1 + 8}" height="${b.y - b.ly + 18}"/>`;
+  s += `<path d="M${b.x1},${b.y}H${b.x2}" stroke="#1B2129" stroke-width="4.5" stroke-linecap="round"/>`;
+  if (S.color === 'volt'){
+    const v = nodeV(b.node);
+    s += `<path d="M${b.x1},${b.y}H${b.x2}" stroke="${vcol(v)}" stroke-width="2.4" stroke-linecap="round"${v == null ? ' stroke-dasharray="5 5"' : ''}/>`;
+  }
+  s += T(b.lx, b.ly, 't-bus', b.label);
+  if (b.src === 'run') s += T(b.x2, b.ly, 't-sub', 'KEY ' + S.key.toUpperCase(), 'end');
+  return s + '</g>';
+}
+
+function drawPCM(c){
+  const p = RES.pcm || {};
+  let s = itOpen(c.id, 'PCM, powertrain control module');
+  s += `<rect class="s-mod" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6"/>`;
+  s += T(110, 486, 't-ref', 'PCM') + T(110, 499, 't-sub', 'POWERTRAIN') + T(110, 510, 't-sub', 'CONTROL') + T(110, 521, 't-sub', 'MODULE');
+  s += `<path class="s-int" d="M180,530H450M200,530V560M280,530V560"/>` + T(300, 545, 't-sub', 'internal ground');
+  /* logic */
+  s += `<rect class="s-int" style="fill:rgba(255,255,255,.6)" x="232" y="466" width="110" height="46" rx="3"/>`;
+  s += T(287, 480, 't-nm', 'CONTROL LOGIC', 'middle');
+  const l1 = !p.powered ? 'NO POWER' : p.fault ? 'ECT FAULT' : p.ectF == null ? '—' : 'ECT ' + Math.round(p.ectF) + ' °F';
+  const l2 = !p.powered ? 'FAN OFF' : p.drv ? (p.fault ? 'FAN ON (failsafe)' : 'FAN ON') : 'FAN OFF';
+  s += T(287, 494, 't-live', l1, 'middle') + T(287, 506, 't-live', l2, 'middle');
+  s += `<path class="s-int" d="M342,488H352V463"/>`;
+  /* power supply */
+  s += itOpen('PCM.psu', 'PCM power supply');
+  s += `<rect class="hitbox" x="126" y="404" width="110" height="56"/>`;
+  s += `<path class="s-int" d="M160,400V420M180,456V530"/><rect class="s-int" style="fill:rgba(255,255,255,.6)" x="130" y="420" width="100" height="36" rx="3"/>`;
+  s += T(180, 435, 't-sub', 'POWER SUPPLY', 'middle') + T(180, 448, 't-sub', 'IGNITION INPUT', 'middle');
+  s += '</g>';
+  /* driver */
+  s += itOpen('PCM.drv', 'Fan relay low-side driver');
+  s += `<rect class="hitbox" x="348" y="440" width="70" height="46"/>`;
+  s += `<path class="s-int" d="M380,400V446M380,480V530"/>`;
+  s += `<path class="s-ln" d="M366,450V476M352,463H366M366,456L380,446M366,470L380,480" ${p.drv ? 'stroke="#1F965A"' : ''}/>`;
+  s += `<path class="s-fill" d="M380,480l-7,-1.5l3.5,-4.5z"/>`;
+  s += T(388, 468, 't-sub', 'DRIVER') + T(388, 479, 't-sub', p.drv ? 'ON' : 'OFF');
+  s += '</g>';
+  /* pull-up */
+  s += itOpen('PCM.pu', '5 volt reference and pull-up resistor');
+  s += `<rect class="hitbox" x="416" y="420" width="106" height="42"/>`;
+  s += `<circle class="s-body" cx="428" cy="440" r="3"/>` + T(428, 430, 't-sub', '5 V REF', 'middle');
+  s += `<path class="s-ln" d="M431,440H438l4,-6l8,12l8,-12l8,12l8,-12l8,12l4,-6H520"/>` + T(462, 459, 't-sub', '2.49 kΩ', 'middle');
+  s += '</g>';
+  /* low reference */
+  s += itOpen('PCM.lr', 'Low reference');
+  s += `<rect class="hitbox" x="444" y="486" width="76" height="48"/>`;
+  s += `<path class="s-int" d="M520,500H450V530"/>` + T(486, 494, 't-sub', 'LOW REF', 'middle');
+  s += '</g>';
+  return s + '</g>';
+}
+
+function drawConn(c){
+  let s = '';
+  const unp = S.unplug.has(c.id);
+  c.pins.forEach(p => {
+    const id = c.id + '.' + p.p, [dx, dy, an] = p.t || [7, 14, 'start'];
+    s += itOpen(id, `${c.id} pin ${p.p}`);
+    s += `<circle class="hitbox" cx="${p.x}" cy="${p.y}" r="9"/>`;
+    if (c.kind === 'inline') s += `<path class="s-ln" d="M${p.x - 6},${p.y - 7}L${p.x},${p.y - 1}L${p.x + 6},${p.y - 7}M${p.x - 6},${p.y + 1}L${p.x},${p.y + 7}L${p.x + 6},${p.y + 1}"/>`;
+    else s += `<circle class="s-body" cx="${p.x}" cy="${p.y}" r="3.6"/>`;
+    s += T(p.x + dx, p.y + dy, 't-pin', p.p, an);
+    if (unp) s += `<circle cx="${p.x}" cy="${p.y}" r="9" fill="none" stroke="#D62839" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+    s += '</g>';
+  });
+  const [lx, ly, an] = c.lab;
+  s += itOpen(c.id, `Connector ${c.id}`) + T(lx, ly, 't-ref', c.id + (unp ? ' ✕' : ''), an) + '</g>';
+  return s;
+}
+
+
+function drawBattery(c){
+  const {x, y1, y2} = c, ym = (y1 + y2) / 2;
+  let s = itOpen(c.id, 'Battery');
+  s += `<rect class="hitbox" x="${x - 22}" y="${y1 - 6}" width="112" height="${y2 - y1 + 12}"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${ym - 16}M${x},${ym + 14}V${y2}"/>`;
+  s += `<path d="M${x - 16},${ym - 16}H${x + 16}M${x - 16},${ym + 2}H${x + 16}" stroke="#1B2129" stroke-width="2"/>`;
+  s += `<path d="M${x - 8},${ym - 8}H${x + 8}M${x - 8},${ym + 10}H${x + 8}" stroke="#1B2129" stroke-width="4.5"/>`;
+  s += `<circle class="s-body" cx="${x}" cy="${y1}" r="4.5"/><circle class="s-body" cx="${x}" cy="${y2}" r="4.5"/>`;
+  s += T(x - 12, y1 + 18, 't-ref', '+', 'end') + T(x - 12, y2 - 6, 't-ref', '−', 'end');
+  s += T(x + 24, ym - 2, 't-nm', c.name) + T(x + 24, ym + 11, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawStarter(c){
+  const x0 = c.x, y0 = c.y, closed = !!S.relay[c.id], crank = Math.abs(RES.I[c.id + '.mot'] || 0) > 50;
+  const solOn = Math.abs(RES.I[c.id + '.sol'] || 0) > 3;
+  let s = itOpen(c.id, 'Starter');
+  s += `<rect class="s-mod" x="${x0}" y="${y0}" width="${c.w}" height="${c.h}" rx="8"/>`;
+  s += T(x0 + c.w - 6, y0 + 18, 't-nm', c.name, 'end') + T(x0 + c.w - 6, y0 + 30, 't-sub', c.sub, 'end');
+  s += `<path class="s-ln" d="M590,585H610M590,585H${x0}M${x0},585H530V590"/>`;
+  /* B stud */
+  s += `<path class="s-ln" d="M700,540H720"/><circle class="s-body" cx="720" cy="540" r="4.5"/>` + T(708, 532, 't-pin', 'B');
+  /* solenoid */
+  s += itOpen(c.id + '.sol', 'Starter solenoid');
+  s += `<rect class="hitbox" x="572" y="484" width="36" height="104"/>`;
+  s += `<circle class="s-body" cx="590" cy="480" r="4"/>` + T(598, 494, 't-pin', 'S');
+  s += `<path class="s-ln" d="M590,484V494M590,528V585"/><rect class="s-body" x="582" y="494" width="16" height="34" ${solOn ? 'style="fill:#FFE39A"' : ''}/><path class="s-ln" d="M582,528L598,494"/>`;
+  s += '</g>';
+  const bx = closed ? 683 : 681, by = closed ? 540 : 527;
+  s += `<path class="s-thin" stroke-dasharray="3 3" d="M598,520H${closed ? 670 : 668}V${closed ? 538 : 532}"/>`;
+  /* main contacts */
+  s += itOpen(c.id + '.sw', 'Solenoid main contacts');
+  s += `<rect class="hitbox" x="644" y="522" width="52" height="28"/>`;
+  s += `<path class="s-ln" d="M700,540H684M660,540L${bx},${by}M660,540H648"/><circle class="s-fill" cx="684" cy="540" r="2.4"/><circle class="s-fill" cx="660" cy="540" r="2.4"/>`;
+  s += '</g>';
+  /* motor */
+  s += itOpen(c.id + '.mot', 'Starter motor');
+  s += `<rect class="hitbox" x="614" y="522" width="36" height="36"/>`;
+  s += `<path class="s-ln" d="M620,540H610V585"/><circle class="s-body" cx="634" cy="540" r="14"/>`;
+  s += `<text x="634" y="545" text-anchor="middle" style="font-weight:700;font-size:13px;fill:#1B2129">M</text>`;
+  if (crank) s += `<g class="spin"><path d="M652,540A18,18 0 0 1 634,558" fill="none" stroke="#1F965A" stroke-width="2" stroke-linecap="round"/><circle cx="634" cy="540" r="19" fill="none" stroke="none"/></g>`;
+  s += '</g>';
+  return s + '</g>';
+}
+
+function drawAlternator(c){
+  const x0 = c.x, y0 = c.y, out = (RES.I[c.id + '.out'] || 0);
+  let s = itOpen(c.id, 'Generator (alternator)');
+  s += `<rect class="s-mod" x="${x0}" y="${y0}" width="${c.w}" height="${c.h}" rx="8"/>`;
+  s += `<circle class="s-body" cx="780" cy="540" r="4.5"/>` + T(788, 558, 't-pin', 'B+');
+  s += `<path class="s-ln" d="M784,540H792M806,540H820"/><path class="s-fill" d="M792,540L806,532V548Z"/><path class="s-ln" d="M792,532V548"/>`;
+  s += `<circle class="s-body" cx="836" cy="540" r="15" ${out > 1 ? 'style="stroke:#1F965A"' : ''}/><path class="s-ln" d="M827,540q4.5,-7 9,0t9,0"/>`;
+  s += `<path class="s-int" d="M860,500V508M860,528V540H851M836,555V575H930"/><rect class="s-int" style="fill:rgba(255,255,255,.6)" x="842" y="508" width="40" height="20" rx="3"/>` + T(862, 522, 't-sub', 'VR', 'middle');
+  s += `<path class="s-ln" d="M930,575H960V580"/>`;
+  s += T(890, 556, 't-live', out > 1 ? 'CHARGING' : 'OFF', 'middle');
+  s += T(x0, y0 + c.h + 16, 't-nm', c.name) + T(x0, y0 + c.h + 29, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawIgnsw(c){
+  const {x, y, w, h} = c, bx = x + 60, py = y + 26, cy = y + 54, sx = x + 20, rx = x + 100;
+  const tx = S.key === 'start' ? sx : S.key === 'run' ? rx : bx;
+  let s = itOpen(c.id, 'Ignition switch');
+  s += `<rect class="s-mod" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/>`;
+  s += `<circle class="s-body" cx="${bx}" cy="${y}" r="4"/><path class="s-ln" d="M${bx},${y + 4}V${py}"/><circle class="s-fill" cx="${bx}" cy="${py}" r="2.6"/>`;
+  s += T(bx + 6, y + 14, 't-pin', 'BATT');
+  [sx, bx, rx].forEach(cx => s += `<circle class="s-body" cx="${cx}" cy="${cy}" r="2.6"/>`);
+  s += `<path class="s-ln" d="M${sx},${cy + 3}V${y + h}M${rx},${cy + 3}V${y + h}"/>`;
+  s += `<path class="s-ln" d="M${bx},${py}L${tx + (tx < bx ? 3 : tx > bx ? -3 : 0)},${cy - 3}" stroke-width="2.2"/>`;
+  if (S.key === 'start') s += `<path class="s-thin" stroke-dasharray="3 3" d="M${sx},${cy}H${rx}"/>`;
+  s += T(sx + 6, y + h - 9, 't-sub', 'ST') + T(bx, y + h - 9, 't-sub', 'OFF', 'middle') + T(rx - 6, y + h - 9, 't-sub', 'RUN', 'end');
+  s += T(x - 10, y + 30, 't-nm', 'IGNITION', 'end') + T(x - 10, y + 43, 't-nm', 'SWITCH', 'end') + T(x - 10, y + 56, 't-sub', c.sub, 'end');
+  return s + '</g>';
+}
+
+function drawLamp(c){
+  const {x, y1, y2} = c, ym = (y1 + y2) / 2, nom = BATT / c.R, lit = Math.abs(RES.I[c.id] || 0) > nom * 0.3;
+  let s = itOpen(c.id, c.name);
+  s += `<rect class="hitbox" x="${x - 18}" y="${ym - 18}" width="36" height="36"/>`;
+  s += `<path class="s-ln" d="M${x},${y1}V${ym - 13}M${x},${y2}V${ym + 13}"/>`;
+  if (lit) s += `<circle cx="${x}" cy="${ym}" r="19" fill="rgba(255,205,60,.35)"/>`;
+  s += `<circle class="s-body" cx="${x}" cy="${ym}" r="13" ${lit ? 'style="fill:#FFE58A"' : ''}/>`;
+  s += `<path class="s-ln" d="M${x},${ym - 13}V${ym - 6}M${x},${ym + 13}V${ym + 6}M${x},${ym - 6}c-7,0 -7,12 0,12M${x},${ym - 6}c7,0 7,12 0,12"/>`;
+  if (c.side === 'left') s += T(x - 22, ym - 2, 't-nm', c.name, 'end') + T(x - 22, ym + 11, 't-sub', c.sub, 'end');
+  else s += T(x + 22, ym - 2, 't-nm', c.name) + T(x + 22, ym + 11, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawHsw(c){
+  const {x, y, w, h} = c, pv = [x + 25, y + 92], P1 = [x + 66, y + 35], P2 = [x + 66, y + 75], OF = [x + 12, y + 48];
+  const tg = S.lsw === 'head' ? P2 : S.lsw === 'park' ? P1 : OF;
+  let s = itOpen(c.id, 'Headlamp switch');
+  s += `<rect class="s-mod" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/>`;
+  s += `<path class="s-ln" d="M${P1[0]},${P1[1]}H${x + w}M${P2[0]},${P2[1]}H${x + w}M${pv[0]},${pv[1]}V${y + 102}H${x + 40}V${y + h}"/>`;
+  [P1, P2, OF].forEach(p => s += `<circle class="s-body" cx="${p[0]}" cy="${p[1]}" r="2.6"/>`);
+  s += `<circle class="s-fill" cx="${pv[0]}" cy="${pv[1]}" r="2.6"/><path class="s-ln" stroke-width="2.2" d="M${pv[0]},${pv[1]}L${tg[0] - 2},${tg[1] + 2}"/>`;
+  if (S.lsw === 'head') s += `<path class="s-thin" stroke-dasharray="3 3" d="M${P2[0]},${P2[1]}V${P1[1]}"/>`;
+  s += T(P1[0] - 6, P1[1] - 6, 't-sub', 'PARK', 'end') + T(P2[0] - 6, P2[1] - 6, 't-sub', 'HEAD', 'end') + T(OF[0] - 4, OF[1] - 7, 't-sub', 'OFF');
+  s += T(x, y - 20, 't-nm', c.name) + T(x, y - 8, 't-sub', c.sub);
+  return s + '</g>';
+}
+
+function drawBCM(c){
+  const b = RES.bcm || {};
+  let s = itOpen(c.id, 'BCM, body control module');
+  s += `<rect class="s-mod" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6"/>`;
+  s += T(335, 284, 't-ref', 'BCM') + T(335, 296, 't-sub', 'BODY CONTROL MODULE');
+  s += `<path class="s-int" d="M320,262H605"/>`;
+  /* power supply */
+  s += itOpen('BCM.psu', 'BCM power supply');
+  s += `<rect class="hitbox" x="222" y="242" width="102" height="46"/>`;
+  s += `<path class="s-int" d="M260,240V256M290,284V375H255V390"/><rect class="s-int" style="fill:rgba(255,255,255,.6)" x="225" y="256" width="95" height="28" rx="3"/>`;
+  s += T(272, 274, 't-sub', 'POWER SUPPLY', 'middle');
+  s += '</g>';
+  /* inputs */
+  s += itOpen('BCM.in', 'BCM switch inputs');
+  s += `<rect class="hitbox" x="204" y="292" width="66" height="64"/>`;
+  [305, 345].forEach(y => {
+    s += `<path class="s-ln" d="M200,${y}H214l3,-5l6,10l6,-10l6,10l6,-10l3,5H250"/><circle class="s-body" cx="253" cy="${y}" r="3"/>` + T(253, y - 6, 't-sub', '5 V', 'middle');
+  });
+  s += `<path class="s-int" d="M262,325H312"/>`;
+  s += '</g>';
+  /* logic */
+  s += `<rect class="s-int" style="fill:rgba(255,255,255,.6)" x="312" y="304" width="128" height="46" rx="3"/>` + T(376, 318, 't-nm', 'LIGHTING LOGIC', 'middle');
+  const l1 = !b.powered ? 'NO POWER' : 'SWITCH: ' + (b.head ? 'HEAD' : b.park ? 'PARK' : 'OFF');
+  const l2 = !b.powered ? '—' : 'PARK ' + (b.park ? 'ON' : 'OFF') + ' · LOW ' + (b.head ? 'ON' : 'OFF');
+  s += T(376, 331, 't-live', l1, 'middle') + T(376, 343, 't-live', l2, 'middle');
+  s += `<path class="s-int" d="M440,334H579"/>`;
+  /* high-side drivers */
+  [['BCM.d10', 480, 'LO LH', b.head], ['BCM.d12', 545, 'PARK', b.park], ['BCM.d11', 605, 'LO RH', b.head]].forEach(([id, x, lab, on]) => {
+    s += itOpen(id, 'High-side driver, ' + lab);
+    s += `<rect class="hitbox" x="${x - 30}" y="300" width="44" height="56"/>`;
+    s += `<path class="s-int" d="M${x},262V318M${x},350V390"/>`;
+    s += `<path class="s-ln" d="M${x - 12},322V346M${x - 26},334H${x - 12}M${x - 12},328L${x},318M${x - 12},340L${x},350" ${on ? 'stroke="#1F965A"' : ''}/>`;
+    s += `<path class="s-fill" d="M${x - 12},328l5,-6.5l2,4.5z"/>`;
+    s += T(x - 4, 376, 't-sub', lab, 'end');
+    s += '</g>';
+  });
+  return s + '</g>';
+}
+
+const DRAW = {battery:drawBattery, starter:drawStarter, alternator:drawAlternator, ignsw:drawIgnsw, lamp:drawLamp, hsw:drawHsw,
+  fuse:drawFuse, relay:drawRelay, switch:drawSwitch, horn:drawHorn, motor:drawMotor, sensor:drawSensor,
+  clockspring:drawClockspring, ground:drawGround, splice:drawSplice, module:c => c.kind === 'bcm' ? drawBCM(c) : drawPCM(c)};
+
+function breakMarks(){
+  let s = '';
+  const mark = (x, y) => `<g class="brk"><circle cx="${x}" cy="${y}" r="7"/><line x1="${x - 3.5}" y1="${y - 3.5}" x2="${x + 3.5}" y2="${y + 3.5}"/><line x1="${x + 3.5}" y1="${y - 3.5}" x2="${x - 3.5}" y2="${y + 3.5}"/></g>`;
+  S.open.forEach(id => {
+    const it = ITEMS[id]; if (!it) return;
+    if (it.kind === 'wire' || it.kind === 'trace') { const m = polySplit(it.d.pts)[2]; s += mark(m[0], m[1]); }
+    else if (it.kind === 'comp' && it.d.type === 'ground') s += mark(it.d.x + 18, it.d.y - 8);
+    else if (it.kind === 'pin') s += mark(it.d.pin.x - 13, it.d.pin.y);
+    else if (it.kind === 'comp' && ['horn','motor','sensor','lamp'].includes(it.d.type)) s += mark(it.d.x - 20, (it.d.y1 + it.d.y2) / 2 - 22);
+    else if (it.kind === 'sub' && it.d.type === 'coil') { const c = it.d.parent; s += mark(c.cx + 18, c.y + c.h / 2); }
+  });
+  return s;
+}
+
+function render(){
+  simulate();
+  const D = DG, svg = $('#dg');
+  let s = `<defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20,0H0V20" fill="none" stroke="#E9E5DA" stroke-width="1"/></pattern></defs>`;
+  s += `<rect x="-2000" y="-2000" width="5000" height="5000" fill="#F6F4EE"/><rect x="0" y="0" width="1000" height="680" fill="url(#grid)"/>`;
+  s += `<g id="lyHalo"></g>`;
+  D.boxes.forEach(b => { s += `<rect class="s-box" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="8"/>` + T(b.lx, b.ly, 't-box', b.label); });
+  s += `<rect x="690" y="640" width="295" height="32" fill="rgba(255,255,255,.6)" stroke="#1B2129" stroke-width="1.2"/>` +
+       T(700, 655, 't-tb', D.title) + T(700, 667, 't-tbs', 'STECH teaching diagram · generic, not from a specific vehicle');
+  D.buses.forEach(b => s += drawBus(b));
+  D.wires.forEach(w => s += drawWire(w));
+  D.comps.forEach(c => s += DRAW[c.type](c));
+  D.conns.forEach(c => s += drawConn(c));
+  (D.dots || []).forEach(([x, y]) => s += `<circle class="s-fill" cx="${x}" cy="${y}" r="3.6"/>`);
+  s += `<g id="lyMarks">${breakMarks()}</g><g id="lyBadge"></g><g id="lyFx"></g>`;
+  svg.innerHTML = s;
+  applyView(); syncColorBtns();
+  BB = {};
+  svg.querySelectorAll('.it').forEach(g => { try { const b = g.getBBox(); BB[g.dataset.id] = {x:b.x, y:b.y, w:b.width, h:b.height}; } catch (e) {} });
+  renderHalos();
+  renderControls();
+}
+
+function itemShape(id, cls, clsW, pad = 5){
+  const it = ITEMS[id]; if (!it) return '';
+  if (it.kind === 'wire' || it.kind === 'trace') return `<path class="${clsW}" d="${P(it.d.pts)}"/>`;
+  if (it.kind === 'pin') return `<circle class="${cls}" cx="${it.d.pin.x}" cy="${it.d.pin.y}" r="11"/>`;
+  const b = BB[id]; if (!b || !b.w) return '';
+  return `<rect class="${cls}" x="${b.x - pad}" y="${b.y - pad}" width="${b.w + pad * 2}" height="${b.h + pad * 2}" rx="7"/>`;
+}
+function itemCenter(id){
+  const it = ITEMS[id]; if (!it) return [0, 0];
+  if (it.kind === 'wire' || it.kind === 'trace') return polySplit(it.d.pts)[2];
+  if (it.kind === 'pin') return [it.d.pin.x, it.d.pin.y];
+  const b = BB[id]; return b ? [b.x + b.w / 2, b.y + b.h / 2] : [0, 0];
+}
+function renderHalos(){
+  const ly = $('#lyHalo'), lb = $('#lyBadge'); if (!ly) return;
+  let s = '', bd = '';
+  if (S.sel && ITEMS[S.sel]){
+    const it = ITEMS[S.sel];
+    if (it.kind === 'wire' || it.kind === 'trace'){
+      const net = NET[S.sel];
+      DG.wires.forEach(w => { if (w.id !== S.sel && NET[w.id] === net) s += `<path class="halo-net" d="${P(w.pts)}"/>`; });
+    }
+    s += itemShape(S.sel, 'halo-box', 'halo-sel');
+  }
+  S.sus.forEach(id => s += itemShape(id, 'halo-sus', 'halo-susw'));
+  S.picks.forEach((id, k) => {
+    s += itemShape(id, 'halo-goodb', 'halo-good');
+    const [x, y] = itemCenter(id);
+    bd += `<g class="badge"><circle cx="${x + 12}" cy="${y - 12}" r="9"/><text x="${x + 12}" y="${y - 12}">${k + 1}</text></g>`;
+  });
+  S.spot.forEach(id => s += itemShape(id, 'halo-spot', 'halo-spotw', 7));
+  ly.innerHTML = s; lb.innerHTML = bd;
+}
+function flash(id, good){
+  const fx = $('#lyFx'); if (!fx) return;
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.innerHTML = itemShape(id, good ? 'halo-goodb' : 'halo-badb', good ? 'halo-good' : 'halo-bad');
+  fx.appendChild(g); setTimeout(() => g.remove(), 750);
+}
+
+/* ================= zoom & pan ================= */
+function applyView(){ $('#dg').setAttribute('viewBox', `${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`); }
+function zoomAt(f, cx, cy){
+  const nw = Math.max(250, Math.min(1000, VIEW.w / f)), k = nw / VIEW.w;
+  if (cx == null) { cx = VIEW.x + VIEW.w / 2; cy = VIEW.y + VIEW.h / 2; }
+  VIEW = {x: cx - (cx - VIEW.x) * k, y: cy - (cy - VIEW.y) * k, w: nw, h: nw * 0.68};
+  clampView(); applyView();
+}
+function clampView(){
+  if (VIEW.w >= 1000) { VIEW = {x:0, y:0, w:1000, h:680}; return; }
+  VIEW.x = Math.max(-40, Math.min(1040 - VIEW.w, VIEW.x));
+  VIEW.y = Math.max(-40, Math.min(720 - VIEW.h, VIEW.y));
+}
+function svgPt(e){
+  const svg = $('#dg'), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+/* ================= inspector ================= */
+const Icur = id => RES.I[id] || 0;
+const liveOn = () => S.color === 'volt';
+const liveHint = () => `<div class="live"><span class="f">Switch Color to <b>Voltage</b> to see live readings here</span></div>`;
+const span = (s, z) => `<span${z ? ' class="z"' : ''}>${s}</span>`;
+const vSpan = (lbl, v) => span(lbl + ' ' + fmtV(v), v == null || Math.abs(v) < 0.05);
+const rowsHtml = rows => '<dl class="rows">' + rows.filter(Boolean).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('') + '</dl>';
+const selLink = (id, label) => `<button type="button" class="btn small" data-sel="${id}">${label}</button>`;
+const swatch = color => { const c = parseColor(color); return `<i class="sw" style="background:${c.stripe ? `linear-gradient(90deg,${COLORS[c.main].hex} 0 55%,${COLORS[c.stripe].hex} 55% 100%)` : COLORS[c.main].hex}"></i>`; };
+function actBtn(act, on, offLabel, onLabel){
+  if (S.mode !== 'explore' && !(S.mode === 'guided' && curStep()?.goal?.allowBreak)) return '';
+  return `<button type="button" class="btn small danger${on ? ' lit' : ''}" data-act="${act}">${on ? onLabel : offLabel}</button>`;
+}
+const connOfNode = n => { const m = /^(C\d+)\.([0-9A-Z]+)([ab])$/.exec(n); return m ? {c:m[1], p:m[2], side:m[3]} : null; };
+
+function inspectWire(w){
+  const trace = w.kind === 'trace', L = wireLive(w);
+  let h = `<div class="ititle"><b>${trace ? 'Internal circuit' : w.size + ' ' + w.color}</b><span>${trace ? 'Inside the fuse block' : 'Wire · circuit ' + w.ckt}</span></div>`;
+  if (trace) h += `<p class="itext">${SYM.trace.what} ${w.desc}</p>`;
+  else {
+    const c = parseColor(w.color);
+    h += `<div class="dec">
+      <div><small>Size</small><b>${w.size} mm²</b><span>≈ ${AWG[w.size]} AWG</span></div>
+      <div><small>Color</small><b>${swatch(w.color)}${w.color}</b><span>${COLORS[c.main].n}${c.stripe ? ' + ' + COLORS[c.stripe].n.toLowerCase() + ' stripe' : ''}</span></div>
+      <div><small>Circuit</small><b>${w.ckt}</b><span>Same number on every segment</span></div></div>`;
+    h += `<p class="itext">${w.fn}.</p>`;
+  }
+  const same = DG.wires.filter(x => x.id !== w.id && x.kind !== 'trace' && NET[x.id] === NET[w.id]);
+  h += rowsHtml([
+    ['From', NODE_DESC[w.a] || w.a], ['To', NODE_DESC[w.b] || w.b],
+    !trace && same.length ? ['Same circuit', same.map(x => `<button type="button" class="btn small" data-sel="${x.id}">${swatch(x.color)}${x.size} ${x.color}</button>`).join(' ')] : null,
+  ]);
+  if (liveOn()){
+    h += '<div class="live">';
+    if (L.cut) h += vSpan('Upstream end', L.va) + vSpan('Downstream end', L.vb) + span('Open: 0 A', true);
+    else h += vSpan('Voltage', L.va == null || L.vb == null ? null : (L.va + L.vb) / 2) + span('Current ' + fmtA(L.i), Math.abs(L.i) < 0.001);
+    h += '</div>';
+  } else h += liveHint();
+  const ends = [w.a, w.b].map(connOfNode).filter(Boolean);
+  const acts = ends.map(e => selLink(e.c + '.' + e.p, `View ${e.c} · pin ${e.p}`)).join('') + actBtn('open:' + w.id, S.open.has(w.id), trace ? 'Open this circuit' : 'Cut this wire', 'Repair the wire');
+  if (acts) h += `<div class="acts">${acts}</div>`;
+  return h;
+}
+
+function cviewSvg(c, selPin, half){
+  const cols = c.cols, rows = c.rows, cell = Math.min(34, 300 / cols), W = cols * cell + 40, H = rows * cell + 44;
+  const used = new Map(c.pins.map(p => [p.p, p]));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${c.id} ${S.flip ? 'wire side' : 'face'} view">`;
+  s += `<rect x="${W / 2 - 20}" y="6" width="40" height="14" rx="3" fill="#26323f" stroke="#3a4a5c"/><text x="${W / 2}" y="16" text-anchor="middle" style="font:700 7.5px var(--f-label);letter-spacing:.14em;fill:#8A98A8">LATCH</text>`;
+  s += `<rect x="16" y="20" width="${cols * cell + 8}" height="${rows * cell + 8}" rx="7" fill="#17202a" stroke="#3a4a5c" stroke-width="1.4"/>`;
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++){
+    const n = r * cols + k, lbl = c.labels ? c.labels[n] : String(n + 1), dc = S.flip ? cols - 1 - k : k;
+    const x = 20 + dc * cell + cell * 0.12, y = 24 + r * cell + cell * 0.12, sz = cell * 0.76, fs = Math.min(11, cell * 0.42);
+    const p = used.get(lbl); let fill = '#0c1117', stroke = '#2b3846', tc = '#4f5c69', extra = '';
+    if (p){
+      const pw = pinWires(c, p.p), wire = (half === 0 ? pw.a : pw.b);
+      if (wire && wire.kind !== 'trace'){
+        const cc = parseColor(wire.color); fill = COLORS[cc.main].hex; stroke = '#c9d3dd';
+        tc = ['WH','YE','LT GN','PK','LT BU','TN','OG','GY'].includes(cc.main) ? '#111' : '#fff';
+        if (cc.stripe) extra = `<rect x="${x}" y="${y + sz * 0.7}" width="${sz}" height="${sz * 0.3}" fill="${COLORS[cc.stripe].hex}" pointer-events="none"/>`;
+      } else { fill = '#4a5562'; stroke = '#c9d3dd'; tc = '#fff'; }
+    }
+    const cur = p && selPin === lbl;
+    s += `<g${p ? ` data-pin="${c.id}.${lbl}" style="cursor:pointer"` : ''}><rect x="${x}" y="${y}" width="${sz}" height="${sz}" rx="${sz * 0.18}" fill="${fill}" stroke="${cur ? '#2F9BE0' : stroke}" stroke-width="${cur ? 3 : 1}"/>${extra}`;
+    s += `<text x="${x + sz / 2}" y="${y + sz / 2 + fs * 0.36}" text-anchor="middle" style="font:700 ${fs}px var(--f-label);fill:${tc}" pointer-events="none">${lbl}</text>`;
+    if (cur) s += `<rect x="${x - 4}" y="${y - 4}" width="${sz + 8}" height="${sz + 8}" rx="${sz * 0.25}" fill="none" stroke="#2F9BE0" stroke-width="1.4" stroke-dasharray="3 2"/>`;
+    s += '</g>';
+  }
+  return s + '</svg>';
+}
+function defaultHalf(c){
+  const p = c.pins[0], pw = pinWires(c, p.p);
+  return pw.a && pw.a.kind !== 'trace' ? 0 : 1;
+}
+function inspectConn(c, pinSel){
+  S.halfOf ??= {};
+  const half = S.halfOf[c.id] ?? defaultHalf(c);
+  const unp = S.unplug.has(c.id);
+  let h = `<div class="ititle"><b>${c.id}${pinSel ? ' · pin ' + pinSel : ''}</b><span>${c.kind === 'inline' ? 'Inline connector' : 'Component connector'}</span></div>`;
+  h += `<p class="itext"><b>${c.name}.</b> ${c.kind === 'inline' ? 'Joins two harnesses.' : 'Plugs a harness into a part.'} The number or letter next to each wire on the diagram is its cavity.</p>`;
+  h += rowsHtml([['Location', c.loc], ['Cavities', `${c.rows * c.cols} (${c.rows} × ${c.cols}); this diagram uses ${c.pins.length}`]]);
+  const bothWires = c.pins.some(p => { const pw = pinWires(c, p.p); return pw.a && pw.b && pw.a.kind !== 'trace' && pw.b.kind !== 'trace'; });
+  h += `<div class="cview"><div class="ch"><b>${S.flip ? 'Wire side' : 'Face view'}</b>
+    <div class="seg mini" role="group" aria-label="View"><button type="button" data-flip="0" aria-pressed="${!S.flip}">Face view</button><button type="button" data-flip="1" aria-pressed="${S.flip}">Wire side</button></div>
+    ${bothWires ? `<div class="seg mini" role="group" aria-label="Half">${c.sides.map((sd, i) => `<button type="button" data-half="${c.id}:${i}" aria-pressed="${half === i}">${sd}</button>`).join('')}</div>` : `<span>${c.sides[half]}</span>`}</div>`;
+  h += cviewSvg(c, pinSel, half);
+  h += `<p class="note">${S.flip ? 'Looking at the <b>back</b> of the connector, where the wires go in (the back-probing side). Left and right are <b>swapped</b> compared with the face view.' : 'Looking <b>into the cavities</b> from the mating side. This is the view most service info prints. Flip to Wire side before you back-probe.'}</p></div>`;
+  h += `<table class="ptab"><thead><tr><th>Pin</th><th>Wire</th><th>Circuit</th><th>Goes to</th></tr></thead><tbody>`;
+  c.pins.forEach(p => {
+    const pw = pinWires(c, p.p), list = [pw.a, pw.b].filter(x => x && x.kind !== 'trace');
+    const far = list.map(w => { const other = (w.a.startsWith(c.id + '.') ? w.b : w.a); return NODE_DESC[other] || other; });
+    h += `<tr data-sel="${c.id}.${p.p}"${pinSel === p.p ? ' class="cur"' : ''}><td><b>${p.p}</b></td><td>${list.map(w => swatch(w.color) + ' ' + w.color).join('<br>')}</td><td>${list[0]?.ckt || '—'}</td><td>${far.join('<br>')}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  if (pinSel && liveOn()){
+    const a = nodeV(c.id + '.' + pinSel + 'a'), b = nodeV(c.id + '.' + pinSel + 'b');
+    h += `<div class="live">${vSpan(c.sides[0], a)}${vSpan(c.sides[1], b)}${span('Current ' + fmtA(Icur(c.id + '.' + pinSel)), Math.abs(Icur(c.id + '.' + pinSel)) < 0.001)}</div>`;
+  } else if (pinSel) h += liveHint();
+  const acts = actBtn('unplug:' + c.id, unp, 'Unplug ' + c.id, 'Plug in ' + c.id) + (pinSel ? actBtn('open:' + c.id + '.' + pinSel, S.open.has(c.id + '.' + pinSel), 'Open this terminal', 'Repair terminal') : '');
+  if (acts) h += `<div class="acts">${acts}</div>`;
+  return h;
+}
+
+function inspectComp(c){
+  const sym = SYM[c.type];
+  const title = c.type === 'ground' || c.type === 'splice' ? c.id : (c.ref ? c.ref + ' · ' + c.name : c.name);
+  let h = `<div class="ititle"><b>${title}</b><span>${sym.n}</span></div>`;
+  h += `<p class="itext">${sym.what}</p><p class="itext">${c.desc}</p>`;
+  const rows = [['Location', c.loc]];
+  if (c.type === 'fuse') rows.push(['Rating', c.amps + ' A'], ['Fed by', NODE_DESC[c.a]]);
+  if (c.type === 'relay') rows.push(['Pins', '<b>86</b> coil feed · <b>85</b> coil ground side<br><b>30</b> power in · <b>87</b> switched output']);
+  if (c.type === 'splice'){ const ws = wiresAt(c.node); rows.push(['Joins', ws.map(w => `<button type="button" class="btn small" data-sel="${w.id}">${swatch(w.color)}${w.size} ${w.color}</button>`).join(' ')]); }
+  if (c.type === 'ground'){ const ws = wiresAt(c.node); rows.push(['Wires', ws.map(w => `<button type="button" class="btn small" data-sel="${w.id}">${swatch(w.color)}${w.size} ${w.color}</button>`).join(' ')]); }
+  h += rowsHtml(rows);
+  if (liveOn()){
+    let l = '';
+    switch (c.type){
+      case 'fuse': l = vSpan('In', nodeV(c.a)) + vSpan('Out', nodeV(c.b)) + span('Current ' + fmtA(Icur(c.id)), !Icur(c.id)); break;
+      case 'relay': l = span('Coil ' + fmtA(Icur(c.id + '.coil')), Math.abs(Icur(c.id + '.coil')) < 0.001) + span('Contacts ' + (S.relay[c.id] ? 'CLOSED' : 'open'), !S.relay[c.id]) + span('Load ' + fmtA(Icur(c.id + '.sw')), !S.relay[c.id]); break;
+      case 'switch': l = span(S.ctl[c.ctl] ? 'Pressed: closed' : 'Released: open', !S.ctl[c.ctl]) + vSpan('Top', nodeV(c.a)) + vSpan('Bottom', nodeV(c.b)); break;
+      case 'horn': case 'motor': case 'lamp': case 'clockspring': {
+        const va = nodeV(c.a), vb = nodeV(c.b), d = va != null && vb != null ? va - vb : null;
+        l = vSpan('Feed', va) + vSpan('Ground side', vb) + span('Across it ' + fmtV(d), d == null || Math.abs(d) < 0.05) + span('Current ' + fmtA(Icur(c.id)), Math.abs(Icur(c.id)) < 0.001); break; }
+      case 'sensor': l = span(Math.round(S.temp) + ' °F') + span(Math.round(ectR(S.temp)) + ' Ω') + vSpan('Signal', nodeV(c.a)) + vSpan('Low ref', nodeV(c.b)); break;
+      case 'ground': case 'splice': l = vSpan('Voltage', nodeV(c.node)) + (c.type === 'ground' ? span('To chassis ' + fmtA(Icur(c.id)), Math.abs(Icur(c.id)) < 0.001) : ''); break;
+      case 'battery': { const v = battV(), i = Icur(c.id); l = span('Battery ' + fmtV(v), v == null) + span(i < -0.5 ? 'Charging ' + fmtA(i) : i > 0.5 ? 'Discharging ' + fmtA(i) : 'Resting', Math.abs(i) < 0.5) + vSpan('+ post', nodeV(c.pos)) + vSpan('− post', nodeV(c.neg)); break; }
+      case 'starter': l = span(Math.abs(Icur('ST.mot')) > 50 ? 'Cranking ' + fmtA(Icur('ST.mot')) : 'Not cranking', Math.abs(Icur('ST.mot')) < 50) + vSpan('B terminal', nodeV(c.nB)) + vSpan('S terminal', nodeV(c.nS)); break;
+      case 'alternator': { const o = Icur(c.id + '.out'); l = span(o > 1 ? 'Charging ' + fmtA(o) : 'Not charging', o < 1) + vSpan('B+ stud', nodeV(c.nB)) + vSpan('Ignition input', nodeV(c.nI)) + span(S.running ? 'Engine running' : 'Engine off', !S.running); break; }
+      case 'ignsw': l = span('Key ' + S.key.toUpperCase()) + vSpan('BATT', nodeV(c.nB)) + vSpan('RUN out', nodeV(c.nR)) + vSpan('START out', nodeV(c.nS)); break;
+      case 'hsw': l = span('Switch ' + S.lsw.toUpperCase()) + vSpan('Pin 1 (PARK)', nodeV('C210.1b')) + vSpan('Pin 2 (HEAD)', nodeV('C210.2b')) + span('Switch current ' + fmtA(Icur('HSW.park') + Icur('HSW.head')), true); break;
+      case 'module': if (c.kind === 'bcm') {
+        const b = RES.bcm; l = span(b.powered ? 'Running' : 'No power', !b.powered);
+        if (b.powered) l += span('Park ' + (b.park ? 'ON' : 'off'), !b.park) + span('Low beams ' + (b.head ? 'ON' : 'off'), !b.head);
+        ['1', '20', '21', '10', '12', '11'].forEach(pn => l += vSpan('Pin ' + pn, nodeV('C140.' + pn + 'b')));
+        break;
+      } else {
+        const p = RES.pcm; l = span(p.powered ? 'Running' : 'No power', !p.powered);
+        if (p.powered) l += span(p.fault ? 'ECT circuit ' + p.fault : 'ECT ' + Math.round(p.ectF) + ' °F') + span('Fan ' + (p.drv ? 'commanded ON' : 'off'), !p.drv);
+        ['20', '47', '48', '52', '1'].forEach(pn => l += vSpan('Pin ' + pn, nodeV('C160.' + pn + 'b')));
+        break; }
+    }
+    h += `<div class="live">${l}</div>`;
+  } else h += liveHint();
+  let acts = '';
+  if (c.type === 'fuse') acts = actBtn('open:' + c.id, S.open.has(c.id), 'Blow this fuse', 'Replace fuse');
+  if (c.type === 'ground') acts = actBtn('open:' + c.id, S.open.has(c.id), 'Loosen this ground', 'Tighten ground');
+  if (['horn', 'motor', 'sensor', 'lamp'].includes(c.type)) acts = actBtn('open:' + c.id, S.open.has(c.id), 'Open it (burned out)', 'Replace it');
+  if (acts) h += `<div class="acts">${acts}</div>`;
+  return h;
+}
+
+const SUBTXT = {
+  solenoid:'Fed through the S terminal by the starter relay. Pulls in the main contacts and the drive gear. It draws about 12 A.',
+  stcontacts:'Close when the solenoid pulls in, connecting the battery cable to the motor. Burned contacts cause a click with no crank.',
+  startmotor:'Turns the engine. About 140 A here while cranking.',
+  bpsu:'Battery power comes in on pin 1 (from F30) and the BCM grounds through pin 2. Pin 1 also feeds the lamp drivers.',
+  bcmin:'Pins 20 (PARK) and 21 (HEAD) are pulled up to 5 V inside the BCM. The headlamp switch pulls them to ground.',
+  hdriver:'Switches battery voltage from pin 1 out to a lamp. The lamp is grounded at G101 or G102.',
+  coil:'Control side. Pin 86 is the feed, pin 85 is the ground side. When the coil has power and ground, it pulls the contacts closed.',
+  contacts:'Load side. Pin 30 is power in, pin 87 is the output to the load. They carry the big current, so they need the heavy wires.',
+  psu:'Ignition power comes in on pin 20. The PCM also needs ground (pins 1 and 2) to run.',
+  pullup:'5 V from the PCM\'s regulator goes through a 2.49 kΩ resistor to pin 47. Hot coolant = low sensor resistance = low voltage.',
+  driver:'Turns on to ground pin 52, which grounds the fan relay coil. When off, pin 52 floats up to about 12.6 V through the coil.',
+  lowref:'Pin 48 grounds the ECT sensor inside the PCM. It should read near 0 V.',
+};
+function inspectSub(it){
+  const t = it.d.type, sym = SYM[t], c = it.d.parent;
+  let h = `<div class="ititle"><b>${it.d.name}</b><span>${sym.n}</span></div><p class="itext">${sym.what}</p><p class="itext">${SUBTXT[it.d.txt || t]}</p>`;
+  if (liveOn()){
+    let l = '';
+    if (t === 'coil'){ const a = nodeV(c.n86), b = nodeV(c.n85), d = a != null && b != null ? a - b : null; l = vSpan('86', a) + vSpan('85', b) + span('Across coil ' + fmtV(d), d == null || Math.abs(d) < 0.05) + span(fmtA(Icur(it.id)), Math.abs(Icur(it.id)) < 0.001); }
+    if (t === 'contacts') l = span(S.relay[c.id] ? 'CLOSED' : 'open', !S.relay[c.id]) + vSpan('30', nodeV(c.n30)) + vSpan('87', nodeV(c.n87)) + span(fmtA(Icur(it.id)), !S.relay[c.id]);
+    if (t === 'solenoid') l = vSpan('S terminal', nodeV(c.nS)) + span('Coil ' + fmtA(Icur(it.id)), Math.abs(Icur(it.id)) < 0.5);
+    if (t === 'stcontacts') l = span(S.relay[c.id] ? 'CLOSED' : 'open', !S.relay[c.id]) + vSpan('B side', nodeV(c.nB)) + vSpan('Motor side', nodeV(c.nM)) + span(fmtA(Icur(it.id)), !S.relay[c.id]);
+    if (t === 'startmotor') { const a = nodeV(c.nM), b = nodeV(c.nG), d = a != null && b != null ? a - b : null; l = span('Across motor ' + fmtV(d), d == null || Math.abs(d) < 0.05) + span(fmtA(Icur(it.id)), Math.abs(Icur(it.id)) < 1); }
+    if (t === 'psu' && it.d.txt === 'bpsu') l = vSpan('Pin 1', nodeV('C140.1b')) + vSpan('Pin 2 (ground)', nodeV('C140.2b')) + span(RES.bcm.powered ? 'Powered' : 'No power', !RES.bcm.powered);
+    if (t === 'bcmin') l = vSpan('Pin 20 (PARK)', nodeV('C140.20b')) + vSpan('Pin 21 (HEAD)', nodeV('C140.21b')) + span('Park request ' + (RES.bcm.park ? 'YES' : 'no'), !RES.bcm.park) + span('Head request ' + (RES.bcm.head ? 'YES' : 'no'), !RES.bcm.head);
+    if (t === 'hdriver') { const on = it.d.pin === '12' ? RES.bcm.park : RES.bcm.head; l = span(on ? 'ON (supplying power)' : 'OFF', !on) + vSpan('Pin ' + it.d.pin, nodeV('C140.' + it.d.pin + 'b')) + span(fmtA(Icur(it.id)), !on); }
+    if (t === 'psu' && !it.d.txt) l = vSpan('Pin 20', nodeV('C160.20b')) + span(RES.pcm.powered ? 'Powered' : 'No power', !RES.pcm.powered);
+    if (t === 'pullup') l = vSpan('5 V ref', nodeV('VREF')) + vSpan('Pin 47', nodeV('C160.47b'));
+    if (t === 'driver') l = span(RES.pcm.drv ? 'ON (grounding)' : 'OFF', !RES.pcm.drv) + vSpan('Pin 52', nodeV('C160.52b'));
+    if (t === 'lowref') l = vSpan('Pin 48', nodeV('C160.48b'));
+    h += `<div class="live">${l}</div>`;
+  } else h += liveHint();
+  if (t === 'coil') h += `<div class="acts">${actBtn('open:' + it.id, S.open.has(it.id), 'Open the coil', 'Replace relay')}</div>`;
+  return h;
+}
+
+function inspectBus(b){
+  let h = `<div class="ititle"><b>${b.label}</b><span>${SYM.bus.n}</span></div><p class="itext">${SYM.bus.what}</p><p class="itext">${b.desc}</p>`;
+  h += liveOn() ? `<div class="live">${vSpan('Voltage', nodeV(b.node))}</div>` : liveHint();
+  return h;
+}
+
+function emptyInspector(){
+  return `<div class="empty"><p class="itext">Tap any <b>symbol, wire or connector</b> on the diagram to decode it. Drag to pan when zoomed in; use + / − or the mouse wheel to zoom.</p>
+    <h4 style="margin:0;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)">Reading a wire label</h4>
+    <div class="anat"><div><b>0.5</b><small>Size in mm² (≈ 20 AWG)</small></div><div><b>YE/BK</b><small>Yellow, black stripe (main / stripe)</small></div><div><b>1235</b><small>Circuit number</small></div></div></div>`;
+}
+
+function renderInspector(){
+  const el = $('#ibody'), it = S.sel && ITEMS[S.sel];
+  if (!it) { el.innerHTML = emptyInspector(); $('#insSub').textContent = 'What you tapped, decoded'; return; }
+  let h = '';
+  if (it.kind === 'wire' || it.kind === 'trace') h = inspectWire(it.d);
+  else if (it.kind === 'conn') h = inspectConn(it.d, null);
+  else if (it.kind === 'pin') h = inspectConn(it.d.conn, it.d.pin.p);
+  else if (it.kind === 'comp') h = inspectComp(it.d);
+  else if (it.kind === 'sub') h = inspectSub(it);
+  else if (it.kind === 'bus') h = inspectBus(it.d);
+  $('#insSub').textContent = {wire:'Wire', trace:'Internal circuit', conn:'Connector', pin:'Connector', comp:'Component', sub:'Component part', bus:'Power bus'}[it.kind];
+  el.innerHTML = h;
+}
+
+/* ================= controls under the diagram ================= */
+let ctrlKey = '';
+function renderControls(){
+  const el = $('#ctrls');
+  if (ctrlKey !== DG.id){
+    ctrlKey = DG.id;
+    let h = '';
+    DG.controls.forEach(k => {
+      if (k === 'horn') h += `<div class="ctl"><button type="button" class="btn" id="hornBtn" aria-pressed="false"></button></div>`;
+      if (k === 'key') h += `<div class="ctl"><span class="l">Key</span><div class="seg mini" id="keySeg" role="group" aria-label="Ignition key"><button type="button" data-key="off">Off</button><button type="button" data-key="run">Run</button></div></div>`;
+      if (k === 'key3') h += `<div class="ctl"><span class="l">Key</span><div class="seg mini" role="group" aria-label="Ignition key"><button type="button" data-key="off">Off</button><button type="button" data-key="run">Run</button><button type="button" data-key="start">Start</button></div></div>`;
+      if (k === 'gear') h += `<div class="ctl"><span class="l">Shifter</span><div class="seg mini" role="group" aria-label="Shifter"><button type="button" data-gear="pn">P / N</button><button type="button" data-gear="d">D</button></div></div>`;
+      if (k === 'lsw') h += `<div class="ctl"><span class="l">Headlamp switch</span><div class="seg mini" role="group" aria-label="Headlamp switch"><button type="button" data-lsw="off">Off</button><button type="button" data-lsw="park">Park</button><button type="button" data-lsw="head">Head</button></div></div>`;
+      if (k === 'temp') h += `<div class="ctl"><label for="tempIn">Coolant</label><input type="range" id="tempIn" min="50" max="250" step="1"><output id="tempOut"></output></div>`;
+    });
+    h += `<div class="ctl" id="chips" style="margin-left:auto;flex-wrap:wrap"></div>`;
+    el.innerHTML = h;
+  }
+  const hb = $('#hornBtn');
+  if (hb){ hb.classList.toggle('lit', S.ctl.horn); hb.setAttribute('aria-pressed', S.ctl.horn); hb.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="7" r="${S.ctl.horn ? 3.2 : 2}" fill="currentColor"/></svg>${S.ctl.horn ? 'Release horn button' : 'Press horn button'}`; }
+  el.querySelectorAll('[data-key]').forEach(b => b.setAttribute('aria-pressed', b.dataset.key === S.key));
+  el.querySelectorAll('[data-gear]').forEach(b => b.setAttribute('aria-pressed', b.dataset.gear === S.gear));
+  el.querySelectorAll('[data-lsw]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lsw === S.lsw));
+  const ti = $('#tempIn'); if (ti){ if (document.activeElement !== ti) ti.value = S.temp; $('#tempOut').textContent = Math.round(S.temp) + ' °F'; }
+  let c = '';
+  if (DG.id === 'horn'){
+    const on = !!S.relay.K12, n = ['HL', 'HR'].filter(id => Math.abs(Icur(id)) > 1).length;
+    c += `<span class="chip${on ? ' on' : ''}"><i></i>Relay ${on ? 'clicked on' : 'at rest'}</span><span class="chip${n ? ' on' : ''}"><i></i>${n === 2 ? 'Both horns sound' : n === 1 ? 'One horn sounds' : 'Horns silent'}</span>`;
+  } else if (DG.id === 'start'){
+    const v = battV(), crank = Math.abs(Icur('ST.mot')) > 50, chg = Icur('ALT.out') > 1;
+    c += `<span class="chip${v != null && v > 12.2 ? ' on' : v != null && v < 11 && !crank ? ' bad' : ''}"><i></i>Battery ${fmtV(v)}</span>`;
+    c += `<span class="chip${crank ? ' on' : S.key === 'start' ? ' bad' : ''}"><i></i>${crank ? 'Cranking ' + fmtA(Icur('ST.mot')) : S.key === 'start' ? 'No crank' : 'Starter off'}</span>`;
+    c += `<span class="chip${S.running ? ' on' : ''}"><i></i>Engine ${S.running ? 'running' : 'off'}</span>`;
+    if (S.running) c += `<span class="chip${chg ? ' on' : ' bad'}"><i></i>${chg ? 'Charging ' + fmtA(Icur('ALT.out')) : 'Not charging'}</span>`;
+  } else if (DG.id === 'light'){
+    const b = RES.bcm, n = ['LHL', 'LPK', 'RPK', 'RHL'].filter(id => { const c0 = DG.comps.find(x => x.id === id); return Math.abs(Icur(id)) > BATT / c0.R * 0.3; }).length;
+    c += `<span class="chip${b.powered ? ' on' : ' bad'}"><i></i>BCM ${b.powered ? 'running' : 'no power'}</span><span class="chip${n ? ' on' : ''}"><i></i>${n} of 4 lamps lit</span>`;
+  } else {
+    const p = RES.pcm, run = Math.abs(Icur('FM')) > 2;
+    c += `<span class="chip${p.powered ? ' on' : ''}"><i></i>PCM ${p.powered ? 'running' : 'off'}</span>`;
+    if (p.fault) c += `<span class="chip warn"><i></i>ECT circuit ${p.fault}</span>`;
+    c += `<span class="chip${run ? ' on' : p.drv ? ' bad' : ''}"><i></i>Fan ${run ? 'running' : p.drv ? 'commanded on, not running' : 'off'}</span>`;
+  }
+  const nf = S.open.size + S.unplug.size;
+  if (nf) c += `<span class="chip bad"><i></i>${nf} fault${nf > 1 ? 's' : ''}</span>${S.mode === 'explore' ? '<button type="button" class="btn small" data-act="clearf">Clear faults</button>' : ''}`;
+  $('#chips').innerHTML = c;
+}
+
+/* ================= reference tabs ================= */
+function symSvg(t){
+  const L = 'class="s-ln"', B = 'class="s-body"';
+  const m = {
+    bus:`<path d="M20,35H120" stroke="#1B2129" stroke-width="4.5" stroke-linecap="round"/><text class="t-bus" x="20" y="25" style="font-size:9px">HOT AT ALL TIMES</text>`,
+    fuse:`<path ${L} d="M20,35H52M88,35H120"/><rect ${B} x="52" y="29" width="36" height="12" rx="2"/><path ${L} d="M52,35C62,27 78,43 88,35"/>`,
+    relay:`<rect class="s-box" style="stroke-dasharray:4 3" x="26" y="10" width="88" height="50" rx="4"/><path ${L} d="M48,10V20M48,50V60"/><rect ${B} x="40" y="20" width="16" height="30"/><path ${L} d="M40,50L56,20"/><path ${L} d="M92,10V22M92,60V48L82,24"/><path class="s-thin" stroke-dasharray="3 3" d="M56,35H86"/>`,
+    coil:`<path ${L} d="M70,6V18M70,52V64"/><rect ${B} x="60" y="18" width="20" height="34"/><path ${L} d="M60,52L80,18"/>`,
+    contacts:`<path ${L} d="M70,6V20M70,64V50L58,24"/><circle class="s-fill" cx="70" cy="20" r="2.4"/><circle class="s-fill" cx="70" cy="50" r="2.4"/>`,
+    switch:`<path ${L} d="M20,40H56M84,40H120"/><circle ${B} cx="56" cy="40" r="2.6"/><circle ${B} cx="84" cy="40" r="2.6"/><path ${L} d="M50,30H90M70,30V16M64,16H76"/>`,
+    horn:`<path ${L} d="M20,35H56"/><rect ${B} x="56" y="26" width="14" height="18" rx="2"/><path ${B} d="M70,30L90,20V50L70,40Z"/><path ${L} d="M90,35H96" style="display:none"/>`,
+    motor:`<path ${L} d="M20,35H48M92,35H120"/><circle ${B} cx="70" cy="35" r="22"/><text x="70" y="41" text-anchor="middle" style="font-weight:700;font-size:16px;fill:#1B2129">M</text>`,
+    sensor:`<path ${L} d="M20,35H52M88,35H120"/><rect ${B} x="52" y="27" width="36" height="16"/><path ${L} d="M54,52L86,18M86,18l-7,1.5M86,18l-1.5,7"/><text class="t-sub" x="90" y="54">t°</text>`,
+    clockspring:`<rect ${B} x="30" y="14" width="80" height="42" rx="7"/><path ${L} d="M50,4V66"/><path class="s-thin" d="M84,35m-2,0a2,2 0 1,1 4,0a4,4 0 1,1 -8,0a6,6 0 1,1 12,0a8,8 0 1,1 -16,0a10,10 0 1,1 20,0"/>`,
+    module:`<rect class="s-mod" x="34" y="14" width="76" height="46" rx="5"/><text class="t-ref" x="44" y="42">PCM</text><circle ${B} cx="34" cy="30" r="3.4"/><path ${L} d="M10,30H30"/><path class="s-int" d="M38,30H50"/>`,
+    splice:`<path ${L} d="M20,35H70M70,35L120,15M70,35L120,55"/><circle class="s-fill" cx="70" cy="35" r="5"/>`,
+    ground:`<path ${L} d="M70,10V35M58,35H82M62,40H78M66,45H74"/>`,
+    conn:`<path ${L} d="M20,24H120M20,50H120"/><circle ${B} cx="45" cy="24" r="3.6"/><path ${L} d="M89,43L95,49L101,43M89,51L95,57L101,51" transform="translate(0,-3)"/><text class="t-sub" x="34" y="14">component</text><text class="t-sub" x="82" y="66">inline</text>`,
+    battery:`<path ${L} d="M20,35H58M82,35H120"/><path d="M58,22V48M76,22V48" stroke="#1B2129" stroke-width="2"/><path d="M64,28V42M82,28V42" stroke="#1B2129" stroke-width="4.5"/><text class="t-ref" x="46" y="22">+</text>`,
+    lamp:`<path ${L} d="M20,35H57M83,35H120"/><circle ${B} cx="70" cy="35" r="13"/><path ${L} d="M57,35H64M83,35H76M64,35c0,-7 12,-7 12,0M64,35c0,7 12,7 12,0"/>`,
+    starter:`<rect class="s-mod" x="30" y="10" width="80" height="50" rx="6"/><rect ${B} x="40" y="20" width="12" height="26"/><path ${L} d="M40,46L52,20"/><circle ${B} cx="88" cy="36" r="10"/><text x="88" y="40" text-anchor="middle" style="font-weight:700;font-size:10px;fill:#1B2129">M</text><path ${L} d="M110,36H124"/><text class="t-sub" x="114" y="30">B</text>`,
+    alternator:`<rect class="s-mod" x="30" y="12" width="80" height="46" rx="6"/><circle ${B} cx="82" cy="35" r="12"/><path ${L} d="M75,35q3.5,-6 7,0t7,0"/><path class="s-fill" d="M50,35L62,28V42Z"/><path ${L} d="M50,28V42M10,35H50M62,35H70"/>`,
+    ignsw:`<rect class="s-mod" x="34" y="8" width="72" height="54" rx="6"/><path ${L} d="M70,8V22M70,22L52,44"/><circle class="s-body" cx="50" cy="46" r="2.6"/><circle class="s-body" cx="70" cy="46" r="2.6"/><circle class="s-body" cx="90" cy="46" r="2.6"/><path ${L} d="M50,48V62M90,48V62"/>`,
+    hdriver:`<path ${L} d="M80,6V20M80,50V64"/><path ${L} d="M68,24V46M52,35H68M68,29L80,20M68,41L80,50"/><text class="t-sub" x="86" y="12">power in</text><text class="t-sub" x="86" y="62">to load</text>`,
+    cross:`<path ${L} d="M20,24H120M50,6V66"/><path ${L} d="M20,50H120M95,32V66"/><circle class="s-fill" cx="95" cy="50" r="4"/><text class="t-sub" x="56" y="16">crossed: NOT joined</text><text class="t-sub" x="20" y="64">dot: joined</text>`,
+  };
+  return `<svg viewBox="0 0 140 70" aria-hidden="true">${m[t]}</svg>`;
+}
+function tabSymbols(){
+  const list = [['bus'], ['fuse'], ['relay'], ['coil'], ['contacts'], ['switch'], ['horn'], ['motor'], ['sensor'], ['clockspring'], ['module'], ['splice'], ['ground'], ['conn'], ['battery'], ['lamp'], ['starter'], ['alternator'], ['ignsw'], ['hdriver'],
+    ['cross', {n:'Crossing vs joined', what:'Two wires that cross with no dot are <b>not</b> connected. A dot (or a splice) means they are joined.'}]];
+  return `<p>Every symbol on the diagrams, with what it means. Tap the same symbol on the diagram to see it in context.</p><div class="syms">` +
+    list.map(([t, o]) => { const d = o || SYM[t]; return `<div class="sym">${symSvg(t)}<div><b>${d.n}</b><span>${d.what}</span></div></div>`; }).join('') + '</div>';
+}
+function tabRead(){
+  const used = ['BK','BN','BU','DK BU','GN','DK GN','LT GN','GY','OG','PK','RD','TN','VT','WH','YE'];
+  return `<h3>How to read a wiring diagram</h3>
+  <h4>1 · Power on top, ground on bottom</h4>
+  <p>Current starts at a <b>power bus</b> at the top, flows down through fuses, switches and loads, and ends at a <b>ground</b> at the bottom. The bus label says when it is hot.</p>
+  <h4>2 · A diagram is not a map</h4>
+  <p>Parts are placed where the circuit is easiest to follow, not where they sit on the car. Use the <b>location</b> (and the component locator in your service info) to find them.</p>
+  <h4>3 · Read the wire label</h4>
+  <div class="anat"><div><b>0.5</b><small>Size, mm²</small></div><div><b>YE/BK</b><small>Main color / stripe</small></div><div><b>1235</b><small>Circuit number</small></div></div>
+  <p>Colors can change at a connector, but the <b>circuit number</b> stays the same. Trust the circuit number and the pin.</p>
+  <h4>4 · Reference designators</h4>
+  <ul><li><b>F</b> fuse · <b>K</b> relay · <b>C</b> connector · <b>S</b> splice · <b>G</b> ground</li><li>Many manufacturers number by area of the vehicle (for example 100s in the engine compartment, 200s behind the instrument panel). Check your service info.</li></ul>
+  <h4>5 · Switches are drawn at rest</h4>
+  <p>Key off, nothing pressed, relay not energized. A normally-open switch is drawn open even if it is closed while you're testing.</p>
+  <h4>6 · Face view vs wire side</h4>
+  <p>Connector views are usually the <b>face</b> (mating side). From the back, where you back-probe, left and right swap. Count pins on the latch side to stay oriented.</p>
+  <h4>7 · Find what's shared</h4>
+  <p>When two loads share a fuse, splice or ground, a failure there takes out both. If one load works and the other doesn't, the problem is in the part they <b>don't</b> share.</p>
+  <h4>8 · A switch may only be an input</h4>
+  <p>On newer cars many switches (headlamps, wipers, horn) just ground a module input. The module powers the load. If the switch wire reads 5 V or 12 V with almost no current, that's normal: it's a signal, not a power feed.</p>
+  <h4>Color codes</h4>
+  <table class="ctab">${used.map(k => `<tr><td>${k}</td><td>${swatch(k)} ${COLORS[k].n}</td></tr>`).join('')}</table>
+  <p style="font-size:12px;color:var(--dim)">Some manufacturers spell colors out (BLK, BRN…) or use single letters (B, R, W…). The idea is the same: main color first, stripe second.</p>`;
+}
+
+/* ================= guided lessons =================
+   step.setup: {color, horn, key, temp, open:[…], sel, flip} applied on entry.
+   step.goal:  {tap:[ids]} | {check:fn} | {mc:{q, opts, a, why}} | {trace:[ids or [alternatives]]} | {sus:{req, ok, why}} */
+const LESSONS = [
+{ id:'layout', dg:'horn', title:'Power on top, ground on bottom', sub:'How a diagram is laid out', steps:[
+  {body:'A wiring diagram shows how <b>current flows</b>, not where parts sit on the car. Power starts at the <b>top</b>, flows down through fuses, switches and loads, and ends at <b>ground</b> at the bottom.', spot:['busB','G101','G102','G201'], setup:{color:'plain', horn:false, open:[]}},
+  {body:'The thick bar at the top is a <b>power bus</b>. Its label tells you <b>when</b> it has voltage. HOT AT ALL TIMES means it is wired to the battery, even with the key off.', spot:['busB'], goal:{tap:['busB'], hint:'Tap the HOT AT ALL TIMES bus.'}},
+  {body:'Every circuit ends at a <b>ground</b>: a bolt to the body or engine block that is wired back to the battery negative. This diagram has three of them.', spot:['G101','G102','G201'], goal:{tap:['G101','G102','G201'], hint:'Tap any ground symbol.'}},
+  {body:'Now look at where the LH horn is drawn.', spot:['HL'], goal:{mc:{q:'The LH horn is drawn to the right of the horn relay. Where is it on the car?', opts:['To the right of the relay, in the fuse block','The schematic doesn\'t say. Check its Location in the inspector or the service info\'s component locator','Under the dash'], a:1, why:'Schematics are laid out so the <b>circuit</b> is easy to follow. Where a part physically sits is separate information.'}}},
+  {body:'Tap the LH horn and read its <b>Location</b> row in the inspector.', spot:['HL'], goal:{tap:['HL'], hint:'Tap the LH horn.'}},
+]},
+{ id:'symbols', dg:'horn', title:'Symbols and reference designators', sub:'Fuse, relay, switch, clock spring, splice', steps:[
+  {body:'Every part has a <b>symbol</b> and a <b>reference designator</b> like F20, K12 or G101. The letter tells you the type: F = fuse, K = relay, S = splice, G = ground, C = connector. Start with the fuse.', spot:['F20'], setup:{color:'plain', horn:false, open:[]}, goal:{tap:['F20'], hint:'Tap fuse F20.'}},
+  {body:'The horn relay is two parts in one box. The <b>coil</b> (pins 86 and 85) is the control side.', spot:['K12.coil'], goal:{tap:['K12.coil'], hint:'Tap the relay coil (the box with the diagonal line).'}},
+  {body:'The <b>contacts</b> (pins 30 and 87) are the load side: the switch that carries the horn current. They are drawn <b>open</b> because diagrams show everything at rest.', spot:['K12.sw'], goal:{tap:['K12.sw'], hint:'Tap the relay contacts.'}},
+  {body:'The horn switch is a <b>normally open, momentary</b> switch. It only closes while someone presses it.', spot:['SW'], goal:{tap:['SW'], hint:'Tap the horn switch.'}},
+  {body:'The <b>clock spring</b> is a coiled ribbon cable that keeps the steering wheel connected while it turns.', spot:['CS'], goal:{tap:['CS'], hint:'Tap the clock spring.'}},
+  {body:'S110 is a <b>splice</b>: a permanent joint inside the harness where one wire splits into two.', spot:['S110'], goal:{tap:['S110'], hint:'Tap splice S110.'}},
+  {body:'Check yourself.', goal:{mc:{q:'Which of these is a <b>load</b>, a part that turns electricity into work?', opts:['Fuse F20','LH horn','Splice S110','Clock spring'], a:1, why:'Loads (horns, motors, lamps) do the work and drop nearly all of the voltage. Fuses, splices, connectors and the clock spring only carry current.'}}},
+]},
+{ id:'labels', dg:'horn', title:'Wire labels: size, color, circuit', sub:'0.5 YE/BK 1235, decoded', steps:[
+  {body:'Every wire has a label like <b>0.5 YE/BK 1235</b>. Read it left to right: <b>size</b> in mm², <b>insulation color</b> (main/stripe), then the <b>circuit number</b>. Color is set to Wire colors, so each wire is drawn in its real color.', spot:['w1'], setup:{color:'wires', horn:false, open:[]}},
+  {body:'Tap the <b>0.5 YE/BK</b> wire. The inspector decodes the label.', spot:['w1'], goal:{tap:['w1'], hint:'Tap the yellow wire with the black stripe.'}},
+  {body:'', goal:{mc:{q:'In YE/BK, which color is the stripe?', opts:['Yellow','Black'], a:1, why:'Main color first, stripe second. YE/BK is a yellow wire with a black stripe.'}}},
+  {body:'', goal:{mc:{q:'The horn feed (2.0 DK GN) is much bigger than the horn switch wire (0.5 YE/BK). Why?', opts:['The feed carries about 10 A to both horns; the switch wire only carries about 0.15 A of relay coil current','Wires closer to the battery are always bigger','Dark green wire comes in bigger sizes'], a:0, why:'Wire size follows current. That is the reason for the relay: a small switch and a thin wire control a big current.'}}},
+  {body:'Follow circuit 1235 down through connector C200 and tap the wire just below it.', spot:['w2'], goal:{tap:['w2'], hint:'Tap the wire between C200 and the clock spring.'}},
+  {body:'', goal:{mc:{q:'The wire changed from YE/BK to BN/WH at C200. What stayed the same?', opts:['The insulation color','The circuit number, 1235','Nothing. It is a different circuit'], a:1, why:'Different harnesses can use different colors for the same circuit. Trust the <b>circuit number</b> and the pin. The inspector also highlights every segment of the same circuit.'}}},
+]},
+{ id:'conns', dg:'horn', title:'Connectors and pin views', sub:'Face view, wire side, inline halves', steps:[
+  {body:'A connector is named with a <b>C-number</b>. The number or letter next to the wire is the <b>cavity</b> (pin). Tap the connector label <b>C200</b>.', spot:['C200'], setup:{color:'wires', horn:false, open:[], flip:false}, goal:{tap:['C200'], hint:'Tap the C200 label.'}},
+  {body:'The inspector now shows C200\'s face view, with pin 12 outlined.', setup:{sel:'C200.12', flip:false}, goal:{mc:{q:'C200 has 16 cavities in two rows. Which row is pin 12 in?', opts:['Top row','Bottom row'], a:1, why:'Pins 1–8 are the top row and 9–16 the bottom, counted left to right in the face view. Pin 12 is the 4th cavity in the bottom row.'}}},
+  {body:'Now press <b>Wire side</b> above the connector view. That is the view from the back, where the wires go in.', setup:{sel:'C200.12', flip:false}, goal:{check:() => S.flip, hint:'Press Wire side in the inspector.'}},
+  {body:'', goal:{mc:{q:'From the wire side, pin 9 (far left in the face view) is now…', opts:['Still on the far left','On the far right'], a:1, why:'Left and right swap when you turn a connector around. Probing the mirror-image cavity is one of the most common mistakes, so always check which view the service info shows.'}}},
+  {body:'C200 is an <b>inline</b> connector, so each half has its own wire color. Pick the <b>I/P harness side</b> in the inspector and compare the color of pin 12.', setup:{sel:'C200.12', flip:false, half:['C200', 0]}, goal:{check:() => (S.halfOf || {}).C200 === 1, hint:'Pick I/P harness side above the connector view.'}},
+  {body:'Component connectors often use <b>letters</b>. Tap pin <b>A</b> of the LH horn connector, C110.', spot:['C110.A'], goal:{tap:['C110.A'], hint:'Tap the terminal marked A at the top of the LH horn.'}},
+]},
+{ id:'shared', dg:'horn', title:'Splices and grounds: what\'s shared?', sub:'Use the diagram to narrow it down', steps:[
+  {body:'Both horns get power through splice <b>S110</b>, but each has its own ground, <b>G101</b> and <b>G102</b>. Shared parts cause shared symptoms.', spot:['S110','G101','G102'], setup:{color:'wires', horn:false, open:[]}},
+  {body:'', goal:{mc:{q:'S110 corrodes open. What happens?', opts:['Only the LH horn quits','Both horns quit','Only the RH horn quits'], a:1, why:'S110 feeds both branches, so an open there kills both horns.'}}},
+  {body:'', goal:{mc:{q:'G102 comes loose. What happens?', opts:['Both horns quit','Only the RH horn quits','The relay stops clicking'], a:1, why:'G102 grounds only the RH horn.'}}},
+  {body:'', goal:{mc:{q:'Customer concern: the horn sounds weak, and only one horn works. Which parts can you rule out?', opts:['F20, K12 and the horn switch. They are shared, and one horn still works','The RH horn and G102','None of them'], a:0, why:'If a shared part had failed, both horns would be dead. Focus on the branch that doesn\'t work.'}}},
+  {body:'Try it. Tap the wire to the <b>RH horn</b> (0.8 DK GN on the right), press <b>Cut this wire</b> in the inspector, then press the horn button.', spot:['h3'], setup:{color:'wires', horn:false, open:[]}, goal:{check:() => S.open.has('h3') && S.ctl.horn, hint:'Cut the RH horn feed wire, then press the horn button.', allowBreak:true}},
+  {body:'Now switch Color to <b>Voltage</b>. The LH branch is red (12.6 V). On the horn side of the cut, the wire reads 0 V, because the horn pulls it to ground. That is how an open looks: <b>voltage on one side of the break and none on the other.</b>', setup:{open:['h3'], horn:true}, goal:{check:() => S.color === 'volt', hint:'Switch Color to Voltage, then tap each half of the cut wire.'}},
+]},
+{ id:'relays', dg:'horn', title:'Relays: control side vs load side', sub:'Why a ground-side wire can read 12.6 V', steps:[
+  {body:'Voltage colors are on: <b>red</b> is battery voltage, <b>blue</b> is 0 V, and gray dashes mean no voltage reference. The horn button is released. Look at the relay coil.', spot:['K12.coil'], setup:{color:'volt', horn:false, open:[]}},
+  {body:'', goal:{mc:{q:'Horn button released. What voltage is on the coil\'s ground side (pin 85 and the YE/BK wire to the switch)?', opts:['0 V. It is the ground side','About 12.6 V. With no current, the coil drops no voltage','About 6 V'], a:1, why:'Voltage only drops when current flows. The switch is open, so no current flows and the full 12.6 V passes through the coil to pin 85. Battery voltage on a ground-side wire means the ground path is <b>open</b> (here, the switch). It doesn\'t mean the wire is bad.'}}},
+  {body:'Tap the 0.5 YE/BK wire and read its voltage in the inspector.', spot:['w1'], goal:{tap:['w1'], hint:'Tap the YE/BK wire.'}},
+  {body:'Now press the <b>horn button</b> below the diagram. Watch the switch ground pin 85, the coil energize, and the contacts snap closed.', goal:{check:() => S.ctl.horn, hint:'Press the horn button.'}},
+  {body:'', goal:{mc:{q:'Horn pressed. What voltage is on pin 85 now?', opts:['About 0 V','About 12.6 V'], a:0, why:'Now current flows through the coil, and the coil drops all 12.6 V. Pin 85 is pulled to ground through the switch. Tap the YE/BK wire again to see it.'}}},
+  {body:'', goal:{mc:{q:'Which side of the relay carries the big current to the horns?', opts:['The control side, pins 86 and 85','The load side, pins 30 and 87'], a:1, why:'About 0.15 A flows through the coil and about 10 A through the contacts. That is why pins 30 and 87 use heavier wire.'}}},
+]},
+{ id:'trace', dg:'horn', title:'Trace the current path', sub:'Fuse to ground, one part at a time', steps:[
+  {body:'Trace the path current takes to the <b>LH horn</b>. Tap each wire and each part current passes through, in order, starting at the fuse. Connectors and splices count as part of the wire.', setup:{color:'wires', horn:true, open:[]}, goal:{trace:['F20','K12.sw','h1','h2','HL','h4','G101'], hint:'Start at the fuse.'}},
+  {body:'Now trace the <b>control circuit</b>: the path that energizes the relay coil.', setup:{color:'wires', horn:true, open:[]}, goal:{trace:['F20','K12.coil','w1','w2','CS','w3','SW','w4','G201'], hint:'Start at the fuse again.'}},
+  {body:'Nice work. Tracing from power to ground one part at a time is where every electrical diagnosis starts. Practice mode has more traces and "what could cause it?" questions.'},
+]},
+{ id:'hotwhen', dg:'fan', title:'Hot when? Reading bus labels', sub:'Hot at all times vs hot in RUN', steps:[
+  {body:'This diagram has two buses. <b>HOT AT ALL TIMES</b> feeds F8 and the fan motor side. <b>HOT IN RUN OR START</b> only has voltage with the key in RUN or START. Voltage colors are on.', spot:['busR','busB'], setup:{color:'volt', key:'off', temp:195, open:[]}},
+  {body:'', goal:{mc:{q:'Key OFF. Does fuse F15 have voltage?', opts:['Yes','No'], a:1, why:'F15 hangs from the HOT IN RUN OR START bus, which is dead with the key off, so the PCM and the fan relay coil are off too.'}}},
+  {body:'Turn the key to <b>RUN</b> (below the diagram) and watch the RUN bus light up.', goal:{check:() => S.key === 'run', hint:'Set the key to Run.'}},
+  {body:'', goal:{mc:{q:'Suppose the fan relay contacts weld shut. Would the fan run with the key OFF?', opts:['No, the key is off','Yes, F8 is hot at all times'], a:1, why:'The motor side is fed by F8, which is hot at all times. A stuck relay runs the fan with the key off and can drain the battery overnight. The bus labels tell you what to expect.'}}},
+]},
+{ id:'modules', dg:'fan', title:'Modules: inputs, decisions, outputs', sub:'ECT in, fan relay out', steps:[
+  {body:'The <b>PCM</b> is drawn as a box with only the pins that matter here. It reads the ECT sensor (input), decides, then grounds the fan relay coil (output). Dashed lines show what\'s inside.', spot:['PCM'], setup:{color:'volt', key:'run', temp:190, open:[]}},
+  {body:'Tap the <b>ECT sensor</b>.', spot:['ECT'], goal:{tap:['ECT'], hint:'Tap the ECT sensor.'}},
+  {body:'The PCM sends 5 V through a <b>pull-up resistor</b> to the sensor. Hot coolant lowers the sensor\'s resistance, which lowers the signal voltage. Tap the pull-up inside the PCM.', spot:['PCM.pu'], goal:{tap:['PCM.pu'], hint:'Tap the 5 V REF and resistor inside the PCM.'}},
+  {body:'Raise the <b>Coolant</b> slider until the PCM turns the fan on at 220 °F.', setup:{temp:190}, goal:{check:() => Math.abs(RES.I.FM || 0) > 2, hint:'Drag the Coolant slider up.'}},
+  {body:'', goal:{mc:{q:'Which side of the relay coil does the PCM switch?', opts:['The power side (pin 86)','The ground side (pin 85)'], a:1, why:'F15 powers pin 86. The PCM\'s <b>low-side driver</b> grounds pin 85 through pin 52. Pin 52 reads about 12.6 V when the fan is off and near 0 V when it is on.'}}},
+  {body:'Tap the <b>driver</b> inside the PCM.', spot:['PCM.drv'], goal:{tap:['PCM.drv'], hint:'Tap the transistor marked DRIVER.'}},
+  {body:'', goal:{mc:{q:'If the ECT signal reads 5 V (sensor unplugged), the PCM can\'t tell coolant temperature. What does this PCM do with the fan?', opts:['Turns it off to save power','Commands it ON as a failsafe'], a:1, why:'Most PCMs run the fan when they lose the ECT signal, so the engine can\'t overheat. Strategies vary, so check the service info. Try it in Explore mode: tap C151 and press Unplug.'}}},
+]},
+{ id:'diagnose', dg:'fan', title:'Diagnose with the diagram', sub:'Fan never runs', steps:[
+  {body:'<b>Concern:</b> the fan never runs and the engine overheats. The scan tool shows coolant at 230 °F and the fan <b>commanded ON</b>. Tap every part that could cause this, then press <b>Check</b>.', setup:{color:'wires', key:'run', temp:230, open:[]},
+    goal:{sus:{req:['F8','K5.coil','K5.sw','f2','f3','FM','f4','G104'], ok:['tA','tD','tE','C103','C150','PCM.drv','K5','PCM'], why:'The PCM is running, so <b>F15 is good</b> (it powers the PCM). The ECT reads 230 °F, so the sensor circuit is good. That leaves the relay coil circuit (the coil, the DK BU/WH control wire, the driver) and the motor circuit (F8, the contacts, the GN feed, the motor and its ground).'}}},
+  {body:'', goal:{mc:{q:'Next test, fan commanded on: pin 86 reads 12.6 V and pin 85 also reads 12.6 V. What does that tell you?', opts:['The coil isn\'t getting a ground: an open in the DK BU/WH wire or the PCM driver','The coil is open','F8 is blown'], a:0, why:'Voltage made it <b>through</b> the coil to pin 85, so the coil isn\'t open. With no voltage dropped across it, no current is flowing, so the ground path (circuit 2310 to PCM pin 52) is open.'}}},
+  {body:'Here it is: the DK BU/WH control wire is cut. Switch Color to <b>Voltage</b>, then tap each half of the cut wire. The relay side reads 12.6 V; the PCM side reads 0 V because the driver is grounding it.', spot:['f2'], setup:{color:'wires', key:'run', temp:230, open:['f2']}, goal:{check:() => S.color === 'volt', hint:'Switch Color to Voltage.'}},
+]},
+{ id:'crank', dg:'start', title:'Big current, small control', sub:'Key → relay → solenoid → starter', steps:[
+  {body:'Cranking takes about 140 A, far too much for the ignition switch. So the key controls a <b>relay</b>, the relay powers the starter <b>solenoid</b>, and the solenoid closes the heavy contacts to the <b>starter motor</b>. Each step controls a bigger current than the last.', spot:['IGN','K3','ST'], setup:{color:'volt', key:'off', gear:'pn', open:[]}},
+  {body:'Turn the key to <b>START</b> (below the diagram) and watch each step light up.', goal:{check:() => S.key === 'start' && Math.abs(RES.I['ST.mot'] || 0) > 50, hint:'Set the key to Start.'}},
+  {body:'', goal:{mc:{q:'Follow the relay coil circuit. Which switches must <b>all</b> be closed for the relay to click?', opts:['Only the ignition switch','The ignition switch (START) and the park/neutral switch','The park/neutral switch and the solenoid'], a:1, why:'Current flows F3 → ignition switch START contact → relay coil → park/neutral switch → G202. Switches in series must all be closed, which is why a car in Drive won\'t crank.'}}},
+  {body:'With the key still in START, shift to <b>D</b> (Drive) and watch what stops.', setup:{key:'start', gear:'pn'}, goal:{check:() => S.gear === 'd' && S.key === 'start', hint:'Set the shifter to D.'}},
+  {body:'', goal:{mc:{q:'In Drive, relay pin 85 reads about 12 V instead of near 0 V. Why?', opts:['The park/neutral switch is open, so no current flows and the coil drops no voltage','The relay coil is shorted','The ignition switch failed'], a:0, why:'Same rule as the horn relay: with the ground path open, no current flows, so pin 85 floats up to the voltage on pin 86. Voltage on both sides of the coil plus no click points to the ground side.'}}},
+  {body:'', goal:{mc:{q:'The brown RUN wire (circuit 1630) crosses the yellow solenoid wire (1640). Are they connected?', opts:['Yes, the lines touch','No. There is no dot, so they only cross on paper'], a:1, why:'Wires that cross without a dot or a splice are <b>not</b> connected. Tap each one: they carry different voltages.'}}},
+]},
+{ id:'drop', dg:'start', title:'Voltage drop and charging', sub:'Cables under load · generator output', steps:[
+  {body:'Voltage colors are on, the key is in START and the shifter is in Park. The starter draws about 140 A. Watch the <b>Battery</b> chip below the diagram: the voltage sags while cranking.', setup:{color:'volt', key:'start', gear:'pn', open:[]}},
+  {body:'Tap the heavy red <b>battery cable</b> (50 RD) that runs to the starter.', spot:['c1'], goal:{tap:['c1'], hint:'Tap the 50 RD cable.'}},
+  {body:'', goal:{mc:{q:'While cranking, the starter B terminal reads less than the battery positive post. Why?', opts:['The cable has a little resistance, and 140 A through it drops some voltage','The starter makes its own voltage','The meter is wrong'], a:0, why:'Voltage drop = current × resistance. Even 0.0015 Ω × 140 A is 0.2 V. A corroded cable end can drop several volts and cause slow cranking, which is why you voltage-drop test cables <b>while cranking</b>.'}}},
+  {body:'', goal:{mc:{q:'The battery negative post reads below 0 V, compared with the engine block, while cranking. What does that mean?', opts:['The ground cable carries the same 140 A back, so it drops voltage too','The battery is installed backwards'], a:0, why:'Current returns through the ground cable, so it drops voltage just like the positive cable. Always test both sides.'}}},
+  {body:'Let it start: turn the key back to <b>RUN</b>.', goal:{check:() => S.running, hint:'Set the key to Run.'}},
+  {body:'', goal:{mc:{q:'The engine is running and the Battery chip now reads about 14 V. Why did it go up?', opts:['The generator now runs the electrical loads and charges the battery','The battery recharged itself after cranking'], a:0, why:'A healthy charging system holds about 13.8–14.5 V at the battery. If it stays near 12.6 V with the engine running, check the generator\'s ignition input (circuit 1630), its output cable and its ground.'}}},
+]},
+{ id:'bcm', dg:'light', title:'The switch is only an input', sub:'BCM high-side drivers', steps:[
+  {body:'On most modern cars the headlamp switch doesn\'t carry headlamp current. It is an <b>input</b> to the <b>BCM</b>, and the BCM turns the lamps on with its own drivers.', spot:['HSW','BCM'], setup:{color:'volt', lsw:'off', open:[]}},
+  {body:'Turn the headlamp switch to <b>HEAD</b> (below the diagram).', goal:{check:() => S.lsw === 'head', hint:'Set the headlamp switch to Head.'}},
+  {body:'', goal:{mc:{q:'How much current flows through the headlamp switch wires now?', opts:['About 10 A, the headlamp current','Half a milliamp, just enough for the BCM to see the input'], a:1, why:'The switch only pulls a 5 V input to ground through a 10 kΩ pull-up: 5 V ÷ 10,000 Ω = 0.5 mA. Tap the green switch wire to see it.'}}},
+  {body:'Tap the driver inside the BCM that powers the <b>LH headlamp</b>.', spot:['BCM.d10'], goal:{tap:['BCM.d10'], hint:'Tap the transistor labeled LO LH.'}},
+  {body:'', goal:{mc:{q:'Is that a high-side or a low-side driver?', opts:['High-side: it switches power to the lamp, and the lamp has a fixed ground','Low-side: it switches the lamp\'s ground'], a:0, why:'Compare the cooling fan diagram, where the PCM grounds the relay coil (low side). Here the BCM supplies the power and each lamp has its own ground.'}}},
+  {body:'', goal:{mc:{q:'Switch in PARK. What does the BCM turn on?', opts:['Only the park lamps','The park lamps and the low beams','Nothing'], a:0, why:'PARK grounds only the park input (pin 20). HEAD grounds both inputs, so HEAD turns on park lamps and low beams. Try both positions.'}}},
+]},
+{ id:'grounds', dg:'light', title:'Shared grounds', sub:'One bad ground, two dead lamps', steps:[
+  {body:'On each side, the headlamp and park lamp grounds meet at a splice (<b>S151</b>, <b>S152</b>) and end at one ground (<b>G101</b>, <b>G102</b>).', spot:['S151','G101','S152','G102'], setup:{color:'wires', lsw:'head', open:[]}},
+  {body:'', goal:{mc:{q:'G101 comes loose. Which lamps go out?', opts:['Only the LH headlamp','The LH headlamp and the LH park lamp','All four lamps'], a:1, why:'Both LH lamps return through S151 and G101. The right side has its own ground.'}}},
+  {body:'Try it: tap <b>G101</b> and press <b>Loosen this ground</b> in the inspector.', spot:['G101'], goal:{check:() => S.open.has('G101'), hint:'Tap G101, then Loosen this ground.', allowBreak:true}},
+  {body:'', goal:{mc:{q:'Concern: the LH headlamp and LH park lamp are both out, the right side works, and both bulbs test good. Best next step?', opts:['Replace the BCM','Check the shared ground: G101, S151 and their wires','Replace the headlamp switch'], a:1, why:'Two loads failing together point to what they share. Here that\'s the ground path, not the BCM (the right side works) or the switch (it\'s only an input).'}}},
+  {body:'Concern: <b>both park lamps are out</b>, but both headlamps work. Tap every part that could cause it, then press <b>Check</b>.', setup:{color:'wires', lsw:'head', open:[]},
+    goal:{sus:{req:['pk1','S150','BCM.d12'], ok:['C140','BCM'], why:'Both park lamps share the BCM park driver (pin 12), the 1.0 BN wire and splice S150. Grounds are shared with the headlamps, which work, so they\'re fine. The switch input is fine too, because HEAD also commands the park lamps.'}}},
+]},
+];
+
+/* ================= practice banks ================= */
+const PRACTICE = {
+start:[
+  {k:'find', q:'Tap the fuse that feeds the <b>ignition switch</b>.', ans:['F3'], why:'F3 (30 A) feeds the ignition switch BATT terminal.'},
+  {k:'find', q:'Tap the <b>park/neutral switch</b>.', ans:['PNP'], why:'It grounds the starter relay coil in Park or Neutral only.'},
+  {k:'find', q:'Tap the <b>starter solenoid</b>.', ans:['ST.sol'], why:'Fed through the S terminal by the starter relay.'},
+  {k:'find', q:'Tap the battery <b>ground cable</b>.', ans:['c2'], why:'The 50 BK cable from the battery negative post to the engine block (G100).'},
+  {k:'find', q:'Tap the generator <b>output cable</b>.', ans:['c3'], why:'The 16 RD cable from the generator B+ stud to the starter B terminal.'},
+  {k:'mc', q:'Which wire carries the most current while cranking?', opts:['0.8 VT (ignition START)','2.0 YE (solenoid)','50 RD (battery cable)'], a:2, why:'About 0.17 A on the VT wire, about 12 A on the solenoid wire, and about 140 A on the battery cable.'},
+  {k:'mc', q:'Key in START, shifter in D. What happens?', opts:['It cranks normally','The relay doesn\'t click: the park/neutral switch is open','F12 blows'], a:1, why:'The park/neutral switch is in series with the relay coil, so the coil can\'t get a ground in gear.'},
+  {k:'mc', q:'Key OFF. What voltage is on the 0.8 VT START wire?', opts:['About 12.6 V','About 0 V'], a:1, noVolt:true, setup:{key:'off'}, why:'The START contact is open, and the wire is pulled to ground through the relay coil and the closed park/neutral switch.'},
+  {k:'mc', q:'Engine running, the battery reads 12.4 V and dropping, and the generator\'s brown ignition wire reads 0 V. Most likely cause?', opts:['An open in the generator ignition feed (circuit 1630)','A bad battery cable','A starter fault'], a:0, why:'Without its ignition input, the regulator never turns the generator on, so the battery runs everything until it goes flat.'},
+  {k:'trace', q:'Trace the starter motor current from the battery and back to it.', path:['BAT','c1','ST.sw','ST.mot','G101','G100','c2'], why:'Battery + → 50 RD cable → B terminal → main contacts → motor → starter case (G101) → engine block → G100 → 50 BK cable → battery −.'},
+  {k:'trace', q:'Trace the starter relay control circuit, from the fuse to ground.', path:['F3','i1','IGN','i2','K3.coil','p1','PNP','p2','G202'], why:'F3 → ignition switch (START) → 0.8 VT → relay coil → 0.8 YE/BK → park/neutral switch → G202.'},
+  {k:'sus', q:'<b>No crank, no relay click</b>, shifter in Park. The battery is good and the dash lights come on in RUN. Tap every part that could cause it, then press Check.', req:['IGN','i2','K3.coil','p1','PNP','p2','G202'], ok:['tA','tB','C104','K3'], why:'The dash works in RUN, so F3 and the ignition switch feed are good. No click means the relay coil circuit: the START contact, the VT wire, the coil, or its ground path through the park/neutral switch to G202.'},
+  {k:'sus', q:'<b>The relay clicks but nothing cranks</b> and the starter is silent. The battery tests good. Tap every part that could cause it, then press Check.', req:['F12','K3.sw','s1','ST.sol','ST.sw','ST.mot','c1','G101'], ok:['tC','C104','K3','ST','c2','G100'], why:'A click proves the coil circuit. Everything after the relay contacts can stop the crank: F12, the contacts, the solenoid wire and solenoid, the main contacts, the motor, the positive cable and the starter ground. (A fully open battery ground cable would stop the click too, but a corroded one can still let the relay click.)'},
+],
+light:[
+  {k:'find', q:'Tap the fuse that powers the BCM lamp drivers.', ans:['F30'], why:'F30 (25 A, hot at all times) feeds BCM pin 1.'},
+  {k:'find', q:'Tap the headlamp switch <b>PARK input</b> wire.', ans:['hs1'], why:'0.35 GN, circuit 1710, to BCM pin 20.'},
+  {k:'find', q:'Tap the splice that feeds <b>both park lamps</b>.', ans:['S150'], why:'S150 splits the BCM park output (pin 12) to both sides.'},
+  {k:'find', q:'Tap the ground shared by the LH headlamp and LH park lamp.', ans:['G101'], why:'Both LH lamps join at S151 and end at G101.'},
+  {k:'find', q:'Tap the BCM driver for the <b>park lamps</b>.', ans:['BCM.d12'], why:'The PARK high-side driver feeds pin 12.'},
+  {k:'mc', q:'Which BCM pin powers the RH headlamp?', opts:['10','11','12','20'], a:1, why:'Pin 11 is LO RH, 10 is LO LH, 12 is PARK and 20 is the park switch input.'},
+  {k:'mc', q:'Headlamp switch in HEAD. What voltage is on the GN PARK input wire?', opts:['About 5 V','About 0 V'], a:1, noVolt:true, setup:{lsw:'head'}, why:'The switch grounds the input, so the BCM reads it low: park lamps requested.'},
+  {k:'mc', q:'Headlamp switch OFF. What voltage is on the GN PARK input wire?', opts:['About 5 V','About 0 V'], a:0, noVolt:true, setup:{lsw:'off'}, why:'Nothing grounds the input, so the BCM\'s pull-up holds it at 5 V: no request.'},
+  {k:'trace', q:'Trace current to the <b>LH headlamp</b>, from the fuse to ground.', path:['F30','b1','BCM.d10','l1','LHL','g1','g3','G101'], why:'F30 → BCM pin 1 → LO LH driver → 1.0 VT → LH headlamp → 1.0 BK → S151 → 2.0 BK → G101.'},
+  {k:'trace', q:'Trace current to the <b>RH park lamp</b>, from the fuse to ground.', path:['F30','b1','BCM.d12','pk1','pk3','RPK','g5','g6','G102'], why:'F30 → BCM → PARK driver → 1.0 BN → S150 → 0.5 BN → RH park lamp → 0.5 BK → S152 → 2.0 BK → G102.'},
+  {k:'sus', q:'<b>The RH headlamp and RH park lamp are both out.</b> The left side works. Tap every part that could cause it, then press Check.', req:['S152','g6','G102'], ok:[], why:'Two RH lamps on different BCM outputs fail together, so look at what they share: splice S152, the 2.0 BK wire and G102.'},
+  {k:'sus', q:'<b>No lamps work in any switch position.</b> Tap every part that could cause it, then press Check.', req:['F30','b1','bg','G201','hs3','G202'], ok:['BCM','BCM.psu','C105','C140','C210','HSW'], why:'Everything shares the BCM\'s power (F30, pin 1) and ground (G201). The switch ground (G202) matters too: without it neither input can be pulled low, so the BCM never sees a request.'},
+],
+horn:[
+  {k:'find', q:'Tap the fuse that protects the horn circuit.', ans:['F20'], why:'F20 (15 A) feeds both the relay coil and the relay contacts.'},
+  {k:'find', q:'Tap the ground for the <b>RH horn</b>.', ans:['G102'], why:'G102 grounds only the RH horn. G101 is the LH horn\'s ground.'},
+  {k:'find', q:'Tap circuit <b>1240</b> between the relay and splice S110.', ans:['h1'], why:'The 2.0 DK GN wire carries both horns\' current from relay pin 87 to S110.'},
+  {k:'find', q:'Tap the <b>0.5 BN/WH</b> wire.', ans:['w2'], why:'It is circuit 1235 on the I/P harness side of C200.'},
+  {k:'find', q:'Tap the relay\'s <b>load side</b> (the contacts).', ans:['K12.sw'], why:'Pins 30 and 87 carry the horn current.'},
+  {k:'find', q:'Tap connector <b>C201</b>.', ans:['C201'], why:'C201 is the column-side clock spring connector.'},
+  {k:'mc', q:'C110 is the LH horn connector. Which cavity carries power (circuit 1240)?', opts:['A','B'], a:0, why:'Pin A gets the DK GN feed from S110. Pin B goes to ground G101.'},
+  {k:'mc', q:'Which relay pin is the coil\'s <b>ground side</b>?', opts:['30','85','86','87'], a:1, why:'86 feeds the coil and 85 is its ground side, switched by the horn switch. 30 and 87 are the contacts.'},
+  {k:'mc', q:'What is the circuit number of the horn switch signal?', opts:['1150','1235','1240'], a:1, why:'1235 runs from relay pin 85 through C200 and the clock spring to the switch. 1150 is ground and 1240 is the horn feed.'},
+  {k:'mc', q:'Horn button released, everything working. What voltage is on the 0.5 YE/BK wire?', opts:['0 V','About 12.6 V'], a:1, noVolt:true, setup:{horn:false}, why:'With the switch open, no current flows through the coil, so it drops no voltage and the full 12.6 V reaches the switch.'},
+  {k:'trace', q:'Trace current to the <b>RH horn</b>, from the fuse to ground.', path:['F20','K12.sw','h1','h3','HR','h5','G102'], why:'F20 → relay contacts → 2.0 DK GN → S110 → 0.8 DK GN → RH horn → 0.8 BK → G102.'},
+  {k:'sus', q:'<b>LH horn dead, RH horn works.</b> Tap every part that could cause it, then press Check.', req:['h2','HL','h4','G101'], ok:['C110'], why:'Everything up to S110 is shared, and the RH horn works, so the fault is in the LH branch: its feed wire, its connector, the horn, its ground wire or G101.'},
+  {k:'sus', q:'<b>Both horns dead, and the relay doesn\'t click</b> when you press the button. Tap every part that could cause it, then press Check.', req:['F20','K12.coil','w1','w2','CS','w3','SW','w4','G201'], ok:['tA','tC','tD','C102','C200','C201','C202','K12'], why:'No click means the coil isn\'t energizing: its feed (F20), the coil itself, or anything in its ground path through C200, the clock spring and the horn switch to G201.'},
+  {k:'sus', q:'<b>Both horns dead, but the relay clicks</b> when you press the button. Tap every part that could cause it, then press Check.', req:['K12.sw','h1','S110'], ok:['tB','tE','C102','K12'], why:'A click proves F20 and the coil circuit are good. Both horns are dead, so look at what they share after the coil: the contacts, the 2.0 DK GN feed and S110.'},
+],
+fan:[
+  {k:'find', q:'Tap the fuse that powers the <b>PCM</b>.', ans:['F15'], why:'F15 (10 A, hot in RUN or START) feeds PCM pin 20 and the fan relay coil.'},
+  {k:'find', q:'Tap the bus that is only hot with the key in <b>RUN or START</b>.', ans:['busR'], why:'HOT IN RUN OR START is fed by the ignition relay.'},
+  {k:'find', q:'Tap the <b>ECT signal</b> wire.', ans:['f8'], why:'0.5 YE, circuit 410, from ECT pin A to PCM pin 47.'},
+  {k:'find', q:'Tap the PCM\'s <b>low-side driver</b>.', ans:['PCM.drv'], why:'The driver grounds PCM pin 52, which grounds relay pin 85.'},
+  {k:'find', q:'Tap the splice that joins the PCM grounds.', ans:['S130'], why:'S130 joins the two 0.8 BK PCM ground wires into one 2.0 BK wire to G103.'},
+  {k:'find', q:'Tap the fan motor\'s ground.', ans:['G104'], why:'G104, on the radiator support.'},
+  {k:'mc', q:'Which PCM pin controls the fan relay?', opts:['20','47','48','52'], a:3, why:'Pin 52 grounds relay pin 85. Pin 20 is ignition power, 47 the ECT signal and 48 the ECT low reference.'},
+  {k:'mc', q:'ECT connector C151 pin B is the sensor\'s…', opts:['5 V reference','Signal','Low reference (sensor ground)'], a:2, why:'This is a 2-wire sensor. Pin A is the signal (with the 5 V pull-up inside the PCM); pin B is the low reference back to PCM pin 48.'},
+  {k:'mc', q:'Key OFF, everything working. What voltage is on the 3.0 GN fan feed?', opts:['About 12.6 V','About 0 V'], a:1, noVolt:true, setup:{key:'off'}, why:'F8 is hot, but the relay contacts are open. The motor connects the GN wire to ground, so it reads 0 V.'},
+  {k:'mc', q:'Key RUN, engine cold, fan off. What voltage is at PCM pin 52?', opts:['About 0 V','About 12.6 V'], a:1, noVolt:true, setup:{key:'run', temp:150}, why:'The driver is off, so no current flows through the coil, and pin 52 floats up to 12.6 V through it.'},
+  {k:'trace', q:'Trace the fan motor\'s current path, from the fuse to ground.', path:['F8','K5.sw','f3','FM','f4','G104'], why:'F8 → relay contacts → 3.0 GN → fan motor → 3.0 BK → G104.'},
+  {k:'trace', q:'Trace the relay <b>control</b> circuit, from the fuse to ground (either PCM ground wire counts).', path:['F15','K5.coil','f2','PCM.drv',['f5','f6'],'f7','G103'], why:'F15 → coil → DK BU/WH to pin 52 → driver → PCM internal ground → pin 1 or 2 → S130 → G103.'},
+  {k:'sus', q:'<b>The fan runs all the time, even with the key off.</b> Tap every part that could cause it, then press Check.', req:['K5.sw'], ok:['K5'], why:'With the key off, F15 is dead: no coil power and no PCM. Only the always-hot motor side can run the fan, so the relay contacts must be stuck closed.'},
+  {k:'sus', q:'<b>The fan runs whenever the key is on, even cold.</b> The scan tool shows ECT −40 °F. Tap every part that could cause it, then press Check.', req:['f8','ECT','f9'], ok:['C151','PCM.pu','C160','PCM.lr','PCM'], why:'−40 °F means the signal is sitting at 5 V: an open in the sensor circuit (signal wire, sensor or low reference). The PCM can\'t read temperature, so it runs the fan as a failsafe.'},
+  {k:'mc', q:'Both PCM ground wires meet at S130. If G103 comes loose, what is most likely?', opts:['Only the fan motor stops','The PCM loses ground, shuts down and can\'t control the fan','Nothing changes'], a:1, why:'The PCM\'s grounds share S130 and G103. Lose G103 and the PCM loses ground entirely.'},
+],
+};
+
+/* ================= setup helpers ================= */
+function applySetup(st){
+  if (!st) return;
+  if (st.color) S.color = st.color;
+  if ('horn' in st) S.ctl.horn = st.horn;
+  if (st.key) S.key = st.key;
+  if (st.gear) S.gear = st.gear;
+  if (st.lsw) S.lsw = st.lsw;
+  if (st.temp != null) S.temp = st.temp;
+  if (st.open) { S.open = new Set(st.open); S.unplug = new Set(); }
+  if ('flip' in st) S.flip = st.flip;
+  if (st.half) { S.halfOf ??= {}; S.halfOf[st.half[0]] = st.half[1]; }
+  if (st.sel) S.sel = st.sel;
+}
+function resetBench(){
+  S.ctl = {horn:false}; S.key = 'off'; S.temp = 195; S.open = new Set(); S.unplug = new Set();
+  S.relay = {}; S.pcm = {powered:false, drv:false}; S.bcm = {powered:false, park:false, head:false};
+  S.gear = 'pn'; S.lsw = 'off'; S.running = false; S.cranked = false; S.alt = false; S.chg = false; S.sel = null; S.flip = false; S.halfOf = {};
+}
+function switchDiagram(id){
+  if (id === S.dg && ITEMS && Object.keys(ITEMS).length) return;
+  loadDiagram(id); resetBench(); ctrlKey = '';
+  $('#pickName').textContent = DG.name; $('#pickSub').textContent = DG.sub;
+}
+
+/* ================= lesson engine ================= */
+const curStep = () => S.lesson ? S.lesson.steps[S.step] : null;
+function startLesson(id){
+  S.lesson = LESSONS.find(l => l.id === id); S.step = 0;
+  switchDiagram(S.lesson.dg); resetBench();
+  enterStep();
+}
+function enterStep(){
+  const st = curStep(); if (!st) return;
+  S.spot = st.spot || []; S.picks = []; S.sus = new Set(); S.mcPick = null; S.susRes = null;
+  applySetup(st.setup);
+  S.stepOk = !st.goal;
+  render(); checkGoal(); renderInspector(); renderNotebook();
+}
+function checkGoal(){
+  const st = curStep(); if (!st || !st.goal || S.stepOk) return;
+  if (st.goal.check && st.goal.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderNotebook(); }
+}
+function lessonTap(id){
+  const st = curStep(); if (!st || !st.goal || S.stepOk) return;
+  const g = st.goal;
+  if (g.tap && id && g.tap.some(t => matches(t, id))) { S.stepOk = true; S.spot = []; flash(id, true); renderNotebook(); }
+  if (g.trace && id) traceTap(g.trace, id, () => { S.stepOk = true; renderNotebook(); });
+  if (g.sus && id) susTap(id);
+}
+function traceTap(path, id, done){
+  const want = path[S.picks.length]; if (want == null) return;
+  const opts = Array.isArray(want) ? want : [want];
+  const hit = opts.find(o => matches(o, id));
+  if (hit) {
+    S.picks.push(hit); flash(hit, true); renderHalos();
+    if (S.picks.length === path.length) { toast('✓ Complete path traced', 'good'); done(); }
+    else renderNotebook();
+  } else if (['trace', 'conn', 'pin'].includes(ITEMS[id]?.kind)) {
+    return;
+  } else if (!S.picks.some(p => matches(p, id))) {
+    flash(id, false); S.traceMiss = (S.traceMiss || 0) + 1;
+    toast(S.picks.length ? 'Not next. Where does current go after ' + labelOf(S.picks[S.picks.length - 1]) + '?' : 'Start where power enters the circuit: the fuse.', 'bad');
+    if (S.prac) S.prac.miss = true;
+  }
+}
+function susNorm(id){ const it = ITEMS[id]; return it && it.kind === 'pin' ? it.parent : id; }
+function susTap(id){
+  const n = susNorm(id);
+  if (S.sus.has(n)) S.sus.delete(n); else S.sus.add(n);
+  S.susRes = null; renderHalos(); renderNotebook();
+}
+function susCheck(g){
+  const sel = [...S.sus];
+  const missing = g.req.filter(r => !sel.some(s => matches(r, s)));
+  const extra = sel.filter(s => ![...g.req, ...g.ok].some(x => matches(x, s) || matches(s, x)));
+  return {missing, extra, ok: !missing.length && !extra.length};
+}
+function labelOf(id){
+  const it = ITEMS[id]; if (!it) return id;
+  if (it.kind === 'wire') return `the ${it.d.size} ${it.d.color} wire`;
+  if (it.kind === 'trace') return 'the internal circuit';
+  if (it.kind === 'sub') return it.d.name;
+  if (it.kind === 'pin') return it.parent + ' pin ' + it.d.pin.p;
+  if (it.kind === 'bus') return 'the ' + it.d.label + ' bus';
+  if (it.kind === 'conn') return 'connector ' + id;
+  const c = it.d; return c.type === 'ground' || c.type === 'splice' ? c.id : c.ref ? c.ref : c.name.toLowerCase();
+}
+
+/* ================= practice engine ================= */
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function startPractice(){
+  const bank = PRACTICE[S.dg];
+  S.prac = {dg:S.dg, bag:shuffle(bank.map((_, i) => i)), cur:null, right:0, total:0, streak:0, best:0, answered:false, miss:false, tries:0};
+  nextQuestion();
+}
+const curQ = () => S.prac && S.prac.cur != null ? PRACTICE[S.prac.dg][S.prac.cur] : null;
+function nextQuestion(){
+  const p = S.prac;
+  if (!p.bag.length) { p.cur = null; p.finished = true; S.spot = []; S.sus = new Set(); S.picks = []; render(); renderNotebook(); return; }
+  p.cur = p.bag.shift(); p.answered = false; p.miss = false; p.tries = 0; p.pick = null;
+  S.spot = []; S.sus = new Set(); S.picks = []; S.susRes = null; S.sel = null;
+  resetBench();
+  const q = curQ();
+  if (S.color === 'volt' && q.noVolt) S.color = 'wires';
+  applySetup(q.setup);
+  render(); renderInspector(); renderNotebook();
+}
+function scoreQ(first){
+  const p = S.prac; p.answered = true; p.total++;
+  if (first) { p.right++; p.streak++; p.best = Math.max(p.best, p.streak); } else p.streak = 0;
+}
+function pracTap(id){
+  const p = S.prac, q = curQ(); if (!q || p.answered || !id) return;
+  if (q.k === 'find'){
+    if (q.ans.some(a => matches(a, id))) { flash(id, true); scoreQ(p.tries === 0); renderNotebook(); }
+    else { flash(id, false); p.tries++; toast('Not that one. You tapped ' + labelOf(id) + '.', 'bad'); renderNotebook(); }
+  }
+  if (q.k === 'trace') traceTap(q.path, id, () => { scoreQ(!p.miss); renderNotebook(); });
+  if (q.k === 'sus') susTap(id);
+}
+
+/* ================= notebook ================= */
+const TABS = {explore:[['sym', 'Symbols'], ['read', 'How to read']], guided:[['les', 'Lessons']], practice:[['prac', 'Practice']]};
+function renderTabs(){
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+}
+const ICON_GOAL = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="7" r="2" fill="currentColor"/></svg>`;
+const ICON_OK = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5 5.5 10.5 11.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function mcHtml(m, pick, solved, who){
+  let h = `<p class="qq">${m.q}</p><div class="mc">`;
+  m.opts.forEach((o, i) => {
+    const cls = solved && i === m.a ? 'right' : pick != null && pick.includes?.(i) && i !== m.a ? 'wrong' : '';
+    h += `<button type="button" data-mc="${who}:${i}" class="${cls}"${solved ? ' disabled' : ''}>${o}</button>`;
+  });
+  h += '</div>';
+  if (solved) h += `<div class="why">${m.why}</div>`;
+  return h;
+}
+function susHtml(g, who, solved){
+  let h = `<div class="nav"><button type="button" class="btn primary small" data-sus="${who}:check"${solved ? ' disabled' : ''}>Check</button><button type="button" class="btn small" data-sus="${who}:clear"${solved ? ' disabled' : ''}>Clear picks</button><span class="hint">${S.sus.size} picked</span>${!solved && S.susRes && !S.susRes.ok ? `<button type="button" class="btn small" data-sus="${who}:show">Show answer</button>` : ''}</div>`;
+  if (S.susRes && !S.susRes.ok && !solved){
+    const r = S.susRes;
+    h += `<div class="why">${r.missing.length ? `<b>${r.missing.length} part${r.missing.length > 1 ? 's' : ''} missing.</b> ` : ''}${r.extra.length ? `<b>Can be ruled out:</b> ${r.extra.map(labelOf).join(', ')}. ` : ''}Adjust your picks and check again.</div>`;
+  }
+  if (solved) h += `<div class="why">${g.why}</div>`;
+  return h;
+}
+function tabLessons(){
+  if (!S.lesson){
+    let h = `<p>Short guided lessons. Each one sets up the diagram for you, points at what to look at, and checks your answer before moving on.</p><div class="les">`;
+    let lastDg = '';
+    LESSONS.forEach((l, i) => {
+      if (l.dg !== lastDg){ lastDg = l.dg; h += `<h4>${DIAGRAMS[l.dg].name}</h4>`; }
+      h += `<button type="button" class="lcard${S.done.has(l.id) ? ' done' : ''}" data-les="${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span><span class="dg">${DIAGRAMS[l.dg].level}</span></button>`;
+    });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), n = LESSONS.indexOf(L) + 1, g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${n} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g){
+    if (g.mc) h += mcHtml(g.mc, S.mcPick, S.stepOk, 'les');
+    else if (g.sus) { h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? ICON_OK : ICON_GOAL}<span>${S.stepOk ? 'Correct.' : 'Tap parts on the diagram to pick them. Tap again to un-pick.'}</span></div>` + susHtml(g.sus, 'les', S.stepOk); }
+    else {
+      const prog = g.trace ? ` (${S.picks.length} of ${g.trace.length})` : '';
+      h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? ICON_OK : ICON_GOAL}<span>${S.stepOk ? 'Done.' : (g.hint || 'Your turn.') + prog}</span></div>`;
+    }
+  }
+  const last = S.step === L.steps.length - 1;
+  h += `<div class="nav"><button type="button" class="btn small" data-nav="back"${S.step ? '' : ' disabled'}>Back</button><button type="button" class="btn small" data-nav="list">All lessons</button>${g && !S.stepOk && (g.trace || g.tap) ? '<button type="button" class="btn small" data-nav="show">Show me</button>' : ''}<span class="sp"></span><button type="button" class="btn primary" data-nav="next"${S.stepOk ? '' : ' disabled'}>${last ? 'Finish' : 'Next'}</button></div>`;
+  return h;
+}
+function tabPractice(){
+  const p = S.prac;
+  if (!p || p.dg !== S.dg) { startPractice(); return tabPractice(); }
+  let h = `<div class="score"><div><small>First try</small><b>${p.right} / ${p.total}</b></div><div><small>Streak</small><b>${p.streak}</b></div><div><small>Left</small><b>${p.bag.length + (p.cur != null && !p.answered ? 1 : 0)}</b></div></div>`;
+  if (p.finished){
+    const pct = p.total ? Math.round(p.right / p.total * 100) : 0;
+    return h + `<h3>Set complete</h3><p>You got <b>${p.right} of ${p.total}</b> right on the first try (${pct}%). Best streak: <b>${p.best}</b>.</p><div class="nav"><button type="button" class="btn primary" data-prac="again">Start a new round</button></div>`;
+  }
+  const q = curQ();
+  const kind = {find:'Find it', mc:'Read it', trace:'Trace it', sus:'What could cause it?'}[q.k];
+  h += `<span class="qk">${kind}</span>`;
+  if (q.k === 'mc') h += mcHtml(q, p.pick, p.answered, 'prac');
+  else {
+    h += `<p class="qq">${q.q}</p>`;
+    if (q.k === 'find') h += `<div class="goal${p.answered ? ' ok' : ''}">${p.answered ? ICON_OK : ICON_GOAL}<span>${p.answered ? (p.tries ? 'Found it.' : 'Correct on the first try.') : p.tries ? `Try again (${p.tries} miss${p.tries > 1 ? 'es' : ''}).` : 'Tap it on the diagram.'}</span></div>`;
+    if (q.k === 'trace') h += `<div class="goal${p.answered ? ' ok' : ''}">${p.answered ? ICON_OK : ICON_GOAL}<span>${p.answered ? (p.miss ? 'Traced, with a miss along the way.' : 'Traced perfectly.') : `Tap each wire and part in order (${S.picks.length} of ${q.path.length}).`}</span></div>`;
+    if (q.k === 'sus') h += susHtml(q, 'prac', p.answered);
+    if (p.answered && q.k !== 'sus' && q.why) h += `<div class="why">${q.why}</div>`;
+  }
+  h += `<div class="nav">${!p.answered && (q.k === 'find' || q.k === 'trace') && (p.tries >= 2 || p.miss) ? '<button type="button" class="btn small" data-prac="show">Show me</button>' : ''}<span class="sp"></span><button type="button" class="btn primary" data-prac="next"${p.answered ? '' : ' disabled'}>Next question</button></div>`;
+  return h;
+}
+function renderNotebook(){
+  renderTabs();
+  const el = $('#nbody');
+  el.innerHTML = S.tab === 'sym' ? tabSymbols() : S.tab === 'read' ? tabRead() : S.tab === 'les' ? tabLessons() : tabPractice();
+  const vb = document.querySelector('[data-c="volt"]');
+  const q = S.mode === 'practice' && curQ();
+  vb.disabled = !!(q && !S.prac.answered && (q.noVolt));
+}
+
+/* ================= toasts & picker ================= */
+function toast(msg, kind){
+  const t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg;
+  $('#toasts').appendChild(t); setTimeout(() => t.remove(), 2600);
+  while ($('#toasts').children.length > 2) $('#toasts').firstChild.remove();
+}
+function openPicker(){
+  const pop = $('#pop'), b = $('#pickBtn').getBoundingClientRect();
+  pop.innerHTML = `<h4>Diagrams</h4><div class="lib">` + DG_ORDER.map(id => { const d = DIAGRAMS[id]; return `<button type="button" class="card${id === S.dg ? ' cur' : ''}" data-dg="${id}"><span class="tag${id === S.dg ? ' now' : ''}">${d.level}</span><b>${d.name}</b><span>${d.sub}</span></button>`; }).join('') +
+    DG_SOON.map(d => `<div class="card" aria-disabled="true"><span class="tag">Coming</span><b>${d.name}</b><span>${d.sub}</span></div>`).join('') + '</div>';
+  pop.hidden = false; pop.style.left = Math.max(16, Math.min(b.left, innerWidth - pop.offsetWidth - 16)) + 'px'; pop.style.top = (b.bottom + 8) + 'px';
+  $('#pickBtn').setAttribute('aria-expanded', 'true');
+}
+function closePicker(){ $('#pop').hidden = true; $('#pickBtn').setAttribute('aria-expanded', 'false'); }
+
+/* ================= events ================= */
+function afterChange(){ render(); checkGoal(); renderInspector(); if (S.mode !== 'explore') renderNotebook(); }
+function handleTap(id){
+  S.sel = id || null;
+  if (S.mode === 'guided' && S.lesson) lessonTap(id);
+  if (S.mode === 'practice' && S.prac) pracTap(id);
+  renderHalos(); renderInspector();
+}
+function setMode(m){
+  S.mode = m; S.spot = []; S.picks = []; S.sus = new Set();
+  document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m));
+  if (m === 'explore') { S.lesson = null; resetBench(); }
+  if (m === 'guided') { S.lesson = null; }
+  if (m === 'practice') { S.prac = null; resetBench(); }
+  S.tab = null;
+  render(); renderInspector(); renderNotebook();
+  $('#dHint').textContent = m === 'explore' ? 'Tap any symbol, wire or connector' : m === 'guided' ? 'Follow the lesson on the right' : 'Answer on the diagram or in the notebook';
+}
+function syncColorBtns(){ document.querySelectorAll('#colors button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === S.color)); $('#legend').hidden = S.color !== 'volt'; }
+
+function bind(){
+  const svg = $('#dg'); let down = null;
+  svg.addEventListener('pointerdown', e => { down = {x:e.clientX, y:e.clientY, vx:VIEW.x, vy:VIEW.y, moved:false, id:e.target.closest('.it')?.dataset.id || null}; try { svg.setPointerCapture(e.pointerId); } catch (_) {} });
+  svg.addEventListener('pointermove', e => {
+    if (!down) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (!down.moved && Math.hypot(dx, dy) > 6 && VIEW.w < 1000) { down.moved = true; svg.classList.add('panning'); }
+    if (down.moved){ const k = VIEW.w / svg.getBoundingClientRect().width; VIEW.x = down.vx - dx * k; VIEW.y = down.vy - dy * k; clampView(); applyView(); }
+  });
+  svg.addEventListener('pointerup', () => { if (!down) return; const d = down; down = null; svg.classList.remove('panning'); if (!d.moved) handleTap(d.id); });
+  svg.addEventListener('pointercancel', () => { down = null; svg.classList.remove('panning'); });
+  svg.addEventListener('wheel', e => { e.preventDefault(); const p = svgPt(e); zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, p.x, p.y); }, {passive:false});
+  svg.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.it')) { e.preventDefault(); handleTap(e.target.closest('.it').dataset.id); } });
+  $('#zIn').onclick = () => zoomAt(1.3); $('#zOut').onclick = () => zoomAt(1 / 1.3); $('#zFit').onclick = () => { VIEW = {x:0, y:0, w:1000, h:680}; applyView(); };
+
+  $('#modes').onclick = e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
+  $('#colors').onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.color = b.dataset.c; syncColorBtns(); afterChange(); };
+  $('#resetBtn').onclick = () => {
+    VIEW = {x:0, y:0, w:1000, h:680};
+    if (S.mode === 'guided' && S.lesson) { resetBench(); enterStep(); }
+    else if (S.mode === 'practice' && S.prac) { resetBench(); applySetup(curQ()?.setup); afterChange(); }
+    else { resetBench(); afterChange(); }
+    syncColorBtns();
+  };
+  $('#pickBtn').onclick = e => { e.stopPropagation(); $('#pop').hidden ? openPicker() : closePicker(); };
+  $('#pop').onclick = e => {
+    const c = e.target.closest('[data-dg]'); if (!c) return;
+    closePicker(); if (c.dataset.dg === S.dg) return;
+    switchDiagram(c.dataset.dg);
+    if (S.mode === 'guided') S.lesson = null;
+    if (S.mode === 'practice') S.prac = null;
+    S.spot = []; S.picks = []; S.sus = new Set();
+    render(); renderInspector(); renderNotebook();
+    history.replaceState(null, '', '#' + S.dg);
+  };
+  document.addEventListener('click', e => { if (!$('#pop').hidden && !e.target.closest('#pop') && !e.target.closest('#pickBtn')) closePicker(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePicker(); });
+
+  $('#ctrls').addEventListener('click', e => {
+    if (e.target.closest('#hornBtn')) { S.ctl.horn = !S.ctl.horn; afterChange(); return; }
+    const k = e.target.closest('[data-key]'); if (k) { S.key = k.dataset.key; afterChange(); return; }
+    const gr = e.target.closest('[data-gear]'); if (gr) { S.gear = gr.dataset.gear; afterChange(); return; }
+    const ls = e.target.closest('[data-lsw]'); if (ls) { S.lsw = ls.dataset.lsw; afterChange(); return; }
+    if (e.target.closest('[data-act="clearf"]')) { S.open = new Set(); S.unplug = new Set(); afterChange(); }
+  });
+  $('#ctrls').addEventListener('input', e => { if (e.target.id === 'tempIn') { S.temp = +e.target.value; afterChange(); } });
+
+  $('#ibody').addEventListener('click', e => {
+    const a = e.target.closest('[data-act]');
+    if (a){
+      const [act, id] = a.dataset.act.split(':');
+      if (act === 'open') { S.open.has(id) ? S.open.delete(id) : S.open.add(id); }
+      if (act === 'unplug') { S.unplug.has(id) ? S.unplug.delete(id) : S.unplug.add(id); }
+      afterChange(); return;
+    }
+    const f = e.target.closest('[data-flip]'); if (f) { S.flip = f.dataset.flip === '1'; renderInspector(); checkGoal(); return; }
+    const hf = e.target.closest('[data-half]'); if (hf) { const [c, i] = hf.dataset.half.split(':'); S.halfOf ??= {}; S.halfOf[c] = +i; renderInspector(); checkGoal(); return; }
+    const pn = e.target.closest('[data-pin]'); if (pn) { handleTap(pn.dataset.pin); return; }
+    const s = e.target.closest('[data-sel]'); if (s) { handleTap(s.dataset.sel); }
+  });
+
+  $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) { S.tab = b.dataset.tab; renderNotebook(); } };
+  $('#nbody').addEventListener('click', e => {
+    const l = e.target.closest('[data-les]'); if (l) { startLesson(l.dataset.les); return; }
+    const nv = e.target.closest('[data-nav]');
+    if (nv){
+      const k = nv.dataset.nav;
+      if (k === 'list') { S.lesson = null; S.spot = []; S.picks = []; S.sus = new Set(); render(); renderNotebook(); }
+      if (k === 'back' && S.step > 0) { S.step--; enterStep(); }
+      if (k === 'next'){
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); toast('Lesson complete', 'good'); S.lesson = null; S.spot = []; S.picks = []; S.sus = new Set(); render(); renderNotebook(); }
+      }
+      if (k === 'show'){ const g = curStep().goal; S.spot = g.tap ? g.tap : [].concat(g.trace[S.picks.length]); renderHalos(); }
+      return;
+    }
+    const mc = e.target.closest('[data-mc]');
+    if (mc){
+      const [who, i] = mc.dataset.mc.split(':'), n = +i;
+      if (who === 'les'){
+        const m = curStep().goal.mc; S.mcPick = (S.mcPick || []).concat(n);
+        if (n === m.a) { S.stepOk = true; } else toast('Not quite. Try again.', 'bad');
+      } else {
+        const p = S.prac, q = curQ(); p.pick = (p.pick || []).concat(n);
+        if (n === q.a) { scoreQ(p.pick.length === 1); afterChange(); return; } else toast('Not quite. Try again.', 'bad');
+      }
+      renderNotebook(); return;
+    }
+    const su = e.target.closest('[data-sus]');
+    if (su){
+      const [who, act] = su.dataset.sus.split(':'), g = who === 'les' ? curStep().goal.sus : curQ();
+      if (act === 'clear') { S.sus = new Set(); S.susRes = null; }
+      if (act === 'check'){
+        S.susRes = susCheck(g);
+        if (S.susRes.ok){ if (who === 'les') S.stepOk = true; else scoreQ(!S.prac.miss); toast('✓ Correct', 'good'); }
+        else if (who === 'prac') S.prac.miss = true;
+      }
+      if (act === 'show'){ S.sus = new Set(g.req); S.susRes = null; if (who === 'les') S.stepOk = true; else { S.prac.miss = true; scoreQ(false); } }
+      renderHalos(); renderNotebook(); return;
+    }
+    const pr = e.target.closest('[data-prac]');
+    if (pr){
+      const k = pr.dataset.prac;
+      if (k === 'next') nextQuestion();
+      if (k === 'again') startPractice();
+      if (k === 'show'){ const q = curQ(); S.spot = q.k === 'find' ? q.ans : [].concat(q.path[S.picks.length]); S.prac.miss = true; S.prac.tries = Math.max(S.prac.tries, 1); renderHalos(); }
+    }
+  });
+}
+
+/* ================= init ================= */
+function init(){
+  const h = location.hash.replace('#', '').split('-');
+  const dg = DIAGRAMS[h[0]] ? h[0] : 'horn', mode = ['explore', 'guided', 'practice'].includes(h[1]) ? h[1] : 'explore';
+  loadDiagram(dg); resetBench();
+  $('#pickName').textContent = DG.name; $('#pickSub').textContent = DG.sub;
+  syncColorBtns(); bind();
+  setMode(mode);
+}
+init();
+})();
+</script>
+
+</body>
+</html>
