@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Follow the Energy</title>
+<meta name="description" content="Trace energy through a gas front-drive car, a 4WD truck, a hybrid and an electric car: fuel or battery to the wheels, plus starting, charging, regen braking and where the energy is lost. Click any part to learn what it does and jump to the deeper STECH tool.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. 2D top-view cutaway car,
+   part info, energy path, energy budget, notebook. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --chem:#FFB224; --elec:#2F9BE0; --mech:#3DDC97; --heat:#FF5A4E;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+a{color:#7cc4f0}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"],.seg.veh button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.4;cursor:not-allowed}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap;text-decoration:none}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1.3fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vbox{flex:1;min-height:0;padding:0 8px 8px}
+.vbox svg{width:100%;height:100%;display:block}
+#pCar{grid-column:1/3}
+#pPath{grid-column:2/4}
+.svgt{font:600 10px var(--f-label);fill:#C5CFD9;letter-spacing:.03em}
+.svgs{font:600 8.5px var(--f-label);fill:#5A6773;letter-spacing:.08em;text-transform:uppercase}
+.comp{cursor:pointer}
+.comp:hover rect.box{stroke:#fff}
+.comp:focus{outline:none}
+.comp:focus-visible rect.box{stroke:#fff;stroke-width:2.4}
+.flow{stroke-dasharray:4 10;animation:flow .9s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-14}}
+@media (prefers-reduced-motion: reduce){.flow{animation:none}}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font:600 10px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px;margin:4px 0}
+.chain .c{all:unset;cursor:pointer;padding:5px 8px;border-radius:8px;background:var(--raise);border:1px solid var(--line-2);font:600 12px/1.1 var(--f-label);color:var(--fg)}
+.chain .c:hover{border-color:#3a4a5c}
+.chain .a{font:700 9px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;padding:0 3px;display:inline-flex;align-items:center;gap:3px}
+.chain .a::after{content:"→";font-size:13px}
+.loss{font-size:12.5px;color:#FFC2BC;margin:6px 0 0}
+.info h3{margin:0 0 4px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.info p{margin:0 0 8px;font-size:13.5px;color:var(--soft)}
+.info .io{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12.5px;margin:6px 0 10px}
+.info .io span{color:var(--faint);font:700 9.5px/1.6 var(--f-label);letter-spacing:.14em;text-transform:uppercase}
+.chip{padding:3px 7px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft)}
+.chip.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}
+.bars{display:grid;gap:8px}
+.brow small{display:flex;justify-content:space-between;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.stack{display:flex;height:22px;border-radius:6px;overflow:hidden;border:1px solid var(--line-2)}
+.stack div{display:grid;place-items:center;font:600 10px/1 var(--f-mono);color:#0b1015;overflow:hidden;white-space:nowrap}
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.rowb .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);min-width:70px}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.trace{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}
+.trace span{padding:4px 7px;border-radius:7px;background:rgba(61,220,151,.12);border:1px solid rgba(61,220,151,.4);font:600 11.5px/1 var(--f-label);color:#C9F7E2}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:7px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f.bad{border-color:rgba(255,90,78,.45);color:#FFC2BC}.find .f.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}.find .f.ok{border-color:rgba(61,220,151,.4);color:#BFEBD6}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pCar{grid-column:1/-1;height:420px}
+  #pPath{grid-column:1/-1;height:auto;min-height:200px}
+  #pInfo,#pBudget{height:320px}
+  .main>.panel{height:640px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pCar{height:280px} .brand p{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+      <div><h1>Follow the Energy</h1><p>Fuel · battery · wheels</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Find the break</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pCar" aria-label="Vehicle"><div class="phead"><h2 id="carTitle">Vehicle</h2><span id="carSub"></span><div class="r"><span class="legend"><span><i style="background:var(--chem)"></i>Fuel</span><span><i style="background:var(--elec)"></i>Electric</span><span><i style="background:var(--mech)"></i>Turning</span><span><i style="background:var(--heat)"></i>Heat (lost)</span></span></div></div><div class="vbox"><svg id="svCar" viewBox="0 0 640 330" role="img" aria-label="Top-view cutaway of the vehicle. Click a part to learn about it."></svg></div></section>
+      <section class="panel" id="pInfo" aria-label="Part"><div class="phead"><h2>Part</h2><span>click any part</span></div><div class="ro info" id="info"></div></section>
+      <section class="panel" id="pBudget" aria-label="Where the energy goes"><div class="phead"><h2>Where the energy goes</h2><span id="bSub"></span></div><div class="ro" id="budget"></div></section>
+      <section class="panel" id="pPath" aria-label="Energy path"><div class="phead"><h2>Energy path</h2><span id="pathSub"></span></div><div class="ro" id="path"></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const FORM = { chem: { n: 'Fuel (chemical)', c: '#FFB224' }, elec: { n: 'Electric', c: '#2F9BE0' }, mech: { n: 'Turning (mechanical)', c: '#3DDC97' }, heat: { n: 'Heat', c: '#FF5A4E' } };
+const T = {   // links to the deeper STECH tools (relative to this tool's folder)
+  engine: ['Engine: How It Works', '../engine/'], fuel: ['Fuel Trim Simulator', '../fuel-trim/'], wiring: ['Wiring Diagram Reader', '../wiring-diagram/'],
+  bench: ['Electrical Test Bench', '../electrical-testing/'], dtc: ['DTC Code-Setting Visualizer', '../dtc-visualizer/'], hv: ['HV Safety Trainer', '../hv-safety/'],
+  align: ['Alignment Simulator', '../alignment/'], brakes: ['Brake Hydraulics Simulator', '../brake-hydraulics/'], ac: ['A/C Cycle Simulator', '../ac-cycle/'], planet: ['Planetary Gear Sandbox', '../planetary/'],
+};
+
+/* ================= parts library ================= */
+const P = {
+  tank:    { n: 'Fuel tank', d: 'Stores gasoline: chemical energy. One gallon holds about 33.7 kWh, roughly the energy in a small EV battery pack.', ein: '—', eout: 'Fuel (chemical)', course: 'Engine Performance I', tools: ['fuel'] },
+  pump:    { n: 'Fuel pump', d: 'An electric pump in the tank that pushes fuel up to the engine at about 40–60 psi.', ein: 'Fuel + electric (to run the pump)', eout: 'Fuel under pressure', course: 'Engine Performance I', tools: ['fuel', 'wiring'] },
+  engine:  { n: 'Engine', d: 'Burns fuel and air. The heat pushes the pistons down and turns the crankshaft. Most of the fuel’s energy leaves as heat through the cooling system and exhaust.', ein: 'Fuel (chemical)', eout: 'Turning crankshaft + a lot of heat', course: 'Engine Repair · Engine Performance I/II', tools: ['engine', 'fuel', 'dtc'] },
+  trans:   { n: 'Transaxle', d: 'A transmission and differential in one case. It changes gear ratios so the engine stays in its useful speed range, then splits torque to the two front axles.', ein: 'Turning', eout: 'Turning (slower, more torque)', course: 'Automatic Transmissions · Manual Drive Trains', tools: ['planet'] },
+  trans4:  { n: 'Transmission', d: 'Changes gear ratios: low gears for torque to get moving, high gears for efficient cruising.', ein: 'Turning', eout: 'Turning (geared)', course: 'Automatic Transmissions', tools: ['planet'] },
+  tcase:   { n: 'Transfer case', d: 'Sends power to the rear driveshaft only (2H) or to both the rear and front driveshafts (4H). Many have a low range (4L) for extra torque.', ein: 'Turning', eout: 'Turning to the rear (and front in 4H)', course: 'Manual Drive Trains and Axles', tools: [] },
+  axles:   { n: 'CV axles', d: 'Shafts with constant-velocity joints that carry torque from the transaxle to each front wheel while the wheels steer and bounce.', ein: 'Turning', eout: 'Turning wheels', course: 'Manual Drive Trains and Axles', tools: ['align'] },
+  rearDS:  { n: 'Rear driveshaft', d: 'A tube with U-joints that carries torque from the transfer case back to the rear differential.', ein: 'Turning', eout: 'Turning', course: 'Manual Drive Trains and Axles', tools: [] },
+  frontDS: { n: 'Front driveshaft', d: 'Carries torque from the transfer case to the front differential, but only when 4WD is engaged.', ein: 'Turning', eout: 'Turning', course: 'Manual Drive Trains and Axles', tools: [] },
+  rearDiff:{ n: 'Rear differential', d: 'Turns the power 90° to the axles, multiplies torque (final drive ratio), and lets the left and right wheels turn at different speeds in a corner.', ein: 'Turning', eout: 'Turning both rear axles', course: 'Manual Drive Trains and Axles', tools: [] },
+  frontDiff:{ n: 'Front differential', d: 'Same job as the rear differential, for the front wheels in 4WD.', ein: 'Turning', eout: 'Turning both front axles', course: 'Manual Drive Trains and Axles', tools: [] },
+  rearAxle:{ n: 'Rear axle shafts', d: 'Carry torque from the differential out to the rear wheels.', ein: 'Turning', eout: 'Turning wheels', course: 'Manual Drive Trains and Axles', tools: [] },
+  frontAxle:{ n: 'Front axle shafts', d: 'Carry torque from the front differential to the front wheels (4WD).', ein: 'Turning', eout: 'Turning wheels', course: 'Manual Drive Trains and Axles', tools: [] },
+  starter: { n: 'Starter motor', d: 'A powerful electric motor that cranks the engine until it fires. It can draw 150+ amps from the battery.', ein: 'Electric (12 V)', eout: 'Turning the engine', course: 'Electrical I', tools: ['wiring', 'bench'] },
+  alt:     { n: 'Alternator', d: 'Belt-driven generator: turns some of the engine’s turning energy back into electricity to run everything electric and recharge the battery (about 13.5–14.8 V).', ein: 'Turning (belt)', eout: 'Electric (12 V system)', course: 'Electrical I', tools: ['wiring', 'bench'] },
+  bat12:   { n: '12 V battery', d: 'Stores energy chemically and gives it back as electricity: starts the engine and powers the computers. Hybrids and EVs still need one to wake up.', ein: 'Electric (charging)', eout: 'Electric (12 V)', course: 'Electrical I', tools: ['bench', 'wiring'] },
+  loads:   { n: 'Lights & electronics', d: 'Lights, computers, radio, blower and more. Every one of them is an electrical load fed by the battery and alternator (or DC-DC converter).', ein: 'Electric', eout: 'Light, motion, heat', course: 'Electrical I/II', tools: ['wiring', 'bench', 'dtc'] },
+  radiator:{ n: 'Radiator', d: 'Gets rid of engine heat. In a gas car, roughly a third of the fuel’s energy is thrown away here as heat.', ein: 'Heat (hot coolant)', eout: 'Heat into the air', course: 'Engine Repair · Heating and Air Conditioning', tools: ['ac'] },
+  exhaust: { n: 'Exhaust', d: 'Carries burned gases out. About another third of the fuel’s energy leaves here as hot gas.', ein: 'Hot gas', eout: 'Heat (lost)', course: 'Engine Performance II', tools: ['fuel'] },
+  wheels:  { n: 'Wheels, tires & brakes', d: 'Turn the axle torque into push against the road. When you brake, friction brakes turn the car’s motion into heat. Regen braking can save some of it instead.', ein: 'Turning', eout: 'Motion (and heat when braking)', course: 'Brakes · Suspension and Steering', tools: ['brakes', 'align'] },
+  psd:     { n: 'Power-split device', d: 'A planetary gearset: engine on the carrier, MG1 on the sun, the drive to the wheels on the ring. It blends engine and motor power with no shifting.', ein: 'Turning (engine) + MG1 + MG2', eout: 'Turning wheels', course: 'Automatic Transmissions (hybrid theory)', tools: ['planet'] },
+  mg1:     { n: 'MG1 (generator)', d: 'Motor-generator 1. Mostly a generator: makes electricity from engine power and controls engine speed through the planetary set. Also starts the engine.', ein: 'Turning', eout: 'Electric (high voltage AC)', course: 'Automatic Transmissions · Electrical I (xEV)', tools: ['planet', 'hv'] },
+  mg2:     { n: 'MG2 (drive motor)', d: 'Motor-generator 2. Drives the wheels and becomes a generator during regenerative braking.', ein: 'Electric (HV AC)', eout: 'Turning wheels (or electric in regen)', course: 'Electrical I (xEV)', tools: ['hv'] },
+  inverter:{ n: 'Inverter', d: 'Converts the battery’s DC to the three-phase AC the motors use, and back to DC to charge the battery in regen. Orange cables = high voltage.', ein: 'Electric (DC or AC)', eout: 'Electric (AC or DC)', course: 'Electrical I (xEV)', tools: ['hv'] },
+  hvbat:   { n: 'High-voltage battery', d: 'Hundreds of volts of lithium-ion (or NiMH) cells. Stores energy for the motor and takes it back in regen. Only trained techs with the right PPE work on it.', ein: 'Electric (charging / regen)', eout: 'Electric (HV DC)', course: 'Electrical I (xEV)', tools: ['hv'] },
+  dcdc:    { n: 'DC-DC converter', d: 'Replaces the alternator in hybrids and EVs: steps high voltage down to about 14 V to run the 12 V system and charge the 12 V battery.', ein: 'Electric (HV DC)', eout: 'Electric (12 V)', course: 'Electrical I (xEV)', tools: ['hv', 'bench'] },
+  motor:   { n: 'Drive motor', d: 'An AC motor that drives the wheels with full torque from 0 rpm, and becomes a generator for regen braking.', ein: 'Electric (HV AC)', eout: 'Turning (or electric in regen)', course: 'Electrical I (xEV)', tools: ['hv'] },
+  reduction:{ n: 'Reduction gear & differential', d: 'EV motors spin very fast (10,000+ rpm), so a single fixed reduction (about 9:1) and a differential drive the axles. No gear shifting.', ein: 'Turning (fast)', eout: 'Turning wheels (slower, more torque)', course: 'Manual Drive Trains and Axles', tools: [] },
+  port:    { n: 'Charge port', d: 'Where the cable plugs in. AC (Level 1/2) goes through the onboard charger; DC fast charging goes straight to the battery.', ein: 'Electric (from the grid)', eout: 'Electric', course: 'Electrical I (xEV)', tools: ['hv'] },
+  obc:     { n: 'Onboard charger', d: 'Converts household/Level 2 AC into DC to charge the battery. DC fast chargers bypass it: the big charger is in the station.', ein: 'Electric (AC)', eout: 'Electric (HV DC)', course: 'Electrical I (xEV)', tools: ['hv'] },
+  grid:    { n: 'Charging station (grid)', d: 'Energy from the power grid. Level 1 (120 V), Level 2 (240 V) or DC fast charging.', ein: '—', eout: 'Electric', course: 'Electrical I (xEV)', tools: [] },
+};
+
+/* ================= vehicles (top view, front to the right; top = left side) ================= */
+const W = { wFL: [515, 46], wFR: [515, 284], wRL: [135, 46], wRR: [135, 284] };
+const VEH = {
+  gas: {
+    name: 'Gas car, front-wheel drive', sub: 'Transverse engine + transaxle',
+    parts: {
+      tank: [120, 165, 64, 52], pump: [200, 165, 48, 26], engine: [450, 148, 76, 52], trans: [450, 206, 76, 30], axles: [515, 165, 12, 206, 'bar'],
+      starter: [372, 116, 52, 22], alt: [372, 230, 58, 22], bat12: [430, 74, 50, 26], loads: [292, 104, 86, 26], radiator: [592, 205, 16, 80], exhaust: [300, 262, 150, 12],
+    },
+    sits: {
+      start: { n: 'Starting', segs: [['bat12', 'starter', 'elec'], ['starter', 'engine', 'mech']], note: 'The battery spins the starter, which cranks the engine until it fires.' },
+      drive: { n: 'Driving', segs: [['tank', 'pump', 'chem'], ['pump', 'engine', 'chem'], ['engine', 'trans', 'mech'], ['trans', 'axles', 'mech'], ['axles', 'wFL', 'mech'], ['axles', 'wFR', 'mech'], ['engine', 'alt', 'mech'], ['alt', 'bat12', 'elec'], ['bat12', 'loads', 'elec'], ['engine', 'radiator', 'heat'], ['engine', 'exhaust', 'heat']], note: 'Fuel → engine → transaxle → axles → front wheels. Most of the fuel’s energy is lost as heat.' },
+      idle: { n: 'Idling', segs: [['tank', 'pump', 'chem'], ['pump', 'engine', 'chem'], ['engine', 'alt', 'mech'], ['alt', 'bat12', 'elec'], ['bat12', 'loads', 'elec'], ['engine', 'radiator', 'heat'], ['engine', 'exhaust', 'heat']], note: 'Burning fuel at a stop: no energy reaches the wheels. EPA counts this as idle loss.' },
+      brake: { n: 'Braking', segs: [['wFL', 'wFL', 'heat'], ['wFR', 'wFR', 'heat'], ['wRL', 'wRL', 'heat'], ['wRR', 'wRR', 'heat']], note: 'Friction brakes turn the car’s motion into heat. That energy is gone for good.' },
+    },
+  },
+  truck: {
+    name: '4WD pickup', sub: 'Longitudinal engine · transfer case · two differentials',
+    parts: {
+      tank: [210, 240, 64, 34], pump: [290, 240, 44, 22], engine: [505, 150, 70, 52], trans4: [420, 150, 66, 36], tcase: [352, 160, 46, 40], rearDS: [255, 160, 150, 10, 'barh'],
+      rearDiff: [135, 160, 40, 38], rearAxle: [135, 165, 12, 206, 'bar'], frontDS: [445, 210, 160, 10, 'barh'], frontDiff: [530, 210, 36, 30], frontAxle: [530, 165, 12, 206, 'bar'],
+      starter: [445, 104, 46, 20], alt: [585, 240, 44, 20], bat12: [588, 104, 44, 26], loads: [290, 100, 86, 26], radiator: [604, 160, 14, 70], exhaust: [300, 282, 170, 10],
+    },
+    sits: {
+      start: { n: 'Starting', segs: [['bat12', 'starter', 'elec'], ['starter', 'engine', 'mech']], note: 'Same as any gas engine: battery → starter → engine.' },
+      drive2: { n: 'Driving 2H', segs: [['tank', 'pump', 'chem'], ['pump', 'engine', 'chem'], ['engine', 'trans4', 'mech'], ['trans4', 'tcase', 'mech'], ['tcase', 'rearDS', 'mech'], ['rearDS', 'rearDiff', 'mech'], ['rearDiff', 'rearAxle', 'mech'], ['rearAxle', 'wRL', 'mech'], ['rearAxle', 'wRR', 'mech'], ['engine', 'alt', 'mech'], ['alt', 'bat12', 'elec'], ['engine', 'radiator', 'heat'], ['engine', 'exhaust', 'heat']], note: '2H: the transfer case sends everything to the rear wheels.' },
+      drive4: { n: 'Driving 4H', segs: [['tank', 'pump', 'chem'], ['pump', 'engine', 'chem'], ['engine', 'trans4', 'mech'], ['trans4', 'tcase', 'mech'], ['tcase', 'rearDS', 'mech'], ['rearDS', 'rearDiff', 'mech'], ['rearDiff', 'rearAxle', 'mech'], ['rearAxle', 'wRL', 'mech'], ['rearAxle', 'wRR', 'mech'], ['tcase', 'frontDS', 'mech'], ['frontDS', 'frontDiff', 'mech'], ['frontDiff', 'frontAxle', 'mech'], ['frontAxle', 'wFL', 'mech'], ['frontAxle', 'wFR', 'mech'], ['engine', 'alt', 'mech'], ['alt', 'bat12', 'elec'], ['engine', 'radiator', 'heat'], ['engine', 'exhaust', 'heat']], note: '4H: the transfer case also drives the front driveshaft and differential. All four wheels pull.' },
+      brake: { n: 'Braking', segs: [['wFL', 'wFL', 'heat'], ['wFR', 'wFR', 'heat'], ['wRL', 'wRL', 'heat'], ['wRR', 'wRR', 'heat']], note: 'Friction brakes turn motion into heat.' },
+    },
+  },
+  hybrid: {
+    name: 'Hybrid (power-split)', sub: 'Engine + two motor-generators + planetary power-split',
+    parts: {
+      tank: [130, 222, 56, 34], engine: [445, 128, 72, 46], psd: [445, 190, 60, 30], mg1: [372, 190, 54, 28], mg2: [445, 240, 60, 26], axles: [515, 165, 12, 206, 'bar'],
+      inverter: [365, 112, 60, 28], hvbat: [235, 165, 90, 58], dcdc: [300, 92, 54, 22], bat12: [200, 92, 52, 22], loads: [118, 108, 66, 24], radiator: [592, 165, 16, 80], exhaust: [300, 270, 150, 10],
+    },
+    sits: {
+      stop: { n: 'Stopped', segs: [['hvbat', 'dcdc', 'elec'], ['dcdc', 'bat12', 'elec'], ['bat12', 'loads', 'elec']], note: 'Engine off at a stop: no idle losses. The DC-DC converter keeps the 12 V system running.' },
+      ev: { n: 'EV launch', segs: [['hvbat', 'inverter', 'elec'], ['inverter', 'mg2', 'elec'], ['mg2', 'axles', 'mech'], ['axles', 'wFL', 'mech'], ['axles', 'wFR', 'mech'], ['hvbat', 'dcdc', 'elec'], ['dcdc', 'bat12', 'elec']], note: 'Pulling away gently on battery power alone: the engine stays off.' },
+      accel: { n: 'Hard acceleration', segs: [['tank', 'engine', 'chem'], ['engine', 'psd', 'mech'], ['psd', 'axles', 'mech'], ['psd', 'mg1', 'mech'], ['mg1', 'inverter', 'elec'], ['hvbat', 'inverter', 'elec'], ['inverter', 'mg2', 'elec'], ['mg2', 'axles', 'mech'], ['axles', 'wFL', 'mech'], ['axles', 'wFR', 'mech'], ['engine', 'radiator', 'heat'], ['engine', 'exhaust', 'heat']], note: 'Engine and battery together: some engine power goes straight to the wheels through the planetary set, some through MG1 → MG2.' },
+      cruise: { n: 'Cruising', segs: [['tank', 'engine', 'chem'], ['engine', 'psd', 'mech'], ['psd', 'axles', 'mech'], ['psd', 'mg1', 'mech'], ['mg1', 'inverter', 'elec'], ['inverter', 'mg2', 'elec'], ['inverter', 'hvbat', 'elec'], ['mg2', 'axles', 'mech'], ['axles', 'wFL', 'mech'], ['axles', 'wFR', 'mech'], ['engine', 'radiator', 'heat'], ['engine', 'exhaust', 'heat']], note: 'The engine runs at its most efficient load; extra power tops up the battery.' },
+      regen: { n: 'Regen braking', segs: [['wFL', 'axles', 'mech'], ['wFR', 'axles', 'mech'], ['axles', 'mg2', 'mech'], ['mg2', 'inverter', 'elec'], ['inverter', 'hvbat', 'elec'], ['wRL', 'wRL', 'heat'], ['wRR', 'wRR', 'heat']], note: 'MG2 becomes a generator: the car’s motion goes back into the battery instead of all becoming brake heat.' },
+    },
+  },
+  ev: {
+    name: 'Battery electric car', sub: 'Rear motor · single-speed reduction · onboard charger',
+    parts: {
+      hvbat: [330, 168, 190, 76], motor: [196, 165, 44, 40], reduction: [140, 165, 40, 36], rearAxle: [135, 165, 12, 206, 'bar'], inverter: [212, 108, 56, 26],
+      port: [262, 46, 52, 20], obc: [340, 100, 70, 22], grid: [262, 12, 96, 18], dcdc: [470, 100, 54, 22], bat12: [560, 106, 50, 26], loads: [545, 220, 74, 26],
+    },
+    sits: {
+      drive: { n: 'Driving', segs: [['hvbat', 'inverter', 'elec'], ['inverter', 'motor', 'elec'], ['motor', 'reduction', 'mech'], ['reduction', 'rearAxle', 'mech'], ['rearAxle', 'wRL', 'mech'], ['rearAxle', 'wRR', 'mech'], ['hvbat', 'dcdc', 'elec'], ['dcdc', 'bat12', 'elec'], ['bat12', 'loads', 'elec']], note: 'Battery → inverter → motor → reduction gear → rear wheels. The electric drive loses only about 15–20%.' },
+      regen: { n: 'Regen braking', segs: [['wRL', 'rearAxle', 'mech'], ['wRR', 'rearAxle', 'mech'], ['rearAxle', 'reduction', 'mech'], ['reduction', 'motor', 'mech'], ['motor', 'inverter', 'elec'], ['inverter', 'hvbat', 'elec'], ['wFL', 'wFL', 'heat'], ['wFR', 'wFR', 'heat']], note: 'The motor works as a generator. In city driving about a third of the energy comes back this way.' },
+      ac: { n: 'Charging Level 2 (AC)', segs: [['grid', 'port', 'elec'], ['port', 'obc', 'elec'], ['obc', 'hvbat', 'elec'], ['obc', 'obc', 'heat']], note: 'AC from the wall goes through the onboard charger, which converts it to DC. Some energy is lost as heat while charging.' },
+      dc: { n: 'DC fast charging', segs: [['grid', 'port', 'elec'], ['port', 'hvbat', 'elec']], note: 'The station does the AC-to-DC conversion and feeds the battery directly, bypassing the onboard charger.' },
+      park: { n: 'Parked, awake', segs: [['hvbat', 'dcdc', 'elec'], ['dcdc', 'bat12', 'elec'], ['bat12', 'loads', 'elec']], note: 'The DC-DC converter replaces the alternator. The 12 V battery wakes the computers that connect the high-voltage battery.' },
+    },
+  },
+};
+const BUDGET = {   // fueleconomy.gov / EPA, mid-points of the published ranges
+  gas: { src: 'Gasoline vehicle', city: [['Engine losses', 73, '71–75%', 'heat'], ['Idle', 6, '6%', 'heat'], ['Parasitic', 6, '5–7%', 'chem'], ['Drivetrain', 4.5, '4–5%', 'mech'], ['To the wheels', 17, '14–20%', 'ok']], hwy: [['Engine losses', 66.5, '64–69%', 'heat'], ['Parasitic', 3.5, '3–4%', 'chem'], ['Drivetrain', 4, '3–5%', 'mech'], ['To the wheels', 26, '22–30%', 'ok']] },
+  hybrid: { src: 'Hybrid', city: [['Engine losses', 69, '66–72%', 'heat'], ['Parasitic', 6, '5–7%', 'chem'], ['Drivetrain', 4, '3–5%', 'mech'], ['Aux. electrical', 2, '0–4%', 'elec'], ['To the wheels', 30.5, '21–40%', 'ok']], hwy: [['Engine losses', 64.5, '63–66%', 'heat'], ['Parasitic', 3, '2–4%', 'chem'], ['Drivetrain', 4, '3–5%', 'mech'], ['To the wheels', 32.5, '29–36%', 'ok']] },
+  ev: { src: 'All-electric vehicle', city: [['Charging', 16, '16%', 'heat'], ['Accessories', 4, '4%', 'elec'], ['Electric drive', 18, '18%', 'mech'], ['To the wheels', 62, '54–62% (+32% regen)', 'ok']], hwy: [['Charging', 10, '10%', 'heat'], ['Accessories', 2, '2%', 'elec'], ['Electric drive', 15, '15%', 'mech'], ['To the wheels', 73, '71–73% (+6% regen)', 'ok']] },
+};
+BUDGET.truck = BUDGET.gas;
+
+/* ================= state ================= */
+const S = { mode: 'explore', tab: 'ctl', vk: 'gas', sit: 'drive', sel: 'engine', cyc: 'city', lesson: null, step: 0, stepOk: false, mcPick: [], trace: [], done: new Set(JSON.parse(store.get('energy.done') || '[]')), dx: null, dxScore: { cases: 0, first: 0, checks: 0 } };
+const V = () => VEH[S.vk];
+const partName = id => id[0] === 'w' && W[id] ? 'Wheels, tires & brakes' : P[id].n;
+const ptKey = id => (id[0] === 'w' && W[id]) ? 'wheels' : id;
+
+/* ================= car drawing ================= */
+function center(id) {
+  if (W[id]) return [W[id][0], W[id][1] < 165 ? W[id][1] + 16 : W[id][1] - 16];
+  const p = V().parts[id]; return [p[0], p[1]];
+}
+function anchor(id, toward) {
+  if (W[id]) return center(id);
+  const p = V().parts[id], [x, y, w, h, kind] = p, [tx, ty] = toward;
+  if (kind === 'bar') return [x, clamp(ty, y - h / 2, y + h / 2)];
+  if (kind === 'barh') return [clamp(tx, x - w / 2, x + w / 2), y];
+  const dx = tx - x, dy = ty - y; if (!dx && !dy) return [x, y];
+  const s = Math.min(Math.abs((w / 2) / (dx || 1e-9)), Math.abs((h / 2) / (dy || 1e-9)));
+  return [x + dx * s, y + dy * s];
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function drawCar() {
+  const v = V(), sit = v.sits[S.sit], dx = S.mode === 'diagnose' && S.dx;
+  const active = new Set(); if (!dx) for (const [a, b] of sit.segs) { active.add(a); active.add(b); }
+  let h = `<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5"/></filter><marker id="hm" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7Z" fill="#FF5A4E"/></marker></defs>`;
+  h += `<rect x="36" y="34" width="572" height="262" rx="64" fill="#0c1218" stroke="#2A3644" stroke-width="1.4"/>`;
+  h += `<path d="M560 60 Q600 100 600 165 Q600 230 560 270" fill="none" stroke="#1D2732" stroke-width="2"/>` + `<text x="604" y="168" class="svgs" text-anchor="end" transform="rotate(-90 604 168)">FRONT</text>`;
+  // wheels (clickable as one part)
+  for (const [id, [x, y]] of Object.entries(W)) {
+    const sel = S.sel === 'wheels', on = active.has(id);
+    h += `<g class="comp" data-part="wheels" tabindex="0" role="button" aria-label="Wheels, tires and brakes"><rect class="box" x="${x - 43}" y="${y - 15}" width="86" height="30" rx="8" fill="#232f3b" stroke="${sel ? '#fff' : on ? '#8A98A8' : '#4a5a6c'}" stroke-width="${sel ? 2 : 1.2}"/>`;
+    for (let i = -34; i <= 34; i += 9) h += `<line x1="${x + i}" y1="${y - 13}" x2="${x + i}" y2="${y + 13}" stroke="#141c25" stroke-width="2"/>`;
+    h += `</g>`;
+  }
+  // flows (under the parts)
+  if (!dx) for (const [a, b, f] of sit.segs) {
+    const col = FORM[f].c;
+    if (a === b || f === 'heat') {        // heat loss arrow out of a part
+      const [cx, cy] = center(a), dir = W[a] ? (cy < 165 ? -1 : 1) : (cy < 165 ? -1 : 1), len = 22;
+      let x1 = cx, y1 = cy, x2 = cx, y2 = cy + dir * len;
+      if (b !== a) { const [bx, by] = center(b); x1 = cx; y1 = cy; x2 = bx; y2 = by; }
+      if (a === b) h += `<path d="M${x1} ${y1 + dir * 14} q6 ${dir * 6} 0 ${dir * 12} q-6 ${dir * 6} 0 ${dir * 12}" fill="none" stroke="${col}" stroke-width="2.4" marker-end="url(#hm)" class="flow" style="animation-duration:1.4s"/>`;
+      else h += `<path d="M${x1} ${y1} L${x2} ${y2}" fill="none" stroke="${col}" stroke-width="3" stroke-opacity=".55"/><path d="M${x1} ${y1} L${x2} ${y2}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.6" class="flow" style="animation-duration:1.4s"/>`;
+      continue;
+    }
+    const [cbx, cby] = center(b), [cax, cay] = center(a), A = anchor(a, [cbx, cby]), B = anchor(b, [cax, cay]);
+    const horiz = Math.abs(B[0] - A[0]) >= Math.abs(B[1] - A[1]), mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+    const d = `M${A[0].toFixed(1)} ${A[1].toFixed(1)} C${(horiz ? mx : A[0]).toFixed(1)} ${(horiz ? A[1] : my).toFixed(1)} ${(horiz ? mx : B[0]).toFixed(1)} ${(horiz ? B[1] : my).toFixed(1)} ${B[0].toFixed(1)} ${B[1].toFixed(1)}`;
+    h += `<path d="${d}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.8" class="flow"/>`;
+  }
+  // parts
+  for (const [id, p] of Object.entries(v.parts)) {
+    const [x, y, w, hh, kind] = p, sel = S.sel === id, on = active.has(id), pt = P[id];
+    const insp = dx && S.dx.checks[id];
+    const stroke = sel ? '#fff' : insp ? (insp === 'bad' ? '#FF5A4E' : insp === 'warn' ? '#FFB224' : '#3DDC97') : on ? '#8A98A8' : '#3a4a5c';
+    const fill = id === 'hvbat' || id === 'inverter' || id === 'mg1' || id === 'mg2' || id === 'motor' || id === 'obc' || id === 'dcdc' ? '#1d1712' : '#141c25';
+    h += `<g class="comp" data-part="${id}" tabindex="0" role="button" aria-label="${pt.n}">`;
+    if (on && !kind) h += `<rect x="${x - w / 2 - 3}" y="${y - hh / 2 - 3}" width="${w + 6}" height="${hh + 6}" rx="9" fill="#2F9BE0" opacity=".14" filter="url(#gl)"/>`;
+    const barCol = kind && on ? FORM[(sit.segs.find(([a2, b2]) => a2 === id || b2 === id) || [0, 0, 'mech'])[2]].c : null;
+    h += `<rect class="box" x="${x - w / 2}" y="${y - hh / 2}" width="${w}" height="${hh}" rx="${kind ? 4 : 7}" fill="${barCol || (kind ? '#3a4654' : fill)}" stroke="${stroke}" stroke-width="${sel || insp ? 2 : 1}"/>`;
+    if (barCol) h += kind === 'bar' ? `<path d="M${x} ${y - hh / 2 + 2} V${y + hh / 2 - 2}" stroke="#fff" stroke-opacity=".75" stroke-width="2" class="flow" style="pointer-events:none"/>` : `<path d="M${x + w / 2 - 2} ${y} H${x - w / 2 + 2}" stroke="#fff" stroke-opacity=".75" stroke-width="2" class="flow" style="pointer-events:none"/>`;
+    if (id === 'hvbat' || id === 'inverter' || id === 'mg1' || id === 'mg2' || id === 'motor' || id === 'obc' || id === 'dcdc') h += `<rect x="${x - w / 2}" y="${y - hh / 2}" width="${w}" height="3" fill="#ff8c1a"/>`;
+    if (!kind) h += `<text x="${x}" y="${y + 3.5}" class="svgt" text-anchor="middle" style="pointer-events:none">${shortName(id)}</text>`;
+    else if (kind === 'bar') h += `<text x="${x + 10}" y="${y - 30}" class="svgs" text-anchor="start" style="pointer-events:none">${shortName(id)}</text>`;
+    else h += `<text x="${x}" y="${y - 8}" class="svgs" text-anchor="middle" style="pointer-events:none">${shortName(id)}</text>`;
+    h += `</g>`;
+  }
+  $('#svCar').innerHTML = h;
+  $('#carTitle').textContent = v.name; $('#carSub').textContent = v.sub;
+}
+const SHORT = { tank: 'FUEL TANK', pump: 'PUMP', engine: 'ENGINE', trans: 'TRANSAXLE', trans4: 'TRANS', tcase: 'T-CASE', axles: 'CV AXLES', rearDS: 'REAR DRIVESHAFT', frontDS: 'FRONT DRIVESHAFT', rearDiff: 'DIFF', frontDiff: 'DIFF', rearAxle: 'AXLES', frontAxle: 'AXLES', starter: 'STARTER', alt: 'ALTERNATOR', bat12: '12 V BATT', loads: 'LIGHTS / ECUs', radiator: '', exhaust: 'EXHAUST', psd: 'POWER SPLIT', mg1: 'MG1', mg2: 'MG2', inverter: 'INVERTER', hvbat: 'HV BATTERY', dcdc: 'DC-DC', motor: 'MOTOR', reduction: 'GEAR', port: 'PORT', obc: 'CHARGER', grid: 'CHARGING STATION' };
+const shortName = id => SHORT[id] ?? P[id].n;
+
+/* ================= side panels ================= */
+function drawInfo() {
+  const id = S.sel, k = ptKey(id || ''), pt = P[k];
+  if (!pt) { $('#info').innerHTML = `<p class="dim">Click any part of the vehicle.</p>`; return; }
+  const inPath = V().sits[S.sit].segs.some(([a, b]) => ptKey(a) === k || ptKey(b) === k);
+  let h = `<h3>${pt.n}</h3>${S.mode !== 'diagnose' ? `<span class="chip ${inPath ? 'ok' : ''}">${inPath ? 'in use now' : 'not in use now'}</span>` : ''}<div class="io"><span>Energy in</span><div>${pt.ein}</div><span>Energy out</span><div>${pt.eout}</div><span>Course</span><div>${pt.course}</div></div><p>${pt.d}</p>`;
+  if (pt.tools.length) h += `<div class="rowb">${pt.tools.map(t => `<a class="btn small" href="${T[t][1]}" target="_blank" rel="noopener">${T[t][0]} ↗</a>`).join('')}</div>`;
+  $('#info').innerHTML = h;
+}
+function drawPath() {
+  const v = V(), sit = v.sits[S.sit];
+  if (S.mode === 'diagnose') { $('#path').innerHTML = `<p class="dim">Click parts on the vehicle to check whether energy reaches them and leaves them. Each check counts. Split the path in half to find the break fast.</p>`; $('#pathSub').textContent = 'find the break'; return; }
+  const seen = new Set(), main = sit.segs.filter(([a, b, f]) => a !== b && f !== 'heat').map(([a, b, f]) => [W[a] ? 'wFL' : a, W[b] ? 'wFL' : b, f]).filter(([a, b]) => { const k = a + '|' + b; if (seen.has(k)) return false; seen.add(k); return true; });
+  // order: start from parts with no incoming segment
+  const order = []; const inc = new Set(main.map(s => s[1]));
+  const starts = [...new Set(main.map(s => s[0]).filter(a => !inc.has(a)))];
+  const used = new Set();
+  const walk = (node) => { for (const s of main) if (s[0] === node && !used.has(s)) { used.add(s); order.push(s); walk(s[1]); } };
+  for (const s of starts) walk(s);
+  for (const s of main) if (!used.has(s)) order.push(s);
+  const chains = []; let cur = null;
+  for (const [a, b, f] of order) { if (!cur || cur[cur.length - 1].id !== a) { cur = [{ id: a }]; chains.push(cur); } cur.push({ id: b, f }); }
+  let h = '';
+  for (const ch of chains) h += `<div class="chain">${ch.map((n, i) => `${i ? `<span class="a" style="color:${FORM[n.f].c}">${FORM[n.f].n.split(' ')[0]}</span>` : ''}<button class="c" data-part="${ptKey(n.id)}">${partName(n.id)}</button>`).join('')}</div>`;
+  const losses = sit.segs.filter(([a, b, f]) => f === 'heat');
+  if (losses.length) h += `<p class="loss">Heat lost at: ${[...new Set(losses.map(([a]) => partName(a)))].join(', ')}${S.vk !== 'ev' && losses.some(l => l[0] === 'engine') ? ' (radiator and exhaust)' : ''}.</p>`;
+  h += `<p class="dim" style="margin:6px 0 0">${sit.note}</p>`;
+  $('#path').innerHTML = h; $('#pathSub').textContent = sit.n;
+}
+function drawBudget() {
+  const b = BUDGET[S.vk], rows = b[S.cyc], col = { heat: '#FF5A4E', chem: '#c98a1c', mech: '#2b8f66', elec: '#2a7fc0', ok: '#3DDC97' };
+  let h = `<div class="rowb"><span class="seg mini" id="cyc"><button data-cyc="city" aria-pressed="${S.cyc === 'city'}">City</button><button data-cyc="hwy" aria-pressed="${S.cyc === 'hwy'}">Highway</button></span></div><div class="bars">`;
+  const tot = rows.reduce((s, r) => s + r[1], 0);
+  h += `<div class="brow"><small><span>${b.src}</span><span>100 units of energy in</span></small><div class="stack">${rows.map(r => `<div style="width:${(r[1] / tot * 100).toFixed(1)}%;background:${col[r[3]]}" title="${r[0]} ${r[2]}">${r[1] / tot > .1 ? r[2].split(' ')[0] : ''}</div>`).join('')}</div></div>`;
+  h += `<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px">${rows.map(r => `<tr><td style="padding:3px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${col[r[3]]};margin-right:6px"></span>${r[0]}</td><td style="text-align:right;font-family:var(--f-mono);color:${r[3] === 'ok' ? '#9BE9C4' : 'var(--soft)'}">${r[2]}</td></tr>`).join('')}</table></div>`;
+  h += `<p class="dim" style="margin:8px 0 0">Source: fueleconomy.gov (U.S. DOE/EPA).${S.vk === 'ev' ? ' EV losses count from the wall plug.' : ''}</p>`;
+  $('#budget').innerHTML = h; $('#bSub').textContent = S.cyc === 'city' ? 'city driving' : 'highway driving';
+}
+function renderViews() { drawCar(); drawInfo(); drawPath(); drawBudget(); }
+
+/* ================= explore controls ================= */
+function ctlHTML(onlySit) {
+  const v = V();
+  let h = onlySit ? '' : `<p class="dim">Pick a vehicle and a situation, then click any part. Energy flows along the colored lines.</p><h4>Vehicle</h4><div class="rowb"><span class="seg mini veh">${Object.entries(VEH).map(([k, x]) => `<button data-act="veh:${k}" aria-pressed="${S.vk === k}">${{ gas: 'Gas FWD', truck: '4WD truck', hybrid: 'Hybrid', ev: 'Electric' }[k]}</button>`).join('')}</span></div>`;
+  h += `<h4>Situation</h4><div class="rowb"><span class="seg mini">${Object.entries(v.sits).map(([k, s]) => `<button data-act="sit:${k}" aria-pressed="${S.sit === k}">${s.n}</button>`).join('')}</span></div>`;
+  if (!onlySit) h += `<h4>All parts</h4><div class="rowb">${Object.keys(v.parts).map(id => `<button class="btn small" data-part="${id}">${P[id].n}</button>`).join('')}<button class="btn small" data-part="wheels">Wheels & brakes</button></div>`;
+  return h;
+}
+
+/* ================= find the break (diagnose) ================= */
+const CAUSES = {
+  'gas:pump':    { vk: 'gas', sit: 'drive', broken: 'pump', path: ['tank', 'pump', 'engine'], concern: 'Cranks normally but won’t start. The fuel gauge reads half a tank.',
+    notes: { tank: 'Fuel in the tank (half full).', pump: 'Fuel and 12 V reach the pump, but there is no fuel pressure leaving it.', engine: 'Cranks fine, but no fuel arrives at the injectors (0 psi at the fuel rail).', bat12: '12.6 V; cranks the engine normally.', starter: 'Cranks the engine at normal speed.' } },
+  'gas:starter': { vk: 'gas', sit: 'start', broken: 'starter', path: ['bat12', 'starter', 'engine'], concern: 'Turn the key: one click, no crank. The headlights stay bright.',
+    notes: { bat12: '12.6 V, and it stays above 12 V when the key is turned.', starter: '12 V arrives at the starter terminal, but the starter doesn’t turn.', engine: 'Not turning (nothing is cranking it).' } },
+  'gas:battery': { vk: 'gas', sit: 'start', broken: 'bat12', path: ['bat12', 'starter', 'engine'], concern: 'Nothing happens when I turn the key. The dash lights barely glow.',
+    notes: { bat12: 'Only 9.8 V, and it falls to 5 V when the key is turned: the battery can’t deliver.', starter: 'Barely any voltage reaches it.', engine: 'Not turning.' } },
+  'gas:axles':   { vk: 'gas', sit: 'drive', broken: 'axles', path: ['engine', 'trans', 'axles', 'wFL'], concern: 'There was a loud clunk. Now the engine runs and revs in Drive, but the car doesn’t move.',
+    notes: { engine: 'Runs and revs normally.', trans: 'Output turning in gear.', axles: 'The left CV axle spins but is broken at the joint; with an open differential, all the power goes to the broken side.', wFL: 'Not turning.' } },
+  'gas:alt':     { vk: 'gas', sit: 'drive', broken: 'alt', path: ['engine', 'alt', 'bat12', 'loads'], concern: 'The battery light came on, and about 20 minutes later the car died while driving.',
+    notes: { engine: 'Runs; belt turning the alternator.', alt: 'Turning, but its output is only 12.1 V (should be 13.5–14.8 V running).', bat12: 'Being drained: 11.6 V and falling.', loads: 'Working, but running off the battery alone.' } },
+  'truck:rearDS':{ vk: 'truck', sit: 'drive2', broken: 'rearDS', path: ['engine', 'trans4', 'tcase', 'rearDS', 'rearDiff', 'rearAxle'], concern: 'In 2H the truck won’t move; the engine just revs. In 4H it crawls forward.',
+    notes: { engine: 'Runs normally.', trans4: 'Output turning in gear.', tcase: 'Rear output turning.', rearDS: 'The front U-joint has failed: the yoke spins but the driveshaft doesn’t.', rearDiff: 'Pinion not turning in 2H.', rearAxle: 'Not turning in 2H.', frontDS: 'Turns in 4H (that’s why it crawls).' } },
+  'truck:frontDS':{ vk: 'truck', sit: 'drive4', broken: 'frontDS', path: ['tcase', 'frontDS', 'frontDiff', 'frontAxle'], concern: 'In the snow, 4H doesn’t help: only the rear wheels spin. 2H drives normally.',
+    notes: { tcase: 'Front output turns when 4H is selected.', frontDS: 'Spins at the transfer case end, but a U-joint is broken: nothing reaches the front differential.', frontDiff: 'Pinion not turning in 4H.', frontAxle: 'Not turning in 4H.', rearDS: 'Turning normally.' } },
+  'truck:trans': { vk: 'truck', sit: 'drive2', broken: 'trans4', path: ['engine', 'trans4', 'tcase', 'rearDS'], concern: 'The engine runs, but the truck won’t move in any gear, forward or reverse, in 2H or 4H.',
+    notes: { engine: 'Runs and revs normally.', trans4: 'Input turning, but no output in any gear.', tcase: 'Not turning.', rearDS: 'Not turning.' } },
+  'hybrid:bat12':{ vk: 'hybrid', sit: 'ev', broken: 'bat12', path: ['bat12', 'hvbat', 'inverter', 'mg2'], concern: 'Pressing the power button does nothing. The dash is dark and it won’t go READY, but the hybrid battery was fine yesterday.',
+    notes: { bat12: 'Only 8.9 V: too low to wake the computers that close the high-voltage contactors.', hvbat: 'Charged, but disconnected: its contactors never closed.', inverter: 'No power.', mg2: 'Not turning.', dcdc: 'Can’t run until the car goes READY.' } },
+  'hybrid:hvbat':{ vk: 'hybrid', sit: 'ev', broken: 'hvbat', path: ['hvbat', 'inverter', 'mg2'], concern: 'The engine runs almost all the time. It never drives on electric alone anymore, and the mpg dropped a lot.',
+    notes: { hvbat: 'Several modules are weak: the pack can’t deliver or accept much power, so the computer keeps the engine running.', inverter: 'Works when it gets power.', mg2: 'Works when it gets power.', bat12: '12.6 V, normal.', engine: 'Runs normally (it’s doing the battery’s job).' } },
+  'ev:obc':      { vk: 'ev', sit: 'ac', broken: 'obc', path: ['grid', 'port', 'obc', 'hvbat'], concern: 'It won’t charge at home on the Level 2 charger, but DC fast charging works fine.',
+    notes: { grid: '240 V AC available at the station.', port: 'The cable latches and the station sees the car.', obc: 'AC arrives, but no DC comes out: the onboard charger has failed.', hvbat: 'Not charging on AC (it charges fine on DC fast).' } },
+  'ev:bat12':    { vk: 'ev', sit: 'park', broken: 'bat12', path: ['bat12', 'loads', 'dcdc'], concern: 'The car is completely dead: it won’t unlock or wake up. The phone app showed 80 % charge last night.',
+    notes: { bat12: 'Only 6.2 V: the 12 V battery has failed, so nothing can wake up.', loads: 'No power: door handles, screens and computers are all dead.', dcdc: 'Can’t start: the car must wake up (on 12 V) before the DC-DC converter runs.', hvbat: '80 % charged, but its contactors stay open while the car is asleep.' } },
+};
+const CASE_POOL = Object.keys(CAUSES);
+/* Shuffle bag: every case type comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'energy-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You've solved all ${n} case types once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function newCase() {
+  const type = bagNext(), C = CAUSES[type];
+  S.vk = C.vk; S.sit = C.sit; S.sel = null;
+  S.dx = { n: (S.dx?.n || 0) + 1, type, checks: {}, log: [], pick: null, tries: 0, solved: false, wrong: null };
+  S.tab = 'case'; renderPanel(); renderViews();
+}
+function inspect(id) {
+  const d = S.dx, C = CAUSES[d.type]; if (!d || d.solved) return;
+  const key = W[id] ? (C.path.find(p => W[p]) || id) : id;
+  if (d.checks[key]) return;
+  const i = C.path.indexOf(key), bi = C.path.indexOf(C.broken);
+  let cls, txt;
+  if (i < 0) { cls = 'ok'; txt = C.notes[key] || 'Not part of this problem: checks OK.'; }
+  else if (i < bi) { cls = 'ok'; txt = 'Energy in ✓ out ✓. ' + (C.notes[key] || ''); }
+  else if (i === bi) { cls = 'bad'; txt = (bi === 0 ? 'Energy out ✗. ' : 'Energy in ✓ out ✗. ') + (C.notes[key] || ''); }
+  else { cls = 'warn'; txt = 'No energy arriving. ' + (C.notes[key] || ''); }
+  d.checks[key] = cls; d.log.unshift({ id: key, cls, txt });
+  renderPanel(); renderViews();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  d.tries++;
+  if (d.pick === CAUSES[d.type].broken) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.checks += Object.keys(d.checks).length; toast('✓ Correct', 'good'); }
+  else d.wrong = 'Not that one. Check parts along the path: where does energy go in but not come out?';
+  renderPanel(); renderViews();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const C = CAUSES[d.type], v = VEH[C.vk], sc = S.dxScore;
+  const par = Math.ceil(Math.log2(C.path.length + 1));
+  let h = `<div class="case"><span class="qk">Case ${d.n} · ${v.name}</span><h3>Customer concern</h3><p>${C.concern}</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg checks</small><b>${sc.cases ? (sc.checks / sc.cases).toFixed(1) : '–'}</b></div><div><small>Checks here</small><b>${Object.keys(d.checks).length}</b></div></div>${bagHTML()}`;
+  if (d.solved) h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}</b> with ${Object.keys(d.checks).length} checks: <b>${partName(C.broken)}</b>. ${Object.keys(d.checks).length <= par ? 'Efficient: you split the path.' : `A good tech could do it in about ${par} checks by checking the middle of the path first.`}</div><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  else h += `<p class="dim" style="margin-top:10px">Click parts on the vehicle to check them. Energy in but not out = the break.</p>`;
+  if (d.log.length) h += `<h4>Checks</h4><div class="find">${d.log.map(e => `<div class="f ${e.cls}"><b>${partName(e.id)}:</b> ${e.txt}</div>`).join('')}</div>`;
+  if (!d.solved) {
+    const opts = [...new Set([...Object.keys(v.parts)])].filter(id => !['radiator', 'exhaust', 'grid'].includes(id));
+    h += `<h4>Where is the break?</h4><div class="cards">${opts.map(id => `<button class="card" data-act="dx:${id}" aria-pressed="${d.pick === id}"><b>${P[id].n}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit</button></div>`;
+    if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  }
+  return h;
+}
+
+/* ================= lessons ================= */
+const LESSONS = [
+{ id: 'forms', title: 'Forms of energy', sub: 'Energy changes form; it isn’t used up', steps: [
+  { body: 'Energy can’t be created or destroyed, only changed from one form to another. In a vehicle you’ll see four: <b style="color:#FFB224">fuel (chemical)</b>, <b style="color:#2F9BE0">electric</b>, <b style="color:#3DDC97">turning (mechanical)</b> and <b style="color:#FF5A4E">heat</b>.', setup: { vk: 'gas', sit: 'drive' } },
+  { body: '', goal: { mc: { q: 'What does the engine do?', opts: ['Changes fuel (chemical) energy into turning energy, and a lot of heat', 'Creates energy', 'Stores electricity'], a: 0, why: 'Burning fuel releases heat; the pistons and crankshaft turn part of it into rotation.' } } },
+  { body: '', goal: { mc: { q: 'And the alternator?', opts: ['Turns mechanical (turning) energy into electric energy', 'Turns electricity into fuel', 'Makes heat on purpose'], a: 0, why: 'The belt spins the alternator, which generates electricity for the car.' } } },
+] },
+{ id: 'gasdrive', title: 'Gas car: fuel to wheels', sub: 'Trace the drive path', steps: [
+  { body: 'Front-drive gas car, driving. <b>Click the parts in order</b> from where the energy starts to the wheels.', setup: { vk: 'gas', sit: 'drive' }, trace: ['tank', 'pump', 'engine', 'trans', 'axles', 'wheels'] },
+  { body: '', goal: { mc: { q: 'Look at "Where the energy goes" (city). About how much of the fuel’s energy actually moves the car?', opts: ['About 14–20 % in the city', 'About 90 %', 'About half'], a: 0, why: 'Most of it leaves as heat through the radiator and exhaust. That’s why engine efficiency matters so much.' } } },
+  { body: 'Switch to <b>Highway</b> in the energy panel.', goal: { check: () => S.cyc === 'hwy', hint: 'Energy panel: Highway.' } },
+  { body: '', goal: { mc: { q: 'Why does more energy reach the wheels on the highway?', opts: ['No idling and less braking: the engine runs steadily at a more efficient load', 'Highway fuel is stronger', 'The transmission is bigger'], a: 0, why: 'Stop-and-go driving wastes fuel idling and throws away motion as brake heat.' } } },
+] },
+{ id: 'elec12', title: 'Starting and charging', sub: 'The 12-volt system', steps: [
+  { body: 'Pick the <b>Starting</b> situation, then trace it: click the parts in order.', setup: { vk: 'gas', sit: 'drive' }, ctl: 'sit', goal: { check: () => S.sit === 'start', hint: 'Situation: Starting.' } },
+  { body: 'Trace the starting path.', trace: ['bat12', 'starter', 'engine'] },
+  { body: 'Now pick <b>Driving</b> and find what recharges the battery.', ctl: 'sit', goal: { check: () => S.sit === 'drive', hint: 'Situation: Driving.' } },
+  { body: '', ctl: 'sit', goal: { mc: { q: 'Once the engine runs, where does the electricity come from?', opts: ['The alternator, driven by the engine belt. It runs the loads and recharges the battery', 'Only the battery', 'The starter'], a: 0, why: 'Battery light on while driving = the alternator isn’t charging. The car runs on the battery until it’s drained.' } } },
+] },
+{ id: 'truck', title: '4WD truck', sub: 'Transfer case, driveshafts, differentials', steps: [
+  { body: '4WD pickup in <b>2H</b>. Trace the drive path to the rear wheels.', setup: { vk: 'truck', sit: 'drive2' }, trace: ['tank', 'pump', 'engine', 'trans4', 'tcase', 'rearDS', 'rearDiff', 'rearAxle', 'wheels'] },
+  { body: 'Switch to <b>Driving 4H</b>.', ctl: 'sit', goal: { check: () => S.sit === 'drive4', hint: 'Situation: Driving 4H.' } },
+  { body: '', ctl: 'sit', goal: { mc: { q: 'What part decides whether the front wheels are driven?', opts: ['The transfer case: in 4H it also drives the front driveshaft', 'The front differential alone', 'The transmission'], a: 0, why: 'The transfer case sits behind the transmission and splits power front and rear.' } } },
+  { body: '', ctl: 'sit', goal: { mc: { q: 'What does each differential do?', opts: ['Turns the power 90°, multiplies torque, and lets the left and right wheels turn at different speeds in a turn', 'Shifts gears', 'Stores energy'], a: 0, why: 'Without a differential, the inside and outside tires would fight each other in every corner.' } } },
+] },
+{ id: 'hybrid', title: 'Hybrid', sub: 'Two power sources, regen braking', steps: [
+  { body: 'Hybrid, <b>EV launch</b>. Trace how it moves on battery alone.', setup: { vk: 'hybrid', sit: 'ev' }, trace: ['hvbat', 'inverter', 'mg2', 'axles', 'wheels'] },
+  { body: 'Pick <b>Hard acceleration</b> and watch the paths.', ctl: 'sit', goal: { check: () => S.sit === 'accel', hint: 'Situation: Hard acceleration.' } },
+  { body: '', ctl: 'sit', goal: { mc: { q: 'How does the engine’s power reach the wheels here?', opts: ['Two ways at once: straight through the planetary power-split device, and through MG1 → inverter → MG2', 'Only through MG1', 'It doesn’t; the engine only charges'], a: 0, why: 'That’s the planetary gearset from the Planetary Gear Sandbox: engine on the carrier, MG1 on the sun, drive on the ring.' } } },
+  { body: 'Pick <b>Regen braking</b>, then trace where the energy goes.', ctl: 'sit', goal: { check: () => S.sit === 'regen', hint: 'Situation: Regen braking.' } },
+  { body: 'Trace regen: from the wheels back to storage.', trace: ['wheels', 'axles', 'mg2', 'inverter', 'hvbat'] },
+  { body: '', goal: { mc: { q: 'Why do hybrids gain the most in city driving?', opts: ['Regen braking saves energy that brakes would waste as heat, and the engine shuts off at stops (no idling)', 'They have bigger engines', 'City fuel is cheaper'], a: 0, why: 'EPA: about 21–40 % reaches the wheels in the city for a hybrid vs. 14–20 % for a gas car.' } } },
+] },
+{ id: 'ev', title: 'Electric car', sub: 'Battery to wheels, charging', steps: [
+  { body: 'Electric car, <b>Driving</b>. Trace the drive path.', setup: { vk: 'ev', sit: 'drive' }, trace: ['hvbat', 'inverter', 'motor', 'reduction', 'rearAxle', 'wheels'] },
+  { body: '', goal: { mc: { q: 'Compare the energy panel with the gas car. About what share of an EV’s energy reaches the wheels?', opts: ['Roughly two-thirds or more (65–73 %), plus energy recovered by regen', 'About 20 %', 'All of it'], a: 0, why: 'An electric drive loses about 15–20 %, versus 64–75 % lost in a gas engine.' } } },
+  { body: 'Pick <b>Charging Level 2 (AC)</b>, then <b>DC fast charging</b>, and compare.', ctl: 'sit', goal: { check: () => S.sit === 'dc' && S.seenAC, hint: 'Situation: Charging Level 2, then DC fast charging.' } },
+  { body: '', ctl: 'sit', goal: { mc: { q: 'What is different about DC fast charging?', opts: ['The station converts AC to DC itself and feeds the battery directly, bypassing the onboard charger', 'It uses the 12 V battery', 'There is no difference'], a: 0, why: 'So if Level 2 fails but DC fast works, suspect the onboard charger (or the AC side of the port).' } } },
+  { body: '', goal: { mc: { q: 'An EV has no alternator. What keeps its 12 V battery charged?', opts: ['The DC-DC converter, fed by the high-voltage battery', 'A small gas engine', 'Nothing; you replace it'], a: 0, why: 'And if the 12 V battery dies, the car can’t wake up to connect its big battery, even at 80 % charge.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) { if (!su) return; if (su.vk) S.vk = su.vk; if (su.sit) S.sit = su.sit; S.sel = null; S.seenAC = false; }
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.trace = []; S.stepOk = !st.goal && !st.trace; applySetup(st.setup); renderPanel(); renderViews(); }
+function checkGoal() {
+  const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return;
+  if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); }
+}
+function traceClick(id) {
+  const st = curStep(); if (!st?.trace || S.stepOk) return false;
+  const want = st.trace[S.trace.length];
+  if (ptKey(id) === want) { S.trace.push(want); if (S.trace.length === st.trace.length) { S.stepOk = true; toast('✓ Traced it', 'good'); } renderPanel(); }
+  else toast(`Not next. Where does the energy go after ${S.trace.length ? partName(S.trace[S.trace.length - 1] === 'wheels' ? 'wFL' : S.trace[S.trace.length - 1]) : 'it starts'}?`, 'bad');
+  return true;
+}
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up a vehicle, asks you to trace the energy or answer a question, and checks your answer.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (st.trace) h += `<div class="trace">${S.trace.map(t => `<span>${t === 'wheels' ? 'Wheels' : P[t].n}</span>`).join('')}${S.trace.length < st.trace.length ? `<span style="background:none;border-style:dashed;color:var(--dim)">${st.trace.length - S.trace.length} more…</span>` : ''}</div><div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Traced.' : '◎ Click the parts on the vehicle in the order the energy flows.'}</div>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  if (st.ctl === 'sit') h += `<h4>Controls</h4>` + ctlHTML(true);
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['ctl', 'Controls']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'ctl' ? ctlHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore') { S.vk = 'gas'; S.sit = 'drive'; S.sel = 'engine'; }
+  if (m === 'guided') { S.lesson = null; S.vk = 'gas'; S.sit = 'drive'; S.sel = null; }
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); else { const C = CAUSES[S.dx.type]; S.vk = C.vk; S.sit = C.sit; } }
+  renderPanel(); renderViews();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function selectPart(id) {
+  if (S.mode === 'diagnose') { const real = id === 'wheels' ? (CAUSES[S.dx.type].path.find(p => W[p]) || 'wFL') : id; S.sel = id; inspect(real); return; }
+  if (S.mode === 'guided' && traceClick(id)) { S.sel = ptKey(id); renderViews(); return; }
+  S.sel = ptKey(id); renderViews();
+}
+function onAct(e) {
+  const pe = e.target.closest('[data-part]'); if (pe) { selectPart(pe.dataset.part); return; }
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'veh': S.vk = v; S.sit = Object.keys(VEH[v].sits).find(k => /drive|ev/.test(k)) || Object.keys(VEH[v].sits)[0]; S.sel = null; renderPanel(); renderViews(); break;
+    case 'sit': S.sit = v; if (v === 'ac') S.seenAC = true; renderPanel(); renderViews(); checkGoal(); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('energy.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+for (const el of ['#pbody', '#tabs', '#svCar', '#path']) $(el).addEventListener('click', onAct);
+$('#svCar').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-part]')) { e.preventDefault(); selectPart(e.target.closest('[data-part]').dataset.part); } });
+$('#budget').addEventListener('click', e => { const c = e.target.closest('[data-cyc]')?.dataset.cyc; if (!c) return; S.cyc = c; drawBudget(); checkGoal(); });
+
+renderPanel(); renderViews();
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__FE = { S, VEH, P, CAUSES, LESSONS, setMode, newCase, inspect, selectPart, curStep, renderViews, renderPanel, get BAG() { return BAG; },
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
