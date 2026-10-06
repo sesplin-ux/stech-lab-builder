@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alignment Simulator</title>
+<meta name="description" content="Set camber, caster, toe, SAI and tire pressure, then see the tire wear, pull, steering wheel position and return. Diagnose worn tires and align a car to spec in the right order.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. 2D linked views:
+   front (camber/SAI/IA), side (caster), top (toe/thrust/steering wheel), tire wear, alignment readout, notebook. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1fr) minmax(0,1.1fr);grid-template-rows:minmax(0,1.1fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.vbox{flex:1;min-height:0;padding:0 8px 8px}
+.vbox svg{width:100%;height:100%;display:block}
+#pTop{grid-row:1/3}
+#pWear{grid-column:2/3}
+#pRead{grid-column:3/4}
+.svgt{font:600 11px var(--f-label);fill:#8A98A8;letter-spacing:.04em}
+.svgv{font:500 11px var(--f-mono);fill:#E6EDF3}
+.svgv.bad{fill:#FF8A80}
+.svgv.ok{fill:#9BE9C4}
+/* readout */
+.ro{flex:1;min-height:0;overflow:auto;padding:0 10px 10px}
+table.rt{width:100%;border-collapse:collapse;font:500 11.5px/1.15 var(--f-mono)}
+table.rt th{font:600 9.5px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);text-align:right;padding:4px 4px;border-bottom:1px solid var(--line)}
+table.rt td{text-align:right;padding:4px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.rt th:first-child,table.rt td:first-child{text-align:left;font-family:var(--f-ui);font-size:12px;color:var(--dim)}
+table.rt td.bad{color:#FF8A80;font-weight:600}
+table.rt td.ok{color:#9BE9C4}
+table.rt tr.grp td{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding-top:8px;border-bottom:0}
+.rtest{display:grid;gap:4px;margin:4px 0 8px}
+.rtest div{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 8px;border-radius:7px;background:var(--raise)}
+.rtest b{font:600 12px/1.2 var(--f-mono)}
+.rtest .w{color:var(--warn)}
+.locked{padding:14px;border:1px dashed var(--line-2);border-radius:10px;color:var(--dim);font-size:13px;text-align:center}
+/* notebook */
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 62px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+.sl output.bad{color:#FF8A80}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.cards{display:grid;gap:7px}
+.card{all:unset;cursor:pointer;display:grid;gap:3px;padding:9px 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.cyls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cyls .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.cc{all:unset;cursor:pointer;min-width:30px;height:30px;padding:0 9px;box-sizing:border-box;border-radius:8px;display:grid;place-items:center;border:1px solid var(--line-2);background:var(--raise);font:600 12.5px/1 var(--f-label);color:var(--soft)}
+.cc[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.cc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.order{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+.order span{padding:4px 8px;border-radius:999px;border:1px solid var(--line-2);font:600 10.5px/1 var(--f-label);letter-spacing:.08em;color:var(--dim)}
+.order span.done{border-color:rgba(61,220,151,.5);color:#C9F7E2}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pTop{grid-row:auto;grid-column:1/-1;height:380px}
+  #pFront,#pSide,#pWear,#pRead{grid-column:auto;height:300px}
+  .main>.panel{height:640px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pFront,#pSide,#pWear,#pRead,#pTop{grid-column:auto} .brand p{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/></svg></div>
+      <div><h1>Alignment Simulator</h1><p>Angles · tire wear · pull</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="align">Align it</button><button data-m="diagnose">Diagnose</button></div>
+    <button class="btn" id="exag" aria-pressed="true" title="Draw the small angles larger so you can see them">Exaggerate ×4</button>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pTop" aria-label="Top view"><div class="phead"><h2>Top view</h2><span>toe · thrust line · steering wheel · road test</span></div><div class="vbox"><svg id="svTop" viewBox="0 0 360 520" role="img" aria-label="Top view of the car with toe angles, thrust line and predicted path"></svg></div></section>
+      <section class="panel" id="pFront" aria-label="Front view"><div class="phead"><h2>Front view</h2><span>camber · SAI · included angle</span></div><div class="vbox"><svg id="svFront" viewBox="0 0 360 230" role="img" aria-label="Front view of the front wheels showing camber and steering axis inclination"></svg></div></section>
+      <section class="panel" id="pSide" aria-label="Side view"><div class="phead"><h2>Side view</h2><span>caster (left front)</span></div><div class="vbox"><svg id="svSide" viewBox="0 0 260 230" role="img" aria-label="Side view of the left front wheel showing caster"></svg></div></section>
+      <section class="panel" id="pWear" aria-label="Tire wear"><div class="phead"><h2>Tire wear</h2><span id="milesTxt"></span><div class="r"><input type="range" id="miles" min="0" max="30000" step="1000" value="15000" aria-label="Miles driven" style="width:110px"></div></div><div class="vbox"><svg id="svWear" viewBox="0 0 360 230" role="img" aria-label="Tread depth across each tire"></svg></div></section>
+      <section class="panel" id="pRead" aria-label="Alignment readout"><div class="phead"><h2>Alignment rack</h2></div><div class="ro" id="read"></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fx = (v, d = 2) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const DEG = Math.PI / 180;
+
+/* ================= specs (generic front-drive sedan; teaching values) ================= */
+const SPEC = {
+  fCam: [-1.00, 0.00, -0.50], fCas: [3.25, 4.75, 4.00], fToe: [0.00, 0.10, 0.05], fTot: [0.00, 0.20, 0.10],
+  sai: [12.5, 13.5, 13.0], ia: [11.9, 13.1, 12.5], crossCam: 0.50, crossCas: 0.50,
+  rCam: [-1.50, -0.50, -1.00], rToe: [0.00, 0.20, 0.10], rTot: [0.00, 0.40, 0.20], thrust: [-0.10, 0.10, 0], psi: 35,
+};
+const RATIO = 16;   // steering ratio
+const inR = (v, r) => v >= r[0] - 1e-9 && v <= r[1] + 1e-9;
+const BASE = () => ({ FL: { cam: -0.5, cas: 3.9, toe: 0.05 }, FR: { cam: -0.5, cas: 4.2, toe: 0.05 }, RL: { cam: -1.0, toe: 0.10 }, RR: { cam: -1.0, toe: 0.10 }, psi: 35 });
+// bent parts change the measured angles: strut/spindle bend changes camber + IA; control arm/tower changes camber + SAI (IA stays)
+const BENT = { strut: { cam: 1.4, sai: 0 }, arm: { cam: 1.0, sai: -1.0 }, tierod: { toe: -0.40 } };
+
+/* ================= diagnose causes ================= */
+const CAUSES = {
+  toeIn:   { name: 'Excessive toe-in (front)', side: false, make: a => { a.FL.toe = 0.35; a.FR.toe = 0.35; },
+             concern: 'Both front tires are wearing out fast on the outside edges. Runs straight, wheel is centered.' },
+  toeOut:  { name: 'Excessive toe-out (front)', side: false, make: a => { a.FL.toe = -0.30; a.FR.toe = -0.30; },
+             concern: 'Front tires wearing on the inside edges, and the car feels darty and wanders on the highway.' },
+  camPos:  { name: 'Too much positive camber', side: true, make: (a, s) => { a['F' + s].cam = 0.9; },
+             concern: s => `Pulls to the ${s === 'L' ? 'left' : 'right'}. The ${s === 'L' ? 'left' : 'right'} front tire is wearing on its outside shoulder.` },
+  camNeg:  { name: 'Too much negative camber (both)', side: false, make: a => { a.FL.cam = -1.9; a.FR.cam = -1.9; },
+             concern: 'Lowered car. Both front tires are wearing on the inside shoulders. No pull.' },
+  cross:   { name: 'Cross-caster (unequal caster)', side: false, make: a => { a.FL.cas = 2.2; a.FR.cas = 4.6; },
+             concern: 'Pulls to the left on a flat road, but the steering wheel is straight and the tires look fine.' },
+  thrust:  { name: 'Rear toe out of spec (thrust angle)', side: false, make: a => { a.RL.toe = 0.38; a.RR.toe = -0.14; },
+             concern: 'The steering wheel is crooked when driving straight, even after a front-only alignment at another shop. The car seems to "dog-track".' },
+  strut:   { name: 'Bent strut / spindle', side: true, make: (a, s) => { a.bent = { part: 'strut', side: s }; },
+             concern: s => `Hit a curb last month. Now it pulls to the ${s === 'L' ? 'left' : 'right'}, and the ${s === 'L' ? 'left' : 'right'} front tire wears on the outside. Camber won't adjust into spec.` },
+  arm:     { name: 'Bent control arm / strut tower shifted', side: true, make: (a, s) => { a.bent = { part: 'arm', side: s }; },
+             concern: s => `Hit a pothole hard. Pulls to the ${s === 'L' ? 'left' : 'right'}; ${s === 'L' ? 'left' : 'right'} front tire wearing on the outside. Camber won't adjust into spec.` },
+  tierod:  { name: 'Bent tie rod', side: true, make: (a, s) => { a.bent = { part: 'tierod', side: s }; },
+             concern: s => `Slid into a curb in the snow. Now the steering wheel is off-center, and the ${s === 'L' ? 'left' : 'right'} front tire is wearing on the inside edge.` },
+  under:   { name: 'Underinflated tires', side: false, make: a => { a.psi = 24; },
+             concern: 'All four tires are wearing on both outer edges. Steering feels heavy. Alignment was done six months ago.' },
+  over:    { name: 'Overinflated tires', side: false, make: a => { a.psi = 47; },
+             concern: 'All four tires are wearing down the middle of the tread. The ride feels harsh.' },
+  none:    { name: 'Nothing wrong: road crown', side: false, make: a => { a.crown = true; },
+             concern: 'Drifts slightly to the right on the highway. The tires look even. Is the alignment off?' },
+};
+const CASE_POOL = Object.keys(CAUSES);
+const EVIDENCE = {
+  toeIn: ['Feathered, outside-edge wear on both front tires', 'No pull; wheel centered', 'Rack: total toe far above spec'],
+  toeOut: ['Feathered, inside-edge wear on both front tires', 'Wanders (unstable straight-ahead)', 'Rack: negative total toe'],
+  camPos: ['Outside-shoulder wear on one tire', 'Pulls toward the side with more positive camber', 'Rack: camber high on that side (so the included angle reads high too), SAI normal', 'Camber adjusts back into spec → it was just out of adjustment; nothing is bent'],
+  camNeg: ['Inside-shoulder wear on both fronts', 'No pull (it is equal side to side)', 'Rack: camber very negative on both sides'],
+  cross: ['Pulls toward the side with LESS positive caster', 'No unusual tire wear (caster isn\'t a tire-wear angle)', 'Rack: cross-caster well over 0.5°'],
+  thrust: ['Crooked steering wheel even though front toe is in spec', 'Rear tire feathering', 'Rack: rear individual toe unequal → thrust angle. Always align the rear first'],
+  strut: ['Outside-shoulder wear and pull toward that side', 'Rack: camber high, SAI normal, included angle high → bent strut/spindle (replace it; don\'t "adjust around" it)'],
+  arm: ['Outside-shoulder wear and pull toward that side', 'Rack: camber high, SAI low, included angle normal → control arm, strut tower or cradle out of position'],
+  tierod: ['Steering wheel off-center', 'Inside-edge feathering on one front tire', 'Rack: toe-out on one side only'],
+  under: ['Both shoulders worn on all four tires', 'Pressure gauge: well under the door-placard pressure', 'Rack: angles in spec'],
+  over: ['Center of the tread worn on all four tires', 'Pressure gauge: well over the placard pressure', 'Rack: angles in spec'],
+  none: ['Even tire wear', 'Rack: all angles in spec', 'A slight drift right on crowned roads is normal; right caster a little higher than left helps offset it'],
+};
+
+/* ================= state ================= */
+const S = {
+  mode: 'explore', tab: 'adj', A: BASE(), crown: false, bent: null, E: 4, miles: 15000,
+  lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('align.done') || '[]')),
+  dx: null, dxScore: { cases: 0, first: 0, expert: 0 }, al: null, alScore: { jobs: 0, clean: 0 },
+};
+/* measured angles = adjustable base + any bent part */
+function meas() {
+  const a = S.A, b = S.bent, F = s => {
+    const w = a['F' + s], bent = b && b.side === s ? BENT[b.part] : {};
+    const cam = w.cam + (bent.cam || 0), sai = SPEC.sai[2] + (bent.sai || 0);
+    return { cam, cas: w.cas, toe: w.toe + (bent.toe || 0), sai, ia: sai + cam };
+  };
+  const L = F('L'), R = F('R');
+  const ta = (a.RL.toe - a.RR.toe) / 2;
+  return { L, R, RL: a.RL, RR: a.RR, ta, crossCam: L.cam - R.cam, crossCas: L.cas - R.cas, fTot: L.toe + R.toe, rTot: a.RL.toe + a.RR.toe, psi: a.psi };
+}
+/* road test: pull (+ = right), steering wheel offset (+ = turned right), return, wander */
+function road(m = meas()) {
+  const pull = 0.8 * (m.R.cam - m.L.cam) + 0.35 * (m.L.cas - m.R.cas) + (S.crown ? 0.30 : 0);
+  const sw = -RATIO * ((m.L.toe - m.R.toe) / 2 - m.ta);
+  const cas = (m.L.cas + m.R.cas) / 2;
+  const ret = cas < 2.5 ? 'weak' : cas > 5.5 ? 'strong, heavy steering' : 'normal';
+  const wander = cas < 2.5 || m.fTot < -0.15;
+  const heavy = m.psi < 28;
+  const ap = Math.abs(pull);
+  const pullTxt = ap < 0.15 ? 'tracks straight' : `${ap < 0.5 ? 'slight drift' : ap < 1 ? 'pulls' : 'pulls hard'} ${pull > 0 ? 'right' : 'left'}`;
+  return { pull, sw, ret, wander, heavy, pullTxt };
+}
+/* tire wear: 7 ribs, inner → outer, in 32nds remaining (new = 10/32) */
+function wear(pos, m = meas()) {
+  const front = pos[0] === 'F', side = pos[1];
+  const w = front ? m[side] : m[pos];
+  const ts = front ? SPEC.fToe[2] : SPEC.rToe[2];
+  const dt = w.toe - ts, dp = (m.psi - SPEC.psi) / SPEC.psi;
+  const camC = front ? SPEC.fCam[2] : SPEC.rCam[2];   // in-spec camber wears evenly here
+  const scrub = 1 + 6 * Math.abs(dt), bias = 0.9 * (w.cam - camC) + 2.2 * dt;
+  const ribs = [];
+  for (let k = 0; k < 7; k++) {
+    const x = -1 + k / 3;   // −1 inner … +1 outer
+    const r = scrub * Math.max(0.2, 1 + bias * x + dp * 2.6 * (1 - 2 * x * x));
+    ribs.push(clamp(10 - S.miles / 1000 * 0.18 * r, 0, 10));
+  }
+  return { ribs, feather: Math.abs(dt) > 0.12 ? (dt > 0 ? 'in' : 'out') : null };
+}
+
+/* ================= views ================= */
+const locked = () => S.mode === 'diagnose' && S.dx && !S.dx.rack && !S.dx.solved;
+const LOCKMSG = (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" fill="#0b1015"/><text x="${w / 2}" y="${h / 2 - 6}" text-anchor="middle" class="svgt" style="font-size:13px">Measured on the alignment rack</text><text x="${w / 2}" y="${h / 2 + 14}" text-anchor="middle" class="svgt">Put it on the rack (Case tab) to see these angles</text>`;
+const col = d => d >= 6 ? '#3DDC97' : d >= 4 ? '#FFB224' : d >= 2 ? '#FF8A4C' : '#FF5A4E';
+function drawFront(m) {
+  if (locked()) { $('#svFront').innerHTML = LOCKMSG(360, 230); return; }
+  const E = S.E, gy = 196;
+  let h = `<line x1="10" y1="${gy}" x2="350" y2="${gy}" stroke="#2A3644" stroke-width="2"/><text x="180" y="222" text-anchor="middle" class="svgt">viewed from the front of the car · ×${E} exaggeration on deviations</text>`;
+  h += `<text x="102" y="18" text-anchor="middle" class="svgt">RIGHT front</text><text x="258" y="18" text-anchor="middle" class="svgt">LEFT front</text>`;
+  for (const [s, cx, out] of [['R', 102, -1], ['L', 258, 1]]) {
+    const w = m[s];
+    const camDraw = w.cam * E * out;   // + = top leans outward (away from the car center)
+    // wheel (rotated about the contact patch)
+    h += `<g transform="rotate(${camDraw.toFixed(2)} ${cx} ${gy})"><rect x="${cx - 18}" y="${gy - 128}" width="36" height="128" rx="10" fill="#1a232d" stroke="#5A6773" stroke-width="2"/><line x1="${cx}" y1="${gy - 140}" x2="${cx}" y2="${gy}" stroke="#2F9BE0" stroke-width="1.5" stroke-dasharray="4 3"/></g>`;
+    h += `<line x1="${cx}" y1="${gy - 140}" x2="${cx}" y2="${gy}" stroke="#3a4a5c" stroke-width="1"/>`;
+    // steering axis (SAI): leans toward the car center at the top
+    const saiDraw = (SPEC.sai[2] + (w.sai - SPEC.sai[2]) * E) * DEG, bx = cx - out * 6, by = gy - 34, len = 120;
+    const tx = bx - out * Math.sin(saiDraw) * len, ty = by - Math.cos(saiDraw) * len;
+    h += `<line x1="${bx}" y1="${by}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="#FFB224" stroke-width="3"/><circle cx="${bx}" cy="${by}" r="4" fill="#FFB224"/><circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="4" fill="#FFB224"/>`;
+    const cb = !inR(w.cam, SPEC.fCam), sb = !inR(w.sai, SPEC.sai), ib = !inR(w.ia, SPEC.ia);
+    const lx = cx + out * 26, anchor = out > 0 ? 'start' : 'end';
+    h += `<text x="${lx}" y="${gy - 104}" text-anchor="${anchor}" class="svgt">Camber</text><text x="${lx}" y="${gy - 90}" text-anchor="${anchor}" class="svgv ${cb ? 'bad' : 'ok'}">${fx(w.cam)}°</text>`;
+    h += `<text x="${lx}" y="${gy - 70}" text-anchor="${anchor}" class="svgt" style="fill:#FFB224">SAI</text><text x="${lx}" y="${gy - 56}" text-anchor="${anchor}" class="svgv ${sb ? 'bad' : ''}">${w.sai.toFixed(1)}°</text>`;
+    h += `<text x="${lx}" y="${gy - 36}" text-anchor="${anchor}" class="svgt">Incl. angle</text><text x="${lx}" y="${gy - 22}" text-anchor="${anchor}" class="svgv ${ib ? 'bad' : ''}">${w.ia.toFixed(1)}°</text>`;
+  }
+  h += `<text x="180" y="40" text-anchor="middle" class="svgt">◂ car center ▸</text>`;
+  $('#svFront').innerHTML = h;
+}
+function drawSide(m) {
+  if (locked()) { $('#svSide').innerHTML = LOCKMSG(260, 230); return; }
+  const E = S.E / 2, w = m.L, cx = 120, gy = 196, r = 70;
+  const ang = w.cas * E * DEG;   // + caster: top of the steering axis tilts rearward (to the right here)
+  const top = [cx + Math.sin(ang) * 150, gy - Math.cos(ang) * 150];
+  const gx = cx - Math.tan(ang) * 0;   // axis passes through the wheel center at height r
+  const hitX = cx - Math.tan(ang) * r;   // where the axis meets the ground (ahead of the contact patch)
+  let h = `<line x1="10" y1="${gy}" x2="250" y2="${gy}" stroke="#2A3644" stroke-width="2"/><text x="20" y="18" class="svgt">◀ front of car</text>`;
+  h += `<circle cx="${cx}" cy="${gy - r}" r="${r}" fill="#1a232d" stroke="#5A6773" stroke-width="2"/><circle cx="${cx}" cy="${gy - r}" r="20" fill="#26303b"/>`;
+  h += `<line x1="${cx}" y1="${gy - 160}" x2="${cx}" y2="${gy}" stroke="#3a4a5c" stroke-dasharray="4 3"/>`;
+  const p1 = [hitX, gy], p2 = [cx + Math.tan(ang) * (160 - r), gy - 160];
+  h += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1]}" x2="${p2[0].toFixed(1)}" y2="${p2[1]}" stroke="#FFB224" stroke-width="3"/>`;
+  h += `<circle cx="${hitX.toFixed(1)}" cy="${gy}" r="4" fill="#FFB224"/><circle cx="${cx}" cy="${gy}" r="4" fill="#5BB8F5"/>`;
+  h += `<text x="${(hitX - 4).toFixed(1)}" y="${gy + 16}" text-anchor="end" class="svgt">axis hits ground</text><text x="${cx + 6}" y="${gy + 16}" class="svgt">tire contact</text>`;
+  const cb = !inR(w.cas, SPEC.fCas);
+  h += `<text x="200" y="60" class="svgt">Caster (L)</text><text x="200" y="76" class="svgv ${cb ? 'bad' : 'ok'}">${fx(w.cas)}°</text>`;
+  h += `<text x="200" y="102" class="svgt">Caster (R)</text><text x="200" y="118" class="svgv ${!inR(m.R.cas, SPEC.fCas) ? 'bad' : 'ok'}">${fx(m.R.cas)}°</text>`;
+  h += `<text x="130" y="224" text-anchor="middle" class="svgt">×${E} exaggeration · the "trail" pulls the tire straight</text>`;
+  $('#svSide').innerHTML = h;
+}
+function drawTop(m, rd) {
+  const E = S.E, cx = 180, lk = locked();
+  let h = `<rect x="20" y="0" width="320" height="520" fill="#0b1015"/><line x1="40" y1="0" x2="40" y2="520" stroke="#2A3644" stroke-width="2"/><line x1="320" y1="0" x2="320" y2="520" stroke="#2A3644" stroke-width="2"/><line x1="180" y1="0" x2="180" y2="520" stroke="#3a4a5c" stroke-dasharray="14 12"/>`;
+  if (S.crown) h += `<text x="314" y="16" text-anchor="end" class="svgt" style="fill:#FFB224">road crown → slopes right</text>`;
+  // predicted hands-off path (curve ahead of the car)
+  const k = clamp(rd.pull, -2, 2);
+  h += `<path d="M${cx} 250 Q ${cx + k * 30} 140 ${cx + k * 90} 30" stroke="#FFB224" stroke-width="2.5" fill="none" stroke-dasharray="6 5"/><text x="${cx + k * 90 + (k >= 0 ? 6 : -6)}" y="28" text-anchor="${k >= 0 ? 'start' : 'end'}" class="svgt" style="fill:#FFB224">hands off</text>`;
+  // body
+  h += `<rect x="${cx - 62}" y="250" width="124" height="230" rx="34" fill="#18222c" stroke="#2F4256" stroke-width="2"/><rect x="${cx - 46}" y="300" width="92" height="56" rx="10" fill="#0d141c"/>`;
+  // thrust line from the rear axle center
+  const ta = m.ta * E * DEG;
+  if (!lk) h += `<line x1="${cx}" y1="440" x2="${(cx + Math.sin(ta) * 400).toFixed(1)}" y2="${(440 - Math.cos(ta) * 400).toFixed(1)}" stroke="#5BB8F5" stroke-width="1.6" stroke-dasharray="3 4"/><text x="${cx + 70}" y="512" text-anchor="middle" class="svgt" style="fill:#5BB8F5">thrust line ${fx(m.ta)}°</text>`;
+  // wheels: toe-in = front of the tire turned toward the center
+  const wheel = (x, y, toe, side, label, bad) => {
+    if (lk) return `<rect x="${x - 9}" y="${y - 30}" width="18" height="60" rx="5" fill="#26303b" stroke="#5A6773" stroke-width="2"/>`;
+    const rot = (side === 'L' ? 1 : -1) * toe * E;
+    return `<g transform="rotate(${rot.toFixed(2)} ${x} ${y})"><rect x="${x - 9}" y="${y - 30}" width="18" height="60" rx="5" fill="#26303b" stroke="${bad ? '#FF5A4E' : '#5A6773'}" stroke-width="2"/><line x1="${x}" y1="${y - 42}" x2="${x}" y2="${y - 30}" stroke="#2F9BE0" stroke-width="2"/></g><text x="${side === 'L' ? x - 16 : x + 16}" y="${y + 4}" text-anchor="${side === 'L' ? 'end' : 'start'}" class="svgv ${bad ? 'bad' : 'ok'}">${fx(toe)}°</text><text x="${side === 'L' ? x - 16 : x + 16}" y="${y - 10}" text-anchor="${side === 'L' ? 'end' : 'start'}" class="svgt">${label}</text>`;
+  };
+  h += wheel(cx - 70, 300, m.L.toe, 'L', 'LF toe', !inR(m.L.toe, SPEC.fToe));
+  h += wheel(cx + 70, 300, m.R.toe, 'R', 'RF toe', !inR(m.R.toe, SPEC.fToe));
+  h += wheel(cx - 70, 440, m.RL.toe, 'L', 'LR toe', !inR(m.RL.toe, SPEC.rToe));
+  h += wheel(cx + 70, 440, m.RR.toe, 'R', 'RR toe', !inR(m.RR.toe, SPEC.rToe));
+  // steering wheel (driver side = left)
+  const sw = clamp(rd.sw, -60, 60);
+  h += `<g transform="translate(${cx - 24} 380) rotate(${sw.toFixed(1)})"><circle r="17" fill="none" stroke="${Math.abs(rd.sw) > 2 ? '#FF5A4E' : '#C5CFD9'}" stroke-width="3.5"/><line x1="-17" y1="0" x2="17" y2="0" stroke="#C5CFD9" stroke-width="3"/><line x1="0" y1="0" x2="0" y2="17" stroke="#C5CFD9" stroke-width="3"/></g><text x="${cx + 4}" y="384" class="svgt">wheel ${Math.abs(rd.sw) < 1 ? 'centered' : Math.abs(rd.sw).toFixed(0) + '° ' + (rd.sw > 0 ? 'right' : 'left')}</text>`;
+  h += `<text x="${cx}" y="268" text-anchor="middle" class="svgt">FRONT</text>`;
+  $('#svTop').innerHTML = h;
+}
+function drawWear(m) {
+  let h = '';
+  const pos = [['FL', 'Left front', 18, 8], ['FR', 'Right front', 190, 8], ['RL', 'Left rear', 18, 118], ['RR', 'Right rear', 190, 118]];
+  for (const [p, name, x, y] of pos) {
+    const w = wear(p, m), left = p[1] === 'L';
+    // inner edge faces the car center: for left tires inner is on the right of the drawing
+    const ribs = left ? w.ribs.slice().reverse() : w.ribs;
+    h += `<text x="${x}" y="${y + 10}" class="svgt">${name}</text><text x="${x + 150}" y="${y + 10}" text-anchor="end" class="svgt">${left ? 'outer ◂ ▸ inner' : 'inner ◂ ▸ outer'}</text>`;
+    ribs.forEach((d, i) => {
+      const rx = x + i * 21.5, ry = y + 16, rh = 66 * (0.25 + d / 13.3);
+      h += `<rect x="${rx.toFixed(1)}" y="${ry}" width="19" height="72" rx="3" fill="#0b1015" stroke="#1D2732"/><rect x="${rx.toFixed(1)}" y="${(ry + 72 - rh).toFixed(1)}" width="19" height="${rh.toFixed(1)}" rx="3" fill="${col(d)}" fill-opacity=".75"/>`;
+      if (w.feather) h += `<path d="M${(rx + 3).toFixed(1)} ${ry + 20} l6 -6 l6 6" stroke="#081018" stroke-width="2" fill="none" opacity=".6"/>`;
+    });
+    const sh = [ribs[0], ribs[3], ribs[6]];
+    h += `<text x="${x}" y="${y + 102}" class="svgv">${sh.map(v => v.toFixed(0)).join(' · ')} /32"</text>${w.feather ? `<text x="${x + 150}" y="${y + 102}" text-anchor="end" class="svgt" style="fill:#FFB224">feathered</text>` : ''}`;
+  }
+  $('#svWear').innerHTML = h;
+  $('#milesTxt').textContent = `${(S.miles / 1000).toFixed(0)}k miles · new = 10/32"`;
+}
+function readout(m, rd) {
+  const locked = S.mode === 'diagnose' && S.dx && !S.dx.rack && !S.dx.solved;
+  const row = (n, l, r, x, rng, xr) => `<tr><td>${n}</td><td class="${rng ? (inR(l, rng) ? 'ok' : 'bad') : ''}">${fx(l)}</td><td class="${rng ? (inR(r, rng) ? 'ok' : 'bad') : ''}">${fx(r)}</td><td class="${xr != null ? (Math.abs(x) <= xr + 1e-9 ? 'ok' : 'bad') : (rng && x != null ? '' : '')}">${x == null ? '' : fx(x)}</td><td>${rng ? rng[0].toFixed(2) + '…' + rng[1].toFixed(2) : ''}</td></tr>`;
+  let h = `<div class="rtest"><div><span>Road test</span><b class="${Math.abs(rd.pull) >= .15 ? 'w' : ''}">${rd.pullTxt}</b></div><div><span>Steering wheel</span><b class="${Math.abs(rd.sw) > 2 ? 'w' : ''}">${Math.abs(rd.sw) < 1 ? 'centered' : Math.abs(rd.sw).toFixed(0) + '° ' + (rd.sw > 0 ? 'right' : 'left')}</b></div><div><span>Return / wander</span><b class="${rd.ret !== 'normal' || rd.wander ? 'w' : ''}">${rd.ret}${rd.wander ? ' · wanders' : ''}</b></div><div><span>Tire pressure</span><b class="${Math.abs(m.psi - 35) > 3 ? 'w' : ''}">${S.mode === 'diagnose' && S.dx && !S.dx.gauge && !S.dx.solved ? 'not checked' : m.psi + ' psi (placard 35)'}</b></div></div>`;
+  if (locked) return $('#read').innerHTML = h + `<div class="locked">The car isn't on the rack yet. Read the tires and the road test first, then use <b>Put it on the rack</b> on the Case tab if you need the numbers.</div>`;
+  h += `<table class="rt"><tr><th></th><th>Left</th><th>Right</th><th>Cross/Tot</th><th>Spec</th></tr>
+    <tr class="grp"><td colspan="5">Front</td></tr>
+    ${row('Camber', m.L.cam, m.R.cam, m.crossCam, SPEC.fCam, SPEC.crossCam)}
+    ${row('Caster', m.L.cas, m.R.cas, m.crossCas, SPEC.fCas, SPEC.crossCas)}
+    ${row('Toe', m.L.toe, m.R.toe, m.fTot, SPEC.fToe)}
+    <tr><td>SAI</td><td class="${inR(m.L.sai, SPEC.sai) ? 'ok' : 'bad'}">${m.L.sai.toFixed(1)}</td><td class="${inR(m.R.sai, SPEC.sai) ? 'ok' : 'bad'}">${m.R.sai.toFixed(1)}</td><td></td><td>12.5…13.5</td></tr>
+    <tr><td>Incl. angle</td><td class="${inR(m.L.ia, SPEC.ia) ? 'ok' : 'bad'}">${m.L.ia.toFixed(1)}</td><td class="${inR(m.R.ia, SPEC.ia) ? 'ok' : 'bad'}">${m.R.ia.toFixed(1)}</td><td></td><td>11.9…13.1</td></tr>
+    <tr class="grp"><td colspan="5">Rear</td></tr>
+    ${row('Camber', m.RL.cam, m.RR.cam, null, SPEC.rCam)}
+    ${row('Toe', m.RL.toe, m.RR.toe, m.rTot, SPEC.rToe)}
+    <tr><td>Thrust angle</td><td></td><td></td><td class="${inR(m.ta, SPEC.thrust) ? 'ok' : 'bad'}">${fx(m.ta)}</td><td>−0.10…0.10</td></tr></table>
+    <p class="dim" style="font-size:11.5px;margin:6px 0 0">Cross camber/caster = left − right (spec ±0.50). Totals: front toe ${SPEC.fTot[0].toFixed(2)}…${SPEC.fTot[1].toFixed(2)}, rear ${SPEC.rTot[0].toFixed(2)}…${SPEC.rTot[1].toFixed(2)}.</p>`;
+  $('#read').innerHTML = h;
+}
+function renderViews() {
+  const m = meas(), rd = road(m);
+  drawFront(m); drawSide(m); drawTop(m, rd); drawWear(m); readout(m, rd);
+  if (S.mode === 'guided') checkGoal();
+}
+
+/* ================= adjustments (sliders) ================= */
+const ADJ = [
+  ['RL', 'cam', 'Rear L camber', -3, 2, 'rCam', 'rcam'], ['RR', 'cam', 'Rear R camber', -3, 2, 'rCam', 'rcam'],
+  ['RL', 'toe', 'Rear L toe', -0.6, 0.6, 'rToe', 'rtoe'], ['RR', 'toe', 'Rear R toe', -0.6, 0.6, 'rToe', 'rtoe'],
+  ['FL', 'cas', 'Front L caster', 0, 8, 'fCas', 'cas'], ['FR', 'cas', 'Front R caster', 0, 8, 'fCas', 'cas'],
+  ['FL', 'cam', 'Front L camber', -3, 2, 'fCam', 'cam'], ['FR', 'cam', 'Front R camber', -3, 2, 'fCam', 'cam'],
+  ['FL', 'toe', 'Front L toe', -0.6, 0.6, 'fToe', 'toe'], ['FR', 'toe', 'Front R toe', -0.6, 0.6, 'fToe', 'toe'],
+];
+const ORDER = [['rcam', 'Rear camber'], ['rtoe', 'Rear toe'], ['cas', 'Front caster'], ['cam', 'Front camber'], ['toe', 'Front toe']];
+function slidersHTML(lock) {
+  return ADJ.map(([w, k, name, lo, hi, spec], i) => {
+    const v = S.A[w][k], bad = !inR(v, SPEC[spec]);
+    return `<div class="sl"><label for="s${i}">${name}</label><input type="range" id="s${i}" data-adj="${i}" min="${lo}" max="${hi}" step="0.05" value="${v}"${lock ? ' disabled' : ''}><output class="${bad ? 'bad' : ''}" id="o${i}">${fx(v)}°</output></div>`;
+  }).join('');
+}
+function onSlide(i, v) {
+  const [w, k, , , , spec, grp] = ADJ[i];
+  S.A[w][k] = +v;
+  const o = $('#o' + i); if (o) { o.textContent = fx(+v) + '°'; o.className = inR(+v, SPEC[spec]) ? '' : 'bad'; }
+  if (S.mode === 'align' && S.al && !S.al.done && !S.al.order.includes(grp)) { S.al.order.push(grp); renderOrder(); }
+  renderViews();
+}
+
+/* ================= explore ================= */
+function exploreHTML() {
+  const b = S.bent;
+  return `<p>Move the adjusters and watch all the views. Values in <span style="color:#FF8A80">red</span> are out of spec. Drag the miles slider on the tire panel to see wear build up.</p>
+    <div class="nav" style="margin:0 0 8px"><button class="btn" data-act="spec">Reset to spec</button><span class="seg mini"><button data-act="crown:0" aria-pressed="${!S.crown}">Flat road</button><button data-act="crown:1" aria-pressed="${S.crown}">Crowned road</button></span></div>
+    ${slidersHTML()}
+    <div class="sl"><label for="psi">Tire pressure</label><input type="range" id="psi" data-psi="1" min="18" max="50" step="1" value="${S.A.psi}"><output id="opsi">${S.A.psi} psi</output></div>
+    <h4>Bent parts (can't be adjusted)</h4>
+    <div class="cyls">${[['none', 'None'], ['strut', 'Bent strut'], ['arm', 'Bent control arm'], ['tierod', 'Bent tie rod']].map(([k, n]) => `<button class="cc" data-act="bent:${k}" aria-pressed="${(b?.part || 'none') === k}">${n}</button>`).join('')}</div>
+    ${b ? `<div class="cyls" style="margin-top:6px"><span class="lbl">Side</span>${['L', 'R'].map(s => `<button class="cc" data-act="bside:${s}" aria-pressed="${b.side === s}">${s}</button>`).join('')}</div><p class="dim" style="margin-top:6px">${b.part === 'strut' ? 'A bent strut or spindle changes camber and the included angle; SAI stays normal.' : b.part === 'arm' ? 'A bent control arm (or a shifted strut tower) changes camber and SAI; the included angle stays normal.' : 'A bent tie rod changes toe on one side: the steering wheel goes off-center.'}</p>` : ''}`;
+}
+
+/* ================= align it ================= */
+function newJob() {
+  const r = (a, b) => Math.round((a + Math.random() * (b - a)) * 20) / 20;
+  S.A = { FL: { cam: r(-1.8, 0.8), cas: r(2.2, 5.6), toe: r(-0.35, 0.4) }, FR: { cam: r(-1.8, 0.8), cas: r(2.2, 5.6), toe: r(-0.35, 0.4) }, RL: { cam: r(-2.2, -0.2), toe: r(-0.3, 0.45) }, RR: { cam: r(-2.2, -0.2), toe: r(-0.3, 0.45) }, psi: 35 };
+  S.bent = null; S.crown = false;
+  S.al = { order: [], done: false, n: (S.al?.n || 0) + 1 };
+  renderPanel(); renderViews();
+}
+function allInSpec(m = meas()) {
+  return inR(m.L.cam, SPEC.fCam) && inR(m.R.cam, SPEC.fCam) && Math.abs(m.crossCam) <= SPEC.crossCam + 1e-9 && inR(m.L.cas, SPEC.fCas) && inR(m.R.cas, SPEC.fCas) && Math.abs(m.crossCas) <= SPEC.crossCas + 1e-9
+    && inR(m.L.toe, SPEC.fToe) && inR(m.R.toe, SPEC.fToe) && inR(m.RL.cam, SPEC.rCam) && inR(m.RR.cam, SPEC.rCam) && inR(m.RL.toe, SPEC.rToe) && inR(m.RR.toe, SPEC.rToe) && inR(m.ta, SPEC.thrust);
+}
+function renderOrder() { const el = $('#ord'); if (el) el.innerHTML = ORDER.map(([k, n], i) => `<span class="${S.al.order.includes(k) ? 'done' : ''}">${S.al.order.indexOf(k) >= 0 ? S.al.order.indexOf(k) + 1 + '. ' : ''}${n}</span>`).join(''); }
+function finishJob() {
+  const m = meas(), rd = road(m), a = S.al;
+  const spec = allInSpec(m), centered = Math.abs(rd.sw) <= 2;
+  const want = ORDER.map(o => o[0]), got = a.order.filter(g => want.includes(g));
+  const orderOk = got.every((g, i) => g === want[i]) && got.length === want.length;
+  if (!spec || !centered) { a.msg = { cls: 'bad', t: !spec ? 'Not done yet: something is still out of spec (red). Thrust angle counts too.' : `Everything is in spec, but the steering wheel is ${Math.abs(rd.sw).toFixed(0)}° off. Split the front toe evenly about the thrust line.` }; renderPanel(); return; }
+  a.done = true; S.alScore.jobs++; if (orderOk) S.alScore.clean++;
+  a.msg = { cls: 'ok', t: `<b>Aligned!</b> All angles in spec and the steering wheel is centered. ${orderOk ? 'And you followed the right order: rear first, then caster, camber, toe last.' : `Order used: ${got.map(g => ORDER.find(o => o[0] === g)[1]).join(' → ')}. The usual order is rear camber → rear toe → caster → camber → front toe, because each one changes the next (caster and camber both move toe, and the rear sets the thrust line the front toe is set to).`}` };
+  toast('✓ Aligned', 'good'); renderPanel();
+}
+function alignHTML() {
+  if (!S.al) newJob();
+  const a = S.al;
+  return `<p>This car came in out of alignment. Adjust it into spec (watch the rack: red = out). Then press <b>Finish</b>. The steering wheel must be centered too.</p>
+    <div class="score"><div><small>Job</small><b>${a.n}</b></div><div><small>Aligned</small><b>${S.alScore.jobs}</b></div><div><small>Right order</small><b>${S.alScore.clean}</b></div></div>
+    <h4>Order you adjusted in</h4><div class="order" id="ord"></div>
+    ${slidersHTML(a.done)}
+    <div class="nav"><button class="btn primary" data-act="finish"${a.done ? ' disabled' : ''}>Finish</button><button class="btn" data-act="newjob">New car</button></div>
+    ${a.msg ? `<div class="msg ${a.msg.cls}">${a.msg.t}</div>` : ''}`;
+}
+
+/* ================= diagnose ================= */
+function newCase() {
+  let type = CASE_POOL[Math.floor(Math.random() * CASE_POOL.length)];
+  if (S.dx && S.dx.type === type) type = CASE_POOL[(CASE_POOL.indexOf(type) + 1 + Math.floor(Math.random() * 5)) % CASE_POOL.length];
+  const side = Math.random() < .5 ? 'L' : 'R', C = CAUSES[type];
+  S.A = BASE(); S.bent = null; S.crown = false;
+  const a = S.A; C.make(a, side);
+  if (a.bent) { S.bent = a.bent; delete a.bent; }
+  if (a.crown) { S.crown = true; delete a.crown; }
+  S.miles = 15000; $('#miles').value = 15000;
+  S.dx = { n: (S.dx?.n || 0) + 1, type, side, rack: false, gauge: false, pick: null, pside: null, tries: 0, solved: false, wrong: null };
+  S.tab = 'case'; renderPanel(); renderViews();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  const C = CAUSES[d.pick];
+  if (C.side && !d.pside) { toast('Pick which side.', 'bad'); return; }
+  const ok = d.pick === d.type && (!C.side || d.pside === d.side);
+  d.tries++;
+  if (ok) { d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; if (!d.rack) S.dxScore.expert++; toast('✓ Correct', 'good'); }
+  else d.wrong = d.pick === d.type ? 'Right cause, wrong side.' : !d.rack ? 'Not quite. If the tires and road test aren\'t enough, put it on the rack.' : 'Not quite. Compare the rack numbers with the tire wear and road test.';
+  renderPanel(); renderViews();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const C = CAUSES[d.type], sc = S.dxScore, concern = typeof C.concern === 'function' ? C.concern(d.side) : C.concern;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${concern}</p><p class="dim">Look at the tire wear (15k miles since the tires were new) and the road test. Put it on the rack only if you need the numbers.</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Solved without the rack</small><b>${sc.expert}</b></div><div><small>Case</small><b>${d.n}</b></div></div>`;
+  if (!d.solved) {
+    h += `<div class="nav" style="margin:0 0 6px"><button class="btn" data-act="gauge"${d.gauge ? ' disabled' : ''}>${d.gauge ? 'Pressure checked' : 'Check tire pressure'}</button><button class="btn" data-act="rack"${d.rack ? ' disabled' : ''}>${d.rack ? 'On the rack' : 'Put it on the rack'}</button><button class="btn" data-act="tryadj"${d.rack ? '' : ' disabled'} title="Try to bring camber into spec with the adjusters">Try to adjust camber</button></div>${d.adj ? `<div class="msg">${d.adj}</div>` : ''}<h4>Your diagnosis</h4><div class="cards">`;
+    for (const [k, Cx] of Object.entries(CAUSES)) {
+      h += `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${Cx.name}</b></button>`;
+      if (d.pick === k && Cx.side) h += `<span class="cyls"><span class="lbl">Side</span>${['L', 'R'].map(s => `<button class="cc" data-act="dxs:${s}" aria-pressed="${d.pside === s}">${s === 'L' ? 'Left' : 'Right'}</button>`).join('')}</span>`;
+    }
+    h += `</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+    if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  } else {
+    h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}${d.rack ? '.' : ', without the rack!'}</b> ${C.name}${C.side ? ` (${d.side === 'L' ? 'left' : 'right'})` : ''}.</div><h4>The evidence</h4><ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${EVIDENCE[d.type].map(e => `<li>${e}</li>`).join('')}</ul><div class="nav"><button class="btn primary" data-act="newcase">Next case</button></div>`;
+  }
+  return h;
+}
+
+/* ================= lessons ================= */
+const m_ = () => meas(), rd_ = () => road();
+const LESSONS = [
+{ id: 'camber', title: 'Camber', sub: 'Tilt seen from the front', steps: [
+  { body: '<b>Camber</b> is the tilt of the tire seen from the front. Top tilted <b>out</b> = positive; top tilted <b>in</b> = negative. A little negative is normal: it helps the tire grip in corners. Look at the <b>Front view</b>.', setup: { spec: true } },
+  { body: 'Set the <b>Front L camber</b> to <b>+1.0°</b> or more with the slider below.', sliders: [6], goal: { check: () => S.A.FL.cam >= 0.99, hint: 'Drag Front L camber to +1.00° or higher.' } },
+  { body: '', sliders: [6], goal: { mc: { q: 'Look at the left front tire wear and the road test. What did positive camber do?', opts: ['Wore the inside shoulder; pulls right', 'Wore the outside shoulder; pulls left, toward the side with more positive camber', 'Nothing'], a: 1, why: 'The tire rides on its outer shoulder, and the car drifts toward the side with more positive camber.' } } },
+  { body: 'Now make <b>both</b> fronts very negative: set Front L and Front R camber to <b>−2.0°</b> or less.', sliders: [6, 7], setup: { spec: true }, goal: { check: () => S.A.FL.cam <= -1.99 && S.A.FR.cam <= -1.99, hint: 'Both front camber sliders to −2.00° or lower.' } },
+  { body: '', sliders: [6, 7], goal: { mc: { q: 'Inside-shoulder wear on both fronts but no pull. Why no pull?', opts: ['Camber never causes pull', 'Both sides are equal, so the camber pulls cancel out', 'Negative camber pulls straight ahead'], a: 1, why: 'Camber pull comes from the difference side to side (cross camber). Equal camber, no pull.' } } },
+] },
+{ id: 'caster', title: 'Caster', sub: 'Stability and steering return', steps: [
+  { body: '<b>Caster</b> is the tilt of the steering axis seen from the side. Positive caster puts the axis\'s ground point ahead of the tire. Like a shopping-cart wheel, the tire trails behind and wants to go straight. Look at the <b>Side view</b>.', setup: { spec: true } },
+  { body: 'Drop <b>both</b> casters to <b>1.5°</b> or less.', sliders: [4, 5], goal: { check: () => S.A.FL.cas <= 1.51 && S.A.FR.cas <= 1.51, hint: 'Front L and R caster ≤ 1.50°.' } },
+  { body: '', sliders: [4, 5], goal: { mc: { q: 'What does the road test say now?', opts: ['Steering return is weak and the car wanders', 'The tires wear on the outside', 'It pulls hard left'], a: 0, why: 'Low caster = little self-centering. The car wanders and the wheel doesn\'t come back after a turn. Caster isn\'t a tire-wear angle.' } } },
+  { body: 'Set the <b>left</b> caster to <b>2.5°</b> and the <b>right</b> to <b>5.0°</b>.', sliders: [4, 5], goal: { check: () => Math.abs(S.A.FL.cas - 2.5) < .06 && Math.abs(S.A.FR.cas - 5) < .06, hint: 'Front L caster 2.50°, Front R caster 5.00°.' } },
+  { body: '', sliders: [4, 5], goal: { mc: { q: 'Which way does it pull, and why?', opts: ['Right: toward more caster', 'Left: toward the side with less positive caster', 'Straight'], a: 1, why: 'A car pulls toward the side with LESS positive caster. That is why the spec here gives the right side a bit more: it offsets the road crown that slopes to the right.' } } },
+  { body: 'The car is back at spec. Now switch to a <b>crowned road</b> (below).', setup: { spec: true }, goal: { check: () => S.crown, hint: 'Choose Crowned road below.' } },
+  { body: '', goal: { mc: { q: 'With spec caster (L 3.9°, R 4.2°) on a crowned road, the car barely drifts. Why?', opts: ['The crown pulls right; slightly more right caster pulls left and nearly cancels it', 'Crown has no effect', 'Caster is too low'], a: 0, why: 'Road crown makes most cars drift right. A little cross-caster (more on the right) is set on purpose to cancel it.' } } },
+] },
+{ id: 'toe', title: 'Toe', sub: 'The #1 tire-wear angle', steps: [
+  { body: '<b>Toe</b> is which way the tires point, seen from above. <b>Toe-in</b>: fronts of the tires closer together. <b>Toe-out</b>: farther apart. Even a small error scrubs the tires sideways every mile. Look at the <b>Top view</b>.', setup: { spec: true, crown: false } },
+  { body: 'Set both front toes to <b>+0.35°</b> (toe-in) or more.', sliders: [8, 9], goal: { check: () => S.A.FL.toe >= .349 && S.A.FR.toe >= .349, hint: 'Front L and R toe ≥ +0.35°.' } },
+  { body: '', sliders: [8, 9], goal: { mc: { q: 'What does excessive toe-in do to the front tires?', opts: ['Wears the outside edges with a feathered (saw-tooth) pattern', 'Wears the center', 'No wear, just a pull'], a: 0, why: 'Toe-in drags the tires sideways, scrubbing the outer edges into a feathered pattern. Run your hand across: smooth one way, sharp the other.' } } },
+  { body: 'Reset to spec, then set <b>Front L toe</b> to <b>+0.30°</b> and <b>Front R toe</b> to <b>−0.20°</b>. Total toe is still in spec.', setup: { spec: true }, sliders: [8, 9], goal: { check: () => Math.abs(S.A.FL.toe - .3) < .03 && Math.abs(S.A.FR.toe + .2) < .03, hint: 'Front L toe +0.30°, Front R toe −0.20°.' } },
+  { body: '', sliders: [8, 9], goal: { mc: { q: 'Total toe is fine, so why is the steering wheel off-center?', opts: ['Both front wheels now point the same way, so the driver turns the wheel to go straight', 'The tires are bald', 'Caster is wrong'], a: 0, why: 'Individual toe sets where the steering wheel sits. Set each side to half of the total, centered on the thrust line, with the steering wheel locked straight.' } } },
+] },
+{ id: 'thrust', title: 'Thrust angle', sub: 'Why the rear comes first', steps: [
+  { body: 'The rear wheels decide where the car really goes: the <b>thrust line</b>. Set <b>Rear L toe</b> to <b>+0.35°</b> and <b>Rear R toe</b> to <b>−0.15°</b>.', setup: { spec: true }, sliders: [2, 3], goal: { check: () => Math.abs(S.A.RL.toe - .35) < .03 && Math.abs(S.A.RR.toe + .15) < .03, hint: 'Rear L toe +0.35°, Rear R toe −0.15°.' } },
+  { body: '', sliders: [2, 3], goal: { mc: { q: 'The front toe is perfect, but the steering wheel is crooked. Why?', opts: ['The thrust line points right, so the car "dog-tracks" and the driver steers to follow it', 'The front toe is wrong', 'The steering gear is worn'], a: 0, why: 'The rear axle steers the car along the thrust line. A front-only alignment can\'t fix this: set the rear toe first, then set the front toe to the thrust line.' } } },
+  { body: 'Fix it: bring the rear toes back into spec (<b>0.00–0.20°</b> each, about equal).', sliders: [2, 3], goal: { check: () => inR(S.A.RL.toe, SPEC.rToe) && inR(S.A.RR.toe, SPEC.rToe) && Math.abs(m_().ta) <= .1, hint: 'Rear L and R toe between 0.00 and 0.20°, thrust angle within ±0.10°.' } },
+] },
+{ id: 'sai', title: 'SAI and included angle', sub: 'Finding bent parts', steps: [
+  { body: '<b>SAI</b> (steering axis inclination) is the tilt of the steering axis seen from the front (the amber line). It can\'t be adjusted. <b>Included angle</b> = SAI + camber. Techs use them to find bent parts when camber won\'t adjust into spec.', setup: { spec: true, bent: { part: 'strut', side: 'L' } } },
+  { body: 'This car pulls left, and the left camber adjuster is already at the end of its travel: camber <b>won’t adjust</b> into spec. Read the rack for the <b>left</b> side: camber, SAI and included angle.', goal: { mc: { q: 'Camber is high, SAI is normal, included angle is high. What is bent?', opts: ['The strut or spindle (the part between the wheel and the steering axis)', 'The control arm or strut tower', 'Nothing; adjust the camber'], a: 0, why: 'If SAI is right but IA is wrong, the bend is in the part that carries the wheel: the strut or spindle. Replace it.' } } },
+  { body: 'Different car. The right camber won’t adjust into spec either.', setup: { spec: true, bent: { part: 'arm', side: 'R' } }, goal: { mc: { q: 'Right side: camber high, SAI low, included angle normal. What is bent?', opts: ['The spindle', 'The control arm, strut tower or cradle position', 'The tie rod'], a: 1, why: 'The steering axis itself is out of place (SAI wrong), but the angle between axis and wheel (IA) is fine. Something that locates the axis has moved: the lower arm, the strut tower or the cradle.' } } },
+  { body: 'One more.', setup: { spec: true, bent: { part: 'tierod', side: 'L' } }, goal: { mc: { q: 'Camber, caster, SAI and IA are all fine. Left toe is way out, and the steering wheel is off-center. Likely cause?', opts: ['A bent left tie rod', 'A bent strut', 'Low tire pressure'], a: 0, why: 'A tie rod sets toe. If one side\'s toe is far off after a curb hit (and won\'t adjust back cleanly), check the tie rod.' } } },
+] },
+{ id: 'tires', title: 'Read the tires', sub: 'Wear patterns and pressure', steps: [
+  { body: 'Not every wear problem is alignment. Set the <b>tire pressure</b> to <b>24 psi</b> or less (slider below).', setup: { spec: true }, goal: { check: () => S.A.psi <= 24, hint: 'Tire pressure slider ≤ 24 psi.' } },
+  { body: '', goal: { mc: { q: 'Both shoulders on all four tires are worn. Cause?', opts: ['Too much toe-in', 'Underinflation', 'Negative camber'], a: 1, why: 'An underinflated tire sags in the middle and carries the load on both shoulders. Alignment angles affect one edge, not both.' } } },
+  { body: 'Now set the pressure to <b>46 psi</b> or more.', goal: { check: () => S.A.psi >= 46, hint: 'Tire pressure slider ≥ 46 psi.' } },
+  { body: '', goal: { mc: { q: 'Center wear on all four. What do you tell the customer?', opts: ['The tires are overinflated: set them to the door-placard pressure (35 psi), not the max on the sidewall', 'They need an alignment', 'The struts are bad'], a: 0, why: 'Overinflation bulges the center of the tread. Always set pressure to the door placard. The sidewall number is a maximum, not a target.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) {
+  if (!su) return;
+  if (su.spec) { S.A = BASE(); S.bent = null; }
+  if ('crown' in su) S.crown = su.crown;
+  if (su.bent) S.bent = { ...su.bent };
+}
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); renderViews(); }
+function checkGoal() {
+  const g = curStep()?.goal; if (!g || S.stepOk || !g.check) return;
+  if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); }
+}
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each sets up the car, tells you what to change and watch, and checks your answer.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  // controls this step needs
+  const needsCrown = /crowned road/i.test(st.body), needsPsi = /pressure/i.test(st.body + (g?.hint || ''));
+  if (st.sliders || needsCrown || needsPsi) {
+    h += `<h4>Adjust</h4>`;
+    if (st.sliders) h += st.sliders.map(i => { const [w, k, name, lo, hi, spec] = ADJ[i], v = S.A[w][k]; return `<div class="sl"><label for="s${i}">${name}</label><input type="range" id="s${i}" data-adj="${i}" min="${lo}" max="${hi}" step="0.05" value="${v}"><output class="${inR(v, SPEC[spec]) ? '' : 'bad'}" id="o${i}">${fx(v)}°</output></div>`; }).join('');
+    if (needsCrown) h += `<span class="seg mini"><button data-act="crown:0" aria-pressed="${!S.crown}">Flat road</button><button data-act="crown:1" aria-pressed="${S.crown}">Crowned road</button></span>`;
+    if (needsPsi) h += `<div class="sl"><label for="psi">Tire pressure</label><input type="range" id="psi" data-psi="1" min="18" max="50" step="1" value="${S.A.psi}"><output id="opsi">${S.A.psi} psi</output></div>`;
+  }
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['adj', 'Adjust']], guided: [['les', 'Lessons']], align: [['job', 'Align it']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'adj' ? exploreHTML() : S.tab === 'les' ? lessonsHTML() : S.tab === 'job' ? alignHTML() : caseHTML();
+  b.scrollTop = keep;
+  if (S.mode === 'align') renderOrder();
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore') { S.A = BASE(); S.bent = null; S.crown = false; }
+  if (m === 'guided') { S.lesson = null; S.A = BASE(); S.bent = null; S.crown = false; }
+  if (m === 'align') newJob();
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); }
+  renderPanel(); renderViews();
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#exag').addEventListener('click', () => { S.E = S.E === 4 ? 1 : 4; $('#exag').setAttribute('aria-pressed', S.E === 4); $('#exag').textContent = S.E === 4 ? 'Exaggerate ×4' : 'True scale'; renderViews(); });
+$('#miles').addEventListener('input', e => { S.miles = +e.target.value; renderViews(); });
+$('#pbody').addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.adj != null) onSlide(+t.dataset.adj, t.value);
+  if (t.dataset.psi) { S.A.psi = +t.value; $('#opsi').textContent = t.value + ' psi'; renderViews(); }
+});
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'spec': S.A = BASE(); S.bent = null; renderPanel(); renderViews(); break;
+    case 'crown': S.crown = v === '1'; renderPanel(); renderViews(); break;
+    case 'bent': S.bent = v === 'none' ? null : { part: v, side: S.bent?.side || 'L' }; renderPanel(); renderViews(); break;
+    case 'bside': S.bent.side = v; renderPanel(); renderViews(); break;
+    case 'finish': finishJob(); renderViews(); break;
+    case 'newjob': newJob(); break;
+    case 'gauge': S.dx.gauge = true; renderPanel(); renderViews(); break;
+    case 'rack': S.dx.rack = true; renderPanel(); renderViews(); break;
+    case 'tryadj': { const b = S.bent; S.dx.adj = b && (b.part === 'strut' || b.part === 'arm') ? `The ${b.side === 'L' ? 'left' : 'right'} camber adjuster runs out of travel before camber reaches spec. Something is bent: compare SAI and included angle.` : 'Both camber adjusters have enough travel to reach spec. Nothing that sets camber is bent.'; renderPanel(); break; }
+    case 'dx': S.dx.pick = v; S.dx.pside = null; S.dx.wrong = null; renderPanel(); break;
+    case 'dxs': S.dx.pside = v; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('align.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+
+renderPanel(); renderViews();
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__A = { S, meas, road, wear, setMode, newCase, newJob, finishJob, LESSONS, CAUSES, ADJ, SPEC, onSlide, renderViews, renderPanel, curStep, allInSpec,
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
