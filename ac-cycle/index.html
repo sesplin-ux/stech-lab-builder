@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A/C Cycle Simulator</title>
+<meta name="description" content="Follow refrigerant around the A/C cycle, read manifold gauges against the pressure-temperature chart, measure superheat and subcooling, and diagnose charge, airflow, restriction, compressor and control faults.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. 2D views:
+   refrigerant cycle, manifold gauges, PT chart, readout, pressure trace, notebook. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.4;cursor:not-allowed}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.05fr);grid-template-rows:minmax(0,1.15fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.vbox{flex:1;min-height:0;padding:0 8px 8px}
+.vbox svg{width:100%;height:100%;display:block}
+#pCyc{grid-column:1/3}
+.svgt{font:600 10.5px var(--f-label);fill:#8A98A8;letter-spacing:.04em}
+.svgs{font:600 9px var(--f-label);fill:#5A6773;letter-spacing:.08em;text-transform:uppercase}
+.svgv{font:500 11px var(--f-mono);fill:#E6EDF3}
+.flow{stroke-dasharray:3 13;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.spin{animation:spin 1.2s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.flow,.spin{animation:none}}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+table.rt{width:100%;border-collapse:collapse;font:500 12px/1.2 var(--f-mono)}
+table.rt th{font:600 9.5px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);text-align:right;padding:4px;border-bottom:1px solid var(--line)}
+table.rt td{text-align:right;padding:5px 4px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.rt th:first-child,table.rt td:first-child{text-align:left;font-family:var(--f-ui);font-size:12.5px;color:var(--dim)}
+table.rt td.bad{color:#FF8A80;font-weight:600}
+table.rt td.ok{color:#9BE9C4}
+table.rt td.hid{color:var(--faint)}
+.chip{padding:3px 7px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft)}
+.chip.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}
+.chip.warn{border-color:rgba(255,178,36,.55);color:#FFE2A8}
+.chip.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+.locked{padding:14px;border:1px dashed var(--line-2);border-radius:10px;color:var(--dim);font-size:13px;text-align:center;margin:4px 0}
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 62px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.rowb .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);min-width:84px}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card[disabled]{opacity:.4;cursor:not-allowed}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.tests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.tests .btn{white-space:normal;text-align:center;line-height:1.2;padding:8px 8px}
+.tests .btn.used{border-color:rgba(61,220,151,.4);color:#C9F7E2}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f > b{display:block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.find .f div{margin:2px 0}
+.find .f .bad{color:#FFC2BC}.find .f .warn{color:#FFE2A8}.find .f .ok{color:#BFEBD6}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pCyc{grid-column:1/-1;height:400px}
+  #pGauge,#pPT,#pRead,#pTrace{height:320px}
+  .main>.panel{height:640px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pCyc{height:260px} #pGauge{height:250px} .brand p{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11"/><path d="M9.5 3.8 12 6l2.5-2.2M9.5 20.2 12 18l2.5 2.2"/></svg></div>
+      <div><h1>A/C Cycle Simulator</h1><p>Refrigerant · gauges · diagnosis</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pCyc" aria-label="Refrigerant cycle"><div class="phead"><h2>Refrigerant cycle</h2><span id="cycSub"></span></div><div class="vbox"><svg id="svCyc" viewBox="0 0 640 330" role="img" aria-label="Refrigerant cycle: compressor, condenser, receiver-drier or accumulator, expansion device and evaporator, with line temperatures and refrigerant state"></svg></div></section>
+      <section class="panel" id="pGauge" aria-label="Manifold gauges"><div class="phead"><h2>Manifold gauges</h2><span id="gSub"></span></div><div class="vbox"><svg id="svGauge" viewBox="0 0 360 210" role="img" aria-label="Low-side and high-side manifold gauges with refrigerant temperature scales"></svg></div></section>
+      <section class="panel" id="pPT" aria-label="Pressure-temperature chart"><div class="phead"><h2>PT chart</h2><span id="ptSub"></span></div><div class="vbox"><svg id="svPT" viewBox="0 0 360 200" role="img" aria-label="Saturation pressure-temperature curve with the low-side and high-side operating points, superheat and subcooling"></svg></div></section>
+      <section class="panel" id="pRead" aria-label="Readings"><div class="phead"><h2>Readings</h2><span id="rSub"></span></div><div class="ro" id="read"></div></section>
+      <section class="panel" id="pTrace" aria-label="Pressure trace"><div class="phead"><h2>Pressure trace</h2><span>last 60 s</span></div><div class="vbox"><svg id="svTrace" viewBox="0 0 360 180" role="img" aria-label="Low-side and high-side pressure over the last 60 seconds with compressor clutch on and off"></svg></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const f0 = n => (Math.round(n) || 0).toLocaleString('en-US');
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+
+/* ================= refrigerant properties ================= */
+// saturation tables: °C → bar abs (ln P interpolated)
+const PT_C = {
+  r134a:   [[-30, .844], [-20, 1.327], [-10, 2.006], [0, 2.928], [10, 4.146], [20, 5.717], [30, 7.702], [40, 10.166], [50, 13.179], [60, 16.818], [70, 21.168], [80, 26.332], [90, 32.442]],
+  r1234yf: [[-30, .993], [-20, 1.509], [-10, 2.193], [0, 3.158], [10, 4.394], [20, 5.917], [30, 7.835], [40, 10.177], [50, 13.003], [60, 16.38], [70, 20.37], [80, 25.05], [90, 30.5]],
+};
+const PT = {};
+for (const k in PT_C) PT[k] = PT_C[k].map(([c, b]) => [c * 9 / 5 + 32, Math.log(b * 14.5038)]);   // °F, ln psia
+function psat(T, ref) {                       // °F → psig
+  const t = PT[ref]; let i = 0;
+  if (T <= t[0][0]) i = 0; else if (T >= t[t.length - 1][0]) i = t.length - 2; else while (t[i + 1][0] < T) i++;
+  const [x0, y0] = t[i], [x1, y1] = t[i + 1];
+  return Math.exp(y0 + (y1 - y0) * (T - x0) / (x1 - x0)) - 14.7;
+}
+function tsat(P, ref) {                       // psig → °F
+  const y = Math.log(Math.max(0.5, P + 14.7)), t = PT[ref]; let i = 0;
+  if (y <= t[0][1]) i = 0; else if (y >= t[t.length - 1][1]) i = t.length - 2; else while (t[i + 1][1] < y) i++;
+  const [x0, y0] = t[i], [x1, y1] = t[i + 1];
+  return x0 + (x1 - x0) * (y - y0) / (y1 - y0);
+}
+const REFN = { r1234yf: 'R-1234yf', r134a: 'R-134a' };
+const SPEC_OZ = { r1234yf: 17.0, r134a: 20.5 };
+
+/* ================= A/C model (generic teaching car; steady state) ================= */
+const RPM = { off: 0, idle: 0.62, r1500: 1.0, road: 1.15 };
+const CONDAIR = { idle: 0.85, r1500: 1.0, road: 1.35 };
+const LATENT = { low: 0, normal: 5, high: 11 };
+const KC = 55 / 0.83, UAE = 1, UAC = 1.589;
+function bisect(f, lo, hi) { for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (f(m) > 0) hi = m; else lo = m; } return (lo + hi) / 2; }
+function acModel(c) {
+  const ref = c.ref, txv = c.sys === 'txv', f = c.fault, q = c.charge / 100;
+  const out = { ref, sys: c.sys, amb: c.amb, engine: c.engine };
+  const air = f === 'air', static_ = Math.max(0, psat(c.amb + 3, ref) + (air ? 30 : 0));
+  out.static = static_;
+  if (c.engine === 'off' || f === 'clutch' || q < 0.08) {
+    const P = q < 0.08 ? Math.max(0, static_ * q / 0.08) : static_;
+    return Object.assign(out, { run: false, clutch: c.engine === 'off' ? 'engine off' : f === 'clutch' ? 'not engaging' : 'off: low-pressure switch',
+      Pl: P, Ph: P, Te: c.amb, Tc: c.amb, SH: 0, SC: 0, SCmeas: 0, vent: c.amb + (f === 'blend' && c.engine !== 'off' ? 12 : 0), m: 0, Tsuc: c.amb, Tliq: c.amb, Tdis: c.amb, cyc: null, Qe: 0, fed: 0, flood: false, af: c.blower === 'high' ? (f === 'filter' ? .4 : 1) : .55 });
+  }
+  const rpmF = RPM[c.engine], eff = f === 'weak' ? 0.45 : 1;
+  let af = c.blower === 'high' ? 1 : 0.55; if (f === 'filter') af *= 0.4;
+  const Tin = c.amb, lat = LATENT[c.hum], TinE = Tin + lat;
+  const condAir = CONDAIR[c.engine] * (f === 'fan' && c.engine !== 'road' ? 0.55 : 1);
+  const Qcap = Te => UAE * Math.pow(af, 0.8) * (TinE - Te);
+  // liquid availability (charge) + condenser area lost to backed-up liquid
+  let SCnom = txv ? 12 : 10, SC, L, ucLoss = 1;
+  if (txv) {
+    if (q < 0.85) { SC = 0; L = Math.pow(Math.max(0, (q - 0.35) / 0.5), 1.5); }
+    else if (q <= 1.1) { SC = SCnom; L = 1; }
+    else { SC = SCnom + 60 * (q - 1.1); L = 1; ucLoss = Math.max(0.45, 1 - 1.4 * (q - 1.1)); }
+  } else {
+    SC = Math.max(0, SCnom + 50 * (q - 1));
+    L = q >= 0.9 ? 1 : Math.pow(Math.max(0, (q - 0.35) / 0.55), 1.5);
+    if (q > 1.05) ucLoss = Math.max(0.45, 1 - 1.3 * (q - 1.05));
+  }
+  let Fmax = (txv ? 1.6 : 1.25) * KC * 0.84 * L;     // expansion device capacity at this liquid supply
+  if (f === 'restrict') Fmax *= 0.3;
+  // iterate: compressor pumping falls as the pressure ratio rises (volumetric efficiency)
+  let Tc = c.amb + 45, Te = 40, m = 0, Qe = 0, SH = 10, flood = false, fed = 1;
+  for (let it = 0; it < 12; it++) {
+    const PhAbs = psat(Tc, ref) + (air ? 45 : 0) + 14.7;
+    const mComp = T => { const PlA = psat(T, ref) + 14.7; return KC * rpmF * eff * (PlA / 50) * Math.max(0.2, 1 - 0.05 * (PhAbs / PlA - 1)); };
+    const TeBal = bisect(T => mComp(T) - Qcap(T), -40, TinE), mBal = mComp(TeBal);
+    flood = false;
+    if (txv && f === 'txvopen') { const mo = 1.35 * KC * 0.84 * Math.max(L, .3); Te = bisect(T => mComp(T) - mo, -40, 95); m = mComp(Te); flood = true; }
+    else if (Fmax < mBal) { m = Fmax; Te = bisect(T => mComp(T) - m, -40, TinE); }
+    else { m = mBal; Te = TeBal; }
+    Qe = Math.min(Qcap(Te), flood ? Qcap(Te) * 0.75 : m);
+    fed = Math.min(1, Qe / Math.max(1e-6, Qcap(Te)));
+    const work = Qe * 0.3 / eff + (flood ? 4 : 0);
+    const TcNew = c.amb + (Qe + work) / (UAC * condAir * ucLoss) + (air ? 6 : 0);
+    Tc = Tc + 0.6 * (TcNew - Tc);
+  }
+  if (flood) SH = 0;
+  else if (txv) SH = fed < 0.98 ? 10 + 45 * (1 - fed) : 10;
+  else SH = fed < 0.98 ? 2 + 45 * (1 - fed) : (q > 1.05 ? 0 : 2);
+  if (!txv && q > 1.1) flood = true;
+  if (f === 'restrict') SC = Math.max(SC, 22);
+  // freeze protection: TXV cycles on an evaporator temp sensor (only when the core is actually cold);
+  // orifice-tube systems cycle on a low-side pressure switch (so a starved system short-cycles)
+  const cut = txv ? [30, 40] : [26, 50];
+  let cyc = null, TeAvg = Te;
+  if (Te < cut[0] && (!txv || fed > 0.9)) {
+    const on = Math.max(2, Math.min(45, 28 * L * fed * ((Tin - cut[0]) / 60) * (f === 'filter' ? 1.6 : 1)));
+    const off = 7 + 12 * (1 - af) + (L < 1 ? 2 : 0);
+    cyc = { on, off, PlLo: psat(cut[0], ref), PlHi: psat(cut[1], ref) };
+    TeAvg = (cut[0] + cut[1]) / 2 - 2;
+  }
+  let Ph = psat(Tc, ref) + (air ? 45 : 0);
+  const Pl = psat(cyc ? TeAvg : Te, ref) + (air ? 3 : 0);
+  let hpc = false; if (Ph > 420) { hpc = true; Ph = 420; }
+  const TeV = cyc ? TeAvg : Te;
+  const Qv = cyc ? Qe * (cyc.on / (cyc.on + cyc.off)) * 1.4 : Qe;
+  let vent = Tin - 0.95 * Qv / af * (1 - 0.02 * lat);
+  vent = Math.max(vent, TeV + 4);
+  if (f === 'blend') vent += 22;
+  const Tsuc = TeV + SH, Tliq = Tc - SC;
+  return Object.assign(out, { run: true, clutch: hpc ? 'cut out (high pressure)' : cyc ? 'cycling' : 'engaged', hpc,
+    Pl, Ph, Te: TeV, TeRun: Te, Tc, SH, SC, SCmeas: tsat(Ph, ref) - Tliq, vent, m, Qe, fed, flood, cyc,
+    Tsuc, Tliq, Tdis: Tc + 45 + (eff < 1 ? 25 : 0) + SH * 0.8, af, L });
+}
+const healthy = c => acModel({ ...c, fault: null, charge: 100 });
+
+/* pressure over time (for gauges + trace): steady, cycling or off */
+function traceAt(m, t) {
+  if (!m.run) return { pl: m.Pl, ph: m.Ph, on: false };
+  const air = S.c.fault === 'air', wob = air ? 7 * Math.sin(t * 11) + 4 * Math.sin(t * 23.7) : 1.2 * Math.sin(t * 3);
+  if (!m.cyc) return { pl: m.Pl + (air ? wob * 0.2 : 0), ph: m.Ph + wob, on: true };
+  const { on, off, PlLo, PlHi } = m.cyc, per = on + off, k = ((t % per) + per) % per;
+  if (k < on) { const x = k / on; return { pl: PlHi - (PlHi - PlLo) * x, ph: m.Ph * (0.82 + 0.18 * Math.min(1, x * 2.5)) + wob, on: true }; }
+  const x = (k - on) / off; return { pl: PlLo + (PlHi - PlLo) * x, ph: m.Ph * (1 - 0.18 * Math.min(1, x * 1.6)) + wob, on: false };
+}
+
+/* ================= state ================= */
+const BASEC = () => ({ ref: 'r1234yf', sys: 'txv', amb: 90, hum: 'normal', engine: 'r1500', blower: 'high', charge: 100, fault: null });
+const S = {
+  mode: 'explore', tab: 'ctl', c: BASEC(), t0: performance.now(),
+  lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('ac.done') || '[]')),
+  dx: null, dxScore: { cases: 0, first: 0, tests: 0 },
+};
+const FAULTS = {
+  under:    { name: 'Undercharged (leak)', sub: '60 % of the spec charge', charge: 60 },
+  over:     { name: 'Overcharged', sub: '125 %: "topped off" by pressure', charge: 125 },
+  restrict: { name: 'Restriction', sub: 'Clogged expansion device screen / orifice tube' },
+  txvopen:  { name: 'TXV stuck open', sub: 'Floods the evaporator', txvOnly: true },
+  weak:     { name: 'Weak compressor', sub: 'Worn valves leak internally' },
+  fan:      { name: 'Condenser fan inoperative', sub: 'No airflow at idle; ram air at road speed' },
+  air:      { name: 'Air in the system', sub: 'Non-condensable gases' },
+  clutch:   { name: 'Compressor clutch not engaging', sub: 'Open clutch coil' },
+  filter:   { name: 'Plugged cabin air filter', sub: 'Low airflow across the evaporator' },
+  blend:    { name: 'Blend door stuck part-way to heat', sub: 'Heat added after the evaporator' },
+};
+function setFault(k) {
+  const c = S.c, F = FAULTS[k];
+  if (k === 'none') { c.fault = null; c.charge = 100; return; }
+  c.fault = F.charge ? null : k; c.charge = F.charge || 100;
+  if (F.txvOnly) c.sys = 'txv';
+}
+const faultKey = c => c.fault || (c.charge < 90 ? 'under' : c.charge > 110 ? 'over' : null);
+
+/* ================= drawing helpers ================= */
+const T = (x, y, s, cls = 'svgt', anchor = 'middle', extra = '') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}" ${extra}>${s}</text>`;
+function reveal() {
+  if (S.mode !== 'diagnose') return { press: true, lines: true, vent: true, fault: true };
+  const t = S.dx?.tests || {}, sv = S.dx?.solved;
+  return { press: !!(t.static || t.perf || t.idle) || sv, lines: !!t.lines || sv, vent: !!t.perf || sv, fault: !!sv };
+}
+const C = { hot: '#FF5A4E', liq: '#FFB224', mix: '#2F9BE0', vap: '#7cc4f0', off: '#2A3644' };
+
+/* ================= cycle diagram ================= */
+function drawCyc(m) {
+  const c = S.c, rv = reveal(), txv = c.sys === 'txv', run = m.run, fk = faultKey(c), fv = rv.fault;
+  const col = k => run ? C[k] : C.off;
+  const dur = run ? clamp(1.6 * 50 / Math.max(5, m.m || 50), 0.6, 6).toFixed(2) + 's' : '0s';
+  const flow = d => run ? `<path d="${d}" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" class="flow" style="animation-duration:${dur}"/>` : '';
+  const line = (d, k, w = 4) => `<path d="${d}" fill="none" stroke="${col(k)}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>` + flow(d);
+  let h = '';
+  // side labels
+  h += T(330, 18, 'HIGH SIDE', 'svgs', 'middle', 'style="fill:#c9564c"') + T(330, 322, 'LOW SIDE', 'svgs', 'middle', 'style="fill:#3f86b8"');
+  // paths
+  const P = {
+    dis: 'M110 234 V140 H34 V52 H60',
+    liq1: 'M280 80 H330', liq2: txv ? 'M356 80 H430' : 'M330 80 H430',
+    exp: 'M460 80 H540 V120',
+    suc1: 'M540 240 V292 H' + (txv ? '150' : '360'), suc2: txv ? '' : 'M334 292 H150', suc3: 'M150 292 V262 H138',
+  };
+  h += line(P.dis, 'hot') + line(P.liq1, 'liq') + line(P.liq2, 'liq') + line(P.exp, 'mix');
+  const sk = m.flood ? 'mix' : 'vap';
+  h += line(P.suc1, sk) + (P.suc2 ? line(P.suc2, sk) : '') + line(P.suc3, sk);
+  // condenser
+  let coil = 'M60 52'; for (let i = 0; i < 6; i++) coil += ` H${i % 2 ? 66 : 274} v${i < 5 ? 7 : 0}`;
+  h += `<rect x="56" y="34" width="228" height="66" rx="8" fill="#141c25" stroke="#45566a"/>`;
+  h += `<path d="M60 44 H274 V51 H66 V58 H274 V65 H66 V72 H274 V80 H280" fill="none" stroke="${run ? 'url(#gc)' : C.off}" stroke-width="3"/>`;
+  h += `<defs><linearGradient id="gc" x1="0" x2="1"><stop offset="0" stop-color="${C.hot}"/><stop offset=".55" stop-color="#ff8a4a"/><stop offset="1" stop-color="${C.liq}"/></linearGradient>
+    <linearGradient id="ge" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${C.mix}"/><stop offset="${run ? clamp(m.fed, 0.05, 1).toFixed(2) : 0}" stop-color="${C.mix}"/><stop offset="${run ? clamp(m.fed + 0.05, 0.05, 1).toFixed(2) : 0}" stop-color="${C.vap}"/><stop offset="1" stop-color="${C.vap}"/></linearGradient></defs>`;
+  // condenser fan
+  const fanBad = fv && c.fault === 'fan', fanOn = run && !(c.fault === 'fan');
+  h += `<g transform="translate(170 116)"><circle r="11" fill="#101820" stroke="${fanBad ? '#FF5A4E' : '#45566a'}"/><g class="${fanOn ? 'spin' : ''}"><path d="M0 -8 q5 4 0 8 q-5 4 0 8 M-8 0 q4 -5 8 0 q4 5 8 0" stroke="#8A98A8" stroke-width="2" fill="none" transform="translate(0 -0)"/></g></g>`;
+  h += T(196, 120, 'FAN' + (fanBad ? ' — NOT RUNNING' : ''), 'svgs', 'start', fanBad ? 'style="fill:#FF8A80"' : '') + T(170, 28, 'CONDENSER', 'svgs');
+  h += [90, 150, 210, 250].map(x => `<path d="M${x} 4 v10" stroke="#3a4a5c" stroke-width="1.5"/><path d="M${x - 4} 13 L${x} 20 L${x + 4} 13Z" fill="#3a4a5c"/>`).join('') + T(84, 14, 'OUTSIDE AIR', 'svgs', 'end');
+  // receiver-drier / accumulator
+  if (txv) h += `<rect x="330" y="50" width="26" height="62" rx="11" fill="#1a232d" stroke="#5a6b7e"/>` + T(343, 126, 'RECEIVER-', 'svgs') + T(343, 136, 'DRIER', 'svgs');
+  else h += `<rect x="334" y="262" width="26" height="54" rx="11" fill="#1a232d" stroke="#5a6b7e"/>` + T(397, 270, 'ACCUMULATOR', 'svgs', 'start');
+  // expansion device
+  if (txv) h += `<rect x="430" y="68" width="30" height="24" rx="5" fill="#1a232d" stroke="${fv && (c.fault === 'txvopen' || c.fault === 'restrict') ? '#FF5A4E' : '#5a6b7e'}"/><path d="M445 68 V58 H610 V250 H545" fill="none" stroke="#5a6b7e" stroke-width="1" stroke-dasharray="3 3"/><circle cx="545" cy="250" r="3" fill="#5a6b7e"/>` + T(445, 50, 'TXV', 'svgt') + T(600, 262, 'BULB', 'svgs', 'end');
+  else h += `<rect x="430" y="74" width="30" height="12" rx="3" fill="#1a232d" stroke="${fv && c.fault === 'restrict' ? '#FF5A4E' : '#5a6b7e'}"/>` + T(445, 62, 'ORIFICE TUBE', 'svgt');
+  // evaporator + blower air
+  h += `<rect x="480" y="120" width="120" height="120" rx="8" fill="#141c25" stroke="${fv && c.fault === 'filter' ? '#FF5A4E' : '#45566a'}"/>`;
+  let ev = 'M540 120 V128 H494'; for (let y = 128, i = 0; y < 232; y += 13, i++) ev += ` V${y + 13} H${i % 2 ? 494 : 586}`;
+  h += `<path d="M540 124 H494 V137 H586 V150 H494 V163 H586 V176 H494 V189 H586 V202 H494 V215 H586 V228 H540 V240" fill="none" stroke="${run ? 'url(#ge)' : C.off}" stroke-width="3"/>`;
+  h += T(540, 254, 'EVAPORATOR', 'svgs');
+  const af = m.af ?? 1, arrows = (x1, x2, y) => `<path d="M${x1} ${y} H${x2}" stroke="#5a6b7e" stroke-width="${1 + af * 1.6}" marker-end="url(#ar2)"/>`;
+  h += `<defs><marker id="ar2" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="#5a6b7e"/></marker></defs>`;
+  h += arrows(632, 606, 160) + arrows(632, 606, 200) + arrows(476, 452, 160) + arrows(476, 452, 200);
+  h += T(620, 150, 'CABIN', 'svgs', 'end') + T(620, 222, 'AIR IN', 'svgs', 'end');
+  const ventTxt = rv.vent ? f0(m.vent) + ' °F' : '— °F';
+  h += T(446, 183, 'VENT', 'svgs', 'end') + T(446, 196, ventTxt, 'svgv', 'end');
+  if (fv && c.fault === 'blend') h += T(446, 214, 'BLEND DOOR', 'svgs', 'end', 'style="fill:#FF8A80"') + T(446, 224, '→ HEAT', 'svgs', 'end', 'style="fill:#FF8A80"');
+  if (fv && c.fault === 'filter') h += T(560, 270, 'FILTER PLUGGED', 'svgs', 'middle', 'style="fill:#FF8A80"');
+  // compressor
+  const clBad = fv && c.fault === 'clutch', weakBad = fv && c.fault === 'weak', engaged = run && m.clutch !== 'cycling' || (run && m.cyc);
+  h += `<circle cx="110" cy="262" r="28" fill="#141c25" stroke="${weakBad ? '#FF5A4E' : '#5a6b7e'}" stroke-width="${weakBad ? 2 : 1.2}"/>`;
+  h += `<g transform="translate(110 262)"><circle r="17" fill="none" stroke="${clBad ? '#FF5A4E' : run ? '#3DDC97' : '#45566a'}" stroke-width="3"/><g class="${run ? 'spin' : ''}"><path d="M-12 0 H12 M0 -12 V12" stroke="#8A98A8" stroke-width="2"/></g></g>`;
+  h += T(110, 306, 'COMPRESSOR', 'svgs') + T(110, 318, m.clutch.toUpperCase(), 'svgs', 'middle', `style="fill:${!run ? '#FFB224' : m.cyc ? '#FFB224' : '#3DDC97'}"`);
+  // service ports
+  h += `<circle cx="305" cy="80" r="6" fill="#c9463d" stroke="#0b1015"/>` + T(305, 100, 'H', 'svgs') + `<circle cx="250" cy="292" r="6" fill="#2a7fc0" stroke="#0b1015"/>` + T(250, 312, 'L', 'svgs');
+  // temperatures + states
+  if (rv.lines) {
+    h += T(40, 160, 'DISCHARGE', 'svgs', 'start') + T(40, 172, run ? f0(m.Tdis) + ' °F' : '—', 'svgv', 'start');
+    h += T(395, 70, 'LIQUID ' + (run ? f0(m.Tliq) + ' °F' : '—'), 'svgs', 'middle', 'style="fill:#c99b52"');
+    h += T(560, 108, run ? 'EVAP ' + f0(m.Te) + ' °F' : '', 'svgs', 'middle', 'style="fill:#5aa7da"');
+    h += T(450, 286, 'SUCTION ' + (run ? f0(m.Tsuc) + ' °F' : '—'), 'svgs', 'middle', 'style="fill:#7cc4f0"');
+  }
+  if (run && S.mode !== 'diagnose') {
+    h += T(205, 160, 'hot gas', 'svgs', 'start', 'style="text-transform:none;fill:#c9564c"') + T(380, 104, 'liquid', 'svgs', 'middle', 'style="text-transform:none;fill:#c99b52"') + T(505, 96, 'liquid + vapor', 'svgs', 'middle', 'style="text-transform:none;fill:#5aa7da"') + T(215, 286, m.flood ? 'liquid floodback!' : 'cool vapor', 'svgs', 'middle', `style="text-transform:none;fill:${m.flood ? '#FFB224' : '#7cc4f0'}"`);
+  }
+  // frost / sweat
+  if (fv && c.fault === 'restrict') h += `<circle cx="${txv ? 428 : 428}" cy="80" r="9" fill="none" stroke="#e8f4ff" stroke-width="2" stroke-dasharray="2 2"/>` + T(428, 104, 'FROST', 'svgs', 'middle', 'style="fill:#e8f4ff"');
+  if (fv && m.flood) h += `<path d="M150 292 H540" stroke="#e8f4ff" stroke-width="7" stroke-opacity=".18"/>`;
+  if (fv && c.fault === 'air') h += [[100, 52], [140, 65], [190, 58], [240, 72]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="#0b1015" stroke="#E6EDF3"/>`).join('');
+  $('#svCyc').innerHTML = h;
+  $('#cycSub').textContent = (txv ? 'TXV + receiver-drier' : 'Orifice tube + accumulator') + ' · ' + REFN[c.ref];
+}
+
+/* ================= manifold gauges ================= */
+const GL = { min: -15, max: 150, temps: [10, 30, 50, 70], ticks: [0, 25, 50, 75, 100, 125, 150] };
+const GH = { min: 0, max: 500, temps: [80, 100, 120, 140, 160], ticks: [0, 100, 200, 300, 400, 500] };
+function gaugeSVG(cx, cy, G, val, color, label, ref, show) {
+  const a0 = -225, a1 = 45, ang = p => (a0 + (clamp(p, G.min, G.max) - G.min) / (G.max - G.min) * (a1 - a0)) * Math.PI / 180;
+  const pt = (p, r) => [cx + r * Math.cos(ang(p)), cy + r * Math.sin(ang(p))];
+  let h = `<circle cx="${cx}" cy="${cy}" r="74" fill="#0f151c" stroke="${color}" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="69" fill="#e9edf1"/>`;
+  for (const p of G.ticks) { const [x1, y1] = pt(p, 66), [x2, y2] = pt(p, 56), [tx, ty] = pt(p, 47); h += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1a222b" stroke-width="2"/><text x="${tx}" y="${ty + 3.5}" text-anchor="middle" style="font:600 9px var(--f-mono);fill:#1a222b">${p}</text>`; }
+  if (G.min < 0) { const [x1, y1] = pt(-15, 66), [x2, y2] = pt(0, 66); h += `<path d="M${x1} ${y1} A66 66 0 0 1 ${x2} ${y2}" stroke="#7d8a97" stroke-width="5" fill="none"/>`; }
+  for (const t of G.temps) { const p = psat(t, ref); if (p < G.min || p > G.max) continue; const [tx, ty] = pt(p, 33), [x1, y1] = pt(p, 39), [x2, y2] = pt(p, 36); h += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}"/><text x="${tx}" y="${ty + 3}" text-anchor="middle" style="font:600 7.5px var(--f-mono);fill:${color}">${t}°</text>`; }
+  h += `<text x="${cx}" y="${cy + 30}" text-anchor="middle" style="font:700 8px var(--f-label);letter-spacing:.12em;fill:#4a5562">${label}</text><text x="${cx}" y="${cy + 40}" text-anchor="middle" style="font:600 7px var(--f-label);fill:#6a7682">PSI · °F ${REFN[ref]}</text>`;
+  if (show) { const [nx, ny] = pt(val, 60); h += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="#d12f24" stroke-width="2.4" stroke-linecap="round"/>`; }
+  h += `<circle cx="${cx}" cy="${cy}" r="5" fill="#1a222b"/>`;
+  return h;
+}
+let liveTP = null;
+function drawGauge(m) {
+  const rv = reveal(), c = S.c, t = (performance.now() - S.t0) / 1000, tp = traceAt(m, t);
+  liveTP = tp;
+  let h = gaugeSVG(92, 92, GL, tp.pl, '#2a7fc0', 'LOW SIDE', c.ref, rv.press) + gaugeSVG(268, 92, GH, tp.ph, '#c9463d', 'HIGH SIDE', c.ref, rv.press);
+  if (rv.press) h += T(92, 196, f0(tp.pl) + ' psig', 'svgv') + T(268, 196, f0(tp.ph) + ' psig', 'svgv');
+  else h += T(180, 196, 'Connect gauges (run a pressure test)', 'svgt');
+  $('#svGauge').innerHTML = h;
+  $('#gSub').textContent = rv.press ? ({ off: 'engine off · static', idle: 'idle', r1500: '1500 rpm', road: '45 mph' }[c.engine] + ' · ' + (m.run ? m.clutch : 'compressor off')) : '';
+}
+
+/* ================= PT chart ================= */
+function drawPT(m) {
+  const c = S.c, rv = reveal(), X0 = 38, X1 = 340, Y0 = 10, Y1 = 170, TMIN = -20, TMAX = 170, PMAX = 450;
+  const sx = T_ => X0 + (T_ - TMIN) / (TMAX - TMIN) * (X1 - X0), sy = p => Y1 - clamp(p, 0, PMAX) / PMAX * (Y1 - Y0);
+  let h = `<rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}" fill="#0a0f14" stroke="#1D2732"/>`;
+  for (let p = 0; p <= PMAX; p += 100) h += `<line x1="${X0}" y1="${sy(p)}" x2="${X1}" y2="${sy(p)}" stroke="#141c25"/>` + T(X0 - 4, sy(p) + 3.5, p, 'svgs', 'end');
+  for (let t = 0; t <= TMAX; t += 40) h += `<line x1="${sx(t)}" y1="${Y0}" x2="${sx(t)}" y2="${Y1}" stroke="#141c25"/>` + T(sx(t), Y1 + 11, t + '°', 'svgs');
+  h += T(X0 - 4, Y0 - 1, 'PSIG', 'svgs', 'end') + T(X1, Y1 + 21, '°F', 'svgs', 'end');
+  const curve = ref => { let d = ''; for (let t = TMIN; t <= TMAX; t += 2) d += (d ? ' L' : 'M') + sx(t).toFixed(1) + ' ' + sy(psat(t, ref)).toFixed(1); return d; };
+  const other = c.ref === 'r1234yf' ? 'r134a' : 'r1234yf';
+  h += `<path d="${curve(other)}" fill="none" stroke="#5A6773" stroke-width="1" stroke-dasharray="3 3"/><path d="${curve(c.ref)}" fill="none" stroke="#E6EDF3" stroke-width="1.8"/>`;
+  h += T(sx(10), sy(330), 'LIQUID (subcooled)', 'svgs', 'start') + T(sx(110), sy(30), 'VAPOR (superheated)', 'svgs', 'start');
+  h += `<line x1="${X0 + 6}" y1="${Y0 + 10}" x2="${X0 + 20}" y2="${Y0 + 10}" stroke="#E6EDF3" stroke-width="1.8"/>` + T(X0 + 24, Y0 + 13, REFN[c.ref], 'svgs', 'start') + `<line x1="${X0 + 6}" y1="${Y0 + 22}" x2="${X0 + 20}" y2="${Y0 + 22}" stroke="#5A6773" stroke-dasharray="3 3"/>` + T(X0 + 24, Y0 + 25, REFN[other], 'svgs', 'start');
+  if (rv.press) {
+    if (!m.run) { h += `<circle cx="${sx(c.amb)}" cy="${sy(m.Pl)}" r="5" fill="#FFB224"/>` + T(sx(c.amb) + 8, sy(m.Pl) - 6, 'STATIC ' + f0(m.Pl), 'svgs', 'start', 'style="fill:#FFB224"') + `<line x1="${sx(c.amb)}" y1="${Y1}" x2="${sx(c.amb)}" y2="${sy(m.Pl)}" stroke="#FFB224" stroke-dasharray="2 3"/>` + T(sx(c.amb), Y1 - 4, 'ambient', 'svgs', 'middle', 'style="fill:#FFB224;text-transform:none"'); }
+    else {
+      const tl = tsat(m.Pl, c.ref), th = tsat(m.Ph, c.ref);
+      h += `<circle cx="${sx(tl)}" cy="${sy(m.Pl)}" r="4.5" fill="#2F9BE0"/><circle cx="${sx(th)}" cy="${sy(m.Ph)}" r="4.5" fill="#FF5A4E"/>`;
+      if (rv.lines) {
+        h += `<line x1="${sx(tl)}" y1="${sy(m.Pl)}" x2="${sx(m.Tsuc)}" y2="${sy(m.Pl)}" stroke="#7cc4f0" stroke-width="2"/><rect x="${sx(m.Tsuc) - 3}" y="${sy(m.Pl) - 3}" width="6" height="6" fill="#7cc4f0"/>` + T(sx(m.Tsuc) + 6, sy(m.Pl) + 12, 'SH ' + f0(m.Tsuc - tl) + '°', 'svgs', 'start', 'style="fill:#7cc4f0"');
+        h += `<line x1="${sx(m.Tliq)}" y1="${sy(m.Ph)}" x2="${sx(th)}" y2="${sy(m.Ph)}" stroke="#FFB224" stroke-width="2"/><rect x="${sx(m.Tliq) - 3}" y="${sy(m.Ph) - 3}" width="6" height="6" fill="#FFB224"/>` + T(sx(m.Tliq) - 6, sy(m.Ph) - 7, 'SC ' + f0(th - m.Tliq) + '°', 'svgs', 'end', 'style="fill:#FFB224"');
+      }
+    }
+  }
+  $('#svPT').innerHTML = h;
+  $('#ptSub').textContent = 'saturation curve · ' + REFN[c.ref];
+}
+
+/* ================= readings ================= */
+function drawRead(m) {
+  const c = S.c, rv = reveal(), hm = healthy(c), dx = S.mode === 'diagnose';
+  const rowv = (lbl, v, ex, bad, show = true) => `<tr><td>${lbl}</td><td class="${!show ? 'hid' : bad ? 'bad' : ''}">${show ? v : '—'}</td><td>${ex}</td></tr>`;
+  const runEx = hm.run;
+  const outL = m.run && runEx && Math.abs(m.Pl - hm.Pl) > 6, outH = m.run && runEx && Math.abs(m.Ph - hm.Ph) > 25;
+  let h = `<table class="rt"><tr><th>Reading</th><th>Now</th><th>Healthy car</th></tr>`;
+  h += rowv('Low side', m.cyc ? `${f0(m.cyc.PlLo)}–${f0(m.cyc.PlHi)}` : f0(m.Pl) + ' psig', runEx ? (hm.cyc ? `${f0(hm.cyc.PlLo)}–${f0(hm.cyc.PlHi)}` : `${f0(hm.Pl - 5)}–${f0(hm.Pl + 5)}`) : f0(hm.Pl), !dx && outL, rv.press);
+  h += rowv('High side', f0(m.Ph) + ' psig', runEx ? `${f0(hm.Ph - 25)}–${f0(hm.Ph + 25)}` : f0(hm.Ph), !dx && outH, rv.press);
+  h += rowv('Superheat', m.run ? f0(m.SH) + ' °F' : '—', c.sys === 'txv' ? '5–15' : '0–5', !dx && m.run && (m.SH > (c.sys === 'txv' ? 16 : 6) || (c.sys === 'txv' && m.SH < 4)), rv.lines);
+  h += rowv('Subcooling', m.run ? f0(m.SCmeas) + ' °F' : '—', c.sys === 'txv' ? '8–16' : '5–15', !dx && m.run && (m.SCmeas > 17 || m.SCmeas < 4), rv.lines);
+  h += rowv('Center vent', f0(m.vent) + ' °F', runEx ? '≤ ' + f0(hm.vent + 4) + ' °F' : '—', !dx && m.vent > hm.vent + 4, rv.vent);
+  h += `</table><p class="dim" style="margin:8px 0 0">${f0(c.amb)} °F ambient · ${c.hum} humidity · ${{ off: 'engine off', idle: 'idle', r1500: '1500 rpm', road: '45 mph' }[c.engine]} · blower ${c.blower}. Max A/C, recirc, doors open.</p>`;
+  if (m.cyc && rv.press) h += `<p class="dim" style="margin:6px 0 0">Clutch cycling: about <b>${f0(m.cyc.on)} s on / ${f0(m.cyc.off)} s off</b>.</p>`;
+  if (!m.run && rv.press) h += `<p class="dim" style="margin:6px 0 0">Compressor off: both sides equal. PT chart at ${f0(c.amb)} °F: <b>${f0(psat(c.amb + 3, c.ref))} psig</b>.</p>`;
+  $('#read').innerHTML = h;
+  $('#rSub').textContent = REFN[c.ref];
+}
+
+/* ================= trace ================= */
+function drawTrace(m) {
+  const rv = reveal(), X0 = 34, X1 = 326, Y0 = 10, Y1 = 140, now = (performance.now() - S.t0) / 1000;
+  const sl = p => Y1 - clamp(p, -15, 150) / 150 * (Y1 - Y0), sh = p => Y1 - clamp(p, 0, 500) / 500 * (Y1 - Y0);
+  let h = `<rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}" fill="#0a0f14" stroke="#1D2732"/>`;
+  for (let p = 0; p <= 150; p += 50) h += `<line x1="${X0}" y1="${sl(p)}" x2="${X1}" y2="${sl(p)}" stroke="#141c25"/>` + T(X0 - 4, sl(p) + 3.5, p, 'svgs', 'end', 'style="fill:#3f86b8"');
+  for (let p = 0; p <= 500; p += 250) h += T(X1 + 4, sh(p) + 3.5, p, 'svgs', 'start', 'style="fill:#c9564c"');
+  if (!rv.press) { h += T(180, 80, 'No gauges connected yet', 'svgt'); $('#svTrace').innerHTML = h; return; }
+  let dl = '', dh = '', band = '';
+  for (let i = 0; i <= 240; i++) {
+    const t = now - 60 + i * 0.25, tp = traceAt(m, t), x = X0 + i / 240 * (X1 - X0);
+    dl += (i ? ' L' : 'M') + x.toFixed(1) + ' ' + sl(tp.pl).toFixed(1); dh += (i ? ' L' : 'M') + x.toFixed(1) + ' ' + sh(tp.ph).toFixed(1);
+    if (m.run && !tp.on) band += `<rect x="${x.toFixed(1)}" y="${Y1 + 3}" width="1.6" height="5" fill="#FFB224"/>`;
+    else if (tp.on) band += `<rect x="${x.toFixed(1)}" y="${Y1 + 3}" width="1.6" height="5" fill="#3DDC97"/>`;
+  }
+  h += band + `<path d="${dh}" fill="none" stroke="#FF5A4E" stroke-width="1.6"/><path d="${dl}" fill="none" stroke="#2F9BE0" stroke-width="1.8"/>`;
+  h += `<g transform="translate(${X0} 166)"><line x1="0" y1="0" x2="14" y2="0" stroke="#2F9BE0" stroke-width="2"/>${T(18, 3.5, 'Low (left scale)', 'svgs', 'start')}<line x1="110" y1="0" x2="124" y2="0" stroke="#FF5A4E" stroke-width="2"/>${T(128, 3.5, 'High (right scale)', 'svgs', 'start')}<rect x="226" y="-3" width="8" height="6" fill="#3DDC97"/>${T(237, 3.5, 'clutch on', 'svgs', 'start')}</g>`;
+  $('#svTrace').innerHTML = h;
+}
+
+function curModel() { return acModel(S.c); }
+let M = curModel();
+function renderViews() { M = curModel(); drawCyc(M); drawGauge(M); drawPT(M); drawRead(M); drawTrace(M); }
+setInterval(() => { drawGauge(M); drawTrace(M); }, 200);   // needles + trace move in real time
+
+/* ================= explore controls ================= */
+function ctlHTML(keys) {
+  const c = S.c, has = k => keys.includes(k); let h = '';
+  const seg = (lbl, key, opts) => `<div class="rowb"><span class="lbl">${lbl}</span><span class="seg mini">${opts.map(([v, n, dis]) => `<button data-act="set:${key}:${v}" aria-pressed="${c[key] === v}"${dis ? ' disabled' : ''}>${n}</button>`).join('')}</span></div>`;
+  if (has('ref')) h += seg('Refrigerant', 'ref', [['r1234yf', 'R-1234yf'], ['r134a', 'R-134a']]);
+  if (has('sys')) h += seg('System', 'sys', [['txv', 'TXV + drier'], ['ot', 'Orifice tube + accum.', c.fault === 'txvopen']]);
+  if (has('engine')) h += seg('Engine', 'engine', [['off', 'Off'], ['idle', 'Idle'], ['r1500', '1500 rpm'], ['road', '45 mph']]);
+  if (has('amb')) h += `<div class="sl"><label for="amb">Outside temp</label><input type="range" id="amb" data-c="amb" min="60" max="110" step="1" value="${c.amb}"><output id="o-amb">${c.amb} °F</output></div>`;
+  if (has('hum')) h += seg('Humidity', 'hum', [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']]);
+  if (has('blower')) h += seg('Blower', 'blower', [['low', 'Low'], ['high', 'High']]);
+  if (has('charge')) h += `<div class="sl"><label for="charge">Charge</label><input type="range" id="charge" data-c="charge" min="30" max="140" step="5" value="${c.charge}"><output id="o-charge">${c.charge} %</output></div><p class="dim" style="margin:0 0 4px">Spec: ${SPEC_OZ[c.ref].toFixed(1)} oz of ${REFN[c.ref]} (${(SPEC_OZ[c.ref] * c.charge / 100).toFixed(1)} oz in the system now)</p>`;
+  if (has('service')) h += `<div class="rowb"><button class="btn small" data-act="service">Recover, evacuate & recharge</button><button class="btn small" data-act="fault:none">Repair</button></div>`;
+  return h;
+}
+function exploreHTML() {
+  const c = S.c;
+  let h = `<p class="dim">Run the A/C and follow the refrigerant around the loop. Then break something and read the gauges.</p>`;
+  h += `<h4>System</h4>` + ctlHTML(['ref', 'sys']);
+  h += `<h4>Test conditions</h4>` + ctlHTML(['engine', 'amb', 'hum', 'blower', 'charge']);
+  h += `<h4>Break it</h4><div class="cards"><button class="card" data-act="fault:none" aria-pressed="${!faultKey(c)}"><b>No fault</b><span>Healthy system</span></button>`;
+  for (const [k, F] of Object.entries(FAULTS)) h += `<button class="card" data-act="fault:${k}" aria-pressed="${faultKey(c) === k}"><b>${F.name}</b><span>${F.sub}${F.txvOnly ? ' (TXV systems)' : ''}</span></button>`;
+  h += `</div><h4>Service</h4>` + ctlHTML(['service']) + `<div class="rowb"><button class="btn small" data-act="reset">Reset car</button></div>`;
+  return h;
+}
+
+/* ================= diagnose ================= */
+const CAUSES = {
+  under:    { name: 'Undercharged (leak)', concern: 'The A/C blows cool, but not cold, and it has gotten worse over the summer.' },
+  over:     { name: 'Overcharged', concern: 'A quick-lube shop "topped off" the A/C last week. Since then it doesn\'t cool as well, especially at idle.' },
+  restrict: { name: 'Restriction at the expansion device', concern: 'The A/C barely cools. Another shop replaced the compressor last year and didn\'t flush the system.' },
+  txvopen:  { name: 'TXV stuck open', concern: 'The A/C blows cool but never really cold. The lines under the hood feel very cold, even back at the compressor.' },
+  weak:     { name: 'Weak compressor', concern: 'Cooling has slowly gotten weaker over a couple of summers. The compressor is original at 160,000 miles.' },
+  fan:      { name: 'Condenser fan inoperative', concern: 'The A/C is fine on the highway but blows warm in traffic and at stoplights.' },
+  air:      { name: 'Air in the system', concern: 'My brother recharged it with a parts-store kit and hose. Since then it isn\'t as cold.' },
+  clutch:   { name: 'Compressor clutch not engaging', concern: 'The A/C blows warm all the time. I don\'t hear the usual click under the hood when I turn it on.' },
+  filter:   { name: 'Plugged cabin air filter', concern: 'The air comes out cold, but there\'s hardly any of it, even on high. It gets weaker the longer I drive.' },
+  blend:    { name: 'Blend door stuck toward heat', concern: 'The A/C blows lukewarm. The compressor kicks on and the lines under the hood feel cold.' },
+  none:     { name: 'Nothing wrong: normal for conditions', concern: 'On 105° days sitting in traffic, the air isn\'t as cold as I\'d like. Is something wrong with it?' },
+};
+const CASE_POOL = Object.keys(CAUSES);
+const EVIDENCE = {
+  under: ['Low side and high side both low; vents warm', 'High superheat (starved evaporator), no subcooling', 'Static pressure was normal: it only proves some liquid is left, not the amount', 'Leak found; recovered charge well under spec. Fix the leak, evacuate, recharge by weight'],
+  over: ['High side high; low side normal to high', 'High subcooling (liquid backed up in the condenser)', 'Recovered charge over spec. Recharge by weight, never by "topping off" to a pressure'],
+  restrict: ['Low side very low, high side low to normal', 'High superheat AND high subcooling: refrigerant is stacked up before a restriction', 'Frost at the restriction point. Replace the expansion device/orifice tube; flush; replace the drier/accumulator'],
+  txvopen: ['Low side high, high side normal to low, vents warm', 'Superheat about 0 °F: liquid floods back to the compressor (suction line frosty/sweating to the compressor)', 'Replace the TXV'],
+  weak: ['Low side high and high side low: pressures close together', 'Charge, airflow and line temps otherwise normal', 'Replace the compressor (and flush; replace the drier)'],
+  fan: ['High side very high at idle and 1500 rpm, normal at road speed (ram air)', 'Condenser fan not running', 'Repair the fan circuit (fuse, relay, motor, command)'],
+  air: ['High side high with needle flutter', 'Static pressure about 30 psi above the PT chart for the ambient temp', 'Identifier shows air. Recover, evacuate (to remove air and moisture), recharge by weight'],
+  clutch: ['Clutch never engages; both gauges stay at static pressure with the engine running', 'Module commands the clutch ON; voltage at the clutch, coil open', 'Replace the clutch coil (or the clutch assembly)'],
+  filter: ['Low airflow at the vents on high; air is cold', 'Low side low and cycling (freeze protection), high side low', 'Replace the cabin air filter; check the evaporator for icing'],
+  blend: ['Pressures, superheat and subcooling all normal', 'Evaporator temp sensor reads cold, but the vent is warm: heat is added after the evaporator', 'Blend door position doesn\'t match the command. Repair the actuator/door'],
+  none: ['All readings match the healthy-car range for 105 °F and high humidity', 'High heat and humidity raise both pressures and the vent temperature', 'Explain the performance chart to the customer; no repair needed'],
+};
+const TESTS = [
+  ['static', 'Static pressure (engine off)'], ['perf', 'Performance test 1500 rpm'],
+  ['idle', 'Gauges at idle vs. 45 mph'], ['lines', 'Line temps: SH & SC'],
+  ['clutch', 'Clutch & electrical check'], ['visual', 'Look & feel: frost, fan'],
+  ['airflow', 'Vent airflow & cabin filter'], ['scan', 'Scan: evap temp & blend door'],
+  ['identify', 'Refrigerant identifier'], ['leak', 'Leak test'], ['weigh', 'Recover & weigh charge'],
+];
+/* Shuffle bag: every case type comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'ac-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You've solved all ${n} case types once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+const LEAKS = ['the condenser inlet fitting', 'the compressor shaft seal', 'a pinhole in the condenser (rock damage)', 'the low-side service port valve core', 'the evaporator (dye at the drain tube)'];
+function newCase() {
+  const type = bagNext();
+  const c = BASEC();
+  c.ref = Math.random() < .65 ? 'r1234yf' : 'r134a';
+  c.sys = type === 'txvopen' ? 'txv' : Math.random() < .55 ? 'txv' : 'ot';
+  c.amb = type === 'none' ? 105 : 84 + Math.floor(Math.random() * 13);
+  c.hum = type === 'none' ? 'high' : Math.random() < .5 ? 'normal' : 'high';
+  if (type === 'under') c.charge = 55 + 5 * Math.floor(Math.random() * 3);
+  else if (type === 'over') c.charge = 125 + 5 * Math.floor(Math.random() * 2);
+  else if (type !== 'none') c.fault = type;
+  c.engine = 'off';
+  S.c = c;
+  S.dx = { n: (S.dx?.n || 0) + 1, type, tests: {}, log: [], pick: null, tries: 0, solved: false, wrong: null, leakAt: LEAKS[Math.floor(Math.random() * LEAKS.length)] };
+  S.tab = 'case'; renderPanel(); renderViews();
+}
+function testOut(k) {
+  const c = S.c, d = S.dx, L = [], txv = c.sys === 'txv', ref = REFN[c.ref];
+  const at = engine => acModel({ ...c, engine }), hAt = engine => healthy({ ...c, engine });
+  const range = (m, hm) => `low ${hm.cyc ? `${f0(hm.cyc.PlLo)}–${f0(hm.cyc.PlHi)}` : `${f0(hm.Pl - 5)}–${f0(hm.Pl + 5)}`}, high ${f0(hm.Ph - 25)}–${f0(hm.Ph + 25)}`;
+  const lowTxt = m => m.cyc ? `${f0(m.cyc.PlLo)}–${f0(m.cyc.PlHi)} psig (cycling)` : `${f0(m.Pl)} psig`;
+  switch (k) {
+    case 'static': {
+      const m = at('off'), pt = psat(c.amb + 3, c.ref);
+      c.engine = 'off';
+      L.push(['', `Engine off and soaked: both gauges read <b>${f0(m.Pl)} psig</b>. Thermometer at the condenser: ${f0(c.amb + 3)} °F → ${ref} PT chart: ${f0(pt)} psig.`]);
+      L.push(m.Pl - pt > 15 ? ['bad', `Static pressure is about ${f0(m.Pl - pt)} psi HIGHER than the PT chart allows.`] : ['ok', 'Static pressure matches the PT chart. (That proves some liquid refrigerant is present. It doesn\'t tell you how much.)']);
+      break;
+    }
+    case 'perf': {
+      const m = at('r1500'), hm = hAt('r1500');
+      c.engine = 'r1500';
+      if (!m.run) { L.push(['bad', `A/C on, 1500 rpm: the compressor clutch does not engage. Both gauges stay at ${f0(m.Pl)} psig. Vent ${f0(m.vent)} °F.`]); break; }
+      const bl = !m.cyc && Math.abs(m.Pl - hm.Pl) > 6, bh = Math.abs(m.Ph - hm.Ph) > 25, bv = m.vent > hm.vent + 4;
+      L.push(['', `1500 rpm, max A/C, recirc, doors open, blower high, ${f0(c.amb)} °F / ${c.hum} humidity. Healthy-car chart: ${range(m, hm)} psig, vent ≤ ${f0(hm.vent + 4)} °F.`]);
+      L.push([bl || bh ? 'bad' : 'ok', `Low side ${lowTxt(m)}, high side ${f0(m.Ph)} psig${c.fault === 'air' ? ' (high-side needle flutters)' : ''}.`]);
+      L.push([bv ? 'bad' : 'ok', `Center vent ${f0(m.vent)} °F.`]);
+      L.push(m.cyc ? [m.cyc.on < 8 ? 'bad' : 'warn', `Clutch cycling: about ${f0(m.cyc.on)} s on / ${f0(m.cyc.off)} s off.`] : m.hpc ? ['bad', 'High-pressure switch cuts the compressor out.'] : ['', 'Clutch stays engaged.']);
+      break;
+    }
+    case 'idle': {
+      const mi = at('idle'), mr = at('road'), hi = hAt('idle'), hr = hAt('road');
+      c.engine = 'idle';
+      if (!mi.run) { L.push(['bad', 'Compressor does not run at any speed. Gauges stay at static pressure.']); break; }
+      L.push([Math.abs(mi.Ph - hi.Ph) > 25 ? 'bad' : 'ok', `Idle: low ${lowTxt(mi)}, high ${f0(mi.Ph)} psig (healthy high ≈ ${f0(hi.Ph)}). Vent ${f0(mi.vent)} °F.`]);
+      L.push([Math.abs(mr.Ph - hr.Ph) > 25 ? 'bad' : 'ok', `45 mph road test: low ${lowTxt(mr)}, high ${f0(mr.Ph)} psig (healthy high ≈ ${f0(hr.Ph)}). Vent ${f0(mr.vent)} °F.`]);
+      break;
+    }
+    case 'lines': {
+      const m = at('r1500');
+      if (!m.run) { L.push(['', 'Compressor not running: line temps all near ambient. Superheat/subcooling can\'t be measured.']); break; }
+      c.engine = 'r1500';
+      const tl = tsat(m.Pl, c.ref), th = tsat(m.Ph, c.ref), sh = m.Tsuc - tl, sc = th - m.Tliq;
+      L.push(['', `Clamp thermometers at 1500 rpm: suction line at the ${txv ? 'evaporator outlet' : 'evaporator outlet (accumulator inlet)'} ${f0(m.Tsuc)} °F; liquid line at the condenser outlet ${f0(m.Tliq)} °F.`]);
+      L.push([txv ? (sh > 16 || sh < 4 ? 'bad' : 'ok') : (sh > 6 ? 'bad' : 'ok'), `Superheat ${f0(sh)} °F (evaporator ${f0(tl)} °F from the low-side gauge). ${txv ? 'Typical TXV: 5–15 °F.' : 'Orifice tube: 0–5 °F (evaporator outlet about the same temp as the inlet).'}`]);
+      L.push([sc > 17 || sc < 4 ? 'bad' : 'ok', `Subcooling ${f0(sc)} °F (condensing ${f0(th)} °F from the high-side gauge). Typical: ${txv ? '8–16' : '5–15'} °F.`]);
+      break;
+    }
+    case 'clutch': {
+      if (c.fault === 'clutch') { L.push(['bad', 'A/C on: 12.3 V at the clutch connector, but the clutch does not pull in.']); L.push(['bad', 'Clutch coil resistance: OL (open). Spec 2.8–4.0 Ω.']); }
+      else { L.push(['ok', 'Clutch pulls in with A/C on. Coil 3.4 Ω (spec 2.8–4.0 Ω); air gap 0.020 in.']); }
+      break;
+    }
+    case 'visual': {
+      const m = at('r1500');
+      if (c.fault === 'fan') L.push(['bad', 'Condenser fan does NOT run with the A/C on. Condenser fins clean.']);
+      else L.push(['ok', 'Condenser fins clean; the fan runs with the A/C on.']);
+      if (!m.run) L.push(['', 'Lines are all at ambient temperature (compressor not running).']);
+      else if (c.fault === 'restrict') L.push(['bad', `Frost on the liquid line right at the ${txv ? 'TXV inlet' : 'orifice tube'}; the line just before it is warm.`]);
+      else if (m.flood) L.push(['bad', 'The suction line is frosty and sweating all the way back to the compressor.']);
+      else if (m.fed < 0.9) L.push(['warn', 'The suction line is only cool and dry at the evaporator outlet.']);
+      else L.push(['ok', 'The suction line is cold and sweating at the evaporator outlet (normal).']);
+      if (c.charge < 90) L.push(['', 'Light oily residue near ' + d.leakAt.replace(/^the /, 'the ') + '.']);
+      break;
+    }
+    case 'airflow': {
+      L.push(c.fault === 'filter' ? ['bad', 'Weak airflow at every vent on high blower. The cabin air filter is packed with leaves and dirt.'] : ['ok', 'Strong airflow at the vents on high. The cabin air filter is clean.']);
+      break;
+    }
+    case 'scan': {
+      const m = at('r1500'), es = m.run ? (m.fed < 0.9 ? m.Te + (1 - m.fed) * (c.amb - m.Te) * 0.8 : m.Te + 2) : c.amb;
+      L.push(['', `A/C request: YES. Compressor clutch command: ON.`]);
+      L.push(['', `Evaporator temperature sensor: ${f0(es)} °F. Center vent: ${f0(m.vent)} °F.`]);
+      L.push(c.fault === 'blend' ? ['bad', 'Blend door: commanded 0 % (full cold), actual position 38 % toward heat.'] : ['ok', 'Blend door: commanded 0 % (full cold), actual 0 %.']);
+      break;
+    }
+    case 'identify': {
+      L.push(c.fault === 'air' ? ['bad', `Identifier: ${ref} 93 %, air 7 % (non-condensable gases). FAIL.`] : ['ok', `Identifier: ${ref} 99 %+. PASS.`]);
+      break;
+    }
+    case 'leak': {
+      L.push(c.charge < 90 ? ['bad', `Electronic detector and UV dye: leak at ${d.leakAt}.`] : ['ok', 'Electronic detector and UV dye: no leaks found.']);
+      break;
+    }
+    case 'weigh': {
+      const oz = SPEC_OZ[c.ref] * c.charge / 100;
+      L.push([Math.abs(c.charge - 100) > 8 ? 'bad' : 'ok', `Recovered ${oz.toFixed(1)} oz of ${ref}. Spec (underhood label): ${SPEC_OZ[c.ref].toFixed(1)} oz.`]);
+      L.push(['', 'Recharged to spec by weight before continuing.']);
+      break;
+    }
+  }
+  return L;
+}
+function runTest(k) {
+  const d = S.dx; if (!d || d.solved || d.tests[k]) return;
+  d.tests[k] = true; d.log.unshift({ k, lines: testOut(k) });
+  if (k === 'weigh') { d.weighed = { charge: S.c.charge }; }
+  renderPanel(); renderViews();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  const ok = d.pick === d.type;
+  d.tries++;
+  if (ok) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += Object.keys(d.tests).length; toast('✓ Correct', 'good'); }
+  else d.wrong = 'Not quite. Run a test that would tell those causes apart.';
+  renderPanel(); renderViews();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const C_ = CAUSES[d.type], sc = S.dxScore, c = S.c;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${C_.concern}</p><p class="dim">${REFN[c.ref]} · ${c.sys === 'txv' ? 'TXV + receiver-drier' : 'orifice tube + accumulator'} · ${f0(c.amb)} °F, ${c.hum} humidity today.</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div><div><small>Tests here</small><b>${Object.keys(d.tests).length}</b></div></div>${bagHTML()}`;
+  if (d.solved) h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}</b> with ${Object.keys(d.tests).length} tests. ${C_.name}.</div><h4>The evidence</h4><ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${EVIDENCE[d.type].map(e => `<li>${e}</li>`).join('')}</ul><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  else h += `<h4>Tests</h4><div class="tests">${TESTS.map(([k, n]) => `<button class="btn${d.tests[k] ? ' used' : ''}" data-act="test:${k}"${d.tests[k] ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+  if (d.log.length) h += `<h4>Findings</h4><div class="find">${d.log.map(e => `<div class="f"><b>${TESTS.find(t => t[0] === e.k)[1]}</b>${e.lines.map(([k, s]) => `<div class="${k}">${s}</div>`).join('')}</div>`).join('')}</div>`;
+  if (!d.solved) {
+    h += `<h4>Your diagnosis</h4><div class="cards">${Object.entries(CAUSES).map(([k, Cx]) => `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${Cx.name}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+    if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  }
+  return h;
+}
+
+/* ================= lessons ================= */
+const LESSONS = [
+{ id: 'cycle', title: 'The refrigeration cycle', sub: 'Four parts, two sides', steps: [
+  { body: 'An A/C system moves heat; it doesn\'t make cold. Refrigerant <b>boils</b> in the evaporator (soaking up cabin heat) and <b>condenses</b> in the condenser (dumping that heat outside). Watch the colors: red hot gas, amber liquid, blue cold mix, light-blue vapor.', setup: { reset: true } },
+  { body: '', goal: { mc: { q: 'Where does the refrigerant absorb heat from the cabin air?', opts: ['In the evaporator, as liquid boils into vapor', 'In the condenser', 'In the compressor'], a: 0, why: 'Boiling takes a lot of heat (latent heat). The evaporator core gets cold because the refrigerant inside is boiling at low pressure.' } } },
+  { body: '', goal: { mc: { q: 'Which two parts divide the high side from the low side?', opts: ['The compressor and the expansion device (TXV or orifice tube)', 'The condenser and evaporator', 'The two service ports'], a: 0, why: 'The compressor raises the pressure; the expansion device drops it. Everything from the compressor outlet to the expansion device is the high side.' } } },
+  { body: 'Switch the system to <b>Orifice tube + accumulator</b>.', ctl: ['sys'], goal: { check: () => S.c.sys === 'ot', hint: 'System: Orifice tube + accum.' } },
+  { body: '', ctl: ['sys'], goal: { mc: { q: 'What moved?', opts: ['The storage/drying container: a TXV system has a receiver-drier on the high side; an orifice-tube system has an accumulator on the low side', 'Nothing', 'The compressor'], a: 0, why: 'Both hold extra refrigerant and a desiccant. The receiver-drier stores liquid before the TXV; the accumulator catches liquid after the evaporator so it can\'t reach the compressor.' } } },
+] },
+{ id: 'pt', title: 'Pressure and temperature', sub: 'The PT chart and static pressure', steps: [
+  { body: 'Where liquid and vapor are together (saturated), pressure and temperature are locked together. That is the <b>PT chart</b>, and it\'s printed inside your gauges. Turn the <b>engine off</b>.', setup: { reset: true }, ctl: ['engine'], goal: { check: () => S.c.engine === 'off', hint: 'Engine: Off.' } },
+  { body: '', ctl: ['engine', 'amb'], goal: { mc: { q: 'With everything at outside temperature, what do both gauges read?', opts: ['The PT-chart pressure for the outside temperature', 'Zero', 'The high-side running pressure'], a: 0, why: 'At rest, the refrigerant settles to the pressure that matches its temperature. That\'s the static pressure test.' } } },
+  { body: 'Now drop the <b>charge to 50 %</b> (still engine off).', ctl: ['charge', 'engine'], goal: { check: () => S.c.charge <= 50 && S.c.engine === 'off', hint: 'Charge slider to 50 % or less; engine off.' } },
+  { body: '', ctl: ['charge', 'engine'], goal: { mc: { q: 'Half the refrigerant is gone. Why didn\'t the static pressure change?', opts: ['As long as some liquid remains, pressure depends only on temperature, not on how much refrigerant is in there', 'The gauge is broken', 'Static pressure always reads 100 psi'], a: 0, why: 'That\'s why you can\'t check charge level with static pressure. Charge by weight.' } } },
+  { body: 'Switch refrigerants to compare: pick <b>R-134a</b>.', ctl: ['ref'], goal: { check: () => S.c.ref === 'r134a', hint: 'Refrigerant: R-134a.' } },
+  { body: '', ctl: ['ref'], goal: { mc: { q: 'Look at the PT chart: the two curves are close. Can you use one refrigerant\'s equipment and chart on the other?', opts: ['No: different fittings, oils and service machines, and the charts differ. R-1234yf is also mildly flammable', 'Yes, they\'re the same', 'Only in winter'], a: 0, why: 'Always identify the refrigerant first and use the matching equipment and specs.' } } },
+] },
+{ id: 'gauges', title: 'Reading the gauges', sub: 'Ambient sets the high side', steps: [
+  { body: 'A <b>performance test</b>: 1500 rpm, max A/C, recirc, doors open, blower on high. Compare the gauges with the <b>Healthy car</b> column.', setup: { reset: true, amb: 80 } },
+  { body: 'Raise the outside temperature to <b>100 °F</b> or more.', ctl: ['amb'], goal: { check: () => S.c.amb >= 100, hint: 'Outside temp ≥ 100 °F.' } },
+  { body: '', ctl: ['amb'], goal: { mc: { q: 'What happened to the high side?', opts: ['It rose a lot: the condenser has to get hotter than the outside air to get rid of heat', 'It dropped', 'No change'], a: 0, why: 'High side tracks ambient. Always compare readings to a chart for the same outside temperature and humidity.' } } },
+  { body: 'Now set the engine to <b>Idle</b>.', ctl: ['engine', 'amb'], goal: { check: () => S.c.engine === 'idle', hint: 'Engine: Idle.' } },
+  { body: '', ctl: ['engine', 'amb'], goal: { mc: { q: 'At idle the low side went up and the vents got warmer. Why?', opts: ['The compressor turns slower and pumps less, so the evaporator pressure (and temperature) rises', 'The refrigerant leaked', 'The fan stopped'], a: 0, why: 'That\'s why performance tests are done at a steady 1500 rpm.' } } },
+] },
+{ id: 'shsc', title: 'Superheat and subcooling', sub: 'Reading the PT chart with line temps', steps: [
+  { body: '<b>Superheat</b> = suction line temp − evaporator saturation temp (from the low-side gauge). <b>Subcooling</b> = condensing temp (from the high-side gauge) − liquid line temp. On the PT chart they\'re the horizontal distances from the curve.', setup: { reset: true } },
+  { body: '', goal: { mc: { q: 'What does superheat tell you?', opts: ['How much of the evaporator is still boiling liquid. High superheat = starved evaporator', 'How hot the compressor is', 'The outside temperature'], a: 0, why: 'Once all the liquid has boiled, the vapor starts to warm up. A TXV holds about 10 °F of superheat.' } } },
+  { body: '', goal: { mc: { q: 'What does subcooling tell you?', opts: ['How much liquid is backed up in the condenser. High subcooling = too much liquid or a restriction downstream', 'How cold the vents are', 'Nothing useful'], a: 0, why: 'Subcooling is the best charge indicator on TXV systems. That\'s why many OEM charge charts use it.' } } },
+] },
+{ id: 'charge', title: 'Undercharge and overcharge', sub: 'Why we charge by weight', steps: [
+  { body: 'Set the charge to <b>60 %</b> (a slow leak).', setup: { reset: true }, ctl: ['charge'], goal: { check: () => S.c.charge <= 60, hint: 'Charge ≤ 60 %.' } },
+  { body: '', ctl: ['charge'], goal: { mc: { q: 'Read the pattern.', opts: ['Both sides low, high superheat, no subcooling, warm vents', 'Both sides high', 'High side high, low side low'], a: 0, why: 'There isn\'t enough liquid to fill the evaporator, so it\'s starved: low pressures and high superheat.' } } },
+  { body: 'Switch to <b>Orifice tube</b> and look at the trace and clutch.', ctl: ['sys', 'charge'], goal: { check: () => S.c.sys === 'ot', hint: 'System: Orifice tube + accum.' } },
+  { body: '', ctl: ['sys', 'charge'], goal: { mc: { q: 'What is the clutch doing on the low-charge orifice-tube car?', opts: ['Short-cycling: the low side drops to the cycling switch\'s cut-out pressure in a few seconds', 'Staying on', 'It never engages'], a: 0, why: 'Rapid clutch cycling is a classic undercharge sign on orifice-tube systems.' } } },
+  { body: 'Now set the charge to <b>125 %</b> (someone "topped it off").', ctl: ['charge'], goal: { check: () => S.c.charge >= 125, hint: 'Charge ≥ 125 %.' } },
+  { body: '', ctl: ['charge'], goal: { mc: { q: 'Why is "topping off" until the low side looks right a bad idea?', opts: ['Pressures change with temperature, rpm and airflow, so you can\'t judge charge by pressure. Overcharge raises the high side and hurts cooling. Recover and charge by weight', 'It\'s fine', 'More refrigerant always cools better'], a: 0, why: 'Always recover, evacuate and charge to the weight on the underhood label.' } } },
+] },
+{ id: 'heat', title: 'Getting rid of heat', sub: 'Condenser airflow and air in the system', steps: [
+  { body: 'The <b>condenser fan</b> has failed. Set the engine to <b>Idle</b>.', setup: { reset: true, fault: 'fan' }, ctl: ['engine'], goal: { check: () => S.c.engine === 'idle', hint: 'Engine: Idle.' } },
+  { body: 'Now try <b>45 mph</b>.', ctl: ['engine'], goal: { check: () => S.c.engine === 'road', hint: 'Engine: 45 mph.' } },
+  { body: '', ctl: ['engine'], goal: { mc: { q: 'Why is the high side normal at 45 mph but very high at idle?', opts: ['At road speed, ram air flows through the condenser even without the fan', 'The compressor slows down on the highway', 'The refrigerant cools in the lines'], a: 0, why: '"Cold on the highway, warm in traffic" points to condenser airflow: fan, shroud, or debris in the fins.' } } },
+  { body: 'Different car: someone recharged it without purging the hose, so there\'s <b>air in the system</b>. Turn the <b>engine off</b> for a static test.', setup: { reset: true, fault: 'air' }, ctl: ['engine'], goal: { check: () => S.c.engine === 'off', hint: 'Engine: Off.' } },
+  { body: '', ctl: ['engine'], goal: { mc: { q: 'Compare the static pressure to the PT chart.', opts: ['It\'s about 30 psi above the PT chart: air doesn\'t condense, so it adds its own pressure', 'It matches exactly', 'It\'s lower'], a: 0, why: 'Air also blankets the condenser, so running high side is high (with a fluttering needle). Recover, evacuate and recharge.' } } },
+] },
+{ id: 'restrict', title: 'Restrictions and expansion valves', sub: 'Starved vs. flooded evaporator', steps: [
+  { body: 'Debris is plugging the expansion device: a <b>restriction</b>. Look at the gauges and the PT chart.', setup: { reset: true, fault: 'restrict' }, goal: { mc: { q: 'Which pattern is this?', opts: ['Low side very low, high superheat AND high subcooling: refrigerant is stuck before the restriction', 'Both sides high', 'Normal'], a: 0, why: 'Undercharge also gives high superheat, but with LOW subcooling. High subcooling separates a restriction from a low charge. Look for frost at the restriction.' } } },
+  { body: 'Now the opposite: the <b>TXV is stuck open</b>.', setup: { reset: true, fault: 'txvopen' }, goal: { mc: { q: 'What do you see?', opts: ['Low side high, superheat about 0: liquid floods back toward the compressor', 'Low side very low', 'Clutch not engaging'], a: 0, why: 'A flooded evaporator can\'t boil all the liquid. Liquid reaching the compressor can damage it.' } } },
+] },
+{ id: 'comp', title: 'Compressor, airflow and controls', sub: 'When pressures aren\'t the whole story', steps: [
+  { body: 'This compressor has <b>worn valves</b>.', setup: { reset: true, fault: 'weak' }, goal: { mc: { q: 'What\'s the pattern?', opts: ['Low side high and high side low: the pressures are close together because the compressor can\'t pump', 'Both very high', 'Both very low'], a: 0, why: 'Rule out charge and airflow first. A weak compressor is the last thing to condemn.' } } },
+  { body: 'Different car: the <b>cabin air filter is plugged</b>.', setup: { reset: true, fault: 'filter' }, goal: { mc: { q: 'Why does the low side drop and the compressor cycle?', opts: ['Little warm air crosses the evaporator, so it gets too cold; freeze protection cycles the compressor', 'The refrigerant leaked', 'The condenser is blocked'], a: 0, why: 'Always check airflow and the cabin filter before connecting gauges.' } } },
+  { body: 'Last car: the <b>blend door is stuck</b> part-way to heat.', setup: { reset: true, fault: 'blend' }, goal: { mc: { q: 'Pressures, superheat and subcooling are all normal, but the vent is warm. Where is the problem?', opts: ['Air distribution/temperature control: heat is being added after the evaporator', 'Low charge', 'Weak compressor'], a: 0, why: 'If the refrigerant side checks out, look at the HVAC case: blend door, actuator, heater control valve.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) {
+  if (!su) return;
+  if (su.reset) S.c = BASEC();
+  for (const k of ['amb', 'engine', 'sys', 'ref', 'charge']) if (k in su) S.c[k] = su[k];
+  if (su.fault) setFault(su.fault);
+}
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); renderViews(); }
+function checkGoal() {
+  const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return;
+  if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); }
+}
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up the car, tells you what to change and watch, and checks your answer.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  if (st.ctl) h += `<h4>Controls</h4>` + ctlHTML(st.ctl);
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['ctl', 'Controls']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'ctl' ? exploreHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore' || m === 'guided') { S.c = BASEC(); S.lesson = null; }
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); }
+  renderPanel(); renderViews();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function changed() { renderViews(); checkGoal(); }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const parts = b.dataset.act.split(':'), a = parts[0], v = parts[1];
+  const c = S.c;
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'set': { const key = parts[1], val = parts[2]; c[key] = val; if (key === 'sys' && val === 'ot' && c.fault === 'txvopen') c.fault = null; renderPanel(); changed(); break; }
+    case 'fault': setFault(v); renderPanel(); changed(); break;
+    case 'service': c.charge = 100; if (c.fault === 'air') c.fault = null; toast('Recovered, evacuated and recharged to spec by weight.', 'good'); renderPanel(); changed(); break;
+    case 'reset': S.c = BASEC(); renderPanel(); changed(); break;
+    case 'test': runTest(v); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('ac.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#pbody').addEventListener('input', e => {
+  const t = e.target, k = t.dataset.c; if (!k) return;
+  S.c[k] = +t.value;
+  const o = $('#o-' + k); if (o) o.textContent = k === 'amb' ? t.value + ' °F' : t.value + ' %';
+  changed();
+});
+$('#pbody').addEventListener('change', e => { if (e.target.dataset.c) renderPanel(); });
+
+renderPanel(); renderViews();
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__AC = { S, acModel, healthy, psat, tsat, setMode, newCase, runTest, testOut, LESSONS, CAUSES, FAULTS, curStep, renderViews, renderPanel, setFault, BASEC, get BAG() { return BAG; },
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
