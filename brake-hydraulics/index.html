@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brake Hydraulics Simulator</title>
+<meta name="description" content="Push the pedal and follow the force: pedal ratio, booster, master cylinder bore, Pascal's law, calipers, proportioning and ABS. Break the system and diagnose spongy, sinking, hard and dragging brakes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. 2D views:
+   system schematic, master cylinder cutaway, force chain, gauges, panic stop (ABS), notebook. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.4;cursor:not-allowed}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.05fr);grid-template-rows:minmax(0,1.15fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vbox{flex:1;min-height:0;padding:0 8px 8px}
+.vbox svg{width:100%;height:100%;display:block}
+#pSys{grid-column:1/3}
+.svgt{font:600 10.5px var(--f-label);fill:#8A98A8;letter-spacing:.04em}
+.svgs{font:600 9px var(--f-label);fill:#5A6773;letter-spacing:.08em;text-transform:uppercase}
+.svgv{font:500 11px var(--f-mono);fill:#E6EDF3}
+.svgv.bad{fill:#FF8A80}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+/* force chain */
+.chain{display:grid;gap:3px;font-size:12.5px}
+.chain .row{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;align-items:baseline;padding:4px 8px;border-radius:7px;background:var(--raise)}
+.chain .op{font:600 13px/1 var(--f-mono);color:var(--accent);text-align:center}
+.chain .lb{color:var(--dim)}
+.chain .lb small{display:block;font-size:11px;color:var(--faint)}
+.chain .v{font:600 12.5px/1.2 var(--f-mono);color:var(--fg);text-align:right;white-space:nowrap}
+.chain .row.res{background:#0f1c27;box-shadow:inset 0 0 0 1px rgba(47,155,224,.35)}
+.chain .row.bad .v{color:#FF8A80}
+/* gauges */
+.gwrap{display:grid;gap:8px}
+.ped{padding:8px 10px;border-radius:10px;background:var(--raise)}
+.ped .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.ped .top small{font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.ped .top b{font:600 15px/1 var(--f-mono)}
+.track{position:relative;height:14px;border-radius:7px;background:#0a0f14;border:1px solid var(--line-2);overflow:hidden}
+.track i{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,#2F9BE0,#5fb6ec);border-radius:7px}
+.track i.bad{background:linear-gradient(90deg,#c9463d,#FF5A4E)}
+.track i.warn{background:linear-gradient(90deg,#c98a1c,#FFB224)}
+.track u{position:absolute;top:0;bottom:0;left:0;background:repeating-linear-gradient(45deg,#1c2733 0 4px,#121a22 4px 8px)}
+.tlab{display:flex;justify-content:space-between;font:500 10px/1 var(--f-mono);color:var(--faint);margin-top:3px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{padding:3px 7px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft)}
+.chip.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}
+.chip.warn{border-color:rgba(255,178,36,.55);color:#FFE2A8}
+.chip.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+.wg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.wt{padding:7px 9px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.wt small{display:flex;justify-content:space-between;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.wt b{display:block;font:600 16px/1.25 var(--f-mono)}
+.wt span{font-size:11px;color:var(--dim)}
+.wt.drag{border-color:rgba(255,178,36,.55)}
+.wt.dead b{color:var(--faint)}
+.sum{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center}
+.lamp{width:62px;height:34px;border-radius:7px;display:grid;place-items:center;font:700 11px/1 var(--f-label);letter-spacing:.14em;border:1px solid var(--line-2);color:#4a2622;background:#140c0c}
+.lamp.on{background:#c62f25;color:#fff;border-color:#ff7a70;box-shadow:0 0 18px rgba(255,90,78,.55)}
+.dec{font-size:12.5px;color:var(--dim)}
+.dec b{color:var(--fg);font:600 13px var(--f-mono)}
+.locked{padding:14px;border:1px dashed var(--line-2);border-radius:10px;color:var(--dim);font-size:13px;text-align:center;margin:4px 0}
+table.gt{width:100%;border-collapse:collapse;font:500 11.5px/1.15 var(--f-mono)}
+table.gt th{font:600 9.5px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);text-align:right;padding:4px;border-bottom:1px solid var(--line)}
+table.gt td{text-align:right;padding:4px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.gt th:first-child,table.gt td:first-child{text-align:left}
+table.gt td.bad{color:#FF8A80;font-weight:600}
+/* stop panel */
+.stopres{font-size:12px;color:var(--soft);padding:0 12px 8px;display:flex;gap:6px 12px;flex-wrap:wrap;align-items:center}
+.stopres b{font-family:var(--f-mono)}
+/* notebook */
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:104px minmax(0,1fr) 66px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.rowb .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);min-width:96px}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.cyls{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 4px 10px}
+.cyls .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.cc{all:unset;cursor:pointer;min-width:30px;height:30px;padding:0 9px;box-sizing:border-box;border-radius:8px;display:grid;place-items:center;border:1px solid var(--line-2);background:var(--raise);font:600 12.5px/1 var(--f-label);color:var(--soft)}
+.cc[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.cc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.tests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.tests .btn{white-space:normal;text-align:center;line-height:1.2;padding:8px 8px}
+.tests .btn.used{border-color:rgba(61,220,151,.4);color:#C9F7E2}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f > b{display:block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.find .f div{margin:2px 0}
+.find .f .bad{color:#FFC2BC}.find .f .warn{color:#FFE2A8}.find .f .ok{color:#BFEBD6}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pSys{grid-column:1/-1;height:400px}
+  #pMC,#pChain,#pGauge,#pStop{height:330px}
+  .main>.panel{height:640px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pSys{height:250px} #pMC{height:270px} .brand p{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/><path d="M5 7.5h4M5 16.5h4"/><rect x="2.5" y="9" width="5" height="6" rx="1.2"/></svg></div>
+      <div><h1>Brake Hydraulics Simulator</h1><p>Pedal · Pascal · ABS</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pSys" aria-label="Hydraulic system"><div class="phead"><h2>Hydraulic system</h2><span id="sysSub"></span></div><div class="vbox"><svg id="svSys" viewBox="0 0 640 330" role="img" aria-label="Top-view schematic: pedal, booster, master cylinder, valves, ABS unit and the four wheel brakes, with lines colored by pressure"></svg></div></section>
+      <section class="panel" id="pMC" aria-label="Master cylinder"><div class="phead"><h2>Master cylinder</h2><span>tandem · cutaway</span></div><div class="vbox"><svg id="svMC" viewBox="0 0 360 210" role="img" aria-label="Cutaway of the tandem master cylinder with pushrod, primary and secondary pistons, ports and reservoir"></svg></div></section>
+      <section class="panel" id="pChain" aria-label="Force chain"><div class="phead"><h2>Force chain</h2><span>foot → pressure → clamp</span></div><div class="ro" id="chain"></div></section>
+      <section class="panel" id="pGauge" aria-label="Gauges"><div class="phead"><h2>Gauges</h2><span id="gSub"></span></div><div class="ro" id="gauge"></div></section>
+      <section class="panel" id="pStop" aria-label="Panic stop"><div class="phead"><h2>Panic stop</h2><span>60–0 mph</span>
+        <div class="r"><span class="seg mini" id="surf"><button data-s="dry" aria-pressed="true">Dry</button><button data-s="wet">Wet</button><button data-s="ice">Ice</button></span><span class="seg mini"><button id="absBtn" aria-pressed="true">ABS on</button></span><button class="btn small primary" id="runStop">Run</button></div></div>
+        <div class="vbox"><svg id="svStop" viewBox="0 0 360 170" role="img" aria-label="Chart of vehicle speed, left front wheel speed and left front brake pressure during a panic stop"></svg></div><div class="stopres" id="stopRes"></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const f0 = n => Math.round(n).toLocaleString('en-US');
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+
+/* ================= hydraulic model (generic teaching car; US units) ================= */
+const IN2 = d => Math.PI * d * d / 4;
+const K = { mu: 0.40, rf: 4.6, rdisc: 1.5, rrDisc: 4.3, wc: 0.875, drumR: 4.5, BF: 2.6, Rt: 12.5 };
+const CAR = { W: 3400, h: 21, L: 106, fFront: 0.60 };
+const BOOST = 3, RUNOUT = 1100, SMAX = 1.35, FLOOR = 6.0, FREE = 0.20, GAP = 0.65, SPLIT = 450, SLOPE = 0.30;
+const WHEELS = ['LF', 'RF', 'LR', 'RR'];
+const WNAME = { LF: 'left front', RF: 'right front', LR: 'left rear', RR: 'right rear' };
+const isFront = w => w[1] === 'F';
+const circuits = layout => layout === 'fr' ? { A: ['LF', 'RF'], B: ['LR', 'RR'] } : { A: ['LF', 'RR'], B: ['RF', 'LR'] };
+const circOf = (layout, w) => circuits(layout).A.includes(w) ? 'A' : 'B';
+const bp = water => Math.round(401 - 31.6 * water);            // DOT 3: 401 °F dry, 284 °F wet (3.7 % water)
+const ftemp = c => c.hot ? 330 : 160;                           // front caliper fluid temperature, °F
+const vaporV = c => bp(c.water) < ftemp(c) ? 0.55 : 0;          // vapor per front caliper, in³ (at 1 atm)
+const BORES = [[0.75, '3/4'], [0.8125, '13/16'], [0.875, '7/8'], [0.9375, '15/16'], [1.0, '1'], [1.0625, '1 1/16'], [1.125, '1 1/8']];
+const boreName = b => (BORES.find(x => Math.abs(x[0] - b) < 1e-6) || [0, b.toFixed(3)])[1] + ' in';
+function wheelK(c, w) {                                         // brake torque, in-lb per psi
+  if (isFront(w)) return 2 * K.mu * IN2(c.cal) * K.rf;
+  return c.layout === 'fr' ? K.BF * IN2(K.wc) * K.drumR : 2 * K.mu * IN2(K.rdisc) * K.rrDisc;
+}
+const propP = (c, P) => (c.fault === 'prop' || P <= SPLIT) ? P : SPLIT + SLOPE * (P - SPLIT);
+function wheelVol(c, w, P) {                                    // fluid (in³) a wheel takes at pressure P
+  const take = Math.min(1, P / 40);
+  let v;
+  if (isFront(w)) v = 0.010 * IN2(c.cal) * take + 0.00004 * P;
+  else if (c.layout === 'fr') { const clr = c.fault === 'drum' ? (c.pumped ? 0.04 : 0.12) : 0.012; v = clr * 2 * IN2(K.wc) * take + 0.00003 * P; }
+  else v = 0.010 * IN2(K.rdisc) * take + 0.00002 * P;
+  if (c.fault === 'air' && w === 'LF') v += (c.pumped ? 0.85 : 1) * 0.20 * P / (P + 14.7);
+  if (isFront(w)) { const vp = vaporV(c); if (vp) v += vp * P / (P + 14.7); }
+  return v;
+}
+const deadCirc = c => c.fault === 'leak' ? c.circuit : null;
+function strokeAt(c, P, leakV = 0) {
+  const cs = circuits(c.layout), dead = deadCirc(c);
+  let V = 0;
+  for (const k of ['A', 'B']) { if (k === dead) continue; V += 0.000012 * P; for (const w of cs[k]) V += wheelVol(c, w, isFront(w) ? P : propP(c, P)); }
+  return (V + leakV) / IN2(c.bore) + (dead ? GAP : 0);
+}
+function circVol(c, k, P) { let V = 0.000012 * P; for (const w of circuits(c.layout)[k]) V += wheelVol(c, w, isFront(w) ? P : propP(c, P)); return V; }
+function decelOf(F, mu) {                                       // tire forces (lb) → decel with grip limits + weight transfer
+  const W = CAR.W, ff = F.LF + F.RF, fr = F.LR + F.RR;
+  let a = (ff + fr) / W, lockF = false, lockR = false;
+  for (let i = 0; i < 8; i++) {
+    const Nf = W * (CAR.fFront + a * CAR.h / CAR.L), Nr = W - Nf;
+    lockF = ff > mu * Nf; lockR = fr > mu * Nr;
+    const a2 = ((lockF ? 0.8 * mu * Nf : ff) + (lockR ? 0.8 * mu * Nr : fr)) / W;
+    if (Math.abs(a2 - a) < 1e-4) { a = a2; break; } a = a2;
+  }
+  return { a, lockF, lockR };
+}
+function model(c, o = {}) {
+  const effort = o.effort ?? c.effort, hold = o.hold ?? 0, A = IN2(c.bore);
+  const input = effort * c.ratio, assistOn = c.engine && c.fault !== 'booster';
+  const assist = assistOn ? Math.min(BOOST * input, RUNOUT) : 0, Fmc = input + assist, Pcmd = Fmc / A;
+  const free = c.fault === 'pushrod' ? 0 : FREE, smax = Math.min(SMAX, (FLOOR - free) / c.ratio);
+  const leakV = c.fault === 'bypass' ? 0.035 * hold * Math.min(1, Pcmd / 1000) : 0;
+  let P = 0, s = 0, floor = false;
+  if (effort > 0) {
+    P = Pcmd; s = strokeAt(c, P, leakV);
+    if (s > smax) { floor = true; let lo = 0, hi = Pcmd; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (strokeAt(c, m, leakV) > smax) hi = m; else lo = m; } P = lo; s = smax; }
+  }
+  const travel = effort > 0 ? free + s * c.ratio : 0;
+  const dead = deadCirc(c), wheel = {}, F = {}, D = {};
+  for (const w of WHEELS) {
+    const live = circOf(c.layout, w) !== dead;
+    const Pw = !live ? 0 : isFront(w) ? P : propP(c, P);
+    let resid = 0;
+    if (live && c.fault === 'hose' && w === c.side + 'F') resid = 90;
+    if (live && c.fault === 'pushrod' && c.warm) resid = 60;
+    const mech = c.fault === 'stuck' && w === c.side + 'F' ? 70 : 0;
+    const kk = wheelK(c, w) / K.Rt;
+    F[w] = Math.max(Pw, resid) * kk;
+    D[w] = (resid + mech) * kk;
+    wheel[w] = { P: Pw, resid, show: effort > 0 ? Math.max(Pw, resid) : resid, force: F[w], drag: D[w], live, mech };
+  }
+  const mu = o.mu ?? 0.95, dc = decelOf(F, mu);
+  const tot = F.LF + F.RF + F.LR + F.RR, scrub = c.layout === 'diag' ? 0.3 : 1;   // diagonal-split cars use negative scrub radius to tame the pull
+  const gasV = (c.fault === 'air' ? 0.20 * (c.pumped ? 0.85 : 1) : 0) + 2 * vaporV(c);
+  const sponge = effort > 0 ? Math.min(travel, gasV * 0.953 / A * c.ratio) : 0;   // pedal travel spent squeezing gas
+  // piston positions (in) for the cutaway: secondary moves with circuit B's fluid, primary adds circuit A's
+  let sB = 0, sA = 0;
+  if (effort > 0) {
+    if (dead === 'B') { sB = 0.75; sA = s - sB; }
+    else if (dead === 'A') { sB = circVol(c, 'B', P) / A; sA = s - sB; }
+    else { sB = circVol(c, 'B', P) / A; sA = s - sB; }
+  }
+  const pc = { A: dead === 'A' ? 0 : P, B: dead === 'B' ? 0 : P };
+  if (effort === 0 && c.fault === 'pushrod' && c.warm) { pc.A = 60; pc.B = 60; }
+  return {
+    effort, input, assist, assistOn, Fmc, A, Pcmd, P, s, smax, travel, floor, free, leakV,
+    Prear: propP(c, P), wheel, decel: dc.a, lockF: dc.lockF, lockR: dc.lockR,
+    stop60: dc.a > 0.01 ? 120.3 / dc.a : Infinity,
+    pullBrake: tot > 1 ? scrub * ((F.RF + F.RR) - (F.LF + F.LR)) / tot : 0, pullDrive: (D.RF + D.RR) - (D.LF + D.LR),
+    warn: !!dead, dead, sponge, spongy: gasV > 0.05, vapor: vaporV(c) > 0, bp: bp(c.water), ftemp: ftemp(c),
+    sA, sB, pc, Kf: wheelK(c, 'LF'), Kr: wheelK(c, 'LR'),
+  };
+}
+
+/* panic stop from 60 mph: per-wheel slip model with optional ABS (isolate/hold, dump, reapply) */
+function muCurve(s, mp) { return s <= 0.12 ? mp * s / 0.12 : mp * (1 - 0.2 * (s - 0.12) / 0.88); }
+function panic(c, { mu = 0.95, abs = true, effort = 70 } = {}) {
+  const m = model(c, { effort, mu }), g = 32.174, W = CAR.W, mass = W / g, R = K.Rt / 12, I = 1.0, dt = 0.0005;
+  const st = {}; for (const w of WHEELS) st[w] = { om: 88 / R, P: 0, mode: 'apply', holdT: 0, dumped: false, dumping: false, dyn: false, lockT: 0, cycles: 0, flag: 0 };
+  let v = 88, x = 0, t = 0, aG = 0, firstLock = null, nextRec = 0; const out = [];
+  while (v > 0.4 && t < 30) {
+    const Nf = W * (CAR.fFront + aG * CAR.h / CAR.L) / 2, Nr = W / 2 - Nf;
+    let Fx = 0;
+    for (const w of WHEELS) {
+      const s = st[w], N = isFront(w) ? Nf : Nr, target = m.wheel[w].P * Math.min(1, t / 0.5);
+      let slip = clamp((v - s.om * R) / Math.max(v, 0.1), 0, 1);
+      if (abs && v > 7) {                       // ABS: hold (isolate) → dump pulses → hold → stepped reapply
+        if (s.mode === 'apply' && slip > 0.13) { s.mode = 'hold'; s.holdT = 0.015; }
+        else if (s.mode === 'dump') { s.holdT -= dt; if (s.holdT <= 0) { s.mode = 'hold'; s.holdT = 0.015; } }
+        else if (s.mode === 'hold') {
+          s.holdT -= dt;
+          if (s.holdT <= 0) {
+            if (slip > 0.18) { s.mode = 'dump'; s.holdT = 0.008; if (!s.dumping) s.cycles++; s.dumping = true; s.dumped = true; }
+            else if (slip < 0.10) { s.mode = 'apply'; s.dumping = false; }
+            else s.holdT = 0.005;
+          }
+        }
+        if (s.mode === 'dump') s.P = Math.max(0, s.P - 40000 * dt);
+        else if (s.mode === 'apply') s.P = Math.min(target, s.P + (s.dumped ? 6000 : 8000) * dt);
+      } else { s.mode = 'apply'; s.P = s.P < target ? Math.min(target, s.P + 8000 * dt) : target; }
+      s.flag = Math.max(s.flag, s.mode === 'dump' ? 2 : s.mode === 'hold' ? 1 : 0);
+      const Tb = s.P * wheelK(c, w) / 12, Cmax = mu * N * R;
+      let Fw;
+      if (!s.dyn && Tb <= Cmax) { slip = 0.12 * Tb / Cmax; s.om = v * (1 - slip) / R; Fw = Tb / R; }
+      else {
+        s.dyn = true; Fw = muCurve(slip, mu) * N;
+        s.om = Math.max(0, s.om + (Fw * R - Tb) / I * dt);
+        slip = clamp((v - s.om * R) / Math.max(v, 0.1), 0, 1);
+        if (slip < 0.12 && Tb <= Cmax) s.dyn = false;
+      }
+      if (slip > 0.95 && v > 10) s.lockT += dt;
+      if (s.dyn && v > 10 && !firstLock && !abs) firstLock = w;   // first wheel pushed past the grip peak
+      Fx += Fw;
+    }
+    const a = Fx / mass; v = Math.max(0, v - a * dt); x += v * dt; aG += (a / g - aG) * dt / 0.06; t += dt;
+    if (t >= nextRec) {
+      out.push({ t, v: v / 1.4667, w: st.LF.om * R / 1.4667, p: st.LF.P, f: st.LF.flag, x });
+      for (const w of WHEELS) st[w].flag = 0;
+      nextRec += 0.01;
+    }
+  }
+  const frontLockT = Math.max(st.LF.lockT, st.RF.lockT), rearLockT = Math.max(st.LR.lockT, st.RR.lockT);
+  return { dist: x, time: t, out, firstLock, frontLockT, rearLockT, steerLost: frontLockT > 0.25, rearFirst: !!firstLock && !isFront(firstLock),
+    cycles: st.LF.cycles, abs, mu, pmax: Math.max(...WHEELS.map(w => m.wheel[w].P)) };
+}
+const SURF = { dry: 0.95, wet: 0.60, ice: 0.15 };
+
+/* ================= state ================= */
+const BASEC = () => ({ layout: 'fr', ratio: 4, bore: 0.875, cal: 2.25, water: 1.0, hot: false, engine: true, effort: 40, pumped: false, warm: false, fault: null, side: 'L', circuit: 'A' });
+const S = {
+  mode: 'explore', tab: 'ctl', c: BASEC(), hold: 0, surf: 'dry', abs: true, stop: null, play: null, holdAnim: null,
+  lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('brakes.done') || '[]')),
+  dx: null, dxScore: { cases: 0, first: 0, tests: 0 },
+};
+const mNow = () => model(S.c, { hold: S.hold });
+
+/* ================= faults ================= */
+const FAULTS = {
+  air:     { name: 'Air in the lines', sub: 'Left front caliper replaced, never bled' },
+  bypass:  { name: 'Master cylinder bypassing', sub: 'Worn primary cup leaks fluid past internally' },
+  leak:    { name: 'External leak: one circuit', sub: 'A line or seal leaks; that circuit empties', circuit: true },
+  stuck:   { name: 'Seized caliper', sub: 'Piston or slides corroded; won\'t release', side: true },
+  hose:    { name: 'Collapsed brake hose', sub: 'Inner liner acts as a check valve', side: true },
+  boil:    { name: 'Water-contaminated fluid', sub: 'Boils at the calipers when hot' },
+  booster: { name: 'Failed vacuum booster', sub: 'No power assist' },
+  pushrod: { name: 'Pushrod too long', sub: 'Blocks the compensating port' },
+  prop:    { name: 'Failed proportioning valve', sub: 'Rear gets full pressure' },
+  drum:    { name: 'Rear drums out of adjustment', sub: 'Too much shoe-to-drum clearance', frOnly: true },
+};
+function setFault(k) {
+  const c = S.c;
+  if (c.fault === 'boil' && k !== 'boil') { c.water = 1.0; c.hot = false; }
+  c.fault = k === 'none' ? null : k;
+  if (k === 'boil') { c.water = 4.5; c.hot = true; }
+  if (k === 'drum') c.layout = 'fr';
+  if (k === 'pushrod') c.warm = true;
+  c.pumped = false; S.hold = 0; S.stop = null;
+}
+
+/* ================= drawing helpers ================= */
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const A = hex(a), B = hex(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+const pcol = p => { if (p <= 3) return '#2A3644'; const t = Math.min(1, p / 1500); return t < .5 ? mix('#2F9BE0', '#FFB224', t * 2) : mix('#FFB224', '#FF5A4E', (t - .5) * 2); };
+const T = (x, y, s, cls = 'svgt', anchor = 'middle', extra = '') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}" ${extra}>${s}</text>`;
+const bubbles = (pts, r = 3) => pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${r - (i % 2)}" fill="#0b1015" stroke="#E6EDF3" stroke-width="1.1"/>`).join('');
+function reveal() {
+  if (S.mode !== 'diagnose') return { fault: true, psi: true, pedal: true, stop: true };
+  const t = S.dx?.tests || {}, solved = S.dx?.solved;
+  return { fault: !!solved, psi: !!t.gauges || solved, pedal: !!t.feel || solved, stop: !!t.road || solved };
+}
+
+/* ================= system schematic ================= */
+const POS = { LF: [520, 52], RF: [520, 278], LR: [130, 52], RR: [130, 278] };
+const BOX = { LF: [520, 81], RF: [520, 249], LR: [130, 81], RR: [130, 249] };
+const ROUTE = { LF: 'M485 207 H520 V91', RF: 'M485 223 H520 V239', LR: 'M395 207 H130 V91', RR: 'M395 223 H130 V239' };
+function drawSys(m) {
+  const c = S.c, rv = reveal(), cs = circuits(c.layout), W = m.wheel, play = S.playAbs;
+  const showP = rv.psi, fv = rv.fault;
+  const pc = k => showP ? pcol(m.pc[k]) : '#2A3644';
+  let h = `<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>`;
+  // body + firewall
+  h += `<rect x="30" y="26" width="585" height="278" rx="58" fill="#0c1218" stroke="#2A3644" stroke-width="1.2"/>`;
+  h += `<line x1="330" y1="40" x2="330" y2="290" stroke="#2A3644" stroke-dasharray="4 5"/>` + T(318, 292, 'FIREWALL', 'svgs', 'end') + T(600, 168, 'FRONT →', 'svgs', 'end');
+  // wheels
+  for (const w of WHEELS) {
+    const [x, y] = POS[w];
+    h += `<rect x="${x - 44}" y="${y - 15}" width="88" height="30" rx="8" fill="#151c24" stroke="#33414f"/>`;
+    for (let i = -36; i <= 36; i += 9) h += `<line x1="${x + i}" y1="${y - 13}" x2="${x + i}" y2="${y + 13}" stroke="#1d2631" stroke-width="2"/>`;
+  }
+  // lines: circuit A solid, circuit B dashed; colored by pressure
+  const dash = k => k === 'B' ? ' stroke-dasharray="7 4"' : '';
+  const outX = { A: 415, B: 455 };
+  for (const k of ['A', 'B']) {
+    const col = pc(k);
+    h += `<path d="M${outX[k]} 120 V150 M${outX[k]} 170 V200" fill="none" stroke="${col}" stroke-width="3.2"${dash(k)}/>`;
+  }
+  for (const w of WHEELS) {
+    const k = circOf(c.layout, w), p = showP ? (m.effort > 0 ? W[w].P : W[w].resid) : 0;
+    h += `<path d="${ROUTE[w]}" fill="none" stroke="${showP ? pcol(p) : '#2A3644'}" stroke-width="3.2"${dash(k)} stroke-linejoin="round"/>`;
+  }
+  // wheel brake units
+  for (const w of WHEELS) {
+    const [x, y] = BOX[w], live = W[w].live, p = showP ? W[w].show : 0, drum = !isFront(w) && c.layout === 'fr';
+    const hot = fv && W[w].drag > 15;
+    if (hot) h += `<rect x="${x - 30}" y="${y - 13}" width="60" height="26" rx="8" fill="#FF7A3D" opacity=".55" filter="url(#glow)"/>`;
+    if (drum) {
+      h += `<rect x="${x - 25}" y="${y - 10}" width="50" height="20" rx="9" fill="#1a232d" stroke="#45566a"/>`;
+      h += `<rect x="${x - 14}" y="${y - 4}" width="28" height="8" rx="3" fill="${showP ? pcol(p) : '#2A3644'}"/>` + T(x, y + 3.5, 'DRUM', 'svgs', 'middle', 'style="fill:#0b1015"');
+    } else {
+      h += `<rect x="${x - 26}" y="${y - 3}" width="52" height="6" rx="2" fill="#3a4654"/>`;
+      h += `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" rx="4" fill="${showP ? pcol(p) : '#2A3644'}" stroke="#0b1015"/>`;
+    }
+    const lx = x + 32, top = y < 165;
+    h += T(lx, y - 2, w, 'svgt', 'start') + (showP ? T(lx, y + 11, live ? f0(p) + ' psi' : '0 psi', 'svgv' + (live ? '' : ' bad'), 'start') : T(lx, y + 11, '— psi', 'svgv', 'start'));
+    if (fv && c.fault === 'stuck' && w === c.side + 'F') h += `<rect x="${x - 12}" y="${y - 12}" width="24" height="24" rx="5" fill="none" stroke="#FF5A4E" stroke-width="2"/>` + T(x, top ? y + 28 : y - 20, 'SEIZED', 'svgs', 'middle', 'style="fill:#FF8A80"');
+    if (fv && c.fault === 'drum' && drum) h += T(x, top ? y + 24 : y - 16, 'EXTRA GAP', 'svgs', 'middle', 'style="fill:#FFB224"');
+    if (fv && m.vapor && isFront(w)) h += bubbles([[x - 18, y - 6], [x + 16, y + 5], [x - 6, y + 7], [x + 20, y - 6]], 3.2);
+    if (play && play[w]) { const pm = play[w]; h += `<circle cx="${x + (x > 330 ? -38 : 38)}" cy="${y}" r="5" fill="${pm === 2 ? '#FF5A4E' : pm === 1 ? '#FFB224' : '#3DDC97'}"/>`; }
+  }
+  // leak
+  if (fv && m.dead) {
+    const w = (S.mode === 'diagnose' && S.dx?.leakWheel) || cs[m.dead][cs[m.dead].length - 1], [x, y] = BOX[w], dy = y < 165 ? 1 : -1;
+    h += `<path d="M${x - 6} ${y + dy * 14} q6 ${dy * 10} 0 ${dy * 14} q-6 ${-dy * 4} 0 ${-dy * 14}Z M${x + 8} ${y + dy * 22} q4 ${dy * 7} 0 ${dy * 10} q-4 ${-dy * 3} 0 ${-dy * 10}Z" fill="#FFB224"/>` + T(x + 18, y + dy * 32, 'LEAK', 'svgs', 'start', 'style="fill:#FFB224"');
+  }
+  // air in LF line / hose pinch
+  if (fv && c.fault === 'air') h += bubbles([[520, 120], [520, 140], [520, 160], [520, 183]], 3.6);
+  if (fv && c.fault === 'hose') { const w = c.side + 'F', [x, y] = BOX[w], yy = y < 165 ? y + 22 : y - 22; h += `<path d="M${x - 8} ${yy - 6} L${x - 1.5} ${yy} L${x - 8} ${yy + 6} M${x + 8} ${yy - 6} L${x + 1.5} ${yy} L${x + 8} ${yy + 6}" stroke="#FF5A4E" stroke-width="2.4" fill="none"/>` + T(x - 12, yy + 4, 'HOSE', 'svgs', 'end', 'style="fill:#FF8A80"'); }
+  // valve block + ABS unit
+  const propBad = fv && c.fault === 'prop';
+  h += `<rect x="398" y="150" width="74" height="20" rx="5" fill="#141c25" stroke="${propBad ? '#FF5A4E' : '#45566a'}" stroke-width="${propBad ? 2 : 1}"/>` + T(435, 163.5, 'PROP · SWITCH', 'svgs');
+  h += `<rect x="395" y="200" width="90" height="30" rx="6" fill="#141c25" stroke="#45566a"/>` + T(440, 219, 'ABS UNIT', 'svgs');
+  // master cylinder + reservoir
+  const mcBad = fv && (c.fault === 'bypass');
+  h += `<rect x="398" y="78" width="74" height="20" rx="4" fill="#121a22" stroke="#45566a"/><line x1="435" y1="78" x2="435" y2="98" stroke="#45566a"/>`;
+  const lvl = k => (m.dead === k && fv) || (m.dead === k && S.mode === 'diagnose' && S.dx?.tests.fluid) ? 4 : 14;
+  h += `<rect x="400" y="${96 - lvl('A')}" width="33" height="${lvl('A')}" fill="#7a5a1d" opacity=".75"/><rect x="437" y="${96 - lvl('B')}" width="33" height="${lvl('B')}" fill="#7a5a1d" opacity=".75"/>`;
+  h += `<rect x="392" y="100" width="86" height="20" rx="4" fill="#18212b" stroke="${mcBad ? '#FF5A4E' : '#5a6b7e'}" stroke-width="${mcBad ? 2 : 1}"/>` + T(435, 113.5, 'MASTER CYL.', 'svgs') + T(415, 145, 'A', 'svgs', 'end', 'dx="-6"') + T(455, 145, 'B', 'svgs', 'start', 'dx="6"');
+  // booster + pushrod + pedal
+  const bBad = fv && c.fault === 'booster', assistOn = m.assistOn;
+  h += `<circle cx="358" cy="110" r="25" fill="#141c25" stroke="${bBad ? '#FF5A4E' : '#5a6b7e'}" stroke-width="${bBad ? 2 : 1.2}"${bBad ? ' stroke-dasharray="5 4"' : ''}/>` + T(358, 107, 'VACUUM', 'svgs') + T(358, 117, 'BOOSTER', 'svgs');
+  h += `<line x1="383" y1="110" x2="392" y2="110" stroke="#8A98A8" stroke-width="3"/>`;
+  if (c.engine && !bBad && rv.fault) h += T(358, 146, assistOn && m.effort > 0 ? '+ ' + f0(m.assist) + ' lb' : '', 'svgv', 'middle');
+  if (!c.engine) h += T(358, 146, 'ENGINE OFF', 'svgs', 'middle', 'style="fill:#FFB224"');
+  const pt = rv.pedal ? m.travel : 0, ang = clamp(pt / FLOOR, 0, 1) * 26;
+  const pr = c.fault === 'pushrod' && fv ? '#FF5A4E' : '#8A98A8';
+  h += `<g transform="rotate(${-ang} 300 70)"><line x1="300" y1="70" x2="290" y2="150" stroke="#9fb0c2" stroke-width="5" stroke-linecap="round"/><rect x="278" y="146" width="24" height="9" rx="3" fill="#c5cfd9"/></g><circle cx="300" cy="70" r="4" fill="#5a6b7e"/>`;
+  h += `<line x1="${297 + ang * 0.35}" y1="104" x2="333" y2="110" stroke="${pr}" stroke-width="3"/>` + T(290, 176, 'PEDAL', 'svgs');
+  if (rv.pedal && m.effort > 0) h += T(290, 190, f0(m.effort) + ' lb', 'svgv');
+  // legend
+  h += `<line x1="46" y1="160" x2="70" y2="160" stroke="#8A98A8" stroke-width="3"/>` + T(74, 163.5, 'Circuit A', 'svgs', 'start') + `<line x1="46" y1="174" x2="70" y2="174" stroke="#8A98A8" stroke-width="3" stroke-dasharray="7 4"/>` + T(74, 177.5, 'Circuit B', 'svgs', 'start');
+  if (showP) { const g = [0, 500, 1000, 1500]; h += g.map((p, i) => `<rect x="${46 + i * 16}" y="186" width="16" height="7" fill="${pcol(p + 1)}"/>`).join('') + T(46, 204, '0', 'svgs', 'start') + T(110, 204, '1500 psi', 'svgs', 'end'); }
+  $('#svSys').innerHTML = h;
+  $('#sysSub').textContent = (c.layout === 'fr' ? 'Front/rear split · disc front, drum rear' : 'Diagonal split · 4-wheel disc') + (S.mode === 'diagnose' && S.dx ? (S.dx.abs ? ' · ABS' : ' · no ABS') : '');
+}
+
+/* ================= master cylinder cutaway ================= */
+function drawMC(m) {
+  const c = S.c, rv = reveal(), fv = rv.fault, X = 52;             // px per inch of piston travel
+  const showP = rv.psi || rv.pedal;
+  const prRest = c.fault === 'pushrod' && (fv || S.dx?.tests.pushrod) ? 9 : 0;
+  const sp = (showP ? m.s : 0) * X + prRest, ss = (showP ? m.sB : 0) * X;
+  const secRear = 196 + Math.min(ss, 58), priCup = Math.min(120 + sp, secRear - 4);
+  let h = '';
+  // reservoir
+  const lowA = m.dead === 'A' && (fv || S.dx?.tests.fluid), lowB = m.dead === 'B' && (fv || S.dx?.tests.fluid);
+  h += `<rect x="80" y="20" width="220" height="56" rx="7" fill="#0f151c" stroke="#45566a"/><line x1="180" y1="20" x2="180" y2="76" stroke="#45566a"/>`;
+  h += `<rect x="82" y="${lowA ? 66 : 32}" width="96" height="${lowA ? 8 : 42}" fill="#7a5a1d" opacity=".55"/><rect x="182" y="${lowB ? 66 : 32}" width="116" height="${lowB ? 8 : 42}" fill="#7a5a1d" opacity=".55"/>`;
+  h += T(130, 16, 'RESERVOIR · PRIMARY', 'svgs') + T(240, 16, 'SECONDARY', 'svgs');
+  // body + bore
+  h += `<rect x="30" y="96" width="312" height="68" rx="7" fill="#151d26" stroke="#5a6b7e"/><rect x="40" y="108" width="294" height="44" fill="#0b1015"/>`;
+  // ports (inlet = wide, compensating = narrow)
+  const port = (x, w, open) => `<rect x="${x - w / 2}" y="76" width="${w}" height="32" fill="${open ? '#7a5a1d' : '#0b1015'}" opacity="${open ? .6 : 1}" stroke="#45566a" stroke-width=".6"/>`;
+  const compA = priCup < 124 - 1.5, compB = 254 + Math.min(ss, 58) < 258 - 1.5;
+  h += port(100, 8, true) + port(124, 3, compA) + port(232, 8, true) + port(258, 3, compB);
+  if (!compA && m.effort === 0 && c.fault === 'pushrod' && (fv || S.dx?.tests.pushrod)) h += `<circle cx="124" cy="86" r="7" fill="none" stroke="#FF5A4E" stroke-width="1.8"/>` + T(134, 90, 'PORT BLOCKED', 'svgs', 'start', 'style="fill:#FF8A80"');
+  else h += T(129, 90, 'comp. port', 'svgs', 'start', 'style="text-transform:none"');
+  // chambers
+  const pA = showP ? m.pc.A : 0, pB = showP ? m.pc.B : 0;
+  h += `<rect x="${priCup}" y="108" width="${Math.max(0, secRear - priCup)}" height="44" fill="${pcol(pA)}" opacity="${pA > 3 ? .55 : .25}"/>`;
+  const secFront = 254 + Math.min(ss, 58);
+  h += `<rect x="${secFront}" y="108" width="${Math.max(0, 334 - secFront)}" height="44" fill="${pcol(pB)}" opacity="${pB > 3 ? .55 : .25}"/>`;
+  // springs
+  const spring = (x1, x2, y) => { let d = `M${x1} ${y}`; const n = 7, dx = (x2 - x1) / n; for (let i = 0; i < n; i++) d += ` L${x1 + dx * (i + .5)} ${y + (i % 2 ? 9 : -9)}`; return `<path d="${d} L${x2} ${y}" fill="none" stroke="#8A98A8" stroke-width="1.3"/>`; };
+  h += spring(priCup + 2, secRear - 2, 130) + spring(secFront + 2, 332, 130);
+  // pistons
+  const pBody = priCup - 12 - 40;
+  h += `<rect x="40" y="110" width="${Math.max(10, pBody)}" height="40" rx="3" fill="#5d6c7c"/><rect x="${priCup - 12}" y="108" width="12" height="44" rx="2" fill="#2b3036" stroke="#11161c"/>`;
+  h += T(40 + Math.max(10, pBody) / 2, 133, 'PRIMARY', 'svgs', 'middle', 'style="fill:#0b1015"');
+  h += `<rect x="${secRear}" y="108" width="10" height="44" rx="2" fill="#2b3036"/><rect x="${secRear + 10}" y="110" width="${secFront - secRear - 20}" height="40" fill="#5d6c7c"/><rect x="${secFront - 10}" y="108" width="10" height="44" rx="2" fill="#2b3036"/>`;
+  h += T((secRear + secFront) / 2, 133, 'SECONDARY', 'svgs', 'middle', 'style="fill:#0b1015;font-size:7px;letter-spacing:.02em"');
+  // bypass arrows past the primary cup
+  if (fv && c.fault === 'bypass' && m.effort > 0) h += `<path d="M${priCup + 6} 112 l-16 0 m4 -3 l-4 3 l4 3 M${priCup + 6} 148 l-16 0 m4 -3 l-4 3 l4 3" stroke="#FF5A4E" stroke-width="1.6" fill="none"/>` + T(priCup - 4, 170 + 6, 'LEAKS PAST CUP', 'svgs', 'middle', 'style="fill:#FF8A80"');
+  // pushrod
+  const prCol = c.fault === 'pushrod' && (fv || S.dx?.tests.pushrod) ? '#FF5A4E' : '#9fb0c2';
+  h += `<rect x="4" y="127" width="${36 + sp}" height="6" rx="2" fill="${prCol}"/>` + T(6, 178, 'PUSHROD', 'svgs', 'start');
+  // outlets
+  const cs = circuits(c.layout);
+  h += `<rect x="184" y="164" width="7" height="16" fill="${pcol(pA)}" opacity=".8"/><rect x="304" y="164" width="7" height="16" fill="${pcol(pB)}" opacity=".8"/>`;
+  h += T(187, 194, 'A → ' + cs.A.join(' · '), 'svgt') + T(307, 194, 'B → ' + cs.B.join(' · '), 'svgt');
+  if (showP) h += T(187, 206, m.dead === 'A' ? '0 psi' : f0(pA) + ' psi', 'svgv' + (m.dead === 'A' ? ' bad' : '')) + T(307, 206, m.dead === 'B' ? '0 psi' : f0(pB) + ' psi', 'svgv' + (m.dead === 'B' ? ' bad' : ''));
+  h += T(80, 194, 'Bore ' + boreName(c.bore), 'svgt');
+  $('#svMC').innerHTML = h;
+}
+
+/* ================= force chain ================= */
+function drawChain(m) {
+  const c = S.c, rv = reveal();
+  if (!rv.pedal && !rv.psi) { $('#chain').innerHTML = `<div class="chain">${row('', 'Pedal ratio', c.ratio.toFixed(1) + ' : 1')}${row('', 'Master cylinder bore', boreName(c.bore) + ' · ' + IN2(c.bore).toFixed(3) + ' in²')}${row('', 'Front caliper piston', c.cal.toFixed(2) + ' in · ' + IN2(c.cal).toFixed(2) + ' in²')}</div><div class="locked">Run tests to measure this car. The specs above come from service information.</div>`; return; }
+  const A = IN2(c.bore), Acal = IN2(c.cal), rearA = c.layout === 'fr' ? IN2(K.wc) : IN2(K.rdisc);
+  function row(op, lb, v, cls = '', sub = '') { return `<div class="row ${cls}"><span class="op">${op}</span><span class="lb">${lb}${sub ? `<small>${sub}</small>` : ''}</span><span class="v">${v}</span></div>`; }
+  let h = '<div class="chain">';
+  h += row('', 'Pedal effort (your foot)', f0(m.effort) + ' lb');
+  h += row('×', 'Pedal ratio ' + c.ratio.toFixed(1) + ' : 1', f0(m.input) + ' lb', '', 'lever: force up, travel down');
+  h += row('+', 'Booster assist', m.assistOn ? '+' + f0(m.assist) + ' lb' : 'none', m.assistOn ? '' : 'bad', m.assistOn ? 'vacuum vs. atmosphere, about 3× your push' : (c.engine ? 'booster not assisting' : 'engine off: no vacuum'));
+  h += row('÷', 'MC piston area (' + boreName(c.bore) + ')', A.toFixed(3) + ' in²', '', 'pressure = force ÷ area');
+  h += row('=', 'Line pressure, everywhere', f0(m.P) + ' psi', 'res' + (m.floor ? ' bad' : ''), m.floor ? 'pedal on the floor: pressure is limited' : 'Pascal\'s law: same in every line');
+  h += row('×', 'Front caliper piston ' + c.cal.toFixed(2) + ' in (' + Acal.toFixed(2) + ' in²)', f0(m.wheel.LF.P * Acal) + ' lb', '', 'clamp force on each front rotor');
+  h += row('', 'Rear pressure after proportioning', f0(m.Prear) + ' psi', m.P > SPLIT && c.fault !== 'prop' ? '' : '', m.P > SPLIT ? (c.fault === 'prop' && rv.fault ? 'valve failed: full pressure to the rear' : 'limited above ' + SPLIT + ' psi') : 'below the ' + SPLIT + ' psi split point: equal');
+  h += row('×', (c.layout === 'fr' ? 'Rear wheel cylinder ' + K.wc + ' in' : 'Rear caliper ' + K.rdisc + ' in') + ' (' + rearA.toFixed(2) + ' in²)', f0(m.wheel.LR.P * rearA) + ' lb', '', c.layout === 'fr' ? 'force on each shoe' : 'clamp force on each rear rotor');
+  h += row('=', 'Stopping (dry road)', m.decel.toFixed(2) + ' g', 'res', '60–0 mph in about ' + (isFinite(m.stop60) ? f0(m.stop60) + ' ft' : '—') + ' (no reaction time)');
+  $('#chain').innerHTML = h + '</div>';
+}
+
+/* ================= gauges ================= */
+function feelChips(m) {
+  const c = S.c, f = [];
+  if (m.effort <= 0) return [['Released', '']];
+  if (m.floor) f.push(['To the floor', 'bad']);
+  if (m.spongy) f.push(['Spongy', 'bad']);
+  else if (m.travel > 2.8 && !m.floor) f.push(['Low pedal', 'warn']);
+  if (!m.assistOn) f.push(['Hard: no assist', 'warn']);
+  if (c.fault === 'bypass' && S.hold > 0) f.push(['Sinking', 'bad']);
+  if (!f.length) f.push(['Firm', 'ok']);
+  return f;
+}
+function drawGauge(m) {
+  const c = S.c, rv = reveal(), d = S.dx;
+  if (S.mode === 'diagnose') {
+    $('#gSub').textContent = 'shop gauges';
+    if (!d?.g) { $('#gauge').innerHTML = `<div class="locked">Connect pressure gauges at the four bleeder screws (Case tab → <b>Pressure gauges</b>) to see readings here.</div>`; return; }
+    const g = d.g;
+    let h = `<table class="gt"><tr><th>Wheel</th><th>Light 25 lb</th><th>Hard 80 lb</th><th>Released</th></tr>`;
+    for (const w of WHEELS) h += `<tr><td>${w}</td><td class="${g.light[w] < 5 ? 'bad' : ''}">${f0(g.light[w])}</td><td class="${g.hard[w] < 5 ? 'bad' : ''}">${f0(g.hard[w])}</td><td class="${g.res[w] > 10 ? 'bad' : ''}">${f0(g.res[w])}</td></tr>`;
+    h += `</table><p class="dim" style="margin:8px 0 0">psi. "Released" is read after a 10-minute drive with the pedal up. A good system reads 0. Rear pressure should be lower than front on a hard stop (proportioning).</p>`;
+    $('#gauge').innerHTML = h; return;
+  }
+  $('#gSub').textContent = m.effort > 0 ? 'pedal applied' : 'pedal released';
+  const pct = v => clamp(v / FLOOR * 100, 0, 100), fc = feelChips(m), barCls = m.floor || m.spongy ? 'bad' : m.travel > 2.8 ? 'warn' : '';
+  let h = `<div class="gwrap"><div class="ped"><div class="top"><small>Pedal travel</small><b>${m.travel.toFixed(1)} in</b><span class="chips">${fc.map(([t, k]) => `<span class="chip ${k}">${t}</span>`).join('')}</span></div>
+    <div class="track"><u style="width:${pct(m.free)}%"></u><i class="${barCls}" style="width:${pct(m.travel)}%"></i></div><div class="tlab"><span>0</span><span>free play ${m.free.toFixed(2)}</span><span>floor ${FLOOR.toFixed(1)} in</span></div></div><div class="wg">`;
+  for (const w of WHEELS) {
+    const W = m.wheel[w], p = W.show, drag = W.drag > 15;
+    h += `<div class="wt${drag ? ' drag' : ''}${W.live ? '' : ' dead'}"><small><span>${w}</span><span>${isFront(w) ? 'caliper' : c.layout === 'fr' ? 'drum' : 'caliper'}</span></small><b>${f0(p)} <span>psi</span></b><span>${!W.live ? 'circuit empty' : drag ? `drags ≈ ${f0(W.drag)} lb` : m.effort > 0 ? f0(W.force) + ' lb at the tire' : 'released'}</span></div>`;
+  }
+  const lock = m.lockF && m.lockR ? 'Front and rear at the grip limit' : m.lockF ? 'Fronts at the grip limit (would lock without ABS)' : m.lockR ? 'Rears at the grip limit (would lock first: unstable)' : '';
+  h += `</div><div class="sum"><div class="lamp${m.warn ? ' on' : ''}" title="Red brake warning lamp">BRAKE</div><div class="dec">Decel <b>${m.decel.toFixed(2)} g</b> · 60–0 <b>${isFinite(m.stop60) ? f0(m.stop60) + ' ft' : '—'}</b>${lock ? `<br><span style="color:#FFE2A8">${lock}</span>` : ''}${Math.abs(m.pullDrive) > 40 ? `<br><span style="color:#FFE2A8">Drag pulls the car ${m.pullDrive < 0 ? 'left' : 'right'}</span>` : ''}${m.effort > 0 && Math.abs(m.pullBrake) > 0.08 ? `<br><span style="color:#FFE2A8">Pulls ${m.pullBrake < 0 ? 'left' : 'right'} when braking</span>` : ''}</div></div></div>`;
+  $('#gauge').innerHTML = h;
+}
+
+/* ================= panic stop chart ================= */
+function drawStop() {
+  const r = S.stop, rv = reveal(), d = S.dx;
+  const lockedOut = S.mode === 'diagnose';
+  document.querySelectorAll('#surf button, #absBtn, #runStop').forEach(b => b.disabled = lockedOut);
+  $('#absBtn').setAttribute('aria-pressed', S.abs); $('#absBtn').textContent = S.abs ? 'ABS on' : 'ABS off';
+  document.querySelectorAll('#surf button').forEach(b => b.setAttribute('aria-pressed', b.dataset.s === S.surf));
+  const X0 = 34, X1 = 326, Y0 = 12, Y1 = 132;
+  let h = `<rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}" fill="#0a0f14" stroke="#1D2732"/>`;
+  if (!r || (lockedOut && !rv.stop)) {
+    h += T(180, 70, lockedOut ? 'Road test (Case tab) runs a panic stop here' : 'Press Run for a 60–0 mph panic stop', 'svgt') + T(180, 88, lockedOut ? '' : 'Pick a surface and ABS on/off first', 'svgs');
+    $('#svStop').innerHTML = h; $('#stopRes').innerHTML = ''; return;
+  }
+  const o = r.out, Tm = Math.max(1, r.time), pm = Math.max(500, r.pmax * 1.05);
+  const sx = t => X0 + (t / Tm) * (X1 - X0), sy = v => Y1 - (v / 60) * (Y1 - Y0), sp = p => Y1 - (p / pm) * (Y1 - Y0);
+  for (let v = 0; v <= 60; v += 20) h += `<line x1="${X0}" y1="${sy(v)}" x2="${X1}" y2="${sy(v)}" stroke="#141c25"/>` + T(X0 - 4, sy(v) + 3.5, v, 'svgs', 'end');
+  const tStep = Tm > 12 ? 5 : Tm > 5 ? 2 : 1;
+  for (let t = 0; t <= Tm; t += tStep) h += T(sx(t), Y1 + 11, t + 's', 'svgs');
+  h += T(X0 - 4, Y0 - 3, 'MPH', 'svgs', 'end') + T(X1 + 4, Y0 - 3, 'PSI', 'svgs', 'start') + T(X1 + 4, Y0 + 7, f0(pm), 'svgs', 'start');
+  const upto = S.play ? S.play.i : o.length - 1, step = Math.max(1, Math.floor(o.length / 600));
+  const pl = (fn) => { let s = ''; for (let i = 0; i <= upto; i += step) s += (s ? ' L' : 'M') + sx(o[i].t).toFixed(1) + ' ' + fn(o[i]).toFixed(1); return s; };
+  // ABS mode band
+  if (r.abs) { let band = ''; for (let i = 0; i <= upto; i++) { const f = o[i].f; if (f) band += `<rect x="${sx(o[i].t).toFixed(1)}" y="${Y1 - 5}" width="${((X1 - X0) / Tm * 0.01 + .4).toFixed(2)}" height="5" fill="${f === 2 ? '#FF5A4E' : '#FFB224'}"/>`; } h += band; }
+  h += `<path d="${pl(q => sp(q.p))}" fill="none" stroke="#FFB224" stroke-width="1.4" opacity=".9"/>`;
+  h += `<path d="${pl(q => sy(q.v))}" fill="none" stroke="#E6EDF3" stroke-width="2"/>`;
+  h += `<path d="${pl(q => sy(q.w))}" fill="none" stroke="#2F9BE0" stroke-width="1.6"/>`;
+  if (S.play) { const q = o[upto]; h += `<line x1="${sx(q.t)}" y1="${Y0}" x2="${sx(q.t)}" y2="${Y1}" stroke="#5A6773" stroke-dasharray="3 3"/>`; }
+  h += `<g transform="translate(${X0 + 6} 150)"><line x1="0" y1="0" x2="14" y2="0" stroke="#E6EDF3" stroke-width="2"/>${T(18, 3.5, 'Car speed', 'svgs', 'start')}<line x1="80" y1="0" x2="94" y2="0" stroke="#2F9BE0" stroke-width="2"/>${T(98, 3.5, 'LF wheel', 'svgs', 'start')}<line x1="152" y1="0" x2="166" y2="0" stroke="#FFB224" stroke-width="2"/>${T(170, 3.5, 'LF pressure', 'svgs', 'start')}${r.abs ? `<rect x="232" y="-3" width="8" height="6" fill="#FFB224"/>${T(243, 3.5, 'hold', 'svgs', 'start')}<rect x="266" y="-3" width="8" height="6" fill="#FF5A4E"/>${T(277, 3.5, 'dump', 'svgs', 'start')}` : ''}</g>`;
+  $('#svStop').innerHTML = h;
+  if (S.play) { const q = o[upto]; $('#stopRes').innerHTML = `<span><b>${q.v.toFixed(0)} mph</b> · ${f0(q.x)} ft</span>${r.abs ? `<span>LF valves: ${q.f === 2 ? 'inlet <b>closed</b>, outlet <b>open</b> → dump' : q.f === 1 ? 'inlet <b>closed</b>, outlet closed → hold' : 'inlet <b>open</b>, outlet closed → apply'}</span>` : ''}`; return; }
+  const surf = { 0.95: 'dry', 0.6: 'wet', 0.15: 'ice' }[r.mu] || '';
+  let res = `<span>Stopped in <b>${f0(r.dist)} ft</b> (${r.time.toFixed(1)} s, ${surf}, ${r.abs ? 'ABS on' : 'ABS off'})</span>`;
+  if (r.abs) res += `<span class="chip ok">No lockup · steering kept</span><span class="dim">LF cycled ${r.cycles}×</span>`;
+  else if (r.rearFirst) res += `<span class="chip bad">Rears locked first: car can spin</span>`;
+  else if (r.steerLost) res += `<span class="chip ${S.mode === 'diagnose' ? 'warn' : 'bad'}">Fronts locked: no steering</span>`;
+  else res += `<span class="chip ok">No lockup</span>`;
+  $('#stopRes').innerHTML = res;
+}
+function runStop(animate = true) {
+  if (S.play) cancelAnimationFrame(S.play.raf);
+  const r = panic(S.c, { mu: SURF[S.surf], abs: S.abs });
+  S.stop = Object.assign(r, { surf: S.surf, fault: S.c.fault });
+  if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { S.play = null; S.playAbs = null; renderViews(); checkGoal(); return r; }
+  const speed = r.time > 6 ? r.time / 6 : 1, t0 = performance.now();
+  S.play = { i: 0 };
+  const tick = () => {
+    const tt = (performance.now() - t0) / 1000 * speed;
+    S.play.i = Math.min(r.out.length - 1, Math.floor(tt / 0.01));
+    S.playAbs = r.abs ? { LF: r.out[S.play.i].f } : null;
+    drawStop(); drawSys(mNow());
+    if (S.play.i < r.out.length - 1) S.play.raf = requestAnimationFrame(tick);
+    else { S.play = null; S.playAbs = null; renderViews(); checkGoal(); }
+  };
+  S.play.raf = requestAnimationFrame(tick);
+  return r;
+}
+
+function renderViews() { const m = mNow(); drawSys(m); drawMC(m); drawChain(m); drawGauge(m); drawStop(); }
+
+/* ================= explore controls ================= */
+function ctlHTML(keys) {
+  const c = S.c; let h = '';
+  const has = k => keys.includes(k);
+  if (has('effort')) h += `<div class="sl"><label for="effort">Pedal effort</label><input type="range" id="effort" data-c="effort" min="0" max="120" step="1" value="${c.effort}"><output id="o-effort">${c.effort} lb</output></div>`;
+  if (has('pump') || has('hold') || has('release')) h += `<div class="rowb">${has('release') ? `<button class="btn small" data-act="release">Release</button>` : ''}${has('pump') ? `<button class="btn small" data-act="pump"${c.pumped ? ' disabled' : ''}>${c.pumped ? 'Pumped' : 'Pump ×3'}</button>` : ''}${has('hold') ? `<button class="btn small" data-act="hold">${S.hold ? 'Held ' + Math.round(S.hold) + ' s' : 'Hold 20 s'}</button>` : ''}</div>`;
+  if (has('engine')) h += `<div class="rowb"><span class="lbl">Engine</span><span class="seg mini"><button data-act="engine:1" aria-pressed="${c.engine}">Running</button><button data-act="engine:0" aria-pressed="${!c.engine}">Off</button></span></div>`;
+  if (has('layout')) h += `<div class="rowb"><span class="lbl">Layout</span><span class="seg mini"><button data-act="layout:fr" aria-pressed="${c.layout === 'fr'}">Front/rear · disc/drum</button><button data-act="layout:diag" aria-pressed="${c.layout === 'diag'}"${c.fault === 'drum' ? ' disabled' : ''}>Diagonal · 4 disc</button></span></div>`;
+  if (has('ratio')) h += `<div class="sl"><label for="ratio">Pedal ratio</label><input type="range" id="ratio" data-c="ratio" min="3" max="7" step="0.5" value="${c.ratio}"><output id="o-ratio">${c.ratio.toFixed(1)} : 1</output></div>`;
+  if (has('bore')) h += `<div class="rowb"><span class="lbl">MC bore</span><span class="cyls" style="margin:0">${BORES.map(([b, n]) => `<button class="cc" data-act="bore:${b}" aria-pressed="${Math.abs(c.bore - b) < 1e-6}">${n}</button>`).join('')}</span></div>`;
+  if (has('cal')) h += `<div class="sl"><label for="cal">Front caliper piston</label><input type="range" id="cal" data-c="cal" min="1.75" max="2.75" step="0.125" value="${c.cal}"><output id="o-cal">${c.cal.toFixed(3)} in</output></div>`;
+  if (has('water')) h += `<div class="sl"><label for="water">Water in fluid</label><input type="range" id="water" data-c="water" min="0" max="5" step="0.1" value="${c.water}"><output id="o-water">${c.water.toFixed(1)} %</output></div><p class="dim" style="margin:0 0 4px">Boiling point now: <b id="o-bp">${bp(c.water)} °F</b> (DOT 3: 401 °F dry, 284 °F wet)</p>`;
+  if (has('hot')) h += `<div class="rowb"><span class="lbl">Brake temp</span><span class="seg mini"><button data-act="hot:0" aria-pressed="${!c.hot}">Normal 160 °F</button><button data-act="hot:1" aria-pressed="${c.hot}">Mountain descent 330 °F</button></span></div>`;
+  if (has('warm')) h += `<div class="rowb"><span class="lbl">Driven</span><span class="seg mini"><button data-act="warm:0" aria-pressed="${!c.warm}">Cold</button><button data-act="warm:1" aria-pressed="${c.warm}">10 min (warm)</button></span></div>`;
+  if (has('bleed') || has('flush') || has('fix')) h += `<div class="rowb">${has('bleed') ? `<button class="btn small" data-act="bleed">Bleed brakes</button>` : ''}${has('flush') ? `<button class="btn small" data-act="flush">Flush fluid</button>` : ''}${has('fix') ? `<button class="btn small" data-act="fault:none">Repair</button>` : ''}</div>`;
+  return h;
+}
+function exploreHTML() {
+  const c = S.c;
+  let h = `<p class="dim">Push the pedal and follow the force from your foot to the tires. Then break something.</p>`;
+  h += `<h4>Pedal</h4>` + ctlHTML(['effort', 'release', 'pump', 'hold', 'engine']);
+  h += `<h4>System</h4>` + ctlHTML(['layout', 'ratio', 'bore', 'cal']);
+  h += `<h4>Fluid & temperature</h4>` + ctlHTML(['water', 'hot', 'warm']);
+  h += `<h4>Break it</h4><div class="cards"><button class="card" data-act="fault:none" aria-pressed="${!c.fault}"><b>No fault</b><span>Healthy system</span></button>`;
+  for (const [k, F] of Object.entries(FAULTS)) {
+    h += `<button class="card" data-act="fault:${k}" aria-pressed="${c.fault === k}"${F.frOnly && c.layout !== 'fr' ? ' title="Front/rear layout only (switches the layout)"' : ''}><b>${F.name}</b><span>${F.sub}</span></button>`;
+    if (c.fault === k && F.side) h += `<span class="cyls"><span class="lbl">Side</span>${['L', 'R'].map(s => `<button class="cc" data-act="side:${s}" aria-pressed="${c.side === s}">${s === 'L' ? 'Left front' : 'Right front'}</button>`).join('')}</span>`;
+    if (c.fault === k && F.circuit) h += `<span class="cyls"><span class="lbl">Circuit</span>${['A', 'B'].map(s => `<button class="cc" data-act="circ:${s}" aria-pressed="${c.circuit === s}">${s}: ${circuits(c.layout)[s].join(' + ')}</button>`).join('')}</span>`;
+  }
+  h += `</div><h4>Service</h4>` + ctlHTML(['bleed', 'flush']) + `<div class="rowb"><button class="btn small" data-act="reset">Reset car</button></div>`;
+  return h;
+}
+
+/* ================= diagnose ================= */
+const CAUSES = {
+  air:     { name: 'Air in the hydraulic system', concern: 'The pedal feels soft and spongy and goes down farther than it should. A front caliper was replaced at another shop last week.' },
+  bypass:  { name: 'Master cylinder bypassing internally', concern: 'At a long red light, the pedal slowly sinks toward the floor if I keep my foot on it. I never see any fluid on the ground.' },
+  leak:    { name: 'External leak: one circuit lost', concern: 'The red BRAKE light came on, and the pedal goes way down before the car starts to stop.' },
+  stuck:   { name: 'Seized caliper', side: true, concern: s => `The car pulls to the ${s === 'L' ? 'left' : 'right'} even when I'm not braking, and I smell hot brakes after a drive. Fuel mileage dropped.` },
+  hose:    { name: 'Collapsed brake hose', side: true, concern: s => `After a few stops around town it pulls to the ${s === 'L' ? 'left' : 'right'}, and the ${s === 'L' ? 'left' : 'right'} front wheel gets really hot. That brake doesn't seem to let go.` },
+  boil:    { name: 'Water-contaminated fluid', concern: 'Coming down the canyon, the pedal got soft and went almost to the floor. Once it cooled off it felt normal again. The brake fluid has never been changed (8 years).' },
+  booster: { name: 'Failed vacuum booster', concern: 'The pedal is really hard to push, and the car takes a long time to stop.' },
+  pushrod: { name: 'Pushrod too long (port blocked)', concern: 'A new master cylinder was installed last month. After 10 or 15 minutes of driving, it feels like all four brakes are dragging and the wheels are hot.' },
+  prop:    { name: 'Failed proportioning valve', concern: 'On a hard stop, the back end gets loose and the rear tires skid.' },
+  drum:    { name: 'Rear drums out of adjustment', concern: 'The pedal is low on the first push but comes up if I pump it. The parking brake lever also pulls up farther than it used to.' },
+  absok:   { name: 'Nothing wrong: normal ABS', concern: 'Stopping hard on a gravel road, the pedal buzzed and pulsed and there was a grinding noise. Is something broken?' },
+};
+const CASE_POOL = Object.keys(CAUSES);
+const EVIDENCE = {
+  air: ['Spongy pedal with long travel; pumping barely helps', 'Fluid level, gauges (once firm) and road test otherwise normal', 'Fix: bleed the system (start at the wheel farthest from the MC, or follow the OEM sequence)'],
+  bypass: ['Pedal slowly sinks under steady pressure', 'No external leak and the reservoir level does not drop: the fluid is going past the piston cup inside the MC', 'Fix: replace the master cylinder (bench bleed it first)'],
+  leak: ['Red BRAKE lamp on; one reservoir chamber nearly empty', 'Low pedal; gauges read 0 on one circuit', 'Wet trail at the leaking wheel. Fix the leak, refill, bleed'],
+  stuck: ['Drag and heat at one front wheel; pulls toward it while cruising', 'Gauge reads 0 psi released at that wheel, and cracking the bleeder does NOT free it → mechanical bind', 'Fix: rebuild/replace the caliper and service the slides'],
+  hose: ['Drag and heat at one front wheel after a few stops', 'Gauge shows trapped pressure at that wheel with the pedal up; cracking the bleeder frees the wheel → restriction upstream', 'Fix: replace the hose (it looks fine outside; the liner collapsed inside)'],
+  boil: ['Fluid tests high in water; low boiling point', 'Pedal fine when cold but fades to the floor after repeated hard stops', 'Fix: flush the fluid; follow the OEM interval'],
+  booster: ['Hard pedal, normal travel, poor stopping', 'Booster test: the pedal does not drop when the engine starts', 'Fix: replace the booster (check the vacuum hose and check valve first)'],
+  pushrod: ['All four wheels drag once the system warms up', 'No pushrod clearance → the primary cup covers the compensating port, so expanding fluid can\'t return to the reservoir', 'Fix: adjust pushrod length (BRK-M2 lab)'],
+  prop: ['Rears lock first in a hard stop (no ABS on this car)', 'Gauges: rear pressure equals front on a hard apply', 'Fix: replace the proportioning/combination valve'],
+  drum: ['Low pedal that pumps up and feels firm (not spongy)', 'Long parking brake travel', 'Fix: adjust the rear shoes; check the self-adjusters'],
+  absok: ['All hydraulic tests normal', 'ABS pulsation, buzzing and a grinding sound on loose gravel are normal ABS operation', 'Explain it to the customer; no repair needed'],
+};
+const TESTS = [
+  ['fluid', 'Reservoir & fluid test'], ['visual', 'Inspect for leaks'],
+  ['feel', 'Pedal feel + pump test'], ['hold', 'Hold steady 20 s'],
+  ['booster', 'Booster test'], ['gauges', 'Pressure gauges'],
+  ['spin', 'Spin wheels after a drive'], ['road', 'Road test'],
+  ['descent', 'Hot test: repeated stops'], ['pushrod', 'Pushrod clearance'],
+];
+/* Shuffle bag: every case type comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'brakes-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You've solved all ${n} case types once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function newCase() {
+  const type = bagNext();
+  const side = Math.random() < .5 ? 'L' : 'R', circuit = Math.random() < .5 ? 'A' : 'B';
+  const c = BASEC();
+  c.layout = type === 'drum' ? 'fr' : Math.random() < .5 ? 'fr' : 'diag';
+  c.water = type === 'boil' ? 4.5 : +(0.6 + Math.random() * 0.9).toFixed(1);
+  if (type !== 'boil' && type !== 'absok') c.fault = type;
+  c.side = side; c.circuit = circuit; c.effort = 40;
+  S.c = c; S.hold = 0; S.stop = null; S.surf = 'dry';
+  const abs = type === 'prop' ? false : type === 'absok' ? true : Math.random() < .7;
+  const cs = circuits(c.layout), leakWheel = type === 'leak' ? cs[circuit][Math.floor(Math.random() * 2)] : null;
+  S.dx = { n: (S.dx?.n || 0) + 1, type, side, abs, leakWheel, tests: {}, log: [], pick: null, pside: null, tries: 0, solved: false, wrong: null, g: null };
+  S.tab = 'case'; renderPanel(); renderViews();
+}
+const sideW = s => s === 'L' ? 'left' : 'right';
+function testOut(k) {
+  const c = S.c, d = S.dx, L = [];
+  const cw = { ...c, warm: true };
+  switch (k) {
+    case 'fluid': {
+      const dead = deadCirc(c);
+      L.push(dead ? ['bad', `Reservoir: the ${dead === 'A' ? 'rear (primary)' : 'front (secondary)'} chamber is nearly empty; the other is at FULL.`] : ['ok', 'Reservoir: both chambers at the FULL mark.']);
+      L.push(dead ? ['bad', 'The red BRAKE warning lamp is ON.'] : ['ok', 'The red BRAKE warning lamp is off.']);
+      const b = bp(c.water);
+      L.push(c.water >= 3 ? ['bad', `Test strip: FAIL. Boiling-point tester: ${b} °F (about ${c.water.toFixed(1)} % water).`] : c.water >= 2 ? ['warn', `Test strip: borderline. Boiling point ${b} °F.`] : ['ok', `Test strip: OK. Boiling point ${b} °F.`]);
+      break;
+    }
+    case 'visual': {
+      if (deadCirc(c)) { const w = d.leakWheel; L.push(['bad', `Wet fluid on the ${WNAME[w]} ${isFront(w) || c.layout === 'diag' ? 'caliper' : 'backing plate (wheel cylinder)'} and the inside of the tire. Drips on the floor.`]); }
+      else L.push(['ok', 'No external leaks at the master cylinder, lines, hoses, calipers or wheel cylinders.']);
+      L.push(['', 'Brake hoses: no cracks, bulges or chafing on the outside.']);
+      break;
+    }
+    case 'feel': {
+      const m = model(c, { effort: 40 }), pm = model({ ...c, pumped: true }, { effort: 40 });
+      L.push([m.travel > 2.6 ? 'bad' : 'ok', `Pedal travel at a normal stop: ${m.travel.toFixed(1)} in (a good car: about 1.9 in).`]);
+      L.push(m.floor ? ['bad', 'The pedal goes to the floor.'] : m.spongy ? ['bad', 'Feels spongy and springy, then firms up a little.'] : ['ok', 'Feels firm.']);
+      if (!m.assistOn) L.push(['bad', 'Takes a lot of effort: the pedal feels hard and the car slows only a little.']);
+      L.push(m.travel - pm.travel > 0.6 ? ['warn', `Pumping quickly raises the pedal to ${pm.travel.toFixed(1)} in, and it feels firm.`] : ['', 'Pumping the pedal doesn\'t change it much.']);
+      break;
+    }
+    case 'hold': {
+      const m0 = model(c, { effort: 40 }); let tFloor = null;
+      for (let t = 1; t <= 20; t++) if (model(c, { effort: 40, hold: t }).floor && !m0.floor) { tFloor = t; break; }
+      L.push(tFloor ? ['bad', `The pedal slowly sinks: from ${m0.travel.toFixed(1)} in to the floor in about ${tFloor} s.`] : ['ok', `The pedal holds steady at ${m0.travel.toFixed(1)} in for 20 s.`]);
+      L.push(['', 'Reservoir level after the test: unchanged.']);
+      break;
+    }
+    case 'booster': {
+      if (c.fault === 'booster') { L.push(['bad', 'Engine off, pumped to use up the vacuum, held the pedal, started the engine: the pedal did NOT drop.']); L.push(['', 'Engine vacuum at the booster hose: 19 inHg at idle (normal).']); }
+      else { L.push(['ok', 'Engine off, pumped to use up the vacuum, held the pedal, started the engine: the pedal dropped slightly. The booster is assisting.']); L.push(['ok', 'Vacuum reserve: two assisted stops with the engine off.']); }
+      break;
+    }
+    case 'gauges': {
+      const ml = model(cw, { effort: 25 }), mh = model(cw, { effort: 80 }), mr = model(cw, { effort: 0 });
+      d.g = { light: {}, hard: {}, res: {} };
+      for (const w of WHEELS) { d.g.light[w] = ml.wheel[w].show; d.g.hard[w] = mh.wheel[w].show; d.g.res[w] = mr.wheel[w].resid; }
+      L.push(['', 'Gauges installed at all four bleeders. Readings are in the Gauges panel.']);
+      break;
+    }
+    case 'spin': {
+      const m = model(cw, { effort: 0 }), drag = WHEELS.filter(w => m.wheel[w].drag > 15);
+      L.push(drag.length ? ['bad', `Drags: ${drag.map(w => `${w} (${m.wheel[w].drag > 50 ? 'hard' : 'light'})`).join(', ')}. The others spin free.`] : ['ok', 'All four wheels spin freely after the drive.']);
+      for (const w of drag) {
+        if (m.wheel[w].resid > 0) L.push(['warn', `Cracking the ${w} bleeder: a squirt of fluid, and the wheel spins free.`]);
+        else L.push(['warn', `Cracking the ${w} bleeder: no pressure comes out, and the wheel still drags.`]);
+      }
+      break;
+    }
+    case 'road': {
+      const m = model(cw, { effort: 40 });
+      L.push(Math.abs(m.pullDrive) > 40 ? ['bad', `Pulls to the ${m.pullDrive < 0 ? 'left' : 'right'} while cruising (no brakes applied).`] : ['ok', 'Tracks straight while cruising.']);
+      L.push(Math.abs(m.pullBrake) > 0.08 ? ['warn', `Pulls slightly ${m.pullBrake < 0 ? 'left' : 'right'} when braking.`] : ['ok', 'Stops straight with normal braking.']);
+      if (!m.assistOn || m.decel < 0.6) L.push(['bad', `Stopping power is poor: ${m.decel.toFixed(2)} g with a normal push (a good car: about 0.9 g).`]);
+      const r = panic(cw, { mu: SURF.dry, abs: d.abs });
+      S.stop = Object.assign(r, { surf: 'dry' });
+      L.push(r.abs ? ['ok', `Panic stop from 60 mph: ${f0(r.dist)} ft. ABS cycled near the limit (pedal pulsation); straight and controlled.`]
+        : r.rearFirst ? ['bad', `Panic stop from 60 mph: ${f0(r.dist)} ft. The rear wheels locked first and the back end stepped out.`]
+        : ['', `Panic stop from 60 mph: ${f0(r.dist)} ft. The front wheels locked and slid straight (normal for a car without ABS).`]);
+      if (d.type === 'absok') L.push(['', 'On the gravel lot, a hard stop triggered ABS: pedal pulsation and a buzzing, grinding sound from the ABS unit. It stopped straight.']);
+      const temps = WHEELS.map(w => { const W = m.wheel[w]; const base = !W.live ? 85 : isFront(w) ? 180 : 130; return `${w} ${Math.round((base + W.drag * 2.6) / 5) * 5}`; });
+      L.push(['', `IR thermometer after the drive (°F): ${temps.join(' · ')}.`]);
+      break;
+    }
+    case 'descent': {
+      const m = model({ ...c, hot: true }, { effort: 40 });
+      L.push(m.floor || m.spongy ? ['bad', 'After six hard stops down a long grade, the pedal went soft and nearly to the floor. After 20 minutes cooling it was firm again.'] : ['ok', 'After six hard stops down a long grade, the pedal stayed firm. Front rotors hot (normal).']);
+      break;
+    }
+    case 'pushrod': {
+      if (c.fault === 'pushrod') { L.push(['bad', 'Pushrod clearance: none. Pedal free play 0 in (spec: about 0.2 in at the pedal).']); L.push(['warn', 'Backing the master-cylinder nuts off slightly: all four wheels spin free.']); }
+      else L.push(['ok', 'Pushrod clearance OK. Pedal free play 0.20 in.']);
+      break;
+    }
+  }
+  return L;
+}
+function runTest(k) {
+  const d = S.dx; if (!d || d.solved || d.tests[k]) return;
+  d.tests[k] = true; d.log.unshift({ k, lines: testOut(k) });
+  renderPanel(); renderViews();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  const C = CAUSES[d.pick];
+  if (C.side && !d.pside) { toast('Pick which side.', 'bad'); return; }
+  const ok = d.pick === d.type && (!C.side || d.pside === d.side);
+  d.tries++;
+  if (ok) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += Object.keys(d.tests).length; toast('✓ Correct', 'good'); }
+  else d.wrong = d.pick === d.type ? 'Right cause, wrong side.' : 'Not quite. Run another test that would tell those causes apart.';
+  renderPanel(); renderViews();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const C = CAUSES[d.type], sc = S.dxScore, concern = typeof C.concern === 'function' ? C.concern(d.side) : C.concern;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${concern}</p><p class="dim">${S.c.layout === 'fr' ? 'Front/rear split, disc front, drum rear' : 'Diagonal split, 4-wheel disc'} · ${d.abs ? 'has ABS' : 'no ABS'}.</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div><div><small>Tests here</small><b>${Object.keys(d.tests).length}</b></div></div>${bagHTML()}`;
+  if (!d.solved) h += `<h4>Tests</h4><div class="tests">${TESTS.map(([k, n]) => `<button class="btn${d.tests[k] ? ' used' : ''}" data-act="test:${k}"${d.tests[k] ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+  if (d.log.length) h += `<h4>Findings</h4><div class="find">${d.log.map(e => `<div class="f"><b>${TESTS.find(t => t[0] === e.k)[1]}</b>${e.lines.map(([k, s]) => `<div class="${k}">${s}</div>`).join('')}</div>`).join('')}</div>`;
+  if (!d.solved) {
+    h += `<h4>Your diagnosis</h4><div class="cards">`;
+    for (const [k, Cx] of Object.entries(CAUSES)) {
+      h += `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${Cx.name}</b></button>`;
+      if (d.pick === k && Cx.side) h += `<span class="cyls"><span class="lbl">Side</span>${['L', 'R'].map(s => `<button class="cc" data-act="dxs:${s}" aria-pressed="${d.pside === s}">${s === 'L' ? 'Left front' : 'Right front'}</button>`).join('')}</span>`;
+    }
+    h += `</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+    if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  } else {
+    h = h.replace('<h4>Findings</h4>', `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}</b> with ${Object.keys(d.tests).length} tests. ${C.name}${C.side ? ` (${sideW(d.side)} front)` : ''}.</div><h4>The evidence</h4><ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${EVIDENCE[d.type].map(e => `<li>${e}</li>`).join('')}</ul><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div><h4>Findings</h4>`);
+    if (!d.log.length) h += `<div class="msg ok"><b>Correct.</b> ${C.name}.</div><ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${EVIDENCE[d.type].map(e => `<li>${e}</li>`).join('')}</ul><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  }
+  return h;
+}
+
+/* ================= lessons ================= */
+const M = () => mNow();
+const LESSONS = [
+{ id: 'pascal', title: 'Pascal\'s law', sub: 'Same pressure everywhere; area multiplies force', steps: [
+  { body: 'Brake fluid can\'t be squeezed smaller. Push on it in one place and the <b>pressure</b> (psi) rises the same amount <b>everywhere</b> in the system. That is <b>Pascal\'s law</b>. Watch the <b>Force chain</b> and the four wheel <b>Gauges</b>.', setup: { reset: true, effort: 0 } },
+  { body: 'Press the pedal gently: set the effort between <b>8 and 16 lb</b>.', ctl: ['effort'], goal: { check: () => S.c.effort >= 8 && S.c.effort <= 16, hint: 'Pedal effort 8–16 lb.' } },
+  { body: '', ctl: ['effort'], goal: { mc: { q: 'Look at the four wheel gauges. What do you notice?', opts: ['All four read the same pressure', 'The fronts read higher because they are bigger', 'Pressure is highest near the master cylinder and drops along the lines'], a: 0, why: 'Pascal\'s law: a closed hydraulic system has the same pressure at every point. (On a hard stop the proportioning valve will lower the rear. That is Lesson 5.)' } } },
+  { body: 'Pressure is the same, but force is not. <b>Force = pressure × area.</b> The 7/8 in master cylinder piston is 0.60 in². The 2.25 in caliper piston is 3.98 in².', goal: { mc: { q: 'How does the clamp force on a front rotor compare with the force on the master cylinder piston?', opts: ['About the same', 'About 6.6 times bigger (3.98 ÷ 0.60)', 'Smaller, because of friction in the lines'], a: 1, why: 'Same psi acting on 6.6 times the area gives 6.6 times the force. That is the hydraulic "lever".' } } },
+  { body: 'Hydraulics trade distance for force. Make the front caliper piston bigger: <b>2.75 in</b>.', ctl: ['effort', 'cal'], goal: { check: () => S.c.cal >= 2.74, hint: 'Front caliper piston slider to 2.750 in.' } },
+  { body: '', ctl: ['effort', 'cal'], goal: { mc: { q: 'Bigger caliper piston, same pedal effort. What changed?', opts: ['More clamp force, but more pedal travel: it takes more fluid to move a bigger piston', 'Less clamp force', 'Higher line pressure'], a: 0, why: 'More area means more force but more fluid volume. The pedal has to push farther. Nothing in hydraulics is free.' } } },
+] },
+{ id: 'leverage', title: 'Pedal ratio and the booster', sub: 'Where the force comes from', steps: [
+  { body: 'The pedal is a <b>lever</b>. A 4:1 ratio turns 40 lb at your foot into 160 lb at the pushrod. The <b>vacuum booster</b> then adds about 3× more, using engine vacuum on one side of a diaphragm and outside air on the other.', setup: { reset: true, effort: 40 } },
+  { body: 'Turn the <b>engine off</b>. With no vacuum, the booster can\'t help.', ctl: ['engine', 'effort'], goal: { check: () => !S.c.engine, hint: 'Engine: Off.' } },
+  { body: '', ctl: ['engine', 'effort'], goal: { mc: { q: 'Same 40 lb push with the engine off. What happened?', opts: ['Pressure and stopping power dropped to about a quarter: the pedal feels hard', 'Nothing changed', 'The pedal went to the floor'], a: 0, why: 'Without assist, only the lever force reaches the master cylinder. A hard pedal with normal travel points to the booster or its vacuum supply.' } } },
+  { body: 'Still engine off. Raise the <b>pedal ratio to 6:1</b> or more.', ctl: ['ratio', 'effort'], goal: { check: () => S.c.ratio >= 6, hint: 'Pedal ratio 6.0 : 1 or higher.' } },
+  { body: '', ctl: ['ratio', 'effort'], goal: { mc: { q: 'More leverage gives more pressure from the same foot. What did it cost?', opts: ['More pedal travel for the same amount of fluid moved', 'Nothing, the extra force is free', 'Lower line pressure'], a: 0, why: 'A lever trades travel for force. Cars without a booster use a high pedal ratio (and often a smaller bore), and live with a longer pedal.' } } },
+] },
+{ id: 'bore', title: 'Master cylinder bore', sub: 'Pressure vs. pedal travel', steps: [
+  { body: 'The master cylinder bore sets how much pressure a given pushrod force makes: <b>psi = force ÷ area</b>.', setup: { reset: true, effort: 40 } },
+  { body: 'Pick a <b>1 1/8 in</b> bore.', ctl: ['bore', 'effort'], goal: { check: () => Math.abs(S.c.bore - 1.125) < 1e-6, hint: 'MC bore: 1 1/8.' } },
+  { body: '', ctl: ['bore', 'effort'], goal: { mc: { q: 'Bigger bore. What happened?', opts: ['Lower pressure (same force, more area) but a shorter pedal: each inch of stroke moves more fluid', 'Higher pressure', 'No change'], a: 0, why: 'A big bore gives a short, firm, hard-working pedal; a small bore gives more pressure and more travel.' } } },
+  { body: 'Now pick a <b>3/4 in</b> bore.', ctl: ['bore', 'effort'], goal: { check: () => Math.abs(S.c.bore - 0.75) < 1e-6, hint: 'MC bore: 3/4.' } },
+  { body: '', ctl: ['bore', 'effort'], goal: { mc: { q: 'Small bore. Why does a replacement master cylinder have to match the original bore size?', opts: ['The bore is engineered with the pedal ratio and booster; the wrong size changes pressure, pedal travel and brake balance', 'It only changes the color', 'Bore size doesn\'t matter if the outlets fit'], a: 0, why: 'Engineers balance pedal ratio, booster, bore and wheel piston sizes together. Always match the original part.' } } },
+] },
+{ id: 'split', title: 'Split systems and the warning lamp', sub: 'Two circuits, so one leak can\'t take all the brakes', steps: [
+  { body: 'A <b>tandem</b> master cylinder has two pistons feeding two separate circuits (A and B). If one circuit leaks, the other still stops the car.', setup: { reset: true, effort: 40, layout: 'fr' } },
+  { body: 'A front brake line just ruptured: <b>circuit A (the front brakes on this car) is empty</b>. Look at the pedal, the gauges and the dash lamp.', setup: { reset: true, effort: 40, layout: 'fr', fault: 'leak', circuit: 'A' }, goal: { mc: { q: 'What does the driver notice?', opts: ['A lower pedal, the red BRAKE lamp, and much weaker stopping: only the rear brakes work', 'Nothing until all the fluid is gone', 'A harder pedal'], a: 0, why: 'The primary piston travels until it pushes the secondary piston directly. That costs pedal travel. The pressure-differential switch (and the level sensor) light the red BRAKE lamp.' } } },
+  { body: 'Switch the layout to <b>Diagonal split</b>. Circuit A is still the empty one.', ctl: ['layout', 'effort'], goal: { check: () => S.c.layout === 'diag', hint: 'Layout: Diagonal · 4 disc.' } },
+  { body: '', ctl: ['layout', 'effort'], goal: { mc: { q: 'Why do most front-drive cars use a diagonal split?', opts: ['Each circuit keeps one front brake, and the fronts do most of the stopping, so half the system still stops reasonably well', 'It needs less brake line', 'Rear brakes do most of the stopping'], a: 0, why: 'Front-drive cars carry most of their weight up front. A diagonal split keeps one front brake on either circuit. The steering geometry (negative scrub radius) keeps the pull small.' } } },
+] },
+{ id: 'prop', title: 'Proportioning and weight transfer', sub: 'Why the rear gets less pressure', steps: [
+  { body: 'In a hard stop, weight shifts <b>forward</b>. The rear tires lose grip just when you need it. The <b>proportioning valve</b> limits rear pressure above its split point (450 psi on this car).', setup: { reset: true, effort: 30 } },
+  { body: 'Press harder: <b>70 lb</b> or more.', ctl: ['effort'], goal: { check: () => S.c.effort >= 70, hint: 'Pedal effort 70 lb or more.' } },
+  { body: '', ctl: ['effort'], goal: { mc: { q: 'Compare the front and rear gauges now.', opts: ['The rear pressure is lower: the valve passes only part of the pressure above the split point', 'All four are equal', 'The rear is higher'], a: 0, why: 'Below the split point all four are equal. Above it, the rear rises at a reduced rate so the rear tires don\'t lock first.' } } },
+  { body: 'Now the proportioning valve has <b>failed</b>: it passes full pressure to the rear. In the <b>Panic stop</b> panel, choose <b>Dry</b>, set <b>ABS off</b>, and press <b>Run</b>.', setup: { reset: true, effort: 40, fault: 'prop', abs: false, surf: 'dry' }, goal: { check: () => S.stop && !S.stop.abs && S.stop.surf === 'dry' && S.c.fault === 'prop' && !S.play, hint: 'Panic stop panel: Dry, ABS off, Run.' } },
+  { body: '', goal: { mc: { q: 'What happened in the panic stop?', opts: ['The rear wheels locked first; a car with locked rears wants to spin around', 'The fronts locked first', 'It stopped shorter than normal'], a: 0, why: 'Locked rears give up their side grip, so the back of the car swings around. Newer cars with ABS do the proportioning electronically (EBD) using the ABS valves.' } } },
+] },
+{ id: 'air', title: 'Spongy or low pedal?', sub: 'Air vs. too much clearance', steps: [
+  { body: 'Fluid doesn\'t compress, but <b>air does</b>. Even a small bubble turns pedal travel into squeezing air instead of moving pistons.', setup: { reset: true, effort: 40 } },
+  { body: 'The left front caliper was just replaced and <b>nobody bled it</b>. Look at the pedal travel and the feel chip on the Gauges panel.', setup: { reset: true, effort: 40, fault: 'air' }, goal: { mc: { q: 'How does the pedal feel now?', opts: ['Spongy: low, with springy travel before it firms up', 'Hard', 'Normal'], a: 0, why: 'The bubble compresses as pressure rises. You feel it as a soft, springy pedal.' } } },
+  { body: '<b>Bleed the brakes</b> to push the air out at the bleeder screw.', ctl: ['bleed', 'effort'], goal: { check: () => S.c.fault !== 'air', hint: 'Press Bleed brakes.' } },
+  { body: 'Different car: the <b>rear drum shoes are out of adjustment</b>. The pedal is low. Now press <b>Pump ×3</b>.', setup: { reset: true, effort: 40, layout: 'fr', fault: 'drum' }, ctl: ['pump', 'effort'], goal: { check: () => S.c.pumped, hint: 'Press Pump ×3.' } },
+  { body: '', ctl: ['pump', 'effort'], goal: { mc: { q: 'Which is which?', opts: ['Low but firm and it pumps up = too much clearance (adjust the drums). Spongy that stays soft = air (bleed)', 'Both mean air', 'A pedal that pumps up means a bad booster'], a: 0, why: 'Pumping refills the extra clearance faster than the shoes can retract, so a clearance problem pumps up. Air stays springy no matter how you pump.' } } },
+] },
+{ id: 'fluid', title: 'Brake fluid and fade', sub: 'Water lowers the boiling point', steps: [
+  { body: 'DOT 3, 4 and 5.1 fluids are <b>hygroscopic</b>: they pull water out of the air through hoses and seals. Water lowers the boiling point. DOT 3: <b>401 °F dry</b>, <b>284 °F wet</b> (3.7 % water).', setup: { reset: true, effort: 40 } },
+  { body: 'Set <b>Water in fluid</b> to <b>4 %</b> or more.', ctl: ['water', 'effort'], goal: { check: () => S.c.water >= 4, hint: 'Water in fluid ≥ 4.0 %.' } },
+  { body: 'The pedal is still fine. Now make the brakes hot: <b>Mountain descent</b>.', ctl: ['hot', 'water', 'effort'], goal: { check: () => S.c.hot, hint: 'Brake temp: Mountain descent.' } },
+  { body: '', ctl: ['hot', 'water', 'effort'], goal: { mc: { q: 'What happened?', opts: ['The fluid boiled in the calipers; the vapor compresses like air, so the pedal went to the floor', 'The pads wore out', 'The booster failed'], a: 0, why: 'This is fluid fade. It goes away when the brakes cool down, so the customer often says "it\'s fine now".' } } },
+  { body: '<b>Flush the fluid</b> to replace it with fresh fluid.', ctl: ['flush', 'hot', 'effort'], goal: { check: () => S.c.water < 1, hint: 'Press Flush fluid.' } },
+  { body: '', ctl: ['flush', 'hot', 'effort'], goal: { mc: { q: 'How do you check fluid condition in the shop?', opts: ['A test strip or a boiling-point tester. Color alone doesn\'t tell you the water content', 'Smell it', 'Check that the level is at FULL'], a: 0, why: 'Test it (strips measure copper/moisture; a tester reads the boiling point) and follow the OEM flush interval.' } } },
+] },
+{ id: 'abs', title: 'ABS basics', sub: 'Hold, dump, reapply', steps: [
+  { body: 'A tire grips best when it is slipping a little, around <b>10–20 %</b>. A locked tire slides with less grip and <b>can\'t steer</b>. ABS watches wheel speed and controls each wheel\'s pressure with an <b>inlet (isolation) valve</b> and an <b>outlet (dump) valve</b>.', setup: { reset: true, effort: 40, surf: 'wet' } },
+  { body: 'In the <b>Panic stop</b> panel choose <b>Wet</b>, set <b>ABS off</b>, and press <b>Run</b>.', goal: { check: () => S.stop && !S.stop.abs && S.stop.surf === 'wet' && !S.play, hint: 'Panic stop: Wet, ABS off, Run.' } },
+  { body: '', goal: { mc: { q: 'The blue LF wheel speed dropped to zero while the car kept moving. What did the driver lose?', opts: ['Steering: a locked tire slides and can\'t steer. The stop is also longer', 'Nothing', 'Pedal feel'], a: 0, why: 'Locked front tires plow straight ahead no matter where the wheel is turned.' } } },
+  { body: 'Now set <b>ABS on</b> and <b>Run</b> again (still Wet).', goal: { check: () => S.stop && S.stop.abs && S.stop.surf === 'wet' && !S.play, hint: 'Panic stop: Wet, ABS on, Run.' } },
+  { body: '', goal: { mc: { q: 'The amber pressure line saws up and down several times a second. What is ABS doing?', opts: ['Holding (inlet closed), dumping (outlet open) and reapplying to keep the wheel just short of locking', 'Pumping fluid out of the system for good', 'Raising pressure as high as it can'], a: 0, why: 'You feel this as pedal pulsation and hear the pump. That is normal. On gravel it can grind and buzz: also normal.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) {
+  if (!su) return;
+  if (su.reset) { S.c = BASEC(); S.hold = 0; S.stop = null; S.abs = true; S.surf = 'dry'; }
+  for (const k of ['effort', 'layout', 'circuit', 'side']) if (k in su) S.c[k] = su[k];
+  if ('fault' in su) setFault(su.fault);
+  if ('abs' in su) S.abs = su.abs;
+  if ('surf' in su) S.surf = su.surf;
+}
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); renderViews(); }
+function checkGoal() {
+  const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return;
+  if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); }
+}
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up the car, tells you what to change and watch, and checks your answer.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  if (st.ctl) h += `<h4>Controls</h4>` + ctlHTML(st.ctl);
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['ctl', 'Controls']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'ctl' ? exploreHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function stopAnims() { if (S.play) cancelAnimationFrame(S.play.raf); S.play = null; S.playAbs = null; if (S.holdAnim) clearInterval(S.holdAnim); S.holdAnim = null; }
+function setMode(m) {
+  if (S.mode === m) return;
+  stopAnims();
+  S.mode = m;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore' || m === 'guided') { S.c = BASEC(); S.hold = 0; S.stop = null; S.abs = true; S.surf = 'dry'; S.lesson = null; }
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); else { S.stop = null; } }
+  renderPanel(); renderViews();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function changed(stale = true) { if (stale) S.stop = null; renderViews(); checkGoal(); }
+function holdTest() {
+  if (S.holdAnim) return;
+  if (S.c.effort <= 0) S.c.effort = 40;
+  const t0 = performance.now();
+  S.holdAnim = setInterval(() => {            // 20 s of holding shown in 4 s
+    S.hold = Math.min(20, (performance.now() - t0) / 1000 * 5);
+    renderViews();
+    const btn = document.querySelector('[data-act="hold"]'); if (btn) btn.textContent = 'Held ' + Math.round(S.hold) + ' s';
+    if (S.hold >= 20) { clearInterval(S.holdAnim); S.holdAnim = null; renderPanel(); }
+  }, 60);
+}
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  const c = S.c;
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'release': stopAnims(); c.effort = 0; c.pumped = false; S.hold = 0; renderPanel(); changed(false); break;
+    case 'pump': if (c.effort <= 0) c.effort = 40; c.pumped = true; S.hold = 0; renderPanel(); changed(false); break;
+    case 'hold': holdTest(); break;
+    case 'engine': c.engine = v === '1'; renderPanel(); changed(); break;
+    case 'layout': c.layout = v; if (c.fault === 'drum' && v !== 'fr') c.fault = null; renderPanel(); changed(); break;
+    case 'bore': c.bore = +v; renderPanel(); changed(); break;
+    case 'hot': c.hot = v === '1'; renderPanel(); changed(); break;
+    case 'warm': c.warm = v === '1'; renderPanel(); changed(); break;
+    case 'fault': setFault(v); renderPanel(); changed(); break;
+    case 'side': c.side = v; renderPanel(); changed(); break;
+    case 'circ': c.circuit = v; renderPanel(); changed(); break;
+    case 'bleed': if (c.fault === 'air') c.fault = null; c.pumped = false; toast(c.hot && bp(c.water) < 330 ? 'Bled, but the fluid will boil again when hot. Flush it.' : 'Brakes bled: air removed.', 'good'); renderPanel(); changed(); break;
+    case 'flush': c.water = 0.5; if (c.fault === 'boil') c.fault = null; if (c.fault === 'air') c.fault = null; toast('Fresh fluid: boiling point ' + bp(c.water) + ' °F.', 'good'); renderPanel(); changed(); break;
+    case 'reset': S.c = BASEC(); S.hold = 0; renderPanel(); changed(); break;
+    case 'test': runTest(v); break;
+    case 'dx': S.dx.pick = v; S.dx.pside = null; S.dx.wrong = null; renderPanel(); break;
+    case 'dxs': S.dx.pside = v; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('brakes.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#pbody').addEventListener('input', e => {
+  const t = e.target, k = t.dataset.c; if (!k) return;
+  const c = S.c, v = +t.value; c[k] = v;
+  const o = $('#o-' + k);
+  if (o) o.textContent = k === 'effort' ? v + ' lb' : k === 'ratio' ? v.toFixed(1) + ' : 1' : k === 'cal' ? v.toFixed(3) + ' in' : k === 'water' ? v.toFixed(1) + ' %' : v;
+  if (k === 'water' && $('#o-bp')) $('#o-bp').textContent = bp(v) + ' °F';
+  if (k === 'effort') { if (S.holdAnim) { clearInterval(S.holdAnim); S.holdAnim = null; } S.hold = 0; if (v === 0) c.pumped = false; }
+  changed(k !== 'effort');
+});
+$('#pbody').addEventListener('change', e => { if (e.target.dataset.c) renderPanel(); });
+$('#surf').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (!s || S.mode === 'diagnose') return; S.surf = s; S.stop = null; drawStop(); });
+$('#absBtn').addEventListener('click', () => { if (S.mode === 'diagnose') return; S.abs = !S.abs; S.stop = null; drawStop(); });
+$('#runStop').addEventListener('click', () => { if (S.mode !== 'diagnose') runStop(true); });
+
+renderPanel(); renderViews();
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__B = { S, model, panic, setMode, newCase, runTest, runStop, testOut, LESSONS, CAUSES, FAULTS, curStep, renderViews, renderPanel, setFault, BASEC,
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
