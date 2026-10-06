@@ -5,7 +5,8 @@ Static site for testing the job-sheet tools on GitHub Pages (especially on Chrom
 ## Contents
 | File | What |
 |---|---|
-| `index.html` | Landing page — links to the tools + the test pack |
+| `index.html` | **Tools hub** — one landing page for every student tool + Lab Builder. To add a tool, add one entry to `TOOLS` in its script. |
+| `lab-builder.html` | Lab Builder test page — links to Student/Grader/Builder + the test pack |
 | `Student.html` | Student *Fill* app (loads `engine.js`) |
 | `Grader.html` | Instructor *Grade* app (loads `engine.js`) |
 | `Builder.html` | Instructor *Author* app (standalone) |
@@ -17,7 +18,7 @@ Static site for testing the job-sheet tools on GitHub Pages (especially on Chrom
 1. Repo **Settings → Pages**.
 2. **Source:** *Deploy from a branch* → Branch **`main`**, folder **`/ (root)`** → **Save**.
 3. Wait ~1 min; the site publishes at `https://<user>.github.io/<repo>/`.
-4. Open `…/Student.html` (or the landing `index.html`).
+4. Open `…/` for the tools hub, or `…/Student.html` directly.
 
 ## Why host instead of using Canvas file attachments
 `Student.html`/`Grader.html` load `engine.js` by a sibling path (`<script src="engine.js">`). GitHub Pages preserves that folder layout so it resolves; Canvas gives each uploaded file its own opaque URL and sandboxes HTML, so the app breaks there. Link to this hosted app from Canvas instead, and attach the pack for students to load.

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STECH Lab Builder — Test Site</title>
+<style>
+  :root{ --blue:#047BC1; --deep:#024a76; --ink:#1f242b; --muted:#6c7580; --line:#d9dfe6; --wash:#e8f2fb; --ground:#f5f7fa; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+  header{border-bottom:2px solid var(--blue);padding-bottom:14px;margin-bottom:22px}
+  .badge{display:inline-block;background:var(--blue);color:#fff;font-weight:700;font-size:12px;
+    letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:5px}
+  h1{font-size:26px;margin:12px 0 2px}
+  .sub{color:var(--muted);font-size:14px}
+  .note{background:#fff;border:1px solid var(--line);border-left:3px solid var(--blue);
+    border-radius:0 8px 8px 0;padding:14px 16px;margin:18px 0;font-size:14.5px}
+  .note b{color:var(--deep)}
+  .cards{display:grid;gap:14px;grid-template-columns:1fr}
+  @media(min-width:620px){.cards{grid-template-columns:1fr 1fr}}
+  a.card{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);
+    border-radius:10px;padding:16px 18px;transition:border-color .15s,box-shadow .15s}
+  a.card:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(4,123,193,.12)}
+  a.card .k{font-weight:700;font-size:16px}
+  a.card .k .who{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    color:#fff;background:var(--muted);border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:2px}
+  a.card.stu .k .who{background:var(--blue)}
+  a.card .d{color:var(--muted);font-size:13px;margin-top:4px}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    margin:26px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  ol{padding-left:20px} ol li{margin:6px 0;font-size:14.5px}
+  code{background:#eef2f6;border-radius:4px;padding:1px 5px;font-size:.9em}
+  .pack{display:inline-block;margin-top:6px;font-size:14px}
+  footer{margin-top:34px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">STECH · Automotive Technology</span>
+    <h1>Lab Builder — Test Site</h1>
+    <div class="sub">Internal hosting test. Not for students yet. Automatic Transmissions is the loaded test course.</div>
+  </header>
+
+  <div class="note">
+    <b>What this page is for:</b> confirming the job-sheet tools run correctly when hosted (especially on a Chromebook) — the app + its <code>engine.js</code> load together from here, which they can't do reliably as Canvas file attachments.
+  </div>
+
+  <div class="cards">
+    <a class="card stu" href="Student.html"><div class="k">Student · Fill<span class="who">Student</span></div>
+      <div class="d">Open a lab pack, fill job sheets, save/continue your work, submit finished jobs.</div></a>
+    <a class="card" href="Grader.html"><div class="k">Grader · Grade<span class="who">Instructor</span></div>
+      <div class="d">Drop the pack + student submissions; re-checks each and exports a results CSV.</div></a>
+    <a class="card" href="Builder.html"><div class="k">Builder · Author<span class="who">Instructor</span></div>
+      <div class="d">Build/edit job sheets, check accreditation coverage, Publish a pack.</div></a>
+    <a class="card" href="auto-trans-full-draft.json" download><div class="k">Automatic Transmissions pack<span class="who">.json</span></div>
+      <div class="d">The test lab pack (46 job sheets). Download, then load it into Student or Grader.</div></a>
+  </div>
+
+  <h2>How to test (student side)</h2>
+  <ol>
+    <li>Download the <b>Automatic Transmissions pack</b> above (saves to your Downloads / Drive).</li>
+    <li>Open <b>Student · Fill</b>. Click <b>Browse for a file</b> and pick the pack you just downloaded.</li>
+    <li>Enter a name + vehicle, open a JOB, fill it in — confirm the button turns into <b>Submit job sheet</b> when complete.</li>
+    <li>Try <b>Save my work (Drive)</b>, then reopen that one file to confirm your pack + answers come back.</li>
+    <li>Confirm it all works on a <b>Chromebook</b> under the normal student login (no console errors, downloads allowed).</li>
+  </ol>
+
+  <footer>
+    STECH Lab Builder · test deployment. Lab content only — no student data is stored here. Canonical tool sources live in the Lab Builder vault; this site is a copy for hosting tests.
+  </footer>
+</div>
+</body>
+</html>
