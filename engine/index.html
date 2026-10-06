@@ -4,19 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Engine: How It Works</title>
-<meta name="description" content="3D inline-4 engine: watch the 4-stroke cycle, cam and crank timing, valve overlap and firing order. Proof of concept with a built-in Chromebook benchmark.">
+<meta name="description" content="3D inline-4 engine: learn the 4-stroke cycle, cam and crank timing, valve overlap and firing order, then break it and diagnose it with compression, leakdown, relative compression and vacuum tests.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
 /* Same single-theme dark "instrument" look as the DTC Visualizer, Test Bench and Wiring Diagram Reader.
-   Full-window 3D canvas with overlay panels. No backdrop blur (too expensive on old Chromebooks). */
+   Full-window 3D canvas; overlay top bar, dock (bottom-left) and notebook (right). No backdrop blur: too
+   expensive on old Chromebooks. Below 1000px the notebook becomes a bottom drawer. */
 :root{
   color-scheme: dark;
   --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
   --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
   --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
   --intake:#3BA7F0; --compression:#3DDC97; --power:#FF6A3D; --exhaust:#A3ACB6;
+  --sideW:clamp(330px,30vw,400px);
   --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
   --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
@@ -27,28 +29,36 @@ html,body{height:100%;margin:0;overflow:hidden}
 body{background:radial-gradient(1200px 700px at 30% 0%,#122030 0%,#0a0f15 55%,var(--bg) 100%);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
 
 /* ---------- top bar ---------- */
-.top{position:fixed;top:10px;left:16px;right:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;pointer-events:none;z-index:5}
+.top{position:fixed;top:10px;left:16px;right:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;pointer-events:none;z-index:8}
 .top>*{pointer-events:auto}
 .brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0;pointer-events:none}
 .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
 .brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
 .brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
-.grp{display:flex;align-items:center;gap:7px}
-.grp>label{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
-.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:rgba(14,19,25,.92);border:1px solid var(--line)}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:rgba(14,19,25,.94);border:1px solid var(--line)}
 .seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .seg button:hover{color:var(--fg)}
 .seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.seg button[disabled]{opacity:.35;cursor:not-allowed}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg.mini{padding:2px;border-radius:8px}
+.seg.mini button{padding:5px 8px;font-size:10px;border-radius:6px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
 .btn:hover{border-color:#3a4a5c}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.icon{padding:8px;width:34px;justify-content:center}
-.fps{font:500 11.5px/1 var(--f-mono);color:var(--dim);padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:rgba(14,19,25,.92);white-space:nowrap;min-width:92px;text-align:center}
+.btn.icon{padding:8px;width:34px}
+.btn.small{padding:6px 10px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+#nbBtn{display:none}
+.pop{position:fixed;z-index:30;top:58px;right:16px;padding:12px;border-radius:14px;background:rgba(13,18,24,.98);border:1px solid var(--line-2);box-shadow:0 30px 70px -20px rgba(0,0,0,.95);display:grid;gap:10px;width:min(300px,calc(100% - 32px))}
+.pop h4{margin:0;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.fps{font:500 11.5px/1 var(--f-mono);color:var(--dim)}
 .fps b{color:var(--fg);font-weight:600}
 
 /* ---------- cylinder labels ---------- */
@@ -56,39 +66,37 @@ button{font:inherit;color:inherit}
 .clab{all:unset;pointer-events:auto;cursor:pointer;position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:4px 9px 4px 4px;border-radius:999px;background:rgba(11,16,21,.9);border:1px solid var(--c,var(--line-2));font:600 11px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--c,var(--fg));white-space:nowrap;will-change:transform}
 .clab b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--c,var(--line-2));color:#081018;font:700 12px/1 var(--f-label);letter-spacing:0}
 .clab.sel{box-shadow:0 0 0 2px rgba(255,255,255,.25)}
-.clab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* ---------- part info ---------- */
+/* ---------- part info + toast ---------- */
 .info{position:fixed;top:64px;left:16px;z-index:6;width:min(330px,calc(100% - 32px));padding:12px 14px;border-radius:14px;background:rgba(13,18,24,.96);border:1px solid var(--line-2);box-shadow:0 24px 60px -24px rgba(0,0,0,.9)}
 .info h3{margin:0 30px 4px 0;font:600 15px/1.2 var(--f-label);letter-spacing:.03em}
 .info p{margin:0;font-size:13.5px;color:var(--soft)}
 .info .x{position:absolute;top:8px;right:8px}
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:40;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);box-shadow:0 20px 40px -20px #000;max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
 
 /* ---------- dock ---------- */
-.dock{position:fixed;left:16px;right:16px;bottom:12px;z-index:5;display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);gap:14px;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:rgba(12,17,23,.93);box-shadow:0 20px 50px -30px rgba(0,0,0,.9)}
-.cap{min-height:74px}
-.cap .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;font:700 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;border:1px solid currentColor}
-.cap h2{margin:0;font:600 15px/1 var(--f-label);letter-spacing:.06em}
-.cap p{margin:7px 0 0;font-size:13.5px;color:var(--soft);line-height:1.4}
-.vs{display:flex;gap:12px;margin-top:6px;font:500 11.5px/1 var(--f-mono);color:var(--dim)}
-.vs span{display:inline-flex;align-items:center;gap:6px}
-.vs i{display:block;width:34px;height:6px;border-radius:3px;background:var(--line-2);overflow:hidden;position:relative}
+.dock{position:fixed;left:16px;right:calc(var(--sideW) + 28px);bottom:12px;z-index:5;display:grid;gap:7px;padding:10px 14px 10px;border-radius:16px;border:1px solid var(--line);background:rgba(12,17,23,.94);box-shadow:0 20px 50px -30px rgba(0,0,0,.9)}
+.drow{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap}
+.cap{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 260px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;font:700 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;border:1px solid currentColor;white-space:nowrap}
+.cap h2{margin:0;font:600 15px/1 var(--f-label);letter-spacing:.06em;white-space:nowrap}
+.vs{display:flex;gap:10px;font:500 11px/1 var(--f-mono);color:var(--dim);margin-left:auto}
+.vs span{display:inline-flex;align-items:center;gap:5px}
+.vs i{display:block;width:30px;height:6px;border-radius:3px;background:var(--line-2);overflow:hidden;position:relative}
 .vs i::after{content:"";position:absolute;inset:0;transform-origin:left;transform:scaleX(var(--v,0));background:var(--k)}
-.transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
-.slider{display:flex;align-items:center;gap:8px;flex:1;min-width:150px}
+#capP{margin:0;font-size:13.5px;color:var(--soft);line-height:1.38;min-height:2.76em}
+.transport{display:flex;align-items:center;gap:8px;flex:1 1 300px}
+.slider{display:flex;align-items:center;gap:8px;flex:1;min-width:120px}
 .slider label{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
-.slider output{font:500 11.5px/1 var(--f-mono);color:var(--soft);white-space:nowrap;min-width:62px;text-align:right}
+.slider output{font:500 11.5px/1 var(--f-mono);color:var(--soft);white-space:nowrap;min-width:58px;text-align:right}
 input[type=range]{flex:1;min-width:60px;accent-color:var(--accent);height:22px}
-.chartwrap{min-width:0;display:flex;flex-direction:column;gap:6px}
-.chartwrap .hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.chartwrap h4{margin:0;font:600 10.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
-.read{font:500 11.5px/1 var(--f-mono);color:var(--soft);margin-left:auto;white-space:nowrap}
-.key{display:flex;gap:10px;flex-wrap:wrap;font:500 10.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.key span{display:inline-flex;align-items:center;gap:5px}
-.key i{width:12px;height:8px;border-radius:2px;background:var(--k)}
-.key i.ln{height:3px}
-#chart{width:100%;height:auto;display:block;cursor:pointer;user-select:none;touch-action:none}
+.chartwrap{min-width:0;display:flex;flex-direction:column;gap:4px}
+.chartwrap .hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:600 10.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.chartwrap .hd i{font-style:normal}
+.read{font:500 11.5px/1 var(--f-mono);color:var(--soft);margin-left:auto;white-space:nowrap;letter-spacing:0;text-transform:none}
+#chart{width:100%;height:auto;display:block;cursor:pointer;user-select:none;touch-action:none;max-height:120px}
 #chart .tick{stroke:#26313d;stroke-width:1}
 #chart .tick.minor{stroke:#1a232d;stroke-dasharray:2 3}
 #chart .tl{fill:#5A6773;font:600 10px var(--f-mono);text-anchor:middle}
@@ -98,8 +106,114 @@ input[type=range]{flex:1;min-width:60px;accent-color:var(--accent);height:22px}
 #chart .rowsel{fill:rgba(47,155,224,.10)}
 #chart #cur{stroke:#fff;stroke-width:2}
 
+/* ---------- notebook (side) ---------- */
+.side{position:fixed;right:16px;top:62px;bottom:12px;width:var(--sideW);z-index:6;display:flex;flex-direction:column;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(14,19,25,.97),rgba(11,16,21,.97));box-shadow:0 20px 50px -30px rgba(0,0,0,.9);overflow:hidden}
+.tabs{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 12px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tabs .x{margin-left:auto;display:none}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 10px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);letter-spacing:.02em;color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.pbody .dim{color:var(--dim);font-size:13px}
+.pbody ul{margin:0 0 10px;padding-left:18px}
+.pbody li{margin:2px 0}
+.cards{display:grid;gap:7px}
+.card{all:unset;cursor:pointer;display:grid;gap:3px;padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label);letter-spacing:.02em}
+.card span{font-size:12.5px;color:var(--dim);line-height:1.35}
+.cyls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cyls .lbl,.trow .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.cc{all:unset;cursor:pointer;min-width:30px;height:30px;padding:0 8px;box-sizing:border-box;border-radius:8px;display:grid;place-items:center;border:1px solid var(--line-2);background:var(--raise);font:600 13px/1 var(--f-label);color:var(--soft)}
+.cc[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.cc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tpick{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tpick button{all:unset;cursor:pointer;padding:6px 9px;border-radius:8px;border:1px solid var(--line);font:600 10.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.tpick button[aria-pressed="true"]{border-color:var(--accent);color:var(--fg);background:rgba(47,155,224,.12)}
+.tpick button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tnote{font-size:13px;color:var(--dim);line-height:1.4}
+.trow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.inst{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:10px;align-items:center;margin:6px 0 4px}
+.inst .r{display:grid;gap:8px;align-content:center;justify-items:start}
+.dial{width:100%;height:auto;display:block}
+.dial .face{fill:#0a0f14;stroke:#2A3644;stroke-width:2}
+.dial .tk{stroke:#8A98A8;stroke-width:2}
+.dial .tk.mn{stroke:#4a5866;stroke-width:1}
+.dial .tn{fill:#8A98A8;font:600 11px var(--f-mono);text-anchor:middle;dominant-baseline:middle}
+.dial .tu{fill:#5A6773;font:600 10px var(--f-label);letter-spacing:.14em;text-anchor:middle;text-transform:uppercase}
+.dial .tv{fill:#E6EDF3;font:600 17px var(--f-mono);text-anchor:middle}
+.dial .nd{stroke:#FF5A4E;stroke-width:3;stroke-linecap:round}
+.dial .hub{fill:#2A3644;stroke:#8A98A8}
+.big{font:600 26px/1 var(--f-mono);color:var(--fg)}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft)}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.puffs{font:500 12.5px/1.5 var(--f-mono);color:var(--soft)}
+.listen{display:grid;gap:5px;margin-top:6px}
+.listen button{all:unset;cursor:pointer;display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--raise);font-size:13px}
+.listen button b{font:600 12px/1.1 var(--f-label);letter-spacing:.06em;color:var(--fg)}
+.listen button span{color:var(--dim)}
+.listen button.heard span{color:var(--soft)}
+.listen button.loud{border-color:rgba(255,178,36,.55)}
+.listen button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+table.rt{width:100%;border-collapse:collapse;font:500 12.5px/1.2 var(--f-mono);margin:10px 0 6px}
+table.rt th{font:600 10px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);text-align:right;padding:5px 6px;border-bottom:1px solid var(--line)}
+table.rt td{text-align:right;padding:6px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.rt th:first-child,table.rt td:first-child{text-align:left}
+table.rt td.lo{color:#FFB3AC}
+.spec{font-size:12.5px;color:var(--dim)}
+.spark{width:100%;height:56px;display:block;margin-top:4px}
+.wave{width:100%;height:auto;display:block}
+.bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+.bars div{display:grid;gap:4px;justify-items:center;font:600 11px/1 var(--f-mono);color:var(--soft)}
+.bars i{display:block;width:100%;height:60px;border-radius:6px;background:var(--line);position:relative;overflow:hidden}
+.bars i::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--h)*100%);background:var(--k,var(--accent))}
+/* lessons */
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}
+.dots i.on{background:var(--accent)}
+.goal{display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.goal svg{flex:none;margin-top:2px}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+ol.log{margin:0;padding-left:20px;font:500 12px/1.5 var(--f-mono);color:var(--soft)}
+.ev{margin:8px 0 0;padding-left:18px;font-size:13px}
+
 /* ---------- modal ---------- */
-.modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(4,6,9,.7)}
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(4,6,9,.7)}
 .sheet{width:min(560px,100%);max-height:calc(100% - 20px);overflow:auto;padding:18px 18px 16px;border-radius:16px;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 30px 80px -20px rgba(0,0,0,.95)}
 .sheet h3{margin:0 0 4px;font:600 18px/1.2 var(--f-label);letter-spacing:.03em}
 .sheet p{margin:0 0 10px;color:var(--soft);font-size:14px}
@@ -113,21 +227,23 @@ input[type=range]{flex:1;min-width:60px;accent-color:var(--accent);height:22px}
 .verdict.fail{border-color:rgba(255,90,78,.5);background:rgba(255,90,78,.08);color:#FFD2CD}
 pre{margin:0 0 12px;padding:10px;border-radius:10px;background:#070a0e;border:1px solid var(--line);font:500 11.5px/1.5 var(--f-mono);color:var(--soft);white-space:pre-wrap;word-break:break-word}
 .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-.benchbar{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:7;padding:10px 14px;border-radius:12px;background:rgba(13,18,24,.96);border:1px solid var(--accent);font:600 12px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.benchbar{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:45;padding:10px 14px;border-radius:12px;background:rgba(13,18,24,.96);border:1px solid var(--accent);font:600 12px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:10px;white-space:nowrap}
 .benchbar i{display:block;width:120px;height:5px;border-radius:3px;background:var(--line-2);overflow:hidden}
 .benchbar i::after{content:"";display:block;height:100%;width:calc(var(--p,0)*100%);background:var(--accent)}
 .nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--soft)}
 
-@media (max-width: 900px){
-  .dock{grid-template-columns:minmax(0,1fr);gap:8px;padding:10px 12px}
-  .cap{min-height:0}
-  .cap p{font-size:13px}
-  .key{display:none}
+@media (max-width: 999px){
+  .dock{right:16px}
+  #nbBtn{display:inline-flex}
+  .side{left:16px;right:16px;top:auto;width:auto;height:min(64vh,580px);transform:translateY(calc(100% + 20px));transition:transform .2s ease;z-index:9}
+  .side.open{transform:none}
+  .tabs .x{display:inline-flex}
 }
 @media (max-width: 640px){
   .brand p{display:none}
   .top .hide-sm{display:none}
-  .info{top:auto;bottom:calc(100% - 100px)}
+  #capP{font-size:12.5px}
+  .vs{display:none}
 }
 </style>
 <script type="importmap">
@@ -146,38 +262,41 @@ pre{margin:0 0 12px;padding:10px;border-radius:10px;background:#070a0e;border:1p
     <div class="mark" aria-hidden="true">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="7" rx="1.5"/><path d="M12 10v5"/><circle cx="12" cy="18" r="3"/><path d="M5 6h2M17 6h2"/></svg>
     </div>
-    <div><h1>Engine: How It Works</h1><p>Inline-4 · 3D proof of concept</p></div>
+    <div><h1>Engine: How It Works</h1><p>Inline-4 · Learn it, break it, diagnose it</p></div>
   </div>
-  <div class="grp hide-sm"><label>View</label>
-    <div class="seg" id="views">
-      <button data-v="iso" aria-pressed="true">3/4</button><button data-v="side">Side</button><button data-v="front">Timing end</button><button data-v="top">Top</button>
-    </div>
+  <div class="seg modes" id="modes" role="group" aria-label="Mode">
+    <button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button>
   </div>
-  <div class="grp"><label class="hide-sm">Show</label>
-    <div class="seg" id="layers">
-      <button data-l="shell" aria-pressed="true" title="Block and head outline">Block</button><button data-l="labels" aria-pressed="true" title="Cylinder stroke labels">Labels</button>
-    </div>
+  <div class="seg hide-sm" id="views" role="group" aria-label="View">
+    <button data-v="iso" aria-pressed="true">3/4</button><button data-v="side">Side</button><button data-v="front">Timing end</button><button data-v="top">Top</button>
   </div>
-  <div class="grp"><label class="hide-sm">Quality</label>
-    <div class="seg" id="quality">
-      <button data-q="low">Low</button><button data-q="med">Med</button><button data-q="high">High</button>
-    </div>
+  <div class="seg" id="layers" role="group" aria-label="Show">
+    <button data-l="shell" aria-pressed="true" title="Block and head outline">Block</button><button data-l="labels" aria-pressed="true" title="Cylinder stroke labels">Labels</button>
   </div>
-  <button class="btn" id="benchBtn" title="Run a 10-second frame-rate test">Benchmark</button>
-  <div class="fps" id="fps" title="Frames per second">— fps</div>
+  <button class="btn" id="nbBtn" aria-controls="side" aria-expanded="false">Notebook</button>
+  <button class="btn icon" id="gear" aria-label="Display settings and benchmark" aria-expanded="false" title="Display settings">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
 </header>
+
+<div class="pop" id="pop" hidden>
+  <h4>Quality</h4>
+  <div class="seg" id="quality"><button data-q="low">Low</button><button data-q="med">Med</button><button data-q="high">High</button></div>
+  <h4>Performance</h4>
+  <div class="fps" id="fps">— fps</div>
+  <button class="btn" id="benchBtn" title="Run a 10-second frame-rate test">Run benchmark</button>
+</div>
 
 <aside class="info" id="info" hidden role="status">
   <button class="btn icon x" id="infoX" aria-label="Close">✕</button>
   <h3 id="infoT"></h3><p id="infoP"></p>
 </aside>
+<div id="toast" hidden role="status" aria-live="polite"></div>
 
 <section class="dock" aria-label="Engine controls">
-  <div>
-    <div class="cap" id="cap" aria-live="polite">
-      <div class="row"><span class="chip" id="capChip">Cyl 1</span><h2 id="capT">Power stroke</h2></div>
-      <p id="capP"></p>
-      <div class="vs"><span>IN <i id="vsI" style="--k:var(--intake)"></i></span><span>EX <i id="vsE" style="--k:#FF8A4C"></i></span><span id="vsTxt"></span></div>
+  <div class="drow">
+    <div class="cap"><span class="chip" id="capChip">Cyl 1</span><h2 id="capT">Power stroke</h2>
+      <div class="vs"><span>IN <i id="vsI" style="--k:var(--intake)"></i></span><span>EX <i id="vsE" style="--k:#FF8A4C"></i></span></div>
     </div>
     <div class="transport">
       <button class="btn primary icon" id="play" aria-label="Pause" title="Play / pause (space)">❚❚</button>
@@ -186,18 +305,19 @@ pre{margin:0 0 12px;padding:10px;border-radius:10px;background:#070a0e;border:1p
       <div class="slider"><label for="rpm">Speed</label><input type="range" id="rpm" min="0" max="100" value="38"><output id="rpmOut">30 rpm</output></div>
     </div>
   </div>
+  <p id="capP" aria-live="polite"></p>
   <div class="chartwrap">
-    <div class="hd"><h4>Firing order 1-3-4-2 · two crank turns = one cycle</h4><span class="read" id="read">Crank 0°</span></div>
+    <div class="hd"><span>Firing order 1-3-4-2</span><i style="color:var(--intake)">Intake</i><i style="color:var(--compression)">Compression</i><i style="color:var(--power)">Power</i><i style="color:var(--exhaust)">Exhaust</i><span class="hide-sm" style="color:var(--faint)">thin bars = valve open · ◆ spark</span><span class="read" id="read">Crank 0°</span></div>
     <svg id="chart" role="slider" tabindex="0" aria-label="Cycle position. Drag to scrub through 720 degrees of crank rotation." aria-valuemin="0" aria-valuemax="719" aria-valuenow="0"></svg>
-    <div class="key">
-      <span><i style="--k:var(--intake)"></i>Intake</span><span><i style="--k:var(--compression)"></i>Compression</span><span><i style="--k:var(--power)"></i>Power</span><span><i style="--k:var(--exhaust)"></i>Exhaust</span>
-      <span><i class="ln" style="--k:#7cc8ff"></i>Intake valve open</span><span><i class="ln" style="--k:#FF8A4C"></i>Exhaust valve open</span><span>◆ Spark</span>
-    </div>
   </div>
 </section>
 
-<div class="benchbar" id="benchbar" hidden>Benchmarking <i id="benchP"></i><span id="benchT">10s</span></div>
+<aside class="side" id="side" aria-label="Notebook">
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="pbody" id="pbody"></div>
+</aside>
 
+<div class="benchbar" id="benchbar" hidden>Benchmarking <i id="benchP"></i><span id="benchT">10s</span></div>
 <div class="modal" id="modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mT">
     <h3 id="mT">Benchmark results</h3>
@@ -209,13 +329,9 @@ pre{margin:0 0 12px;padding:10px;border-radius:10px;background:#070a0e;border:1p
     </div>
     <div class="verdict" id="verdict"></div>
     <pre id="report"></pre>
-    <div class="acts">
-      <button class="btn" id="copy">Copy results</button>
-      <button class="btn primary" id="mClose">Done</button>
-    </div>
+    <div class="acts"><button class="btn" id="copy">Copy results</button><button class="btn primary" id="mClose">Done</button></div>
   </div>
 </div>
-
 <div class="nogl" id="nogl" hidden><div><h2>3D isn't available on this device</h2><p>WebGL could not start. Try Chrome, turn on hardware acceleration, or use another device.</p></div></div>
 
 <script type="module">
@@ -226,6 +342,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const $ = s => document.querySelector(s);
 const DEG = Math.PI / 180;
 const mod = (a, n) => ((a % n) + n) % n;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
 
 /* ================= quality ================= */
@@ -247,24 +364,21 @@ $('#quality').addEventListener('click', e => {
 });
 
 /* ================= engine geometry (units ≈ cm) ================= */
-const R = 4.3;              // crank throw radius (stroke 8.6)
-const L = 14.5;             // rod length, center to center
-const PIN_TO_TOP = 3;       // piston pin to crown
-const BORE_R = 4.35;
-const SPACING = 9.6;
+const R = 4.3, L = 14.5, PIN_TO_TOP = 3, BORE_R = 4.35, SPACING = 9.6;
 const DECK = R + L + PIN_TO_TOP + 0.2;   // 22.0
 const CHAMBER = DECK + 1.2;              // valve seat / chamber roof
 const CYL_X = [-1.5, -0.5, 0.5, 1.5].map(k => k * SPACING);
 const OFFSET = [0, 540, 180, 360];       // cycle offset of cyl 1..4 -> firing order 1-3-4-2
-const VZ = 2.3;                          // valve / cam offset from bore center (intake -Z, exhaust +Z)
+const VZ = 2.3;
 const LIFT = 1.0, CAM_BASE = 1.3;
 const CAM_Y = CHAMBER + 7.4 + CAM_BASE;
 const HEAD_TOP = CAM_Y + CAM_BASE + LIFT + 1.0;
-const FRONT = -21.4;                     // timing drive plane
+const FRONT = -21.4;
 // Valve events (cycle degrees, 0 = TDC at the start of power)
-const IVO = 348, EVO = 140, DUR = 232;   // intake opens 12° BTDC, closes 40° ABDC; exhaust opens 40° BBDC, closes 12° ATDC
+const IVO = 348, EVO = 140, DUR = 232;   // IO 12° BTDC, IC 40° ABDC, EO 40° BBDC, EC 12° ATDC
 const ICENTER = IVO + DUR / 2, ECENTER = EVO + DUR / 2;
 const SPARK = 708;                       // 12° BTDC
+const TOOTH = 20;                        // one cam-sprocket tooth = 10° cam = 20° crank
 
 const STROKES = [
   { k:'power',       name:'Power',       col:'#FF6A3D', desc:'The spark has lit the air-fuel mixture. Expanding gas pushes the piston down, which turns the crankshaft. Both valves are closed.' },
@@ -274,6 +388,8 @@ const STROKES = [
 ];
 const strokeOf = psi => STROKES[Math.floor(mod(psi, 720) / 180)];
 const liftAt = (psi, open) => { const d = mod(psi - open, 720); return d < DUR ? LIFT * Math.sin(Math.PI * d / DUR) ** 2 : 0; };
+// rough in-cylinder pressure, 0..1 (peaks just after TDC compression)
+const pressureAt = psi => psi >= 540 ? ((psi - 540) / 180) ** 2 : psi < 180 ? (1 - psi / 180) ** 1.6 : 0;
 
 const PARTS = {
   crank:   ['Crankshaft', 'Turns the up-and-down motion of the pistons into rotation. Two full turns of the crank = one complete 4-stroke cycle.'],
@@ -292,7 +408,50 @@ const PARTS = {
   fly:     ['Flywheel', 'A heavy wheel that smooths out the power pulses. The starter motor engages its ring gear.'],
   iport:   ['Intake port', 'Carries air and fuel to the intake valve. It lights up while the valve is open.'],
   eport:   ['Exhaust port', 'Carries burned gas away from the exhaust valve. It lights up while the valve is open.'],
+  gasket:  ['Head gasket', 'Seals the cylinder head to the block. Here it has burned through between two cylinders.'],
+  blowby:  ['Blow-by', 'Combustion gas leaking past worn piston rings into the crankcase.'],
 };
+
+/* ================= faults ================= */
+const FAULTS = {
+  none:   { name:'Healthy engine', short:'No mechanical fault', pick:'none',
+            fx:'Everything seals and is in time. Use it to learn what normal test results look like.' },
+  chain:  { name:'Timing chain jumped a tooth', short:'Timing chain jumped (cam retarded)', pick:'none',
+            fx:'The cams run 20° late. Every valve opens and closes late, so the intake closes later and all cylinders lose some compression evenly.' },
+  burnt:  { name:'Burnt exhaust valve', short:'Burnt exhaust valve', pick:'cyl',
+            fx:'Hot exhaust has eaten a notch in the valve face. It can\'t seal, so compression leaks out the exhaust port.' },
+  bent:   { name:'Bent intake valve', short:'Bent intake valve', pick:'cyl',
+            fx:'The piston hit the valve (on an interference engine, after a timing failure). It can\'t seat, so compression leaks back into the intake.' },
+  gasket: { name:'Head gasket blown between cylinders', short:'Head gasket blown between two cylinders', pick:'pair',
+            fx:'The gasket has burned through between two neighbors. Each cylinder leaks into the other on compression.' },
+  rings:  { name:'Worn piston rings', short:'Worn piston rings', pick:'cyl',
+            fx:'Worn rings let compression blow by into the crankcase. Oil gets past them too: blue smoke and oil use.' },
+  cat:    { name:'Restricted catalytic converter', short:'Restricted exhaust (catalytic converter)', pick:'none',
+            fx:'Exhaust can\'t get out fast enough. The engine itself seals fine; the problem shows up when you ask for airflow.' },
+  vleak:  { name:'Intake vacuum leak', short:'Intake manifold vacuum leak', pick:'none',
+            fx:'Unmetered air leaks into the intake manifold. Engine sealing is fine; manifold vacuum is low at idle.' },
+};
+const EVIDENCE = {
+  none:   ['Compression even, about 165–175 psi', 'Leakdown under 10%, faint hiss at the oil fill only', 'Vacuum steady 18–20 inHg at idle; snap throttle drops near 0 and overshoots', 'Timing marks line up'],
+  chain:  ['Compression low on ALL cylinders, and even (about 140 psi)', 'Relative compression looks even, because every cylinder lost the same amount', 'Leakdown normal: the valves still seal', 'Vacuum steady but low (about 14 inHg)', 'Cam marks one tooth behind the pointers at TDC #1'],
+  burnt:  ['One cylinder low (about 60 psi); wet test barely changes it', 'Leakdown about 50%, air at the tailpipe', 'Vacuum needle drops regularly once per cycle'],
+  bent:   ['One cylinder near zero (about 15–20 psi); wet test barely changes it', 'Leakdown over 80%, air at the throttle body', 'Vacuum needle drops regularly, deeper than a burnt valve'],
+  gasket: ['Two neighboring cylinders low and similar (about 100 psi); wet test barely changes them', 'Leakdown about 45%, air out of the neighbor\'s spark plug hole', 'Vacuum needle drops twice per cycle'],
+  rings:  ['One cylinder low dry (about 110 psi), first puff very low and builds slowly', 'Wet test jumps about 40 psi', 'Leakdown about 30%, air at the oil fill', 'Vacuum a little low; weak overshoot on snap throttle'],
+  cat:    ['Compression and leakdown normal', 'Vacuum about normal at idle', 'Held at 2500 rpm, vacuum falls steadily (exhaust backing up)', 'Snap throttle: slow to recover'],
+  vleak:  ['Compression and leakdown normal', 'Vacuum low and steady at idle (about 12 inHg)', 'Improves at 2500 rpm', 'Listen for a hiss; fuel trims will read lean/high'],
+};
+const CONCERN = {
+  none:   () => 'The customer says the engine feels a little sluggish. No warning lights. Verify the engine\'s mechanical condition before quoting a tune-up.',
+  chain:  () => 'Long crank before it starts, down on power, and the check engine light is on with P0016 (crankshaft/camshaft correlation). The customer heard a rattle at cold start for a few weeks.',
+  burnt:  c => `Rough idle that has slowly gotten worse over a few months. Misfire code P030${c + 1}.`,
+  bent:   c => `Dead miss right after another shop replaced a broken timing chain. Misfire code P030${c + 1}.`,
+  gasket: c => `Runs rough since the engine overheated last month. Misfire codes P030${c + 1} and P030${c + 2}.`,
+  rings:  () => 'High-mileage engine (238k). Uses about a quart of oil every 800 miles, puffs blue smoke on acceleration, and misfires now and then.',
+  cat:    () => 'Idles fine, but has no power going up hills and won\'t go much over 55 mph. Sometimes smells like rotten eggs.',
+  vleak:  () => 'High, unsteady idle, a hissing noise under the hood, and lean code P0171.',
+};
+const CASE_POOL = [['burnt', 3], ['bent', 2], ['gasket', 2], ['rings', 3], ['chain', 2], ['cat', 2], ['vleak', 2], ['none', 1]];
 
 /* ================= renderer / scene ================= */
 const canvas = $('#gl');
@@ -315,7 +474,7 @@ if (QCFG.env) {
 const camera = new THREE.PerspectiveCamera(34, 1, 1, 800);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 25; controls.maxDistance = 400;
+controls.minDistance = 12; controls.maxDistance = 400;
 controls.target.set(0, 14, 0);
 
 scene.add(new THREE.HemisphereLight(0xd6e8ff, 0x161b22, QCFG.env ? 0.55 : 1.2));
@@ -341,11 +500,13 @@ const MAT = {
   ivalve: M(0xbfc7cf, .9, .25), evalve: M(0xa98d74, .8, .35), spring: M(0x3d86c6, .6, .35), bucket: M(0x9aa3ac, .9, .3),
   sprocket: M(0x5d6772, .85, .35), chain: M(0xa3abb3, .9, .35), fly: M(0x4f5862, .85, .42),
   plug: M(0xeceae4, .05, .5), plugMetal: M(0xb8b8b0, .9, .3),
+  burnt: M(0x4a2414, .5, .6, { emissive: 0xff4a12, emissiveIntensity: .5 }),
+  bentv: M(0xbfc7cf, .9, .25, { emissive: 0xff3b30, emissiveIntensity: .35 }),
   mark: new THREE.MeshBasicMaterial({ color: 0xffffff }), pointer: new THREE.MeshBasicMaterial({ color: 0xFFB224 }),
 };
 const SEG = QCFG.seg;
-const alongX = g => { g.rotateZ(Math.PI / 2); return g; };           // Y-axis primitive -> X axis
-const extrudeX = (shape, depth, bevel = 0) => {                       // 2D (u,v) shape -> v=Y, extruded along X
+const alongX = g => { g.rotateZ(Math.PI / 2); return g; };
+const extrudeX = (shape, depth, bevel = 0) => {
   const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: Math.round(SEG * 0.75) });
   g.rotateY(Math.PI / 2); g.translate(-depth / 2, 0, 0); return g;
 };
@@ -371,6 +532,8 @@ function ringLine(r, y, x, color, opacity) {
   const pts = []; for (let k = 0; k <= 64; k++) { const a = k / 64 * Math.PI * 2; pts.push(new THREE.Vector3(x + r * Math.sin(a), y, r * Math.cos(a))); }
   return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
 }
+// radial timing-mark bar on a sprocket face (local +Y = mark direction)
+const markGeo = (r0, r1) => new THREE.BoxGeometry(0.08, r1 - r0, 0.22).translate(0, (r0 + r1) / 2, 0);
 
 /* ================= crankshaft ================= */
 const crank = new THREE.Group(); scene.add(crank);
@@ -384,7 +547,7 @@ const webGeo = extrudeX(webShape, 0.9, 0.12);
 const rodJGeo = alongX(new THREE.CylinderGeometry(1.1, 1.1, 2.4, SEG));
 CYL_X.forEach((x, i) => {
   const g = new THREE.Group(); g.position.x = x;
-  if (i === 1 || i === 2) g.rotation.x = Math.PI;   // cyl 2 & 3 throws 180° from 1 & 4
+  if (i === 1 || i === 2) g.rotation.x = Math.PI;
   for (const dx of [-1.55, 1.55]) { const w = tag(new THREE.Mesh(webGeo, MAT.crank), 'crank'); w.position.x = dx; g.add(w); }
   const j = tag(new THREE.Mesh(rodJGeo, MAT.crank), 'crank'); j.position.y = R; g.add(j);
   crank.add(g);
@@ -398,7 +561,7 @@ mains.forEach(([a, b]) => {
 });
 const crankSprocket = tag(new THREE.Mesh(gearGeo(0.86, 1.08, 18, 0.7), MAT.sprocket), 'csprock');
 crankSprocket.position.x = FRONT; crank.add(crankSprocket);
-const cmark = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), MAT.mark); cmark.position.set(FRONT - 0.4, 0.68, 0); crank.add(cmark);
+{ const cm = new THREE.Mesh(markGeo(0.25, 0.86), MAT.mark); cm.position.x = FRONT - 0.4; crank.add(cm); }
 const fly = tag(new THREE.Mesh(gearGeo(6.6, 7.0, 90, 0.9), MAT.fly), 'fly'); fly.position.x = 21.2; crank.add(fly);
 const flyHub = tag(new THREE.Mesh(alongX(new THREE.CylinderGeometry(2.2, 2.2, 1.4, SEG)), MAT.fly), 'fly'); flyHub.position.x = 21.2; crank.add(flyHub);
 
@@ -408,13 +571,13 @@ const rodParts = {
   small: alongX(new THREE.CylinderGeometry(0.95, 0.95, 1.6, Math.round(SEG * 0.6))),
   beam: (() => { const s = new THREE.Shape(); s.moveTo(-0.8, 1.3); s.lineTo(0.8, 1.3); s.lineTo(0.48, L - 0.8); s.lineTo(-0.48, L - 0.8); s.closePath(); return extrudeX(s, 0.9); })(),
 };
-// Piston skirt is cut away on the side facing +Z so the pin and rod stay visible
 const CUT = 0.32 * Math.PI;
 const pistonGeo = {
   skirt: new THREE.CylinderGeometry(4.2, 4.2, 5.0, SEG + 8, 1, true, CUT, 2 * Math.PI - 2 * CUT).translate(0, PIN_TO_TOP - 0.6 - 2.5, 0),
   crown: new THREE.CylinderGeometry(4.2, 4.2, 0.6, SEG + 8).translate(0, PIN_TO_TOP - 0.3, 0),
   ring: new THREE.CylinderGeometry(4.24, 4.24, 0.16, SEG + 8, 1, true, CUT, 2 * Math.PI - 2 * CUT),
   pin: alongX(new THREE.CylinderGeometry(0.62, 0.62, 7.0, 16)),
+  blowby: new THREE.CylinderGeometry(4.0, 2.2, 5.5, SEG, 1, true).translate(0, PIN_TO_TOP - 5.6 - 2.75, 0),
 };
 const gasGeo = new THREE.CylinderGeometry(4.25, 4.25, 1, SEG + 8).translate(0, 0.5, 0);
 const boreGeo = new THREE.CylinderGeometry(BORE_R, BORE_R, DECK - 7, SEG + 8, 1, true).translate(0, (DECK + 7) / 2, 0);
@@ -427,7 +590,7 @@ class Helix extends THREE.Curve {
 }
 const SPRING_BASE = CHAMBER + 3.2, SPRING_LEN = 3.1;
 const valveGeo = {
-  head: new THREE.CylinderGeometry(0.45, 1.5, 0.45, SEG).translate(0, CHAMBER + 0.225, 0),
+  head: new THREE.CylinderGeometry(0.45, 1.5, 0.45, SEG),
   stem: new THREE.CylinderGeometry(0.2, 0.2, 6.6, 10).translate(0, CHAMBER + 0.45 + 3.3, 0),
   retainer: new THREE.CylinderGeometry(0.9, 0.6, 0.3, 20).translate(0, CHAMBER + 6.45, 0),
   bucket: new THREE.CylinderGeometry(1.15, 1.15, 0.8, SEG).translate(0, CHAMBER + 7.0, 0),
@@ -438,7 +601,7 @@ const lobeGeo = (() => {
   for (let k = 0; k < N; k++) {
     const b = k / N * 360 - 180, bb = Math.abs(b);
     const r = CAM_BASE + (bb < half ? LIFT * Math.cos(Math.PI / 2 * bb / half) ** 2 : 0);
-    const u = r * Math.sin(b * DEG), v = -r * Math.cos(b * DEG);   // nose points -Y at rotation 0
+    const u = r * Math.sin(b * DEG), v = -r * Math.cos(b * DEG);
     k ? s.lineTo(u, v) : s.moveTo(u, v);
   }
   s.closePath();
@@ -449,39 +612,37 @@ const portCurve = side => new THREE.QuadraticBezierCurve3(
 const portGeo = { in: new THREE.TubeGeometry(portCurve(-1), 20, 1.0, 14, false), ex: new THREE.TubeGeometry(portCurve(1), 20, 1.0, 14, false) };
 
 const cyls = CYL_X.map((x, i) => {
-  const c = { i, x };
-  // rod
+  const c = { i, x, psi: 0, li: 0, le: 0 };
   c.rod = new THREE.Group();
   c.rod.add(tag(new THREE.Mesh(rodParts.big, MAT.rod), 'rod', i));
   c.rod.add(tag(new THREE.Mesh(rodParts.beam, MAT.rod), 'rod', i));
   const se = tag(new THREE.Mesh(rodParts.small, MAT.rod), 'rod', i); se.position.y = L; c.rod.add(se);
   scene.add(c.rod);
-  // piston
   c.piston = new THREE.Group(); c.piston.position.x = x;
   c.piston.add(tag(new THREE.Mesh(pistonGeo.skirt, MAT.piston), 'piston', i));
   c.piston.add(tag(new THREE.Mesh(pistonGeo.crown, MAT.piston), 'piston', i));
   for (const y of [2.15, 1.65, 1.15]) { const rg = new THREE.Mesh(pistonGeo.ring, MAT.ring); rg.position.y = y; c.piston.add(tag(rg, 'piston', i)); }
   c.piston.add(tag(new THREE.Mesh(pistonGeo.pin, MAT.pin), 'piston', i));
+  c.blowMat = new THREE.MeshBasicMaterial({ color: 0x9fb4c8, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+  c.blowby = tag(new THREE.Mesh(pistonGeo.blowby, c.blowMat), 'blowby', i); c.blowby.visible = false; c.blowby.renderOrder = 3; c.piston.add(c.blowby);
   scene.add(c.piston);
-  // bore + gas
   const bore = new THREE.Mesh(boreGeo, boreMat); bore.position.x = x; bore.renderOrder = 2; scene.add(bore);
   scene.add(ringLine(BORE_R, DECK, x, 0x5f8fb5, .5), ringLine(BORE_R, 7, x, 0x5f8fb5, .25));
   c.gasMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, color: 0x3BA7F0, opacity: .2 });
   c.gas = tag(new THREE.Mesh(gasGeo, c.gasMat), 'gas', i); c.gas.position.x = x; c.gas.renderOrder = 1; scene.add(c.gas);
-  // valves
   for (const kind of ['in', 'ex']) {
     const z = kind === 'in' ? -VZ : VZ, vm = kind === 'in' ? MAT.ivalve : MAT.evalve, part = kind === 'in' ? 'ivalve' : 'evalve';
     const g = new THREE.Group(); g.position.set(x, 0, z);
-    g.add(tag(new THREE.Mesh(valveGeo.head, vm), part, i), tag(new THREE.Mesh(valveGeo.stem, vm), part, i),
+    const head = tag(new THREE.Mesh(valveGeo.head, vm), part, i); head.position.y = CHAMBER + 0.225;
+    g.add(head, tag(new THREE.Mesh(valveGeo.stem, vm), part, i),
           tag(new THREE.Mesh(valveGeo.retainer, MAT.bucket), 'spring', i), tag(new THREE.Mesh(valveGeo.bucket, MAT.bucket), 'bucket', i));
     scene.add(g);
     const sp = tag(new THREE.Mesh(valveGeo.spring, MAT.spring), 'spring', i); sp.position.set(x, SPRING_BASE, z); scene.add(sp);
     const lobe = tag(new THREE.Mesh(lobeGeo, MAT.cam), kind === 'in' ? 'icam' : 'ecam', i); lobe.position.set(x, CAM_Y, z); scene.add(lobe);
     const pm = new THREE.MeshStandardMaterial({ color: kind === 'in' ? 0x3BA7F0 : 0xFF8A4C, emissive: kind === 'in' ? 0x1b6fb0 : 0xb5491c, emissiveIntensity: 0, transparent: true, opacity: .14, depthWrite: false, roughness: .4, metalness: 0 });
     const port = tag(new THREE.Mesh(portGeo[kind], pm), kind === 'in' ? 'iport' : 'eport', i); port.position.x = x; port.renderOrder = 3; scene.add(port);
-    c[kind] = { g, sp, lobe, pm };
+    c[kind] = { g, head, sp, lobe, pm, mat: vm };
   }
-  // spark plug
   const plug = new THREE.Group(); plug.position.set(x, 0, 0);
   plug.add(tag(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 2.2, 12).translate(0, CHAMBER + 2.6, 0), MAT.plug), 'plug', i));
   plug.add(tag(new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 1.2, 12).translate(0, CHAMBER + 0.9, 0), MAT.plugMetal), 'plug', i));
@@ -490,6 +651,13 @@ const cyls = CYL_X.map((x, i) => {
   c.spark.position.set(x, CHAMBER - 0.05, 0); c.spark.renderOrder = 4; scene.add(c.spark);
   return c;
 });
+// head-gasket breach between neighbors (pair k = cylinders k+1 & k+2)
+const breaches = [0, 1, 2].map(k => {
+  const m = new THREE.MeshBasicMaterial({ color: 0xff5a1e, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  const b = tag(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.9, 5.2), m), 'gasket', k);
+  b.position.set((CYL_X[k] + CYL_X[k + 1]) / 2, DECK + 0.25, 0); b.visible = false; b.renderOrder = 4; scene.add(b);
+  return b;
+});
 
 // camshafts + sprockets
 const camSprockets = [-VZ, VZ].map((z, k) => {
@@ -497,15 +665,15 @@ const camSprockets = [-VZ, VZ].map((z, k) => {
   shaft.position.set((FRONT + 19) / 2, CAM_Y, z); scene.add(shaft);
   const g = new THREE.Group(); g.position.set(FRONT, CAM_Y, z);
   g.add(tag(new THREE.Mesh(gearGeo(1.9, 2.15, 36, 0.7), MAT.sprocket), 'msprock'));
-  const mk = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), MAT.mark); mk.position.set(-0.4, 1.62, 0); g.add(mk);
+  const mk = new THREE.Mesh(markGeo(0.9, 1.9), MAT.mark); mk.position.x = -0.4; g.add(mk);
   scene.add(g);
   const ptr = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 3), MAT.pointer); ptr.rotation.x = Math.PI; ptr.position.set(FRONT - 0.8, CAM_Y + 2.75, z); scene.add(ptr);
   return g;
 });
-{ const ptr = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 3), MAT.pointer); ptr.rotation.x = Math.PI; ptr.position.set(FRONT - 0.8, 1.7, 0); scene.add(ptr); }
+{ const ptr = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 3), MAT.pointer); ptr.rotation.x = Math.PI; ptr.position.set(FRONT - 0.8, 1.55, 0); scene.add(ptr); }
 
 /* ================= timing chain ================= */
-const CH_CRANK = 1.15, CH_CAM = 2.3;   // 1:2 pitch radii -> cams turn at half speed
+const CH_CRANK = 1.15, CH_CAM = 2.3;
 const chainPath = (() => {
   const pts = [];
   const circ = (cy, cz, r) => { for (let k = 0; k < 72; k++) { const a = k / 72 * Math.PI * 2; pts.push([cy + r * Math.cos(a), cz + r * Math.sin(a)]); } };
@@ -532,8 +700,7 @@ function chainAt(s) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, Math.atan2(b[1] - a[1], b[0] - a[0])];
 }
 function updateChain(c) {
-  const s0 = c * DEG * CH_CRANK;   // chain travel = crank angle × crank pitch radius
-  const step = chainPath.len / NLINK;
+  const s0 = c * DEG * CH_CRANK, step = chainPath.len / NLINK;
   for (let k = 0; k < NLINK; k++) {
     const [y, z, ang] = chainAt(s0 + k * step);
     _o.position.set(FRONT, y, z); _o.rotation.set(ang, 0, 0); _o.updateMatrix();
@@ -554,6 +721,27 @@ function box(x0, x1, y0, y1, z0, z1, op) {
 box(-19.7, 19.7, -5.5, DECK, -6.2, 6.2, .045);
 box(-19.7, 19.7, DECK, HEAD_TOP, -6.8, 6.8, .035);
 
+/* ================= state ================= */
+const RES0 = () => ({ dry:[null, null, null, null], dryP:[null, null, null, null], wet:[null, null, null, null], wetP:[null, null, null, null],
+  leak:[null, null, null, null], heard:[{}, {}, {}, {}], rel:null, vac:{}, marks:false });
+const S = {
+  mode:'explore', tab:'break', c:0, playing:true, rpm:30, sel:0,
+  fault:null, inside:true, exploreFault:null,
+  var:[0, 0, 0, 0], res:RES0(),
+  test:'comp', tcyl:0, wet:false, leakMsg:null, run:null, relRun:null, vacRun:null, goto:null,
+  lesson:null, step:0, stepOk:false, mcPick:[], done:new Set(JSON.parse(store.get('engine.done') || '[]')),
+  dx:null, dxScore:{ cases:0, first:0, tests:0 },
+};
+const shift = () => S.fault?.type === 'chain' ? TOOTH : 0;
+const isBad = (type, i) => S.fault?.type === type && (type === 'gasket' ? (i === S.fault.cyl || i === S.fault.cyl + 1) : S.fault.cyl === i);
+function newVar() { S.var = [0, 1, 2, 3].map(() => Math.round((Math.random() * 2 - 1) * 4)); }
+function setFault(f, keepVar) {
+  const same = JSON.stringify(f || null) === JSON.stringify(S.fault || null);
+  S.fault = f || null;
+  if (!same) { if (!keepVar) newVar(); S.res = RES0(); S.leakMsg = null; S.vacRun = null; S.run = null; S.relRun = null; }
+  chartDirty = true; dirty = true;
+}
+
 /* ================= per-frame engine update ================= */
 const C_TMP = new THREE.Color(), C_A = new THREE.Color(), C_B = new THREE.Color();
 function gasStyle(psi) {
@@ -565,13 +753,13 @@ function gasStyle(psi) {
   if (psi < SPARK) return seg(540, SPARK, 0x3ba7f0, 0x67d3ff, .3, .6);
   return seg(SPARK, 720, 0x67d3ff, 0xfff1b0, .6, .9);
 }
-const state = { c: 0, playing: true, rpm: 30, sel: 0 };
 function updateEngine(c) {
+  const sh = shift(), show = S.inside;
   crank.rotation.x = c * DEG;
-  camSprockets.forEach(g => g.rotation.x = c / 2 * DEG);
+  camSprockets.forEach(g => g.rotation.x = (c - sh) / 2 * DEG);
   updateChain(c);
   for (const cy of cyls) {
-    const psi = mod(c - OFFSET[cy.i], 720), th = psi * DEG;
+    const i = cy.i, psi = mod(c - OFFSET[i], 720), th = psi * DEG;
     const jy = R * Math.cos(th), jz = R * Math.sin(th);
     const pin = jy + Math.sqrt(L * L - jz * jz);
     cy.psi = psi;
@@ -580,42 +768,116 @@ function updateEngine(c) {
     cy.rod.rotation.x = Math.atan2(-jz, pin - jy);
     const top = pin + PIN_TO_TOP;
     cy.gas.position.y = top; cy.gas.scale.y = Math.max(0.01, CHAMBER - top);
-    cy.gasMat.opacity = gasStyle(psi); cy.gasMat.color.copy(C_TMP);
-    const li = liftAt(psi, IVO), le = liftAt(psi, EVO);
+    const pr = pressureAt(psi);
+    const weak = show ? 1 - (1 - compFinal(i, false).p / 172) * pr : 1;   // leaky cylinder: thinner charge on compression/power
+    cy.gasMat.opacity = gasStyle(psi) * clamp(weak, .25, 1); cy.gasMat.color.copy(C_TMP);
+    let li = liftAt(psi - sh, IVO), le = liftAt(psi - sh, EVO);
+    const bentHere = show && isBad('bent', i), burntHere = show && isBad('burnt', i);
+    if (bentHere) li = Math.max(li, 0.14);
     cy.li = li; cy.le = le;
-    for (const [v, lift, center] of [[cy.in, li, ICENTER], [cy.ex, le, ECENTER]]) {
+    for (const [v, lift, center, leak] of [[cy.in, li, ICENTER, bentHere], [cy.ex, le, ECENTER, burntHere]]) {
       v.g.position.y = -lift;
       v.sp.scale.y = (SPRING_LEN - lift) / SPRING_LEN;
-      v.lobe.rotation.x = (psi - center) / 2 * DEG;
-      v.pm.opacity = .14 + .4 * lift / LIFT; v.pm.emissiveIntensity = 1.4 * lift / LIFT;
+      v.lobe.rotation.x = (psi - sh - center) / 2 * DEG;
+      const glow = Math.max(lift / LIFT, leak ? 0.8 * pr : 0);
+      v.pm.opacity = .14 + .4 * glow; v.pm.emissiveIntensity = 1.4 * glow;
     }
-    const sd = mod(psi - SPARK, 720);           // spark: bright flash for ~25° from 12° BTDC
+    cy.in.head.material = bentHere ? MAT.bentv : cy.in.mat;
+    cy.in.head.rotation.x = bentHere ? 0.22 : 0;
+    cy.ex.head.material = burntHere ? MAT.burnt : cy.ex.mat;
+    const ringsHere = show && isBad('rings', i);
+    cy.blowby.visible = ringsHere;
+    if (ringsHere) cy.blowMat.opacity = .05 + .4 * pr;
+    const sd = mod(psi - SPARK, 720);
     const s = sd < 26 ? 1 - sd / 26 : 0;
     cy.spark.material.opacity = s; cy.spark.scale.setScalar(0.6 + 1.6 * s); cy.spark.visible = s > 0;
   }
+  breaches.forEach((b, k) => {
+    const on = show && S.fault?.type === 'gasket' && S.fault.cyl === k;
+    b.visible = on;
+    if (on) b.material.opacity = .25 + .7 * Math.max(pressureAt(cyls[k].psi), pressureAt(cyls[k + 1].psi));
+  });
 }
+
+/* ================= test models ================= */
+function compFinal(i, wet) {
+  const t = S.fault?.type, v = S.var[i];
+  let p = 170 + v, rise = wet ? 7 : 0, f1 = .6;
+  if (t === 'chain') p -= 30;
+  if (isBad('burnt', i)) { p = 62 + v; rise = wet ? 3 : 0; f1 = .55; }
+  if (isBad('bent', i)) { p = 18 + Math.round(v / 2); rise = wet ? 2 : 0; f1 = .7; }
+  if (isBad('gasket', i)) { p = 102 + v; rise = wet ? 4 : 0; }
+  if (isBad('rings', i)) { p = 112 + v; rise = wet ? 42 : 0; f1 = wet ? .5 : .33; }
+  return { p: p + rise, f1 };
+}
+const puffList = (i, wet) => { const { p, f1 } = compFinal(i, wet); return [1, 2, 3, 4, 5].map(k => Math.round(p * (1 - (1 - f1) ** k))); };
+function leakPct(i) {
+  let p = 6 + Math.abs(S.var[i]) * .5;
+  if (isBad('burnt', i)) p = 52 + S.var[i];
+  if (isBad('bent', i)) p = 84 + S.var[i] / 2;
+  if (isBad('gasket', i)) p = 44 + S.var[i];
+  if (isBad('rings', i)) p = 30 + S.var[i];
+  return Math.round(p);
+}
+const LISTEN = [['tb', 'Throttle body'], ['tail', 'Tailpipe'], ['oil', 'Oil fill cap'], ['rad', 'Radiator neck'], ['plug', 'Neighbor plug holes']];
+function hear(i, where) {
+  if (where === 'tb') return isBad('bent', i) ? ['loud', 'Loud hiss from the throttle body.'] : ['none', 'Nothing.'];
+  if (where === 'tail') return isBad('burnt', i) ? ['loud', 'Loud hiss at the tailpipe.'] : ['none', 'Nothing.'];
+  if (where === 'oil') return isBad('rings', i) ? ['loud', 'Strong hiss at the oil fill opening.'] : ['faint', 'Faint hiss. A little leakage past the rings is normal.'];
+  if (where === 'rad') return ['none', 'No bubbles in the coolant.'];
+  if (isBad('gasket', i)) { const n = i === S.fault.cyl ? S.fault.cyl + 2 : S.fault.cyl + 1; return ['loud', `Air rushing out of cylinder ${n}'s spark plug hole.`]; }
+  return ['none', 'Nothing from the neighboring plug holes.'];
+}
+// manifold vacuum (inHg) at time t (s) for a test mode
+function vacTarget(mode, t) {
+  const f = S.fault?.type;
+  let rpm = mode === 'hold' ? 2500 : 700;
+  let base = mode === 'hold' ? 20.5 : 19;
+  if (f === 'chain') base -= mode === 'hold' ? 4 : 5;
+  if (f === 'vleak') base = mode === 'hold' ? 16.5 : 12;
+  if (f === 'rings') base -= 2;
+  if (f === 'cat') base = mode === 'hold' ? 20.5 - Math.min(13, Math.max(0, t - .8) * 2.1) : 18.5;
+  let v = base;
+  if (mode === 'snap') {
+    const over = f === 'rings' ? 1.2 : f === 'cat' ? -9 : 7;
+    const tau = f === 'cat' ? 1.1 : .32;
+    if (t < .3) v = base;
+    else if (t < .62) { rpm = 2000; v = 1.5; }
+    else { rpm = 1200; v = base + over * Math.exp(-(t - .62) / tau) * (f === 'cat' ? 1 : Math.min(1, (t - .62) / .08)); }
+  }
+  // cylinder-specific leaks pull the needle down once per cycle, during that cylinder's intake
+  const amp = f === 'burnt' ? 7 : f === 'bent' ? 10 : f === 'gasket' ? 9 : f === 'rings' ? 1 : 0;
+  if (amp) {
+    const cyc = mod(t * rpm * 6, 720);
+    for (const i of [0, 1, 2, 3]) if (isBad(f, i)) { const d = mod(cyc - OFFSET[i] - 450 + 360, 720) - 360; v -= amp * Math.exp(-((d / 90) ** 2)); }
+  }
+  return Math.max(0, v + Math.sin(t * 97) * .12 + Math.sin(t * 61) * .08);
+}
+const VAC_DUR = { idle: 6, hold: 8, snap: 3.5 };
+const VAC_NAME = { idle: 'Idle', hold: '2500 rpm hold', snap: 'Snap throttle' };
 
 /* ================= HUD: labels, caption, chart ================= */
 let showLabels = true;
 const v3 = new THREE.Vector3();
+const BAND = { top: 60, bottom: 400, left: 0, right: 1000 };
 const labs = cyls.map(cy => {
   const el = document.createElement('button'); el.className = 'clab'; el.innerHTML = `<b>${cy.i + 1}</b><span></span>`;
   el.addEventListener('click', () => select(cy.i)); $('#labels').appendChild(el);
-  return { el, span: el.querySelector('span'), p: new THREE.Vector3(cy.x, HEAD_TOP + 3.2, 0), k: '' };
+  return { el, span: el.querySelector('span'), p: new THREE.Vector3(cy.x, HEAD_TOP + 3.2, 0), k: '', w: 0 };
 });
-// Labels follow each cylinder's head, stay inside the 3D band, and stagger into rows when they would overlap.
 function placeLabels() {
   const w = canvas.clientWidth, h = canvas.clientHeight, vis = [];
   labs.forEach((lb, i) => {
     v3.copy(lb.p).project(camera);
-    const on = showLabels && v3.z < 1;
+    const sx = (v3.x * .5 + .5) * w;
+    const on = showLabels && v3.z < 1 && sx > BAND.left - 20 && sx < BAND.right + 20;
     lb.el.style.display = on ? '' : 'none';
     if (!on) return;
     const st = strokeOf(cyls[i].psi);
     if (lb.k !== st.k) { lb.k = st.k; lb.span.textContent = st.name; lb.el.style.setProperty('--c', st.col); lb.w = 0; }
     if (!lb.w) lb.w = lb.el.offsetWidth;
-    lb.el.classList.toggle('sel', i === state.sel);
-    lb.sx = (v3.x * .5 + .5) * w;
+    lb.el.classList.toggle('sel', i === S.sel);
+    lb.sx = clamp(sx, BAND.left + lb.w / 2 + 4, BAND.right - lb.w / 2 - 4);
     lb.sy = Math.max((-v3.y * .5 + .5) * h, BAND.top + 30);
     vis.push(lb);
   });
@@ -631,86 +893,85 @@ function placeLabels() {
 }
 let capKey = '';
 function updateCaption() {
-  const cy = cyls[state.sel], st = strokeOf(cy.psi), psi = cy.psi;
-  const overlap = cy.li > 0.004 && cy.le > 0.004;
+  const cy = cyls[S.sel], st = strokeOf(cy.psi), psi = cy.psi;
+  const overlap = cy.li > 0.004 && cy.le > 0.004 && !(S.inside && isBad('bent', S.sel) && cy.li < 0.15);
   const sparking = mod(psi - SPARK, 720) < 26;
-  const k = st.k + overlap + sparking + state.sel;
+  const k = st.k + overlap + sparking + S.sel;
   $('#vsI').style.setProperty('--v', (cy.li / LIFT).toFixed(3));
   $('#vsE').style.setProperty('--v', (cy.le / LIFT).toFixed(3));
   if (k === capKey) return; capKey = k;
   const chip = $('#capChip'); chip.textContent = `Cyl ${cy.i + 1}`; chip.style.color = st.col;
   $('#capT').textContent = `${st.name} stroke`;
   let p = st.desc;
-  if (sparking) p = 'Spark! The plug fires a few degrees before the piston reaches the top, so peak pressure arrives just after TDC. ' + (st.k === 'power' ? 'The power stroke has begun.' : '');
+  if (sparking) p = 'Spark! The plug fires a few degrees before the piston reaches the top, so peak pressure arrives just after TDC.' + (st.k === 'power' ? ' The power stroke has begun.' : '');
   else if (overlap) p = 'Valve overlap: near the top of the exhaust stroke, both valves are open for a moment. The outgoing exhaust helps pull in the fresh charge.';
   $('#capP').textContent = p;
-  $('#vsTxt').textContent = overlap ? 'both open' : (cy.li > 0.004 ? 'intake open' : cy.le > 0.004 ? 'exhaust open' : 'both closed');
 }
-function select(i) { state.sel = i; capKey = ''; buildChart(); dirty = true; }
+function select(i) { S.sel = i; capKey = ''; chartDirty = true; dirty = true; }
 
-const CX0 = 50, CW = 720, RH = 26, CTOP = 18;
+const CX0 = 50, CW = 720, RH = 22, CTOP = 16;
 const spans = (start, len) => { const s = mod(start, 720); return s + len <= 720 ? [[s, s + len]] : [[s, 720], [0, s + len - 720]]; };
+let chartDirty = true;
 function buildChart() {
-  let s = '';
-  s += `<rect class="rowsel" x="0" y="${CTOP + state.sel * RH - 2}" width="${CX0 + CW + 4}" height="${RH}" rx="5"/>`;
+  chartDirty = false;
+  const sh = S.inside ? shift() : 0;   // in Diagnose the chart shows spec timing, not the fault
+  let s = `<rect class="rowsel" x="0" y="${CTOP + S.sel * RH - 2}" width="${CX0 + CW + 4}" height="${RH}" rx="5"/>`;
   for (let a = 0; a <= 720; a += 90) {
     const x = CX0 + a;
     s += `<line class="tick${a % 180 ? ' minor' : ''}" x1="${x}" y1="${CTOP - 4}" x2="${x}" y2="${CTOP + RH * 4 - 4}"/>`;
-    if (a % 180 === 0) s += `<text class="tl" x="${x}" y="${CTOP - 8}">${a}°</text>`;
+    if (a % 180 === 0) s += `<text class="tl" x="${x}" y="${CTOP - 7}">${a}°</text>`;
   }
   for (let i = 0; i < 4; i++) {
     const y = CTOP + i * RH;
-    s += `<text class="rl${i === state.sel ? ' sel' : ''}" x="4" y="${y + 7}">Cyl ${i + 1}</text>`;
+    s += `<text class="rl${i === S.sel ? ' sel' : ''}" x="4" y="${y + 6}">Cyl ${i + 1}</text>`;
     STROKES.forEach((st, k) => {
       for (const [a, b] of spans(OFFSET[i] + k * 180, 180)) {
-        s += `<rect x="${CX0 + a + .5}" y="${y}" width="${b - a - 1}" height="14" rx="3" fill="${st.col}" opacity="${i === state.sel ? 1 : .78}"/>`;
-        if (b - a >= 70) s += `<text class="sl" x="${CX0 + (a + b) / 2}" y="${y + 7.5}">${st.name}</text>`;
+        s += `<rect x="${CX0 + a + .5}" y="${y}" width="${b - a - 1}" height="12" rx="3" fill="${st.col}" opacity="${i === S.sel ? 1 : .78}"/>`;
+        if (b - a >= 70) s += `<text class="sl" x="${CX0 + (a + b) / 2}" y="${y + 6.5}">${st.name}</text>`;
       }
     });
-    for (const [a, b] of spans(OFFSET[i] + IVO, DUR)) s += `<rect x="${CX0 + a}" y="${y + 16}" width="${b - a}" height="3" rx="1.5" fill="#7cc8ff"/>`;
-    for (const [a, b] of spans(OFFSET[i] + EVO, DUR)) s += `<rect x="${CX0 + a}" y="${y + 20}" width="${b - a}" height="3" rx="1.5" fill="#FF8A4C"/>`;
+    for (const [a, b] of spans(OFFSET[i] + IVO + sh, DUR)) s += `<rect x="${CX0 + a}" y="${y + 14}" width="${b - a}" height="2.6" rx="1.3" fill="#7cc8ff"/>`;
+    for (const [a, b] of spans(OFFSET[i] + EVO + sh, DUR)) s += `<rect x="${CX0 + a}" y="${y + 17.6}" width="${b - a}" height="2.6" rx="1.3" fill="#FF8A4C"/>`;
     const sx = CX0 + mod(OFFSET[i] + SPARK, 720);
     s += `<path d="M${sx} ${y - 3} l3.5 3.5 l-3.5 3.5 l-3.5 -3.5z" fill="#fff3b0" stroke="#081018" stroke-width="1"/>`;
   }
-  s += `<line id="cur" x1="${CX0}" y1="${CTOP - 6}" x2="${CX0}" y2="${CTOP + RH * 4 - 2}"/>`;
+  s += `<line id="cur" x1="${CX0}" y1="${CTOP - 5}" x2="${CX0}" y2="${CTOP + RH * 4 - 2}"/>`;
   const ch = $('#chart');
   ch.setAttribute('viewBox', `0 0 ${CX0 + CW + 6} ${CTOP + RH * 4}`);
   ch.innerHTML = s;
 }
 function updateChart() {
-  const x = CX0 + state.c, cur = $('#cur');
+  if (chartDirty) buildChart();
+  const x = CX0 + S.c, cur = $('#cur');
   cur.setAttribute('x1', x); cur.setAttribute('x2', x);
-  $('#chart').setAttribute('aria-valuenow', Math.floor(state.c));
-  const cr = state.c % 360;
-  $('#read').textContent = `Crank ${String(Math.floor(cr)).padStart(3, ' ')}° · turn ${state.c < 360 ? 1 : 2} of 2 · Cam ${String(Math.floor(state.c / 2)).padStart(3, ' ')}°`;
+  $('#chart').setAttribute('aria-valuenow', Math.floor(S.c));
+  $('#read').textContent = `Crank ${Math.floor(S.c % 360)}° · turn ${S.c < 360 ? 1 : 2} of 2 · Cam ${Math.floor(mod(S.c - (S.inside ? shift() : 0), 720) / 2)}°`;
 }
-// scrub on the chart
 {
   const ch = $('#chart'); let drag = false;
-  const at = e => { const r = ch.getBoundingClientRect(); const vb = CX0 + CW + 6; const x = (e.clientX - r.left) / r.width * vb - CX0; setC(Math.max(0, Math.min(719.9, x))); };
+  const at = e => { const r = ch.getBoundingClientRect(); const vb = CX0 + CW + 6; const x = (e.clientX - r.left) / r.width * vb - CX0; setC(clamp(x, 0, 719.9)); };
   ch.addEventListener('pointerdown', e => { drag = true; ch.setPointerCapture(e.pointerId); pause(); at(e); });
   ch.addEventListener('pointermove', e => { if (drag) at(e); });
   ch.addEventListener('pointerup', () => drag = false);
-  ch.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); pause(); setC(state.c + (e.key === 'ArrowRight' ? 5 : -5)); } });
+  ch.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); pause(); setC(S.c + (e.key === 'ArrowRight' ? 5 : -5)); } });
 }
 
 /* ================= transport ================= */
-const rpmFrom = v => Math.round(5 * Math.pow(120, v / 100));   // slider 0..100 -> 5..600 rpm
-function setRpmUI() {
-  state.rpm = rpmFrom(+$('#rpm').value);
-  $('#rpmOut').textContent = `${state.rpm} rpm`;
-}
+const rpmFrom = v => Math.round(5 * Math.pow(120, v / 100));
+const sliderFrom = rpm => Math.round(100 * Math.log(rpm / 5) / Math.log(120));
+function setRpmUI() { S.rpm = rpmFrom(+$('#rpm').value); $('#rpmOut').textContent = `${S.rpm} rpm`; }
+function setRpm(r) { $('#rpm').value = sliderFrom(r); setRpmUI(); }
 $('#rpm').addEventListener('input', setRpmUI); setRpmUI();
-function setC(c) { state.c = mod(c, 720); dirty = true; }
-function play() { state.playing = true; $('#play').textContent = '❚❚'; $('#play').setAttribute('aria-label', 'Pause'); }
-function pause() { state.playing = false; $('#play').textContent = '►'; $('#play').setAttribute('aria-label', 'Play'); dirty = true; }
-$('#play').addEventListener('click', () => state.playing ? pause() : play());
-$('#back').addEventListener('click', () => { pause(); setC(state.c - 5); });
-$('#fwd').addEventListener('click', () => { pause(); setC(state.c + 5); });
+function setC(c) { S.c = mod(c, 720); S.goto = null; dirty = true; }
+function play() { S.playing = true; $('#play').textContent = '❚❚'; $('#play').setAttribute('aria-label', 'Pause'); dirty = true; }
+function pause() { S.playing = false; $('#play').textContent = '►'; $('#play').setAttribute('aria-label', 'Play'); dirty = true; }
+$('#play').addEventListener('click', () => S.playing ? pause() : play());
+$('#back').addEventListener('click', () => { pause(); setC(S.c - 5); });
+$('#fwd').addEventListener('click', () => { pause(); setC(S.c + 5); });
 window.addEventListener('keydown', e => {
-  if (e.target.closest('input,textarea,[role=dialog]')) return;
-  if (e.code === 'Space') { e.preventDefault(); state.playing ? pause() : play(); }
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); pause(); setC(state.c + (e.key === 'ArrowRight' ? 5 : -5)); }
+  if (e.target.closest('input,textarea,button,[role=dialog],.side,.pop')) return;
+  if (e.code === 'Space') { e.preventDefault(); S.playing ? pause() : play(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); pause(); setC(S.c + (e.key === 'ArrowRight' ? 5 : -5)); }
 });
 $('#layers').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -719,34 +980,48 @@ $('#layers').addEventListener('click', e => {
   if (b.dataset.l === 'labels') showLabels = on;
   dirty = true;
 });
+function rotateTo(target, dur = 1100) {   // smooth forward rotation to a cycle angle
+  pause();
+  const to = S.c + mod(target - S.c, 720);
+  S.goto = { from: S.c, to, t0: performance.now(), dur: Math.max(300, dur * (to - S.c) / 720 + 300) };
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
 
 /* ================= views ================= */
-const VIEWS = { iso: [0.55, 0.38, 1, 1], side: [0, 0.06, 1, 0.92], front: [-1, 0.22, 0.32, 1.05], top: [0.02, 1, 0.16, 0.95] };
+const VIEWS = {
+  iso:   { d:[0.55, 0.38, 1], k:1 },
+  side:  { d:[0, 0.06, 1], k:.92 },
+  front: { d:[-1, 0.22, 0.32], k:1.05 },
+  top:   { d:[0.02, 1, 0.16], k:.95 },
+  marks: { d:[-1, 0.3, 0.38], k:.36, t:[FRONT, 17, 0] },
+};
 const TARGET = new THREE.Vector3(0, 14, 0), FIT_R = 24.5;
 let tween = null, curView = 'iso';
-const BAND = { top: 60, bottom: 400 };
-// The 3D view is framed into the free band between the top bar and the dock (camera view offset),
-// and the distance is fitted so the whole engine shows on any screen shape.
+const isWide = () => window.innerWidth >= 1000;
 function frameBand() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   const topB = $('.top').getBoundingClientRect().bottom + 8, dockT = $('.dock').getBoundingClientRect().top - 8;
-  const band = Math.max(120, dockT - topB);
-  BAND.top = topB; BAND.bottom = dockT;
+  const side = $('#side');
+  if (isWide()) side.style.top = (topB - 2) + 'px'; else side.style.top = '';
+  const right = isWide() ? side.getBoundingClientRect().left - 8 : w;
+  BAND.top = topB; BAND.bottom = dockT; BAND.left = 0; BAND.right = right;
+  camera.setViewOffset(w, h, Math.round(w / 2 - right / 2), Math.round(h / 2 - (topB + dockT) / 2), w, h);
   if (w > 640) $('#info').style.top = topB + 'px';
-  camera.setViewOffset(w, h, 0, Math.round(h / 2 - (topB + dockT) / 2), w, h);
-  return band / h;
+  return [Math.max(120, dockT - topB) / h, Math.max(200, right) / w];
 }
 function viewDist(k) {
-  const f = frameBand(), t = Math.tan(camera.fov * DEG / 2);
-  return FIT_R * k / Math.min(t * f, t * camera.aspect * 0.92);
+  const [fh, fw] = frameBand(), t = Math.tan(camera.fov * DEG / 2);
+  return FIT_R * k / Math.min(t * fh, t * camera.aspect * fw * 0.92);
 }
 function goView(name, instant) {
   curView = name;
-  const [x, y, z, k] = VIEWS[name], dir = new THREE.Vector3(x, y, z).normalize();
-  const to = TARGET.clone().addScaledVector(dir, viewDist(k));
+  const V = VIEWS[name], dir = new THREE.Vector3(...V.d).normalize();
+  const tgt = V.t ? new THREE.Vector3(...V.t) : TARGET.clone();
+  const to = tgt.clone().addScaledVector(dir, viewDist(V.k));
   document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === name));
-  if (instant) { camera.position.copy(to); controls.target.copy(TARGET); controls.update(); dirty = true; return; }
-  tween = { from: camera.position.clone(), fromT: controls.target.clone(), to, toT: TARGET.clone(), t0: performance.now(), dur: 650 };
+  if (instant) { camera.position.copy(to); controls.target.copy(tgt); controls.update(); dirty = true; return; }
+  tween = { from: camera.position.clone(), fromT: controls.target.clone(), to, toT: tgt, t0: performance.now(), dur: 650 };
 }
 $('#views').addEventListener('click', e => { const v = e.target.closest('button')?.dataset.v; if (v) goView(v); });
 
@@ -758,16 +1033,555 @@ canvas.addEventListener('pointerup', e => {
   if (d > 6) return;
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
-  const hit = ray.intersectObjects(pickables, false)[0];
+  const hit = ray.intersectObjects(pickables, false).find(h => h.object.visible);
   if (!hit) { $('#info').hidden = true; return; }
   const { part, cyl } = hit.object.userData;
+  showPart(part, cyl);
+  if (S.mode === 'guided') lessonTap(part, cyl);
+});
+function showPart(part, cyl) {
   let t, p;
   if (part === 'gas') { const st = strokeOf(cyls[cyl].psi); t = `Cylinder ${cyl + 1}: ${st.name} stroke`; p = st.desc; }
+  else if (part === 'gasket') { [t, p] = PARTS.gasket; t += ` · Cyl ${cyl + 1} & ${cyl + 2}`; }
   else { [t, p] = PARTS[part]; if (cyl >= 0) t += ` · Cyl ${cyl + 1}`; }
-  if (cyl >= 0) select(cyl);
+  if (S.inside && cyl >= 0 && part !== 'gasket') {
+    if (part === 'evalve' && isBad('burnt', cyl)) p += ' This one is burnt: its face no longer seals.';
+    if (part === 'ivalve' && isBad('bent', cyl)) p += ' This one is bent: it can\'t close all the way.';
+  }
+  if (cyl >= 0 && part !== 'gasket') select(cyl);
   $('#infoT').textContent = t; $('#infoP').textContent = p; $('#info').hidden = false;
-});
+}
 $('#infoX').addEventListener('click', () => $('#info').hidden = true);
+
+/* ================= test runners ================= */
+function logDx(line) { if (S.mode === 'diagnose' && S.dx && !S.dx.solved) S.dx.log.push(line); }
+function useTest(kind) { if (S.mode === 'diagnose' && S.dx && !S.dx.solved) S.dx.used.add(kind); }
+function startCrank() {
+  if (S.run) return;
+  const i = S.tcyl, wet = S.wet;
+  S.run = { i, wet, puffs: puffList(i, wet), shown: 0, prev: cyls[i].psi, saved: { rpm: S.rpm, playing: S.playing }, end: 0 };
+  setRpm(200); play(); renderPanel();
+}
+function stepCrank(now) {
+  const r = S.run, psi = cyls[r.i].psi;
+  if (r.end) { if (now > r.end) finishCrank(); return; }
+  if (psi < r.prev) {   // wrapped through TDC compression of this cylinder = one puff
+    r.shown++;
+    setDial('dComp', r.puffs[r.shown - 1], 300, r.puffs[r.shown - 1] + '');
+    const el = $('#puffs'); if (el) el.innerHTML = puffText(r.puffs.slice(0, r.shown));
+    if (r.shown >= 5) r.end = now + 450;
+  }
+  r.prev = psi;
+}
+function finishCrank() {
+  const r = S.run; S.run = null;
+  const key = r.wet ? 'wet' : 'dry';
+  S.res[key][r.i] = r.puffs[4]; S.res[key + 'P'][r.i] = r.puffs;
+  useTest(r.wet ? 'wet' : 'comp');
+  logDx(`Compression cyl ${r.i + 1} ${r.wet ? 'wet' : 'dry'}: ${r.puffs[4]} psi (puffs ${r.puffs.join(', ')})`);
+  setRpm(r.saved.rpm); r.saved.playing ? play() : pause();
+  renderPanel();
+}
+const puffText = arr => arr && arr.length ? `Puffs: <b>${arr.join(' → ')}</b> psi` : 'Puffs: —';
+function leakPos(i) {
+  const psi = cyls[i].psi, d = psi > 360 ? psi - 720 : psi;   // −360..360, 0 = TDC compression
+  if (Math.abs(d) <= 6) return { ok: true, txt: `Cylinder ${i + 1} is at TDC on its compression stroke. Ready.` };
+  const st = strokeOf(psi);
+  return { ok: false, txt: `Cylinder ${i + 1}: ${st.name.toLowerCase()} stroke, ${Math.round(Math.abs(mod(psi + 360, 720) - 360))}° from TDC compression.` };
+}
+function runLeak() {
+  const i = S.tcyl, cy = cyls[i], pos = leakPos(i);
+  if (!pos.ok) {
+    if (cy.li > 0.01 || cy.le > 0.01) {
+      const v = cy.li > 0.01 ? 'intake' : 'exhaust', where = v === 'intake' ? 'throttle body' : 'tailpipe';
+      S.leakMsg = { cls: 'bad', html: `<b>100% leakage.</b> Air rushes straight out the ${where}: the ${v} valve is open. A leakdown test only means something with both valves closed, at TDC on the compression stroke.` };
+    } else {
+      S.leakMsg = { cls: 'warn', html: `<b>The crank jumped!</b> With the piston partway down the bore, the air pressure pushed it down and turned the engine. Bring cylinder ${i + 1} exactly to TDC on compression and hold the crank.` };
+      rotateTo(S.c + 35, 300);
+    }
+    renderPanel(); return;
+  }
+  S.res.leak[i] = leakPct(i); S.leakMsg = null; useTest('leak');
+  logDx(`Leakdown cyl ${i + 1}: ${S.res.leak[i]}%`);
+  renderPanel();
+}
+function listen(where) {
+  const i = S.tcyl; if (S.res.leak[i] == null) return;
+  const [lvl, txt] = hear(i, where);
+  S.res.heard[i][where] = [lvl, txt];
+  logDx(`  listen cyl ${i + 1} at ${LISTEN.find(l => l[0] === where)[1].toLowerCase()}: ${txt}`);
+  renderPanel();
+}
+function runRel() {
+  S.relRun = { end: performance.now() + 1600, saved: { rpm: S.rpm, playing: S.playing } };
+  setRpm(200); play(); renderPanel();
+}
+function finishRel() {
+  const r = S.relRun; S.relRun = null;
+  const p = [0, 1, 2, 3].map(i => compFinal(i, false).p), mx = Math.max(...p);
+  S.res.rel = { amps: p.map(v => Math.round(140 + 95 * v / 172)), pct: p.map(v => Math.round(v / mx * 100)) };
+  useTest('rel');
+  logDx(`Relative compression: ${S.res.rel.pct.map((v, i) => `cyl ${i + 1} ${v}%`).join(', ')}`);
+  setRpm(r.saved.rpm); r.saved.playing ? play() : pause();
+  renderPanel();
+}
+function runVac(mode) {
+  S.vacRun = { mode, t0: performance.now(), simT: 0, needle: vacTarget(mode, 0), hist: [], min: 99, max: 0, sum: 0, n: 0, done: false };
+  renderPanel();
+}
+function stepVac(now) {
+  const V = S.vacRun; if (!V || V.done) return;
+  const T = Math.min((now - V.t0) / 1000, VAC_DUR[V.mode]);
+  while (V.simT < T) {
+    V.simT += 0.001;
+    V.needle += (vacTarget(V.mode, V.simT) - V.needle) * (0.001 / 0.05);
+    const steady = V.mode === 'idle' ? V.simT > 1.5 : true;
+    if (steady) { V.min = Math.min(V.min, V.needle); V.max = Math.max(V.max, V.needle); V.sum += V.needle; V.n++; }
+    if (Math.round(V.simT * 1000) % 16 === 0) V.hist.push([V.simT, V.needle]);
+  }
+  if (T >= VAC_DUR[V.mode]) {
+    V.done = true;
+    const avg = V.sum / Math.max(1, V.n), last = V.hist.slice(-30).reduce((a, h) => a + h[1], 0) / Math.min(30, V.hist.length);
+    S.res.vac[V.mode] = { min: V.min, max: V.max, avg, end: last };
+    useTest('vac');
+    logDx(`Vacuum ${VAC_NAME[V.mode].toLowerCase()}: min ${V.min.toFixed(1)}, max ${V.max.toFixed(1)}, ${V.mode === 'hold' ? 'at end ' + last.toFixed(1) : 'avg ' + avg.toFixed(1)} inHg`);
+    renderPanel();
+  }
+}
+function drawVac() {
+  const V = S.vacRun; if (!V) return;
+  setDial('dVac', V.needle, 30, V.needle.toFixed(1));
+  const sp = $('#vacS'); if (!sp) return;
+  const t1 = V.simT, t0 = Math.max(0, t1 - 3);
+  const pts = V.hist.filter(h => h[0] >= t0).map(h => `${((h[0] - t0) / 3 * 300).toFixed(1)},${(56 - h[1] / 30 * 52).toFixed(1)}`).join(' ');
+  sp.querySelector('polyline').setAttribute('points', pts);
+  const rd = $('#vacR'); if (rd) rd.textContent = V.done ? `${VAC_NAME[V.mode]}: min ${V.min.toFixed(1)} · max ${V.max.toFixed(1)} inHg` : `${VAC_NAME[V.mode]} · ${(VAC_DUR[V.mode] - V.simT).toFixed(1)} s`;
+}
+function checkMarks() {
+  S.res.marks = true; useTest('marks'); logDx('Checked timing marks at TDC #1');
+  rotateTo(0); goView('marks');
+  renderPanel();
+}
+
+/* ================= instruments (SVG) ================= */
+function dial(id, max, step, unit, bands = []) {
+  const A = v => (-120 + 240 * clamp(v / max, 0, 1)) * DEG;
+  const P = (v, r) => [(100 + r * Math.sin(A(v))).toFixed(1), (100 - r * Math.cos(A(v))).toFixed(1)];
+  let s = `<svg viewBox="0 0 200 165" class="dial" aria-hidden="true"><circle cx="100" cy="100" r="92" class="face"/>`;
+  for (const [a, b, col] of bands) {
+    const [x0, y0] = P(a, 70), [x1, y1] = P(b, 70), large = (b - a) / max * 240 > 180 ? 1 : 0;
+    s += `<path d="M${x0} ${y0} A70 70 0 ${large} 1 ${x1} ${y1}" stroke="${col}" stroke-width="7" fill="none" opacity=".6"/>`;
+  }
+  for (let k = 0; k <= max / step * 2; k++) {
+    const v = k * step / 2, maj = k % 2 === 0;
+    const [x0, y0] = P(v, maj ? 75 : 79), [x1, y1] = P(v, 85);
+    s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" class="tk${maj ? '' : ' mn'}"/>`;
+    if (maj) { const [tx, ty] = P(v, 62); s += `<text x="${tx}" y="${ty}" class="tn">${v}</text>`; }
+  }
+  s += `<text x="100" y="128" class="tu">${unit}</text><text x="100" y="153" class="tv" id="${id}V">—</text>`;
+  s += `<g id="${id}N" transform="rotate(-120 100 100)"><line x1="100" y1="112" x2="100" y2="24" class="nd"/><circle cx="100" cy="100" r="6" class="hub"/></g></svg>`;
+  return s;
+}
+function setDial(id, v, max, txt) {
+  const n = document.getElementById(id + 'N'); if (!n) return;
+  n.setAttribute('transform', `rotate(${(-120 + 240 * clamp(v / max, 0, 1)).toFixed(2)} 100 100)`);
+  const t = document.getElementById(id + 'V'); if (t && txt != null) t.textContent = txt;
+}
+function waveSVG(rel) {
+  const p = [0, 1, 2, 3].map(i => compFinal(i, false).p);
+  let pts = [], labels = '';
+  for (let th = 0; th <= 1440; th += 4) {
+    let I = 140;
+    for (let i = 0; i < 4; i++) for (let m = -1; m <= 2; m++) { const c = OFFSET[i] + 720 * m - 15; I += 95 * p[i] / 172 * Math.exp(-(((th - c) / 42) ** 2)); }
+    I += Math.sin(th * 0.37) * 2;
+    pts.push(`${(12 + th / 1440 * 300).toFixed(1)},${(112 - (I - 100) / 160 * 100).toFixed(1)}`);
+  }
+  for (let m = 0; m < 2; m++) for (let i = 0; i < 4; i++) {
+    const c = OFFSET[i] + 720 * m - 15; if (c < 0 || c > 1440) continue;
+    const I = 140 + 95 * p[i] / 172;
+    labels += `<text x="${(12 + c / 1440 * 300).toFixed(1)}" y="${(112 - (I - 100) / 160 * 100 - 6).toFixed(1)}" fill="#C5CFD9" font-size="10" font-family="JetBrains Mono" text-anchor="middle">${i + 1}</text>`;
+  }
+  return `<svg viewBox="0 0 320 130" class="wave" aria-label="Starter current waveform"><rect x="0" y="0" width="320" height="130" rx="8" fill="#070a0e"/>
+    ${[100, 150, 200, 250].map(a => `<line x1="12" x2="312" y1="${112 - (a - 100) / 160 * 100}" y2="${112 - (a - 100) / 160 * 100}" stroke="#16202a"/><text x="314" y="${115 - (a - 100) / 160 * 100}" fill="#5A6773" font-size="8" font-family="JetBrains Mono" text-anchor="end">${a}A</text>`).join('')}
+    <polyline points="${pts.join(' ')}" fill="none" stroke="#3DDC97" stroke-width="1.6"/>${labels}
+    <text x="12" y="125" fill="#5A6773" font-size="8.5" font-family="JetBrains Mono">starter current · 2 cycles · numbers = cylinder (sync on cyl 1)</text></svg>`;
+}
+
+/* ================= notebook rendering ================= */
+const TESTS = [['comp', 'Compression'], ['leak', 'Leakdown'], ['rel', 'Relative'], ['vac', 'Vacuum'], ['marks', 'Timing marks']];
+const explain = () => S.mode === 'explore';   // explanations shown in Explore only
+const cylChips = (sel, act = 'tcyl') => `<span class="cyls"><span class="lbl">Cylinder</span>${[0, 1, 2, 3].map(i => `<button class="cc" data-act="${act}:${i}" aria-pressed="${sel === i}">${i + 1}</button>`).join('')}</span>`;
+function resultsTable() {
+  const R = S.res, dry = R.dry.filter(v => v != null);
+  if (!dry.length && !R.wet.some(v => v != null) && !R.leak.some(v => v != null)) return '';
+  const hi = dry.length ? Math.max(...dry) : 0;
+  let h = `<table class="rt"><tr><th>Cyl</th><th>Dry psi</th><th>Wet psi</th><th>Leak %</th></tr>`;
+  for (let i = 0; i < 4; i++) {
+    const lo = R.dry[i] != null && hi && R.dry[i] < hi * .75;
+    const hd = Object.entries(R.heard[i]).filter(([, v]) => v[0] === 'loud').map(([k]) => LISTEN.find(l => l[0] === k)[1]).join(', ');
+    h += `<tr><td>${i + 1}</td><td class="${lo ? 'lo' : ''}">${R.dry[i] ?? '–'}</td><td>${R.wet[i] ?? '–'}</td><td class="${R.leak[i] > 20 ? 'lo' : ''}">${R.leak[i] ?? '–'}${hd ? ` <span style="color:var(--warn)">· ${hd}</span>` : ''}</td></tr>`;
+  }
+  h += '</table>';
+  if (dry.length >= 2) {
+    const lo = Math.min(...dry), pct = Math.round(lo / hi * 100);
+    h += `<p class="spec">Lowest dry reading is <b>${pct}%</b> of the highest ${pct >= 75 ? '(passes the 75% rule)' : '<b style="color:#FFB3AC">(fails the 75% rule)</b>'}.</p>`;
+  }
+  return h;
+}
+const TEST_UI = {
+  comp() {
+    const r = S.run, R = S.res, i = S.tcyl, shown = r ? r.puffs.slice(0, r.shown) : (S.wet ? R.wetP[i] : R.dryP[i]);
+    return `<p class="tnote">Warm engine, fuel and ignition disabled, <b>all</b> spark plugs out, throttle held wide open. Crank 4–6 compression strokes ("puffs") and note the first puff and the final reading. Spec: <b>160–190 psi</b>, lowest at least 75% of highest. <b>Wet test:</b> squirt a teaspoon of oil into the cylinder and retest.</p>
+      <div class="trow">${cylChips(i)}<span class="seg mini"><button data-act="wet:0" aria-pressed="${!S.wet}">Dry</button><button data-act="wet:1" aria-pressed="${S.wet}">Wet</button></span></div>
+      <div class="inst">${dial('dComp', 300, 50, 'psi', [[160, 190, '#3DDC97']])}<div class="r"><button class="btn primary" data-act="crank"${r || S.relRun ? ' disabled' : ''}>${r ? 'Cranking…' : 'Crank 5 puffs'}</button><div class="puffs" id="puffs">${puffText(shown)}</div></div></div>${resultsTable()}`;
+  },
+  leak() {
+    const i = S.tcyl, R = S.res, pos = leakPos(i), v = R.leak[i];
+    let h = `<p class="tnote">Bring the cylinder to <b>TDC on its compression stroke</b> (both valves closed), feed in 100 psi of shop air, and read how much leaks out. Under 10% is good; over 20% is a problem. Then <b>listen</b> to find where the air is going.</p>
+      <div class="trow">${cylChips(i)}</div>
+      <div class="msg${pos.ok ? ' ok' : ''}" id="lkPos">${pos.txt}</div>
+      <div class="trow"><button class="btn" data-act="goto">Rotate to TDC compression</button><button class="btn primary" data-act="leak">Pressurize</button></div>`;
+    if (S.leakMsg) h += `<div class="msg ${S.leakMsg.cls}">${S.leakMsg.html}</div>`;
+    h += `<div class="inst">${dial('dLeak', 100, 20, '% leakage', [[0, 10, '#3DDC97'], [10, 20, '#FFB224'], [20, 100, '#FF5A4E']])}<div class="r"><div class="big">${v != null ? v + '%' : '—'}</div><span class="dim">${v != null ? (v < 10 ? 'Good seal' : v <= 20 ? 'Fair' : 'Problem') : 'Not tested'}</span></div></div>`;
+    if (v != null) {
+      h += `<h4>Listen for the leak</h4><div class="listen">` + LISTEN.map(([k, n]) => { const got = R.heard[i][k]; return `<button data-act="listen:${k}" class="${got ? 'heard ' + got[0] : ''}"><b>${n}</b><span>${got ? got[1] : 'Tap to listen'}</span></button>`; }).join('') + `</div>`;
+    }
+    return h + resultsTable();
+  },
+  rel() {
+    const rel = S.res.rel;
+    let h = `<p class="tnote">Disable fuel and ignition, leave the plugs <b>in</b>, and crank while a scope or scan tool records starter current. Each compression stroke makes a current hump; a weak cylinder makes a smaller hump. It compares cylinders to each other in a few seconds, without pulling plugs.</p>
+      <div class="trow"><button class="btn primary" data-act="rel"${S.relRun || S.run ? ' disabled' : ''}>${S.relRun ? 'Cranking…' : 'Crank & capture'}</button></div>`;
+    if (rel) h += waveSVG() + `<div class="bars">${rel.pct.map((p, i) => `<div><i style="--h:${p / 100};--k:${p < 75 ? '#FF5A4E' : '#3DDC97'}"></i>Cyl ${i + 1}<span>${p}%</span></div>`).join('')}</div>`;
+    return h;
+  },
+  vac() {
+    const V = S.vacRun, R = S.res.vac;
+    let h = `<p class="tnote">Gauge on manifold vacuum, engine warm and running. A healthy engine pulls a <b>steady 17–21 inHg</b> at idle. Watch the needle's <b>level</b> and how it <b>moves</b>: steady, dropping regularly, or drifting.</p>
+      <div class="trow">${['idle', 'hold', 'snap'].map(m => `<button class="btn${V && V.mode === m && !V.done ? ' primary' : ''}" data-act="vac:${m}">${VAC_NAME[m]}</button>`).join('')}</div>
+      <div class="inst">${dial('dVac', 30, 5, 'inHg', [[17, 21, '#3DDC97']])}<div class="r"><span class="dim" id="vacR">${V ? '' : 'Pick a test to start the engine.'}</span></div></div>
+      <svg class="spark" id="vacS" viewBox="0 0 300 60" preserveAspectRatio="none" aria-hidden="true"><rect width="300" height="60" rx="6" fill="#070a0e"/><line x1="0" x2="300" y1="${56 - 17 / 30 * 52}" y2="${56 - 17 / 30 * 52}" stroke="#1d3a2c" stroke-dasharray="3 3"/><line x1="0" x2="300" y1="${56 - 21 / 30 * 52}" y2="${56 - 21 / 30 * 52}" stroke="#1d3a2c" stroke-dasharray="3 3"/><polyline points="" fill="none" stroke="#FF5A4E" stroke-width="1.5"/></svg>
+      <p class="dim" style="margin-top:4px">Last 3 seconds. Dashed lines = 17–21 inHg. The 2500 rpm hold is time-compressed (about 40 s of real time).</p>`;
+    const done = Object.entries(R);
+    if (done.length) h += `<table class="rt"><tr><th>Test</th><th>Min</th><th>Max</th><th>Avg / end</th></tr>${done.map(([m, r]) => `<tr><td>${VAC_NAME[m]}</td><td>${r.min.toFixed(1)}</td><td>${r.max.toFixed(1)}</td><td>${(m === 'hold' ? r.end : r.avg).toFixed(1)}</td></tr>`).join('')}</table>`;
+    return h;
+  },
+  marks() {
+    let h = `<p class="tnote">With the timing cover off, rotate the engine to <b>TDC #1</b> (crank mark at its pointer). Both white cam-sprocket marks should line up with their yellow pointers. One tooth off = 10° of cam = 20° of crank.</p>
+      <div class="trow"><button class="btn primary" data-act="marks">Rotate to TDC #1 and zoom in</button></div>`;
+    if (S.res.marks) h += `<div class="msg">Compare each white cam mark to the yellow pointer above it. Orbit or zoom with the mouse if you need a closer look.${explain() ? (S.fault?.type === 'chain' ? ' <b>Here the cam marks sit one tooth behind the pointers: the cams are retarded.</b>' : ' <b>Here all three marks line up.</b>') : ''}</div>`;
+    return h;
+  },
+};
+function testsHTML(only) {
+  let h = only ? '' : `<div class="tpick" role="group" aria-label="Test">${TESTS.map(([k, n]) => `<button data-act="test:${k}" aria-pressed="${S.test === k}">${n}</button>`).join('')}</div>`;
+  h += TEST_UI[S.test]();
+  if (explain() && S.fault && hasResults()) h += `<h4>What this engine should show</h4><ul class="ev">${EVIDENCE[S.fault.type].map(e => `<li>${e}</li>`).join('')}</ul>`;
+  return h;
+}
+const hasResults = () => { const R = S.res; return R.dry.some(v => v != null) || R.leak.some(v => v != null) || R.rel || Object.keys(R.vac).length || R.marks; };
+
+function breakHTML() {
+  const f = S.fault, t = f?.type || 'none';
+  let h = `<p>Pick a fault and watch what changes inside the engine, then run the tests to see how it shows up. To practice without seeing inside, turn off <b>Show inside</b> or switch to <b>Diagnose</b>.</p>
+    <div class="trow"><span class="seg mini"><button data-act="inside:1" aria-pressed="${S.inside}">Show inside</button><button data-act="inside:0" aria-pressed="${!S.inside}">Hide inside</button></span></div><div class="cards">`;
+  for (const [k, F] of Object.entries(FAULTS)) {
+    const on = t === k;
+    h += `<button class="card" data-act="fault:${k}" aria-pressed="${on}"><b>${F.name}</b>${on ? `<span>${F.fx}</span>` : ''}</button>`;
+    if (on && F.pick !== 'none') {
+      h += F.pick === 'pair'
+        ? `<span class="cyls"><span class="lbl">Between</span>${[0, 1, 2].map(k2 => `<button class="cc" data-act="fcyl:${k2}" aria-pressed="${f.cyl === k2}">${k2 + 1}–${k2 + 2}</button>`).join('')}</span>`
+        : `<span class="cyls"><span class="lbl">Cylinder</span>${[0, 1, 2, 3].map(k2 => `<button class="cc" data-act="fcyl:${k2}" aria-pressed="${f.cyl === k2}">${k2 + 1}</button>`).join('')}</span>`;
+    }
+  }
+  h += `</div>`;
+  if (t === 'cat' || t === 'vleak') h += `<p class="dim" style="margin-top:10px">This fault is outside the cylinders, so nothing changes in the 3D view. Try the vacuum gauge.</p>`;
+  if (t === 'chain') h += `<p class="dim" style="margin-top:10px">Look at the chart: every valve bar has moved 20° later. Then check the timing marks.</p>`;
+  h += `<div class="nav"><button class="btn primary" data-act="tab:tests">Run tests on this engine</button></div>`;
+  return h;
+}
+
+/* ================= lessons ================= */
+const ps = i => cyls[i].psi, sk = i => strokeOf(cyls[i].psi).k;
+const sparkWin = i => mod(cyls[i].psi - SPARK, 720) < 26;
+const nearTDC = i => { const p = cyls[i].psi; return Math.min(p, 720 - p) <= 6; };
+const LESSONS = [
+{ id:'strokes', title:'The four strokes', sub:'Intake, compression, power, exhaust', steps:[
+  { body:'Every cylinder repeats four strokes: <b>intake, compression, power, exhaust</b>. Watch <b>cylinder 1</b>, the one nearest the timing chain. Its gas changes color with each stroke, and the caption below explains what is happening.', setup:{ c:600, playing:true, rpm:20, sel:0, view:'iso', fault:null } },
+  { body:'Pause the engine when cylinder 1 is on its <b>intake</b> stroke (blue).', goal:{ check:() => !S.playing && sk(0) === 'intake', hint:'Press pause (❚❚) while cylinder 1 is blue. Use ◀ ▶ to fine-tune.' } },
+  { body:'', goal:{ mc:{ q:'During the intake stroke, which valve is open?', opts:['The intake valve', 'The exhaust valve', 'Both', 'Neither'], a:0, why:'The intake valve opens so the falling piston can draw in air and fuel. The exhaust valve stays closed.' } } },
+  { body:'Step forward with <b>▶</b> (or drag the chart) until cylinder 1 is on its <b>compression</b> stroke (green).', goal:{ check:() => !S.playing && sk(0) === 'compression', hint:'Cylinder 1 should be green.' } },
+  { body:'', goal:{ mc:{ q:'On the compression stroke, the piston…', opts:['moves down with the intake valve open', 'moves up with both valves closed', 'moves up with the exhaust valve open'], a:1, why:'Both valves are shut, so the rising piston squeezes the mixture. Squeezed mixture burns faster and harder.' } } },
+  { body:'Now find the moment the <b>spark plug fires</b> in cylinder 1. Watch for the flash in the cylinder, and the ◆ on the chart.', goal:{ check:() => !S.playing && sparkWin(0), hint:'Scrub to the ◆ in the cylinder 1 row (near 720°).' } },
+  { body:'', goal:{ mc:{ q:'Which stroke actually pushes on the crankshaft and makes power?', opts:['Intake', 'Compression', 'Power', 'Exhaust'], a:2, why:'Only the power stroke makes power. The other three strokes are paid for by the flywheel and the other cylinders.' } } },
+  { body:'', goal:{ mc:{ q:'How many turns of the crankshaft does one complete 4-stroke cycle take?', opts:['One', 'Two', 'Four'], a:1, why:'Each stroke is half a turn (180°). Four strokes = 720° = two crank turns. That is why the chart is 720° wide.' } } },
+]},
+{ id:'cam', title:'Cam and crank: the 2:1 link', sub:'Timing chain, sprockets and marks', steps:[
+  { body:'The timing chain links the crankshaft to both camshafts. Tap a <b>cam sprocket</b> (one of the two big gears at the top of the chain).', setup:{ c:0, playing:false, view:'front', fault:null, sel:0 }, goal:{ tap:{ part:'msprock' }, hint:'Tap one of the top sprockets.' } },
+  { body:'Now tap the small <b>crank sprocket</b> at the bottom of the chain.', goal:{ tap:{ part:'csprock' }, hint:'Tap the small sprocket at the bottom.' } },
+  { body:'The crank sprocket has 18 teeth and each cam sprocket has 36. Right now, every white mark lines up with its yellow pointer. Turn the crank <b>one full turn</b>: drag the chart cursor to <b>360°</b>.', goal:{ check:() => !S.playing && Math.abs(S.c - 360) < 6, hint:'Drag the white line on the chart to 360°.' } },
+  { body:'', goal:{ mc:{ q:'The crank mark is back at its pointer. Where are the cam marks?', opts:['Also back at their pointers', 'Halfway around, pointing down', 'A quarter turn around'], a:1, why:'The cam sprocket is twice as big, so one crank turn moves it only half a turn.' } } },
+  { body:'', goal:{ mc:{ q:'Why must the camshaft turn at half crank speed?', opts:['To reduce wear', 'Each valve opens once per cycle, and a cycle takes two crank turns', 'So the chain is quieter'], a:1, why:'Intake opens once per 4-stroke cycle (720°). The cam has one lobe per valve, so it must turn once per cycle: half crank speed.' } } },
+  { body:'Drag the chart back to <b>0°</b> so all the marks line up again.', goal:{ check:() => !S.playing && (S.c < 4 || S.c > 716), hint:'Drag the white line to 0°.' } },
+  { body:'', goal:{ mc:{ q:'All the marks line up only when…', opts:['any piston is at the top', 'cylinder 1 is at TDC at the end of compression', 'cylinder 1 is at the bottom'], a:1, why:'The marks line up once every 720°, at TDC #1 on compression. The crank mark alone also lines up at 360°, but then the cam marks point down. That is why techs check the cam marks too.' } } },
+]},
+{ id:'overlap', title:'Valve timing and overlap', sub:'Why valves open early and close late', steps:[
+  { body:'Look at the thin bars under each row of the chart: <b>blue = intake valve open</b>, <b>orange = exhaust valve open</b>. They don\'t start and stop exactly at TDC and BDC. The intake opens 12° before TDC and closes 40° after BDC.', setup:{ c:320, playing:false, view:'iso', fault:null, sel:0 } },
+  { body:'Find <b>valve overlap</b> on cylinder 1: scrub until <b>both</b> of its valves are open at once. Watch the IN and EX bars in the dock.', goal:{ check:() => !S.playing && cyls[0].li > 0.004 && cyls[0].le > 0.004, hint:'Look near 360° in the cylinder 1 row, where the blue and orange bars overlap.' } },
+  { body:'', goal:{ mc:{ q:'Overlap happens…', opts:['at the bottom of the power stroke', 'at the top, between the exhaust and intake strokes', 'in the middle of compression'], a:1, why:'Right at TDC between exhaust and intake. The rushing exhaust helps pull the fresh charge in.' } } },
+  { body:'', goal:{ mc:{ q:'Why does the intake valve stay open until 40° after BDC?', opts:['The incoming air has momentum and keeps filling the cylinder', 'To let exhaust back in', 'It is a manufacturing compromise'], a:0, why:'Moving air keeps flowing in even as the piston starts back up. Closing later packs in more air, especially at higher rpm.' } } },
+  { body:'', goal:{ mc:{ q:'The exhaust opens 40° before BDC on the power stroke. Why?', opts:['Most of the push is already used up, so it lets the pressure blow down early', 'To cool the valve', 'To add power'], a:0, why:'By then most of the work is done. Opening early lets pressure escape, so the piston does not have to fight it on the way back up.' } } },
+  { body:'', goal:{ mc:{ q:'If the timing chain jumps one tooth, what changes?', opts:['Nothing, the engine adapts', 'Every valve event shifts relative to the pistons', 'Only the spark timing'], a:1, why:'The cams are no longer in step with the crank, so every valve opens and closes at the wrong point in the stroke. You will see that in Break It mode.' } } },
+]},
+{ id:'firing', title:'Firing order 1-3-4-2', sub:'Which cylinder fires when', steps:[
+  { body:'Cylinders are numbered from the timing end: 1, 2, 3, 4. They don\'t fire in that order. This engine fires <b>1-3-4-2</b>, one cylinder every half turn. Tap any part of <b>cylinder 3</b>.', setup:{ c:0, playing:true, rpm:20, view:'iso', fault:null }, goal:{ tap:{ cyl:2 }, hint:'Tap the gas, piston or valves of the third cylinder from the timing chain.' } },
+  { body:'', goal:{ mc:{ q:'Which cylinder fires right after cylinder 1?', opts:['2', '3', '4'], a:1, why:'1-3-4-2: cylinder 3 is next. Follow the orange power bars down the chart.' } } },
+  { body:'', goal:{ mc:{ q:'Which cylinder fires right after cylinder 4?', opts:['1', '2', '3'], a:1, why:'1-3-4-2, then back to 1.' } } },
+  { body:'', goal:{ mc:{ q:'Pistons 1 and 4 move up and down together. When cylinder 1 is on compression, cylinder 4 is on…', opts:['compression too', 'exhaust', 'power'], a:1, why:'Same position, opposite end of the cycle. When 1 reaches TDC compression, 4 reaches TDC at the end of exhaust (overlap). Techs call that "TDC #1, rocking on #4".' } } },
+  { body:'Pause the engine when <b>cylinder 4</b> is on its <b>power</b> stroke.', goal:{ check:() => !S.playing && sk(3) === 'power', hint:'Watch the label above cylinder 4 (far end).' } },
+  { body:'', goal:{ mc:{ q:'In a 4-cylinder, a cylinder fires every…', opts:['90° of crank rotation', '180° of crank rotation', '360° of crank rotation'], a:1, why:'720° ÷ 4 cylinders = one power stroke every 180°.' } } },
+]},
+{ id:'comp', title:'Compression test', sub:'Find a cylinder that doesn\'t seal', steps:[
+  { body:'A compression test measures how well each cylinder seals. The <b>Compression</b> test is open below. Read the procedure, then test <b>cylinder 1</b>.', setup:{ fault:null, inside:true, test:'comp', tcyl:0, wet:false, playing:false, view:'iso', reset:true }, test:true, goal:{ check:() => S.res.dry[0] != null, hint:'Pick cylinder 1 and press Crank 5 puffs.' } },
+  { body:'Watch the needle step up with each puff. Now test the <b>other three</b> cylinders.', test:true, goal:{ check:() => S.res.dry.every(v => v != null), hint:'Pick each cylinder and crank it.' } },
+  { body:'', test:true, goal:{ mc:{ q:'Spec: 160–190 psi, and the lowest cylinder must be at least 75% of the highest. Does this engine pass?', opts:['Yes', 'No'], a:0, why:'All four are close together and inside the spec. This is what a healthy engine looks like.' } } },
+  { body:'Here\'s a different engine. The customer says it idles rough. You can\'t see inside this time. Test <b>all four cylinders</b>.', setup:{ fault:{ type:'burnt', cyl:1 }, inside:false, test:'comp', tcyl:0, wet:false, reset:true }, test:true, goal:{ check:() => S.res.dry.every(v => v != null), hint:'Crank each cylinder.' } },
+  { body:'', test:true, goal:{ mc:{ q:'What do the readings tell you?', opts:['All cylinders pass', 'Cylinder 2 is low and fails the 75% rule', 'Cylinder 4 is low'], a:1, why:'Cylinder 2 is far below the others. It is leaking compression somewhere: rings, a valve or the head gasket.' } } },
+  { body:'', test:true, goal:{ mc:{ q:'Low compression says the cylinder leaks, but not where. What tells you whether it is the rings or a valve?', opts:['A wet test and a leakdown test', 'Retesting it dry', 'A new set of spark plugs'], a:0, why:'Oil temporarily seals worn rings (wet test), and leakdown lets you hear where the air escapes. Next lesson.' } } },
+  { body:'Here is what was inside: a <b>burnt exhaust valve</b> on cylinder 2. See the dark, glowing valve and the exhaust port lighting up on compression? Tap that exhaust valve.', setup:{ inside:true, view:'side', c:500, playing:true, rpm:10, sel:1 }, goal:{ tap:{ part:'evalve', cyl:1 }, hint:'Tap cylinder 2\'s exhaust valve (the dark one).' } },
+]},
+{ id:'wet', title:'Wet test and leakdown', sub:'Rings or valves? Listen for the leak', steps:[
+  { body:'This engine burns oil. Run a <b>dry</b> compression test on <b>cylinder 3</b>.', setup:{ fault:{ type:'rings', cyl:2 }, inside:false, test:'comp', tcyl:2, wet:false, playing:false, view:'iso', reset:true }, test:true, goal:{ check:() => S.res.dry[2] != null, hint:'Cylinder 3, Dry, Crank 5 puffs.' } },
+  { body:'Notice the first puff was very low and it built up slowly. Now add oil: pick <b>Wet</b> and test cylinder 3 again.', test:true, goal:{ check:() => S.res.wet[2] != null, hint:'Pick Wet, then crank cylinder 3.' } },
+  { body:'', test:true, goal:{ mc:{ q:'The wet reading jumped about 40 psi. That points to…', opts:['A burnt valve', 'Worn piston rings', 'A blown head gasket'], a:1, why:'Oil briefly seals the gap between worn rings and the cylinder wall. A leaking valve or gasket barely changes when wet.' } } },
+  { body:'Confirm it with a <b>leakdown</b> test. First, bring cylinder 3 to <b>TDC on its compression stroke</b>. Use the chart, ◀ ▶, or the Rotate button.', setup:{ test:'leak', tcyl:2 }, test:true, goal:{ check:() => !S.playing && nearTDC(2), hint:'Cylinder 3\'s spark ◆ marks the spot (TDC is 12° after it).' } },
+  { body:'Now press <b>Pressurize</b>.', test:true, goal:{ check:() => S.res.leak[2] != null, hint:'Press Pressurize.' } },
+  { body:'About 30% is leaking. Find where it goes: <b>listen at the oil fill cap</b>.', test:true, goal:{ check:() => !!S.res.heard[2].oil, hint:'Tap Oil fill cap in the Listen list.' } },
+  { body:'', test:true, goal:{ mc:{ q:'Air at the oil fill cap means it is leaking…', opts:['past the rings into the crankcase', 'past the intake valve', 'into the cooling system'], a:0, why:'The crankcase is under the pistons. The only way air gets there is past the rings. Rings confirmed.' } } },
+  { body:'', goal:{ mc:{ q:'Where would you hear the leak from a burnt exhaust valve?', opts:['Throttle body', 'Tailpipe', 'Oil fill cap'], a:1, why:'Exhaust valve → tailpipe, intake valve → throttle body, rings → oil fill, head gasket → the neighbor\'s plug hole or bubbles in the radiator.' } } },
+  { body:'Here is the inside view: blow-by gas leaking past the rings, strongest on compression and power. Tap the blow-by under the piston.', setup:{ inside:true, view:'side', c:mod(OFFSET[2] + 700, 720), playing:true, rpm:10, sel:2 }, goal:{ tap:{ part:'blowby' }, hint:'Tap the gray haze under cylinder 3\'s piston.' } },
+]},
+{ id:'vacuum', title:'Vacuum gauge and timing marks', sub:'Read the needle; check the chain', steps:[
+  { body:'A vacuum gauge on the intake manifold shows how well <b>all</b> the cylinders pump air together. Start with a healthy engine: run the <b>Idle</b> test.', setup:{ fault:null, inside:true, test:'vac', reset:true, playing:true, rpm:30, view:'iso' }, test:true, goal:{ check:() => !!S.res.vac.idle, hint:'Press Idle and watch for 6 seconds.' } },
+  { body:'', test:true, goal:{ mc:{ q:'Steady around 19 inHg at idle means…', opts:['a healthy engine', 'a vacuum leak', 'a burnt valve'], a:0, why:'Steady and inside 17–21 inHg at idle is normal for a healthy engine.' } } },
+  { body:'Now run <b>Snap throttle</b>: the throttle snaps open and shut.', test:true, goal:{ check:() => !!S.res.vac.snap, hint:'Press Snap throttle.' } },
+  { body:'', test:true, goal:{ mc:{ q:'The needle dropped to near 0, then jumped above the idle reading before settling. That overshoot means…', opts:['the rings and valves seal well', 'the exhaust is restricted', 'the timing is late'], a:0, why:'A strong overshoot (about 4–5 inHg above idle) shows good sealing. Worn rings give a weak overshoot.' } } },
+  { body:'Different engine: it idles rough. Run the <b>Idle</b> test and watch the needle closely.', setup:{ fault:{ type:'burnt', cyl:3 }, inside:false, test:'vac', reset:true }, test:true, goal:{ check:() => !!S.res.vac.idle, hint:'Press Idle.' } },
+  { body:'', test:true, goal:{ mc:{ q:'The needle drops sharply at a regular beat. This points to…', opts:['one cylinder leaking (usually a valve)', 'a restricted exhaust', 'a healthy engine'], a:0, why:'Every time the bad cylinder comes around, it pumps poorly and the needle dips. The gauge says "one cylinder"; compression and leakdown tell you which one and why.' } } },
+  { body:'Another engine: no power on hills. Run the <b>2500 rpm hold</b>.', setup:{ fault:{ type:'cat', cyl:0 }, inside:false, test:'vac', reset:true }, test:true, goal:{ check:() => !!S.res.vac.hold, hint:'Press 2500 rpm hold and watch the whole run.' } },
+  { body:'', test:true, goal:{ mc:{ q:'Vacuum starts normal, then falls steadily while held at 2500 rpm. That is…', opts:['a restricted exhaust (plugged catalytic converter)', 'worn rings', 'a jumped timing chain'], a:0, why:'Exhaust is backing up and the engine can\'t breathe out, so manifold vacuum keeps falling.' } } },
+  { body:'Last engine: steady but <b>low</b> vacuum at idle, and code P0016. Run the <b>Idle</b> test.', setup:{ fault:{ type:'chain', cyl:0 }, inside:false, test:'vac', reset:true }, test:true, goal:{ check:() => !!S.res.vac.idle, hint:'Press Idle.' } },
+  { body:'Steady but low can be late valve timing or a vacuum leak. P0016 points at timing. Check the <b>timing marks</b>.', setup:{ test:'marks' }, test:true, goal:{ check:() => S.res.marks && !S.goto, hint:'Press Rotate to TDC #1 and zoom in.' } },
+  { body:'', test:true, goal:{ mc:{ q:'Do the cam marks line up with their pointers?', opts:['Yes, all aligned', 'No, the cams are about one tooth behind'], a:1, why:'The chain jumped a tooth, so the cams are retarded 20° of crank rotation. Every valve event is late. That is why vacuum and compression are low on all cylinders. Now try Diagnose mode.' } } },
+]},
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function startLesson(id) {
+  S.lesson = LESSONS.find(l => l.id === id); S.step = 0;
+  enterStep();
+}
+function applySetup(su) {
+  if (!su) return;
+  if ('fault' in su) setFault(su.fault);
+  if (su.reset) { S.res = RES0(); S.leakMsg = null; S.vacRun = null; }
+  if ('inside' in su) S.inside = su.inside;
+  if (su.test) S.test = su.test;
+  if ('tcyl' in su) S.tcyl = su.tcyl;
+  if ('wet' in su) S.wet = su.wet;
+  if ('sel' in su) select(su.sel);
+  if (su.rpm) setRpm(su.rpm);
+  if ('c' in su) { S.goto = null; S.c = su.c; }
+  if (su.playing === true) play(); else if (su.playing === false) pause();
+  if (su.view) goView(su.view);
+  dirty = true;
+}
+function enterStep() {
+  const st = curStep(); if (!st) return;
+  S.mcPick = []; S.stepOk = !st.goal;
+  applySetup(st.setup);
+  renderPanel();
+}
+function stepDone() { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); }
+function lessonTap(part, cyl) {
+  const st = curStep(); if (!st || !st.goal || S.stepOk || !st.goal.tap) return;
+  const g = st.goal.tap;
+  if ((g.part == null || g.part === part) && (g.cyl == null || g.cyl === cyl)) stepDone();
+}
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up the engine for you, tells you what to look at, and checks your answer before moving on.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => {
+      h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`;
+    });
+    return h + '</div>';
+  }
+  const Ls = S.lesson, st = curStep(), n = LESSONS.indexOf(Ls) + 1, g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${n} · Step ${S.step + 1} of ${Ls.steps.length}</span><span class="dots">${Ls.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${Ls.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += mcHTML(g.mc, S.mcPick, S.stepOk);
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? ICON_OK : ICON_GOAL}<span>${S.stepOk ? 'Done.' : g.hint}</span></div>`;
+  }
+  const last = S.step === Ls.steps.length - 1;
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${last ? 'Finish' : 'Next'}</button></div>`;
+  if (st.test) h += `<h4>${TESTS.find(t => t[0] === S.test)[1]}</h4>` + testsHTML(true);
+  return h;
+}
+const ICON_GOAL = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="7" r="2" fill="currentColor"/></svg>`;
+const ICON_OK = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5 5.5 10.5 11.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function mcHTML(m, pick, solved) {
+  let h = `<p class="qq">${m.q}</p><div class="mc">`;
+  m.opts.forEach((o, i) => {
+    const cls = solved && i === m.a ? 'right' : pick.includes(i) && i !== m.a ? 'wrong' : '';
+    h += `<button data-act="mc:${i}" class="${cls}"${solved ? ' disabled' : ''}>${o}</button>`;
+  });
+  h += '</div>';
+  if (solved) h += `<div class="why">${m.why}</div>`;
+  return h;
+}
+
+/* ================= diagnose ================= */
+function newCase() {
+  const total = CASE_POOL.reduce((a, c) => a + c[1], 0);
+  let r = Math.random() * total, type = 'none';
+  for (const [t, w] of CASE_POOL) { if ((r -= w) < 0) { type = t; break; } }
+  if (S.dx && S.dx.fault.type === type && Math.random() < .6) return newCase();   // avoid repeats
+  const pick = FAULTS[type].pick, cyl = pick === 'pair' ? Math.floor(Math.random() * 3) : pick === 'cyl' ? Math.floor(Math.random() * 4) : 0;
+  const n = (S.dx?.n || 0) + 1;
+  S.dx = { n, fault: { type, cyl }, used: new Set(), log: [], pick: null, pcyl: null, tries: 0, solved: false, wrong: null };
+  S.inside = false;
+  setFault({ type, cyl });
+  S.test = 'comp'; S.tcyl = 0; S.wet = false;
+  S.tab = 'case';
+  renderPanel();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  const F = FAULTS[d.pick];
+  if (F.pick !== 'none' && d.pcyl == null) { toast(F.pick === 'pair' ? 'Pick which two cylinders.' : 'Pick which cylinder.', 'bad'); return; }
+  const ok = d.pick === d.fault.type && (F.pick === 'none' || d.pcyl === d.fault.cyl);
+  d.tries++;
+  if (ok) {
+    d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += d.used.size;
+    S.inside = true;
+    if (F.pick !== 'none') select(d.fault.cyl);
+    if (d.fault.type === 'chain') goView('marks'); else if (F.pick !== 'none') goView('side');
+    toast('✓ Correct diagnosis', 'good');
+  } else {
+    d.wrong = d.pick === d.fault.type ? 'Right kind of fault, wrong cylinder. Check which cylinder the tests point to.' :
+      d.used.size < 2 ? 'Not quite. Run a few more tests before deciding.' : 'Not quite. Compare your results to what each fault would show, then try again.';
+    toast('Not quite', 'bad');
+  }
+  renderPanel();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const F = FAULTS[d.fault.type], sc = S.dxScore;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${CONCERN[d.fault.type](d.fault.cyl)}</p><p class="dim">2015 sedan, 2.0 L inline-4 (interference engine), 142k miles. Firing order 1-3-4-2.</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Tests this case</small><b>${d.used.size}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div></div>`;
+  if (!d.solved) {
+    h += `<p class="dim">Run tests on the <b>Tests</b> tab. When you're sure, pick your diagnosis.</p><div class="nav" style="margin:0 0 6px"><button class="btn" data-act="tab:tests">Go to tests</button></div><h4>Your diagnosis</h4><div class="cards">`;
+    for (const [k, Fx] of Object.entries(FAULTS)) {
+      h += `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${Fx.short}</b></button>`;
+      if (d.pick === k && Fx.pick !== 'none') h += Fx.pick === 'pair'
+        ? `<span class="cyls"><span class="lbl">Between</span>${[0, 1, 2].map(i => `<button class="cc" data-act="dxc:${i}" aria-pressed="${d.pcyl === i}">${i + 1}–${i + 2}</button>`).join('')}</span>`
+        : `<span class="cyls"><span class="lbl">Cylinder</span>${[0, 1, 2, 3].map(i => `<button class="cc" data-act="dxc:${i}" aria-pressed="${d.pcyl === i}">${i + 1}</button>`).join('')}</span>`;
+    }
+    h += `</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+    if (d.wrong) h += `<div class="msg bad" style="margin-top:8px">${d.wrong}</div>`;
+  } else {
+    const where = F.pick === 'pair' ? ` between cylinders ${d.fault.cyl + 1} and ${d.fault.cyl + 2}` : F.pick === 'cyl' ? `, cylinder ${d.fault.cyl + 1}` : '';
+    h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try!' : `Correct after ${d.tries} tries.`}</b> ${F.short}${where}. You used ${d.used.size} test type${d.used.size === 1 ? '' : 's'}.</div>
+      <p style="margin-top:10px">${F.fx}</p><h4>The evidence</h4><ul class="ev">${EVIDENCE[d.fault.type].map(e => `<li>${e}</li>`).join('')}</ul>
+      <p class="dim">The 3D view now shows the inside of this engine.</p><div class="nav"><button class="btn primary" data-act="newcase">Next case</button></div>`;
+  }
+  if (d.log.length) h += `<h4>Your test log</h4><ol class="log">${d.log.map(l => `<li>${l}</li>`).join('')}</ol>`;
+  return h;
+}
+
+/* ================= panel ================= */
+const TABS = { explore:[['break', 'Break it'], ['tests', 'Tests']], guided:[['les', 'Lessons']], diagnose:[['case', 'Case'], ['tests', 'Tests']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('') + `<button class="btn small x" data-act="close" aria-label="Close notebook">Close</button>`;
+  const body = $('#pbody'), keep = body.scrollTop;
+  body.innerHTML = S.tab === 'break' ? breakHTML() : S.tab === 'tests' ? testsHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  body.scrollTop = keep;
+  refreshInstruments();
+  chartDirty = true; dirty = true;
+}
+function refreshInstruments() {
+  const i = S.tcyl, R = S.res;
+  if (document.getElementById('dCompN')) {
+    const v = S.run ? (S.run.shown ? S.run.puffs[S.run.shown - 1] : 0) : (S.wet ? R.wet[i] : R.dry[i]);
+    setDial('dComp', v || 0, 300, v != null ? v + '' : '—');
+  }
+  if (document.getElementById('dLeakN')) setDial('dLeak', R.leak[i] || 0, 100, R.leak[i] != null ? R.leak[i] + '%' : '—');
+  if (document.getElementById('dVacN')) { if (S.vacRun) drawVac(); else setDial('dVac', 0, 30, '—'); }
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  if (S.mode === 'explore') S.exploreFault = S.fault;
+  S.mode = m; S.run = null; S.relRun = null; S.vacRun = null; S.goto = null;
+  document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m));
+  if (m === 'explore') { S.inside = true; setFault(S.exploreFault); S.tab = 'break'; }
+  if (m === 'guided') { S.lesson = null; S.tab = 'les'; setFault(null); S.inside = true; }
+  if (m === 'diagnose') { S.tab = 'case'; if (!S.dx || S.dx.solved) newCase(); else { setFault(S.dx.fault, true); S.inside = false; } }
+  $('#info').hidden = true;
+  renderPanel();
+  if (!isWide()) openSide(true);
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+function openSide(on) { $('#side').classList.toggle('open', on); $('#nbBtn').setAttribute('aria-expanded', on); }
+$('#nbBtn').addEventListener('click', () => openSide(!$('#side').classList.contains('open')));
+$('#gear').addEventListener('click', () => { const p = $('#pop'); p.hidden = !p.hidden; $('#gear').setAttribute('aria-expanded', !p.hidden); });
+document.addEventListener('pointerdown', e => { if (!$('#pop').hidden && !e.target.closest('#pop,#gear')) { $('#pop').hidden = true; $('#gear').setAttribute('aria-expanded', false); } });
+
+$('#side').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':'), n = +v;
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'close': openSide(false); break;
+    case 'fault': {
+      const F = FAULTS[v];
+      setFault(v === 'none' ? null : { type: v, cyl: F.pick === 'none' ? 0 : (S.fault?.type === v ? S.fault.cyl : 1) });
+      if (F.pick !== 'none') select(S.fault.cyl);
+      renderPanel(); break;
+    }
+    case 'fcyl': setFault({ type: S.fault.type, cyl: n }, true); select(n); renderPanel(); break;
+    case 'inside': S.inside = v === '1'; chartDirty = true; dirty = true; renderPanel(); break;
+    case 'test': S.test = v; S.leakMsg = null; renderPanel(); break;
+    case 'tcyl': if (S.run) break; S.tcyl = n; S.leakMsg = null; select(n); renderPanel(); break;
+    case 'wet': if (S.run) break; S.wet = v === '1'; renderPanel(); break;
+    case 'crank': startCrank(); break;
+    case 'goto': S.leakMsg = null; rotateTo(OFFSET[S.tcyl]); renderPanel(); break;
+    case 'leak': runLeak(); break;
+    case 'listen': listen(v); break;
+    case 'rel': runRel(); break;
+    case 'vac': runVac(v); break;
+    case 'marks': checkMarks(); break;
+    case 'les': startLesson(v); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('engine.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': {
+      const g = curStep()?.goal?.mc; if (!g || S.stepOk) break;
+      if (n === g.a) { S.stepOk = true; renderPanel(); }
+      else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); renderPanel(); }
+      break;
+    }
+    case 'dx': S.dx.pick = v; S.dx.pcyl = null; S.dx.wrong = null; renderPanel(); break;
+    case 'dxc': S.dx.pcyl = n; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+  }
+});
 
 /* ================= benchmark ================= */
 const gl = renderer.getContext();
@@ -776,15 +1590,15 @@ try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.g
 let bench = null, lastInfo = { calls: 0, triangles: 0 };
 const BENCH_MS = 10000;
 function startBench() {
-  $('#modal').hidden = true; $('#info').hidden = true;
-  bench = { t0: performance.now(), dts: [], saved: { playing: state.playing, rpm: state.rpm } };
-  state.playing = true; state.rpm = 120;
+  $('#modal').hidden = true; $('#info').hidden = true; $('#pop').hidden = true;
+  bench = { t0: performance.now(), dts: [], saved: { playing: S.playing, rpm: S.rpm } };
+  S.playing = true; S.rpm = 120;
   controls.autoRotate = true; controls.autoRotateSpeed = 6;
   $('#benchbar').hidden = false;
 }
 function endBench() {
   const b = bench; bench = null;
-  controls.autoRotate = false; state.rpm = b.saved.rpm; b.saved.playing ? play() : pause();
+  controls.autoRotate = false; setRpm(b.saved.rpm); b.saved.playing ? play() : pause();
   $('#benchbar').hidden = true;
   const dts = b.dts.slice(1).sort((x, y) => x - y), n = dts.length;
   const avg = n / (BENCH_MS / 1000), med = 1000 / dts[Math.floor(n / 2)], low = 1000 / dts[Math.min(n - 1, Math.floor(n * 0.99))];
@@ -794,8 +1608,8 @@ function endBench() {
   else if (avg >= 30) { vd.className = 'verdict warn'; vd.textContent = 'Usable. Students can work with this, but try Low quality and compare.'; }
   else { vd.className = 'verdict fail'; vd.textContent = Q === 'low' ? 'Too slow even on Low. This device needs a 2D or pre-rendered fallback.' : 'Too slow at this setting. Switch to Low quality and run the benchmark again.'; }
   const pr = renderer.getPixelRatio();
-  const rep = [
-    `Engine 3D PoC benchmark · ${new Date().toLocaleString()}`,
+  $('#report').textContent = [
+    `Engine 3D benchmark · ${new Date().toLocaleString()}`,
     `Quality: ${Q.toUpperCase()} · canvas ${canvas.clientWidth}×${canvas.clientHeight} CSS px @ ${pr}x (${Math.round(canvas.clientWidth * pr)}×${Math.round(canvas.clientHeight * pr)})`,
     `Avg ${avg.toFixed(1)} fps · median ${med.toFixed(1)} · 1% low ${low.toFixed(1)} · ${n} frames`,
     `Draw calls ${lastInfo.calls} · triangles ${lastInfo.triangles.toLocaleString()}`,
@@ -804,7 +1618,6 @@ function endBench() {
     `Browser: ${navigator.userAgent}`,
     `Verdict: ${vd.textContent}`,
   ].join('\n');
-  $('#report').textContent = rep;
   $('#modal').hidden = false; $('#mClose').focus();
 }
 $('#benchBtn').addEventListener('click', startBench);
@@ -817,45 +1630,60 @@ $('#copy').addEventListener('click', async () => {
 });
 
 /* ================= loop ================= */
-let dirty = true, last = performance.now(), fAcc = 0, fN = 0, fT = performance.now();
+let dirty = true, last = performance.now(), fN = 0, fT = performance.now();
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; frameBand(); camera.updateProjectionMatrix(); dirty = true;
 }
 let rzT; window.addEventListener('resize', () => { resize(); clearTimeout(rzT); rzT = setTimeout(() => goView(curView), 250); });
 controls.addEventListener('start', () => { tween = null; });
-function frame(now) {
-  requestAnimationFrame(frame);
+function frame(now) { requestAnimationFrame(frame); tickFrame(now); }
+function tickFrame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  if (state.playing) { state.c = mod(state.c + state.rpm * 6 * dt, 720); dirty = true; }
+  if (S.run || S.relRun) S.playing = true;
+  if (S.playing) { S.c = mod(S.c + S.rpm * 6 * dt, 720); dirty = true; }
+  if (S.goto) {
+    const t = Math.min(1, (now - S.goto.t0) / S.goto.dur), e = t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    S.c = mod(S.goto.from + (S.goto.to - S.goto.from) * e, 720); dirty = true;
+    if (t >= 1) S.goto = null;
+  }
   if (tween) {
     const t = Math.min(1, (now - tween.t0) / tween.dur), e = t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
     camera.position.lerpVectors(tween.from, tween.to, e); controls.target.lerpVectors(tween.fromT, tween.toT, e);
     if (t >= 1) tween = null; dirty = true;
   }
   if (controls.update()) dirty = true;
+  if (S.vacRun && !S.vacRun.done) { stepVac(now); drawVac(); }
+  if (S.relRun && now > S.relRun.end) finishRel();
   if (bench) {
     bench.dts.push(dt * 1000); dirty = true;
     const p = (now - bench.t0) / BENCH_MS;
     $('#benchP').style.setProperty('--p', Math.min(1, p).toFixed(3));
     $('#benchT').textContent = `${Math.max(0, Math.ceil((1 - p) * 10))}s`;
-    if (p >= 1) { endBench(); }
+    if (p >= 1) endBench();
   }
   if (!dirty) { if (now - fT > 600) { $('#fps').innerHTML = `idle · <b>${Q.toUpperCase()}</b>`; fT = now; fN = 0; } return; }
   dirty = false;
-  updateEngine(state.c);
+  updateEngine(S.c);
+  if (S.run) stepCrank(now);
   renderer.render(scene, camera);
   lastInfo = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
   placeLabels(); updateCaption(); updateChart();
+  const lp = $('#lkPos'); if (lp) { const pos = leakPos(S.tcyl); if (lp.textContent !== pos.txt) { lp.textContent = pos.txt; lp.className = 'msg' + (pos.ok ? ' ok' : ''); } }
+  if (S.mode === 'guided' && !S.stepOk) { const g = curStep()?.goal; if (g?.check && g.check()) stepDone(); }
   fN++;
-  if (now - fT > 500) { $('#fps').innerHTML = `<b>${Math.round(fN * 1000 / (now - fT))}</b> fps · ${Q.toUpperCase()}`; fT = now; fN = 0; }
+  if (now - fT > 500) { $('#fps').innerHTML = `<b>${Math.round(fN * 1000 / (now - fT))}</b> fps · ${Q.toUpperCase()} · ${lastInfo.calls} draw calls`; fT = now; fN = 0; }
 }
-buildChart();
+newVar();
+renderPanel();
 resize();
 goView('iso', true);
 requestAnimationFrame(frame);
 if (params.get('bench') === '1') setTimeout(startBench, 1500);
-window.__E = { state, cyls, renderer, scene, camera, controls, look(p, t) { tween = null; camera.position.set(...p); controls.target.set(...t); controls.update(); dirty = true; }, liftAt, strokeOf, setC, pause, play, startBench, get lastInfo() { return lastInfo; } };
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__E = { tickFrame, tick: () => updateEngine(S.c), curStep, lessonTap, pickables, act(a) { const b = [...document.querySelectorAll("#side [data-act]")].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; }, S, cyls, renderer, scene, camera, controls, LESSONS, FAULTS, liftAt, strokeOf, setC, pause, play, startBench, setFault, setMode, renderPanel, compFinal, leakPct, hear, vacTarget, newCase,
+  look(p, t) { tween = null; camera.position.set(...p); controls.target.set(...t); controls.update(); dirty = true; },
+  get lastInfo() { return lastInfo; } };
 </script>
 </body>
 </html>
