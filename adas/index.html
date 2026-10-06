@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ADAS Calibration Trainer</title>
+<meta name="description" content="See what radar, camera, corner radar, ultrasonic and surround-view sensors cover, what 1 degree of misaim does at 100 m, why targets go on the thrust line, which repairs require calibration, and practice pre-checks, static vs. dynamic calibration and target placement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. 2D views:
+   road/shop top view, vertical aim (side), sensor effects, calibration matrix / job, notebook. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --radar:#FF7A3D; --cam:#2F9BE0; --corner:#C77DFF; --us:#3DDC97; --sv:#FFD166;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.4;cursor:not-allowed}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.used{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1.25fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vbox{flex:1;min-height:0;padding:0 8px 8px}
+.vbox svg{width:100%;height:100%;display:block}
+#pView{grid-column:1/3}
+#pCal{grid-column:2/4}
+.svgt{font:600 10px var(--f-label);fill:#C5CFD9;letter-spacing:.03em}
+.svgs{font:600 8.5px var(--f-label);fill:#5A6773;letter-spacing:.08em;text-transform:uppercase}
+.svgv{font:500 10.5px var(--f-mono);fill:#E6EDF3}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+.eff{display:grid;gap:6px}
+.eff div{padding:7px 9px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:12.5px;color:var(--soft)}
+.eff div b{display:block;font:700 9.5px/1.4 var(--f-label);letter-spacing:.14em;text-transform:uppercase}
+.eff div strong{color:#fff}
+.eff div.bad{border-color:rgba(255,90,78,.5)}.eff div.warn{border-color:rgba(255,178,36,.5)}.eff div.ok{border-color:rgba(61,220,151,.35)}
+table.mx{width:100%;border-collapse:collapse;font-size:12px}
+table.mx th{font:600 9.5px/1.15 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:4px 3px;border-bottom:1px solid var(--line);text-align:center;vertical-align:bottom}
+table.mx td{padding:5px 3px;border-bottom:1px solid #151d26;text-align:center;color:var(--soft)}
+table.mx th:first-child,table.mx td:first-child{text-align:left}
+table.mx tr.click{cursor:pointer}
+table.mx tr.click:hover td{background:rgba(255,255,255,.03)}
+table.mx tr.sel td{background:rgba(47,155,224,.12)}
+table.mx td span{display:inline-grid;place-items:center;min-width:22px;height:18px;border-radius:5px;padding:0 4px;font:700 9.5px/1 var(--f-label);letter-spacing:.06em}
+td span.S{background:#2a7fc0;color:#fff}td span.D{background:#7a4fb0;color:#fff}td span.F{background:#2b6c50;color:#C9F7E2}
+.chip{padding:3px 7px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft)}
+.chip.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}.chip.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}.chip.warn{border-color:rgba(255,178,36,.55);color:#FFE2A8}
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:104px minmax(0,1fr) 66px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.rowb .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);min-width:76px}
+.tog{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.06em;color:var(--dim)}
+.tog i{width:10px;height:10px;border-radius:3px}
+.tog[aria-pressed="true"]{color:var(--fg);border-color:#3a4a5c}
+.tog[aria-pressed="false"] i{opacity:.25}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.tests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.tests .btn{white-space:normal;text-align:center;line-height:1.2;padding:8px 8px}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f > b{display:block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.find .f .bad{color:#FFC2BC}.find .f .warn{color:#FFE2A8}.find .f .ok{color:#BFEBD6}
+.steps{display:grid;gap:4px;margin:4px 0 8px}
+.steps div{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--dim)}
+.steps div i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:700 10px/1 var(--f-label);background:var(--line-2);color:var(--fg);font-style:normal}
+.steps div.done{color:#C9F7E2}.steps div.done i{background:var(--ok);color:#06140d}
+.steps div.cur{color:var(--fg)}.steps div.cur i{background:var(--accent)}
+.pc{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 8px;border-radius:8px;background:var(--raise);border:1px solid var(--line);margin:4px 0;font-size:12.5px}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pView{grid-column:1/-1;height:400px}
+  #pCal{grid-column:1/-1;height:auto;min-height:240px}
+  #pAim,#pEff{height:300px}
+  .main>.panel{height:660px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pView{height:280px} .brand p{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 18h3l1-4h8l1 4h3"/><path d="M12 10 5 3M12 10l7-7M12 10V2"/><circle cx="12" cy="11" r="1.5"/></svg></div>
+      <div><h1>ADAS Calibration Trainer</h1><p>Coverage · aim · calibration</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="cal">Calibrate</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pView" aria-label="Top view"><div class="phead"><h2 id="vTitle">Road view</h2><span id="vSub"></span><div class="r"><span class="seg mini" id="viewSeg"><button data-v="road" aria-pressed="true">Road</button><button data-v="shop">Shop</button></span></div></div><div class="vbox"><svg id="svView" viewBox="0 0 640 300" role="img" aria-label="Top view of the vehicle with sensor fields of view"></svg></div></section>
+      <section class="panel" id="pAim" aria-label="Vertical aim"><div class="phead"><h2>Vertical aim</h2><span>side view · front radar</span></div><div class="vbox"><svg id="svAim" viewBox="0 0 300 220" role="img" aria-label="Side view of the radar beam versus an overhead sign and the road"></svg></div></section>
+      <section class="panel" id="pEff" aria-label="What the sensors think"><div class="phead"><h2>What the system thinks</h2></div><div class="ro" id="eff"></div></section>
+      <section class="panel" id="pCal" aria-label="Calibration"><div class="phead"><h2 id="cTitle">When to calibrate</h2><span id="cSub"></span></div><div class="ro" id="cal"></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const DEG = Math.PI / 180, LANE = 3.7, FT = 3.281;
+const fx = (v, d = 1) => (Math.abs(v) < 0.05 && d <= 1 ? '0.0' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d));
+const m2 = v => `${Math.abs(v).toFixed(2)} m (${(Math.abs(v) * FT).toFixed(1)} ft)`;
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+
+/* ================= teaching vehicle + sensors (generic; follow OEM / Autel instructions for real work) ================= */
+const CAR = { L: 4.7, Wd: 1.9, WB: 2.8, ovF: 0.95 };   // length, width, wheelbase, front overhang (m)
+const SEN = {
+  radar:  { n: 'Front radar', c: '#FF7A3D', use: 'Adaptive cruise (ACC), automatic emergency braking (AEB)', range: 160, half: 9 },
+  cam:    { n: 'Windshield camera', c: '#2F9BE0', use: 'Lane keeping, lane centering, sign reading, AEB (with radar)', range: 70, half: 26 },
+  corner: { n: 'Rear corner radars', c: '#C77DFF', use: 'Blind-spot warning, rear cross-traffic alert', range: 60, half: 65 },
+  us:     { n: 'Ultrasonic sensors', c: '#3DDC97', use: 'Parking aid (beeps), park assist', range: 2.5, half: 35 },
+  sv:     { n: 'Surround-view cameras', c: '#FFD166', use: '360° bird’s-eye parking view', range: 6, half: 90 },
+};
+const METH = { radar: 'S', cam: 'S', corner: 'D', us: 'F', sv: 'S' };
+const METHN = { S: 'Static (targets in the shop)', D: 'Dynamic (drive on the road)', F: 'Function test only' };
+const EVENTS = {
+  windshield: { n: 'Windshield replaced', req: ['cam'] },
+  align:      { n: 'Wheel alignment (thrust angle changed)', req: ['cam', 'radar'] },
+  fbumper:    { n: 'Front bumper removed / repaired', req: ['radar', 'sv', 'us'] },
+  rbumper:    { n: 'Rear bumper repaired', req: ['corner', 'sv', 'us'] },
+  mirror:     { n: 'Side mirror replaced', req: ['sv'] },
+  ride:       { n: 'Ride height changed (springs, lowering)', req: ['cam', 'radar', 'corner', 'sv'] },
+  bracket:    { n: 'Front radar or bracket replaced', req: ['radar'] },
+};
+// target spec (generic teaching values): distance from the front wheel centers, centered and square to the THRUST line
+const TSPEC = { cam: { d: 1500, tolD: 20, tolL: 10, tolY: 0.2, h: 1200 }, radar: { d: 2000, tolD: 25, tolL: 10, tolY: 0.2, h: 500 } };
+
+/* ================= state ================= */
+const BASEC = () => ({ yawRadar: 0, yawCam: 0, yawCorner: 0, rideF: 0, rideR: 0, thrust: 0, show: { radar: true, cam: true, corner: true, us: true, sv: true }, event: 'windshield' });
+const S = { mode: 'explore', tab: 'ctl', view: 'road', c: BASEC(), lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('adas.done') || '[]')),
+  job: null, jobScore: { jobs: 0, clean: 0 }, dx: null, dxScore: { cases: 0, first: 0, tests: 0 } };
+const pitch = c => Math.atan((c.rideF - c.rideR) / 1000 / CAR.WB) / DEG;   // + = nose up (rear lowered or front raised)
+
+/* ================= effects model ================= */
+function effects(c) {
+  const out = [];
+  // radar yaw: perceived lateral = true − d·tan(ψ) (aimed right → objects appear left)
+  const ty = Math.tan(c.yawRadar * DEG), halfLane = LANE / 2;
+  const leadErr = -100 * ty, leadLane = Math.abs(leadErr) > halfLane ? (leadErr < 0 ? 'the LEFT lane' : 'the RIGHT lane') : 'your lane';
+  const adj = 3.7 - 70 * ty, adjLane = Math.abs(adj) <= halfLane ? 'YOUR lane' : adj > halfLane ? 'the right lane' : 'your lane';
+  const dWrong = Math.abs(ty) > 1e-6 ? halfLane / Math.abs(ty) : Infinity;
+  out.push({ k: Math.abs(leadErr) > halfLane || adjLane === 'YOUR lane' ? 'bad' : Math.abs(c.yawRadar) >= 0.3 ? 'warn' : 'ok', t: 'Front radar (ACC / AEB)',
+    s: Math.abs(c.yawRadar) < 0.05 ? 'Aimed straight down the thrust line. Lead car at 100 m: in your lane.' : `Aimed ${fx(c.yawRadar)}°. The lead car 100 m ahead appears ${m2(leadErr)} ${leadErr < 0 ? 'left' : 'right'}: radar puts it in <strong>${leadLane}</strong>. The car in the right lane at 70 m looks like it’s in ${adjLane}. Half-lane error reached at ${isFinite(dWrong) ? Math.round(dWrong) + ' m' : '—'}.` });
+  // radar pitch from ride height + manual
+  const p = pitch(c), top100 = 0.5 + 100 * Math.tan((2 + p) * DEG), roadAt = p < -0.05 ? 0.5 / Math.tan(-p * DEG) : Infinity;   // beam ±2° vertical
+  out.push({ k: top100 > 5.5 || roadAt < 40 ? 'bad' : Math.abs(p) > 0.3 ? 'warn' : 'ok', t: 'Radar vertical aim',
+    s: Math.abs(p) < 0.05 ? 'Level: the beam passes under overhead signs and over the road.' : `Pitched ${p > 0 ? 'up' : 'down'} ${Math.abs(p).toFixed(2)}° by the ride-height change. ${top100 > 5.5 ? 'The top of the beam reaches a 5.5 m overhead sign 100 m ahead: false AEB braking is possible.' : roadAt < 40 ? `The beam center hits the road about ${Math.round(roadAt)} m ahead: clutter and shorter detection range.` : 'Still clear of signs and road, but out of spec: calibrate.'}` });
+  // camera yaw: lane centering steers to keep the perceived center → actual offset at 20 m lookahead
+  const camOff = 20 * Math.tan((c.yawCam + 0) * DEG), camTot = c.yawCam;
+  out.push({ k: Math.abs(camTot) >= 0.5 ? 'bad' : Math.abs(camTot) >= 0.2 ? 'warn' : 'ok', t: 'Windshield camera (lane keeping)',
+    s: Math.abs(camTot) < 0.05 ? 'Calibrated to the thrust line: the car stays centered.' : `Aimed ${fx(camTot)}° off the direction the car really travels. Lane centering holds the car about ${m2(camOff)} toward the ${camTot > 0 ? 'left' : 'right'} line.` });
+  // corner radar yaw: + = outward
+  out.push({ k: Math.abs(c.yawCorner) >= 3 ? 'bad' : Math.abs(c.yawCorner) >= 1 ? 'warn' : 'ok', t: 'Rear corner radars (blind spot)',
+    s: Math.abs(c.yawCorner) < 0.1 ? 'The blind-spot zone covers the next lane over.' : c.yawCorner > 0 ? `Aimed ${c.yawCorner.toFixed(1)}° outward: the zone reaches two lanes over and guardrails. Expect false alerts.` : `Aimed ${Math.abs(c.yawCorner).toFixed(1)}° inward: the zone shrinks toward your own lane. It can miss a car right beside you.` });
+  // thrust angle
+  if (Math.abs(c.thrust) >= 0.05) out.push({ k: Math.abs(c.thrust) > 0.1 ? 'bad' : 'warn', t: 'Thrust angle', s: `The car travels ${fx(c.thrust, 2)}° off its centerline (rear toe). Sensors calibrated to the centerline will be off by that much. <strong>Align first, then calibrate to the thrust line.</strong>` });
+  return out;
+}
+
+/* ================= drawing ================= */
+const T = (x, y, s, cls = 'svgt', anchor = 'middle', extra = '') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}" ${extra}>${s}</text>`;
+const wedge = (x, y, dir, half, r, col, op = .16) => { const a0 = (dir - half) * DEG, a1 = (dir + half) * DEG; return `<path d="M${x} ${y} L${x + r * Math.cos(a0)} ${y + r * Math.sin(a0)} A${r} ${r} 0 ${half * 2 > 180 ? 1 : 0} 1 ${x + r * Math.cos(a1)} ${y + r * Math.sin(a1)} Z" fill="${col}" fill-opacity="${op}" stroke="${col}" stroke-opacity=".55"/>`; };
+function drawRoad() {
+  const c = S.c, X0 = 40, sx = 3.3, EX = 4, sy = sx * EX, Y = 150;   // lateral exaggerated ×4
+  const X = d => X0 + (d + 25) * sx, Yl = l => Y + l * sy;
+  let h = `<rect x="0" y="0" width="640" height="300" fill="#0a0f14"/>`;
+  for (const l of [-1.5, -0.5, 0.5, 1.5]) h += `<line x1="${X(-25)}" y1="${Yl(l * LANE)}" x2="${X(150)}" y2="${Yl(l * LANE)}" stroke="#3a4654" stroke-width="1.5" stroke-dasharray="${Math.abs(l) === 1.5 ? '0' : '12 10'}"/>`;
+  for (let d = 0; d <= 150; d += 25) h += `<line x1="${X(d)}" y1="${Yl(-1.5 * LANE) - 4}" x2="${X(d)}" y2="${Yl(-1.5 * LANE) - 10}" stroke="#2A3644"/>` + T(X(d), Yl(-1.5 * LANE) - 14, d + ' m', 'svgs');
+  h += T(X(150) - 2, 286, 'lateral ×4', 'svgs', 'end');
+  const thr = c.thrust;   // car body yawed relative to travel by −thrust (crab); keep it simple: draw body straight, thrust line arrow
+  // corner radar zones (behind, both sides)
+  if (c.show.corner) for (const side of [-1, 1]) { const zoneY0 = side * (LANE / 2 + 0.2 + c.yawCorner * 0.25), zoneY1 = side * (LANE * 1.5 + c.yawCorner * 0.9); h += `<path d="M${X(-1)} ${Yl(zoneY0)} L${X(-22)} ${Yl(zoneY0)} L${X(-22)} ${Yl(zoneY1)} L${X(-1)} ${Yl(zoneY1)}Z" fill="#C77DFF" fill-opacity=".14" stroke="#C77DFF" stroke-opacity=".5"/>`; }
+  // camera
+  if (c.show.cam) { const a = Math.atan(Math.tan((c.yawCam + 0) * DEG) * EX) / DEG; h += wedge(X(-1.2), Y, -a * 1, Math.atan(Math.tan(SEN.cam.half * DEG) * EX) / DEG * 0.35, SEN.cam.range * sx, '#2F9BE0', .1); }
+  // radar beam + boresight
+  if (c.show.radar) {
+    const a = Math.atan(Math.tan(c.yawRadar * DEG) * EX) / DEG, half = Math.atan(Math.tan(SEN.radar.half * DEG) * EX) / DEG * 0.4;
+    h += wedge(X(0), Y, a, half, SEN.radar.range * sx * 0.98, '#FF7A3D', .12);
+    h += `<line x1="${X(0)}" y1="${Y}" x2="${X(0) + 150 * sx * Math.cos(a * DEG)}" y2="${Y + 150 * sx * Math.sin(a * DEG)}" stroke="#FF7A3D" stroke-dasharray="5 4"/>`;
+  }
+  // thrust line
+  if (Math.abs(thr) > 0.01) { const a = Math.atan(Math.tan(thr * DEG) * EX); h += `<line x1="${X(-6)}" y1="${Y}" x2="${X(150)}" y2="${Y + (156) * sx * Math.tan(a)}" stroke="#FFB224" stroke-width="1.2" stroke-dasharray="2 4"/>` + T(X(150) - 4, Y + 156 * sx * Math.tan(a) - 6, 'THRUST LINE', 'svgs', 'end', 'style="fill:#FFB224"'); }
+  // cars: lead (ego lane, 100 m) and adjacent (right lane, 70 m) + where radar thinks they are
+  const car = (d, lat, col, op = 1, dash = '') => `<rect x="${X(d) - 2.3 * sx}" y="${Yl(lat) - 0.95 * sy}" width="${4.6 * sx}" height="${1.9 * sy}" rx="4" fill="${dash ? 'none' : col}" fill-opacity="${op}" stroke="${col}" stroke-width="1.4" ${dash ? 'stroke-dasharray="3 3"' : ''}/>`;
+  h += car(100, 0, '#8A98A8') + car(70, LANE, '#8A98A8');
+  if (c.show.radar && Math.abs(c.yawRadar) >= 0.05) { const ty = Math.tan(c.yawRadar * DEG); h += car(100, -100 * ty, '#FF7A3D', 1, 'd') + car(70, LANE - 70 * ty, '#FF7A3D', 1, 'd') + T(X(100), Yl(-100 * ty) - 0.95 * sy - 4, 'radar thinks', 'svgs', 'middle', 'style="fill:#FF7A3D;text-transform:none"'); }
+  h += T(X(100), Yl(0) + 3.5, 'LEAD', 'svgs', 'middle', 'style="fill:#0b1015"') + T(X(70), Yl(LANE) + 3.5, 'CAR', 'svgs', 'middle', 'style="fill:#0b1015"');
+  // ego car
+  h += `<rect x="${X(-CAR.L)}" y="${Y - CAR.Wd / 2 * sy}" width="${CAR.L * sx}" height="${CAR.Wd * sy}" rx="5" fill="#1d2833" stroke="#C5CFD9"/>` + T(X(-CAR.L / 2), Y + 3.5, 'YOU', 'svgs', 'middle', 'style="fill:#C5CFD9"');
+  $('#svView').innerHTML = h;
+  $('#vTitle').textContent = 'Road view'; $('#vSub').textContent = '−25 to 150 m · side-to-side distances exaggerated ×4';
+}
+function drawShop() {
+  const c = S.c, sc = 40, CX = 230, CY = 150;   // px per m; car center
+  const fx_ = CX + CAR.L / 2 * sc, rx_ = CX - CAR.L / 2 * sc, hw = CAR.Wd / 2 * sc;
+  const fwc = fx_ - CAR.ovF * sc, rwc = fwc - CAR.WB * sc;   // front / rear wheel center x
+  let h = `<rect x="0" y="0" width="640" height="300" fill="#0a0f14"/>`;
+  for (let x = 0; x <= 640; x += sc) h += `<line x1="${x}" y1="0" x2="${x}" y2="300" stroke="#101820"/>`;
+  for (let y = 10; y <= 300; y += sc) h += `<line x1="0" y1="${y}" x2="640" y2="${y}" stroke="#101820"/>`;
+  // coverage
+  if (c.show.sv) { for (const [x, y, d] of [[fx_, CY, 0], [rx_, CY, 180], [CX + 0.4 * sc, CY - hw, -90], [CX + 0.4 * sc, CY + hw, 90]]) h += wedge(x, y, d, 88, SEN.sv.range * sc * 0.5, '#FFD166', .07); }
+  if (c.show.us) { for (let i = 0; i < 6; i++) { const yy = CY - hw * 0.85 + i * hw * 0.34, side = i < 1 ? -40 : i > 4 ? 40 : 0; h += wedge(fx_, yy, side, 35, SEN.us.range * sc, '#3DDC97', .08) + wedge(rx_, yy, 180 - side, 35, SEN.us.range * sc, '#3DDC97', .08); } }
+  if (c.show.corner) { h += wedge(rx_ + 6, CY - hw + 4, -135 - c.yawCorner, 65, 4.2 * sc, '#C77DFF', .1) + wedge(rx_ + 6, CY + hw - 4, 135 + c.yawCorner, 65, 4.2 * sc, '#C77DFF', .1); }
+  if (c.show.cam) h += wedge(fwc + 0.2 * sc, CY, -c.yawCam * 6, SEN.cam.half, 9 * sc, '#2F9BE0', .08);
+  if (c.show.radar) h += wedge(fx_, CY, c.yawRadar * 6, SEN.radar.half, 9.5 * sc, '#FF7A3D', .12);
+  // car body + wheels
+  h += `<rect x="${rx_}" y="${CY - hw}" width="${CAR.L * sc}" height="${CAR.Wd * sc}" rx="18" fill="#1d2833" stroke="#C5CFD9"/>`;
+  for (const x of [fwc, rwc]) for (const s of [-1, 1]) h += `<rect x="${x - 13}" y="${CY + s * hw - (s < 0 ? 4 : 6)}" width="26" height="10" rx="3" fill="#2A3644" stroke="#8A98A8"/>`;
+  // centerline vs thrust line
+  h += `<line x1="${rx_ - 20}" y1="${CY}" x2="635" y2="${CY}" stroke="#5A6773" stroke-dasharray="6 5"/>` + T(632, CY - 5, 'CENTERLINE', 'svgs', 'end');
+  const ta = c.thrust * 12 * DEG;   // drawn ×12
+  h += `<line x1="${rwc}" y1="${CY}" x2="635" y2="${CY + (635 - rwc) * Math.tan(ta)}" stroke="#FFB224" stroke-width="1.3"/>` + T(632, CY + (635 - rwc) * Math.tan(ta) + 13, `THRUST LINE ${fx(c.thrust, 2)}° (drawn ×12)`, 'svgs', 'end', 'style="fill:#FFB224"');
+  // sensor markers
+  const mk = (x, y, col, lab, dy = -10) => `<circle cx="${x}" cy="${y}" r="4.5" fill="${col}" stroke="#0b1015"/>` + T(x, y + dy, lab, 'svgs', 'middle', `style="fill:${col}"`);
+  h += mk(fx_ - 3, CY, '#FF7A3D', 'RADAR', 16) + mk(fwc + 0.2 * sc, CY, '#2F9BE0', 'CAMERA') + mk(rx_ + 6, CY - hw + 4, '#C77DFF', '') + mk(rx_ + 6, CY + hw - 4, '#C77DFF', '');
+  // job targets
+  const J = S.mode === 'cal' && S.job;
+  if (J) for (const k of ['cam', 'radar']) {
+    const tg = J.tg[k]; if (!tg || !J.req.includes(k)) continue;
+    const tx = fwc + tg.d / 1000 * sc, ty = CY + tg.l / 1000 * sc, ang = tg.y * 12;
+    h += `<g transform="translate(${tx} ${ty}) rotate(${ang})"><rect x="-3" y="-${k === 'cam' ? 34 : 14}" width="6" height="${k === 'cam' ? 68 : 28}" fill="${k === 'cam' ? '#2F9BE0' : '#FF7A3D'}" stroke="#fff"/></g>` + T(tx + 10, ty - (k === 'cam' ? 38 : 18), (k === 'cam' ? 'CAMERA TARGET ' : 'RADAR REFLECTOR ') + tg.d + ' mm', 'svgs', 'start', `style="fill:${k === 'cam' ? '#7cc4f0' : '#FF9A6B'}"`);
+    h += `<line x1="${fwc}" y1="${CY + hw + 22 + (k === 'radar' ? 12 : 0)}" x2="${tx}" y2="${CY + hw + 22 + (k === 'radar' ? 12 : 0)}" stroke="${k === 'cam' ? '#2F9BE0' : '#FF7A3D'}" marker-end=""/><line x1="${fwc}" y1="${CY + hw + 8}" x2="${fwc}" y2="${CY + hw + 40}" stroke="#5A6773"/>`;
+  }
+  h += T(fwc, CY + hw + 52, 'FRONT WHEEL CENTERS', 'svgs');
+  h += T(16, 290, '1 square = 1 m', 'svgs', 'start');
+  $('#svView').innerHTML = h;
+  $('#vTitle').textContent = 'Shop view'; $('#vSub').textContent = 'coverage to scale · calibration targets';
+}
+function drawAim() {
+  const c = S.c, p = pitch(c), X0 = 30, sx = 2.4, Y0 = 190, sy = 18;   // 0–110 m, 0–9 m
+  const X = d => X0 + d * sx, Y = hgt => Y0 - hgt * sy;
+  let h = `<rect x="0" y="0" width="300" height="220" fill="#0a0f14"/><line x1="${X(0)}" y1="${Y(0)}" x2="${X(110)}" y2="${Y(0)}" stroke="#3a4654" stroke-width="2"/>`;
+  h += `<rect x="${X(100) - 2}" y="${Y(7)}" width="4" height="${7 * sy}" fill="#2A3644"/><rect x="${X(100) - 14}" y="${Y(7)}" width="28" height="${1.5 * sy}" fill="#3a4654" stroke="#8A98A8"/>` + T(X(100) - 16, Y(7.3), 'SIGN 5.5–7 m', 'svgs', 'end');
+  for (let d = 0; d <= 100; d += 25) h += T(X(d), Y0 + 13, d + ' m', 'svgs');
+  for (let m = 0; m <= 8; m += 2) h += T(X0 - 4, Y(m) + 3, m + ' m', 'svgs', 'end');
+  const r0 = 0.5, a1 = (p + 2) * DEG, a0 = (p - 2) * DEG, D = 108;
+  h += `<path d="M${X(0)} ${Y(r0)} L${X(D)} ${Y(r0 + D * Math.tan(a1))} L${X(D)} ${Y(r0 + D * Math.tan(a0))}Z" fill="#FF7A3D" fill-opacity=".18" stroke="#FF7A3D" stroke-opacity=".6"/>`;
+  h += `<line x1="${X(0)}" y1="${Y(r0)}" x2="${X(D)}" y2="${Y(r0 + D * Math.tan(p * DEG))}" stroke="#FF7A3D" stroke-dasharray="4 3"/>`;
+  h += `<rect x="${X(-8)}" y="${Y(1.5)}" width="${8 * sx}" height="${1.3 * sy}" rx="3" fill="#1d2833" stroke="#C5CFD9"/>`;
+  h += T(150, 16, `Pitch ${fx(p, 2)}° · beam ±2°`, 'svgv') + T(150, 30, `Ride height: front ${fx(c.rideF, 0)} mm, rear ${fx(c.rideR, 0)} mm`, 'svgs', 'middle', 'style="text-transform:none"');
+  $('#svAim').innerHTML = h;
+}
+function drawEff() {
+  const ef = effects(S.c);
+  $('#eff').innerHTML = `<div class="eff">${ef.map(e => `<div class="${e.k}"><b>${e.t}</b>${e.s}</div>`).join('')}</div>`;
+}
+function drawMatrix() {
+  const sel = S.c.event, keys = Object.keys(SEN);
+  let h = `<table class="mx"><tr><th>Repair or event</th>${keys.map(k => `<th style="color:${SEN[k].c}">${SEN[k].n.replace('Rear corner radars', 'Corner radars').replace('Surround-view cameras', 'Surround cams').replace('Ultrasonic sensors', 'Ultrasonic').replace('Windshield camera', 'Camera')}</th>`).join('')}</tr>`;
+  for (const [k, e] of Object.entries(EVENTS)) h += `<tr class="${S.mode === 'diagnose' ? '' : 'click'}${k === sel ? ' sel' : ''}" data-ev="${k}"><td>${e.n}</td>${keys.map(s => `<td>${e.req.includes(s) ? `<span class="${METH[s]}">${METH[s] === 'S' ? 'STATIC' : METH[s] === 'D' ? 'DYN.' : 'TEST'}</span>` : ''}</td>`).join('')}</tr>`;
+  h += `</table><p class="dim" style="margin:8px 0 0">Generic teaching chart. Real requirements come from OEM position statements and service information. Your Autel ADAS unit walks through each make’s exact steps. Before any calibration: alignment and thrust angle in spec, tires at placard pressure, ride height in spec, level floor.</p>`;
+  $('#cal').innerHTML = h; $('#cTitle').textContent = 'When to calibrate'; $('#cSub').textContent = S.mode === 'diagnose' ? '' : 'click a row';
+}
+function renderViews() {
+  if (S.view === 'road') drawRoad(); else drawShop();
+  document.querySelectorAll('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.view));
+  drawAim(); drawEff();
+  if (S.mode === 'cal' && S.job) drawJobPanel(); else drawMatrix();
+}
+
+/* ================= explore controls ================= */
+function sl(id, label, min, max, step, val, unit) { return `<div class="sl"><label for="${id}">${label}</label><input type="range" id="${id}" data-c="${id}" min="${min}" max="${max}" step="${step}" value="${val}"><output id="o-${id}">${(+val).toFixed(step < 1 ? (step < 0.1 ? 2 : 1) : 0)}${unit}</output></div>`; }
+function ctlHTML(keys) {
+  const c = S.c, has = k => !keys || keys.includes(k); let h = '';
+  if (has('show')) h += `<h4>Show sensors</h4><div class="rowb">${Object.entries(SEN).map(([k, s]) => `<button class="tog" data-act="show:${k}" aria-pressed="${c.show[k]}"><i style="background:${s.c}"></i>${s.n}</button>`).join('')}</div>`;
+  if (has('aim')) h += `<h4>Knock things out of aim</h4>` + sl('yawRadar', 'Radar yaw', -3, 3, 0.1, c.yawRadar, '°') + sl('yawCam', 'Camera yaw', -2, 2, 0.1, c.yawCam, '°') + sl('yawCorner', 'Corner radar yaw', -6, 6, 0.5, c.yawCorner, '°');
+  else { if (keys.includes('yawRadar')) h += sl('yawRadar', 'Radar yaw', -3, 3, 0.1, c.yawRadar, '°'); if (keys.includes('yawCam')) h += sl('yawCam', 'Camera yaw', -2, 2, 0.1, c.yawCam, '°'); if (keys.includes('yawCorner')) h += sl('yawCorner', 'Corner radar yaw', -6, 6, 0.5, c.yawCorner, '°'); }
+  if (has('ride')) h += `<h4>Ride height</h4>` + sl('rideF', 'Front', -60, 60, 5, c.rideF, ' mm') + sl('rideR', 'Rear', -60, 60, 5, c.rideR, ' mm');
+  if (has('thrust')) h += `<h4>Alignment</h4>` + sl('thrust', 'Thrust angle', -0.5, 0.5, 0.05, c.thrust, '°');
+  if (!keys) h += `<div class="rowb"><button class="btn small" data-act="reset">Reset</button></div>`;
+  return h;
+}
+function exploreHTML() {
+  return `<p class="dim">Each sensor sees a different zone. Knock one out of aim and watch what the car "thinks" it sees. Switch between the Road and Shop views.</p>` + ctlHTML() + `<h4>Sensors</h4><div class="cards">${Object.entries(SEN).map(([k, s]) => `<div class="card" style="cursor:default"><b style="color:${s.c}">${s.n}</b><span>${s.use}. Range about ${s.range} m. Calibration: ${METHN[METH[k]]}.</span></div>`).join('')}</div>`;
+}
+
+/* ================= calibrate (practice job) ================= */
+const PRE = [
+  ['tires', 'Tire pressures at placard', 'All four at 35 psi', ['LR tire at 24 psi', 'Inflated to 35 psi']],
+  ['align', 'Alignment / thrust angle', 'Thrust angle +0.03° (spec ±0.10°)', ['Thrust angle +0.32° (spec ±0.10°)', 'Rear toe adjusted: thrust angle +0.02°']],
+  ['ride', 'Ride height', 'Within spec at all four corners', ['Rear 30 mm low (heavy toolbox in the cargo area)', 'Cargo removed: ride height in spec']],
+  ['fuel', 'Fuel level / load', 'Full tank, no cargo or passengers', ['Fuel at 1/8 tank (spec: full)', 'Tank filled']],
+  ['floor', 'Level floor', 'Calibration bay is level (±1 mm/m)', null],
+  ['battery', 'Battery support', 'Battery maintainer connected (13.5 V)', ['Battery at 12.1 V with no maintainer', 'Maintainer connected: 13.5 V']],
+  ['clean', 'Sensors / glass clean, no DTCs', 'Clean; only "calibration required" codes', null],
+];
+function newJob() {
+  const ek = Object.keys(EVENTS)[Math.floor(Math.random() * Object.keys(EVENTS).length)], E = EVENTS[ek];
+  const fails = new Set(); const pool = PRE.filter(p => p[3]).map(p => p[0]); fails.add(pool[Math.floor(Math.random() * pool.length)]); if (Math.random() < .35) fails.add(pool[Math.floor(Math.random() * pool.length)]);
+  const thrust = fails.has('align') ? 0.32 : 0.03;
+  S.c = BASEC(); S.c.event = ek; S.c.thrust = thrust;
+  S.job = { n: (S.job?.n || 0) + 1, ek, req: E.req.slice(), stage: 0, picks: [], fails, checked: {}, fixed: {}, meth: {}, tg: { cam: { d: 1400, l: 0, y: 0 }, radar: { d: 1900, l: 0, y: 0 } }, msgs: [], result: null, mistakes: 0, drove: false };
+  S.view = 'shop'; S.tab = 'job'; renderPanel(); renderViews();
+}
+const STAGES = ['Which sensors?', 'Pre-checks', 'Method', 'Targets', 'Calibrate'];
+function needTargets(J) { return J.req.filter(k => k === 'cam' || k === 'radar'); }
+function jobHTML() {
+  const J = S.job; if (!J) return '';
+  const E = EVENTS[J.ek];
+  let h = `<div class="case"><span class="qk">Job ${J.n}</span><h3>${E.n}</h3><p class="dim">Generic teaching car. On a real car, follow OEM service information and the Autel ADAS unit’s step-by-step instructions.</p></div>`;
+  h += `<div class="score"><div><small>Jobs done</small><b>${S.jobScore.jobs}</b></div><div><small>No mistakes</small><b>${S.jobScore.clean}</b></div><div><small>Mistakes here</small><b>${J.mistakes}</b></div></div>`;
+  h += `<div class="steps">${STAGES.map((s, i) => `<div class="${i < J.stage ? 'done' : i === J.stage ? 'cur' : ''}"><i>${i < J.stage ? '✓' : i + 1}</i>${s}</div>`).join('')}</div>`;
+  if (J.result) return h + `<div class="msg ok"><b>Calibration complete.</b> ${J.mistakes ? `${J.mistakes} mistake(s) along the way.` : 'No mistakes.'} Road-test to verify: lane keeping centered, ACC tracks the lead car, no warnings.</div><div class="nav"><button class="btn primary" data-act="newjob">Next job</button></div>`;
+  if (J.stage === 0) {
+    h += `<h4>Which systems need calibration (or a test) after this repair?</h4><div class="rowb">${Object.entries(SEN).map(([k, s]) => `<button class="tog" data-act="pick:${k}" aria-pressed="${J.picks.includes(k)}"><i style="background:${s.c}"></i>${s.n}</button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="stage0">Confirm</button></div>`;
+  } else if (J.stage === 1) {
+    h += `<h4>Pre-checks: check every item; fix anything out of spec</h4>`;
+    for (const [k, n, ok, bad] of PRE) {
+      const failing = J.fails.has(k) && !J.fixed[k], chk = J.checked[k];
+      h += `<div class="pc"><span><b>${n}</b>${chk ? `<br><span class="${failing ? '' : 'dim'}" style="color:${failing ? '#FFC2BC' : ''}">${J.fails.has(k) ? (J.fixed[k] ? bad[1] : bad[0]) : ok}</span>` : ''}</span>${chk ? (failing ? `<button class="btn small" data-act="fix:${k}">Fix</button>` : `<span class="chip ok">OK</span>`) : `<button class="btn small" data-act="check:${k}">Check</button>`}<span></span></div>`;
+    }
+    h += `<div class="nav"><button class="btn primary" data-act="stage1">Continue</button></div>`;
+  } else if (J.stage === 2) {
+    h += `<h4>Pick the method for each system</h4>`;
+    for (const k of J.req) h += `<div class="rowb"><span class="lbl" style="color:${SEN[k].c};min-width:120px">${SEN[k].n}</span><span class="seg mini">${['S', 'D', 'F'].map(m => `<button data-act="meth:${k}:${m}" aria-pressed="${J.meth[k] === m}">${m === 'S' ? 'Static' : m === 'D' ? 'Dynamic' : 'Function test'}</button>`).join('')}</span></div>`;
+    h += `<div class="nav"><button class="btn primary" data-act="stage2">Continue</button></div>`;
+  } else if (J.stage === 3) {
+    const tk = needTargets(J);
+    h += `<p class="dim">Measure from the <b>front wheel centers</b>. Center the target on the <b>thrust line</b> and square it to the thrust line (measured thrust angle: ${fx(S.c.thrust, 2)}°). Watch the Shop view.</p>`;
+    for (const k of tk) {
+      const t = J.tg[k], sp = TSPEC[k];
+      h += `<h4 style="color:${SEN[k].c}">${k === 'cam' ? 'Camera target' : 'Radar reflector'} (spec ${sp.d} mm ±${sp.tolD}, centered ±${sp.tolL} mm, square ±${sp.tolY}°)</h4>` + sl(`tg-${k}-d`, 'Distance', sp.d - 300, sp.d + 300, 5, t.d, ' mm') + sl(`tg-${k}-l`, 'Left/right', -60, 60, 1, t.l, ' mm') + sl(`tg-${k}-y`, 'Target angle', -1, 1, 0.01, t.y, '°');
+    }
+    h += `<div class="nav"><button class="btn primary" data-act="stage3">Targets placed</button></div>`;
+  } else if (J.stage === 4) {
+    const dyn = J.req.some(k => J.meth[k] === 'D');
+    h += `<p>Everything is set. ${dyn ? 'Dynamic calibration needs a road drive (straight, marked roads, about 35–65 mph, until the scan tool reports complete).' : ''}</p><div class="nav">${dyn ? `<button class="btn" data-act="drive"${J.drove ? ' disabled' : ''}>${J.drove ? 'Road drive done' : 'Road drive'}</button>` : ''}<button class="btn primary" data-act="run">Run calibration</button></div>`;
+  }
+  if (J.msgs.length) h += J.msgs.map(([k, s]) => `<div class="msg ${k}">${s}</div>`).join('');
+  return h;
+}
+function jobStep(a, v, w) {
+  const J = S.job; J.msgs = [];
+  const err = s => { J.mistakes++; J.msgs.push(['bad', s]); };
+  if (a === 'pick') { J.picks = J.picks.includes(v) ? J.picks.filter(x => x !== v) : [...J.picks, v]; }
+  else if (a === 'stage0') {
+    const miss = J.req.filter(k => !J.picks.includes(k)), extra = J.picks.filter(k => !J.req.includes(k));
+    if (miss.length || extra.length) err(`Not quite. ${miss.length ? 'Missing: ' + miss.map(k => SEN[k].n).join(', ') + '. ' : ''}${extra.length ? 'Not needed for this repair: ' + extra.map(k => SEN[k].n).join(', ') + '.' : ''} Use the "When to calibrate" chart.`);
+    else { J.stage = 1; J.msgs.push(['ok', 'Right systems.']); }
+  }
+  else if (a === 'check') J.checked[v] = true;
+  else if (a === 'fix') { J.fixed[v] = true; if (v === 'align') S.c.thrust = 0.02; }
+  else if (a === 'stage1') {
+    const unchecked = PRE.filter(p => !J.checked[p[0]]), unfixed = [...J.fails].filter(k => !J.fixed[k]);
+    if (unchecked.length) err('Check every pre-check item first. A hidden problem makes the calibration wrong even if the scan tool says "complete".');
+    else if (unfixed.length) err('Something is still out of spec. Fix it before calibrating.');
+    else J.stage = 2;
+  }
+  else if (a === 'meth') J.meth[v] = w;
+  else if (a === 'stage2') {
+    const wrong = J.req.filter(k => J.meth[k] !== METH[k]);
+    if (wrong.length) err(`Check the method for: ${wrong.map(k => SEN[k].n).join(', ')}. (Teaching car: camera, front radar and surround cameras are static; corner radars dynamic; ultrasonic is a function test.)`);
+    else J.stage = needTargets(J).some(k => METH[k] === 'S') ? 3 : 4;
+  }
+  else if (a === 'stage3') {
+    const bad = [];
+    for (const k of needTargets(J)) { const t = J.tg[k], sp = TSPEC[k]; if (Math.abs(t.d - sp.d) > sp.tolD) bad.push(`${k === 'cam' ? 'Camera target' : 'Radar reflector'} distance ${t.d} mm (spec ${sp.d})`); if (Math.abs(t.l) > sp.tolL) bad.push(`${k === 'cam' ? 'Camera target' : 'Radar reflector'} is ${Math.abs(t.l)} mm off the thrust line`); if (Math.abs(t.y - S.c.thrust) > sp.tolY) bad.push(`${k === 'cam' ? 'Camera target' : 'Radar reflector'} not square to the thrust line (${fx(t.y - S.c.thrust, 2)}°)`); }
+    if (bad.length) err('Target placement out of spec: ' + bad.join('; ') + '.');
+    else J.stage = 4;
+  }
+  else if (a === 'drive') J.drove = true;
+  else if (a === 'run') {
+    if (J.req.some(k => J.meth[k] === 'D') && !J.drove) err('The dynamic calibration hasn’t run: do the road drive.');
+    else { J.result = true; J.stage = 5; S.jobScore.jobs++; if (!J.mistakes) S.jobScore.clean++; toast('✓ Calibration complete', 'good'); }
+  }
+  renderPanel(); renderViews();
+}
+function drawJobPanel() {
+  const J = S.job, E = EVENTS[J.ek];
+  let h = `<div class="eff">`;
+  h += `<div class="${J.stage > 0 ? 'ok' : ''}"><b>Repair</b>${E.n}${J.stage > 0 ? ' → ' + J.req.map(k => SEN[k].n).join(', ') : ''}</div>`;
+  if (J.stage >= 3) for (const k of needTargets(J)) { const t = J.tg[k], sp = TSPEC[k]; const okD = Math.abs(t.d - sp.d) <= sp.tolD, okL = Math.abs(t.l) <= sp.tolL, okY = Math.abs(t.y - S.c.thrust) <= sp.tolY; h += `<div class="${okD && okL && okY ? 'ok' : 'warn'}"><b>${k === 'cam' ? 'Camera target' : 'Radar reflector'}</b>Tape measure: ${t.d} mm from wheel centers · ${t.l === 0 ? 'centered' : Math.abs(t.l) + ' mm ' + (t.l < 0 ? 'left' : 'right')} · angle ${fx(t.y, 2)}° vs thrust ${fx(S.c.thrust, 2)}°</div>`; }
+  h += `</div>`;
+  $('#cal').innerHTML = h; $('#cTitle').textContent = 'Job sheet'; $('#cSub').textContent = '';
+}
+
+/* ================= diagnose ================= */
+const DTESTS = [['history', 'Repair history'], ['scan', 'Scan: DTCs & calibration status'], ['visual', 'Inspect sensors & mounts'], ['align', 'Alignment check'], ['ride', 'Measure ride height'], ['tires', 'Tire pressures'], ['ustest', 'Parking sensor function test'], ['sv', 'Check 360° camera view'], ['road', 'Road test']];
+const DEF = {
+  history: ['', 'No recent body, glass or suspension work on record.'], scan: ['ok', 'No ADAS DTCs. All calibrations report complete.'], visual: ['ok', 'Sensors, brackets and covers look correct and clean.'],
+  align: ['ok', 'Alignment in spec; thrust angle +0.02°.'], ride: ['ok', 'Ride height in spec at all four corners.'], tires: ['ok', 'All tires at placard pressure.'],
+  ustest: ['ok', 'All 12 parking sensors respond correctly.'], sv: ['ok', 'The 360° image lines up at every seam.'], road: ['ok', 'Lane keeping centered; ACC tracks the lead car; no warnings.'],
+};
+const CAUSES = {
+  camUncal: { name: 'Camera not calibrated after windshield replacement', concern: 'Since the windshield was replaced, lane keeping keeps nudging the car toward the right line.', set: { yawCam: -0.6 },
+    t: { history: ['warn', 'Windshield replaced last week by a mobile glass company. No calibration listed on the invoice.'], scan: ['bad', 'Front camera: "Calibration not performed" (C-code). Lane keeping limited.'], road: ['bad', 'Lane centering holds the car about 0.2 m right of center.'] } },
+  radarYaw: { name: 'Front radar knocked out of aim (bent bracket)', concern: 'After a minor front-end bump, adaptive cruise sometimes brakes for cars in the next lane on long curves and loses the car ahead.', set: { yawRadar: 1.4 },
+    t: { history: ['warn', 'Minor front collision two weeks ago; bumper cover replaced at a body shop.'], scan: ['bad', 'Front radar: "Sensor misaligned / horizontal aim out of range". AEB limited.'], visual: ['bad', 'The radar bracket behind the bumper is bent; the sensor face is turned to one side.'], road: ['bad', 'ACC drops the lead car at a distance and reacts to traffic in the next lane.'] } },
+  radarPitch: { name: 'Radar pitched up after lowering springs', concern: 'Since I installed lowering springs, the car sometimes brakes hard under overhead highway signs and bridges.', set: { rideR: -55 },
+    t: { history: ['warn', 'Customer-installed lowering springs (rear dropped more than front). No calibration done.'], ride: ['bad', 'Rear 55 mm below spec; front 5 mm below.'], scan: ['warn', 'Front radar: "Vertical misalignment" history code.'], road: ['bad', 'False AEB warnings under an overhead sign gantry.'] } },
+  corner: { name: 'Corner radar out of aim after rear bumper repair', concern: 'After the rear bumper repair, the blind-spot light comes on next to guardrails and cars two lanes over.', set: { yawCorner: 5 },
+    t: { history: ['warn', 'Rear bumper cover repaired and painted at a body shop.'], scan: ['bad', 'Left rear radar: "Calibration required / alignment out of range".'], visual: ['bad', 'The left rear radar sits crooked in a non-OEM bracket.'], road: ['bad', 'Blind-spot alerts for guardrails and cars two lanes over.'] } },
+  thrust: { name: 'Thrust angle out of spec (align first)', concern: 'A shop calibrated the camera and said it passed, but the car still drifts in its lane and the steering wheel is off-center.', set: { thrust: 0.35, yawCam: 0.35 },
+    t: { history: ['warn', 'Camera calibration done last month. No alignment on record.'], scan: ['ok', 'Camera calibration: complete. No DTCs.'], align: ['bad', 'Rear toe out of spec: thrust angle +0.35° (spec ±0.10°). Steering wheel 3° off center.'], road: ['bad', 'The car crabs slightly; lane centering drifts toward one line.'] } },
+  usPaint: { name: 'Parking sensor fault (too much paint)', concern: 'After the bumper was repainted, the parking sensors beep constantly even with nothing behind the car.', set: {},
+    t: { history: ['warn', 'Rear bumper repainted; sensors painted along with it.'], scan: ['bad', 'Rear center-left parking sensor: "Signal implausible".'], visual: ['bad', 'Thick paint build-up on the rear sensor faces.'], ustest: ['bad', 'Rear center-left sensor reads an obstacle at 0.3 m with nothing there.'] } },
+  mirrorCam: { name: 'Surround-view camera not calibrated after mirror replacement', concern: 'Since the side mirror was replaced, the 360° parking view looks broken: the lines don’t meet at the left side.', set: {},
+    t: { history: ['warn', 'Left mirror assembly replaced after it was knocked off.'], scan: ['bad', 'Surround view: "Left camera calibration required".'], sv: ['bad', 'The left image is shifted and doesn’t line up with the front and rear images.'] } },
+  blocked: { name: 'Nothing wrong: radar blocked by snow/ice', concern: 'Driving in a snowstorm, the dash said "Front radar blocked" and adaptive cruise turned off. It came back the next day.', set: {},
+    t: { history: ['', 'No recent repairs.'], scan: ['ok', 'History code: "Radar blocked" set during the storm; now clear. Calibration complete.'], visual: ['ok', 'Radar cover undamaged; the customer says it was packed with snow that day.'] } },
+  tires: { name: 'Pre-check failure: low tire / car leaning', concern: 'Two calibration attempts on the front camera failed at the end with "out of range".', set: {},
+    t: { history: ['warn', 'Two failed camera calibration attempts today.'], tires: ['bad', 'Right front at 21 psi (placard 35). The car leans.'], scan: ['warn', 'Front camera: "Calibration incomplete".'] } },
+  glass: { name: 'Wrong (non-OEM) windshield', concern: 'The new windshield went in fine, but the camera calibration fails every time.', set: {},
+    t: { history: ['warn', 'Windshield replaced with an aftermarket part.'], scan: ['bad', 'Front camera: "Calibration failed: target not found / image distorted".'], visual: ['bad', 'The camera bracket is bonded in a different spot than the OEM glass, and the camera area has visible distortion.'] } },
+};
+const CASE_POOL = Object.keys(CAUSES);
+/* Shuffle bag: every case type comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'adas-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You've solved all ${n} case types once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function newCase() {
+  const type = bagNext(), C = CAUSES[type];
+  S.c = Object.assign(BASEC(), C.set); S.view = 'road';
+  S.dx = { n: (S.dx?.n || 0) + 1, type, tests: {}, log: [], pick: null, tries: 0, solved: false, wrong: null };
+  S.tab = 'case'; renderPanel(); renderViews();
+}
+function runTest(k) { const d = S.dx; if (!d || d.solved || d.tests[k]) return; d.tests[k] = true; d.log.unshift({ k, l: CAUSES[d.type].t[k] || DEF[k] }); renderPanel(); }
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  d.tries++;
+  if (d.pick === d.type) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += Object.keys(d.tests).length; toast('✓ Correct', 'good'); }
+  else d.wrong = 'Not quite. What did the history, scan and inspection point to?';
+  renderPanel(); renderViews();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const C = CAUSES[d.type], sc = S.dxScore;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${C.concern}</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div><div><small>Tests here</small><b>${Object.keys(d.tests).length}</b></div></div>${bagHTML()}`;
+  if (d.solved) h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}</b>: ${C.name}.</div><p class="dim">The views show this car’s sensors now that it’s solved. Real fix: follow OEM information and the Autel unit’s procedure (alignment and pre-checks first).</p><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  else h += `<h4>Tests</h4><div class="tests">${DTESTS.map(([k, n]) => `<button class="btn${d.tests[k] ? ' used' : ''}" data-act="test:${k}"${d.tests[k] ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+  if (d.log.length) h += `<h4>Findings</h4><div class="find">${d.log.map(e => `<div class="f"><b>${DTESTS.find(t => t[0] === e.k)[1]}</b><div class="${e.l[0]}">${e.l[1]}</div></div>`).join('')}</div>`;
+  if (!d.solved) { h += `<h4>Your diagnosis</h4><div class="cards">${Object.entries(CAUSES).map(([k, Cx]) => `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${Cx.name}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`; if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`; }
+  return h;
+}
+
+/* ================= lessons ================= */
+const LESSONS = [
+{ id: 'cover', title: 'Who sees what', sub: 'Sensor coverage', steps: [
+  { body: 'Switch to the <b>Shop</b> view to see every sensor’s zone to scale.', setup: { reset: true, view: 'road' }, goal: { check: () => S.view === 'shop', hint: 'Top-view panel: Shop.' } },
+  { body: '', goal: { mc: { q: 'Which sensor watches farthest ahead?', opts: ['The front radar (about 160 m) for adaptive cruise and emergency braking', 'The ultrasonic sensors', 'The surround-view cameras'], a: 0, why: 'Radar measures distance and closing speed far ahead. The camera (about 70 m) reads lanes and signs; the two are often fused for AEB.' } } },
+  { body: '', goal: { mc: { q: 'What are the ultrasonic sensors and surround cameras for?', opts: ['Parking: short range (a few meters) all around the car', 'Highway cruise control', 'Blind-spot warning at speed'], a: 0, why: 'Blind spot and rear cross-traffic use the longer-range corner radars.' } } },
+] },
+{ id: 'onedeg', title: 'The 1° rule', sub: 'Small aim errors, big distance errors', steps: [
+  { body: 'Back on the <b>Road</b> view. Knock the <b>front radar 1.0°</b> to the right (or more).', setup: { reset: true, view: 'road' }, ctl: ['yawRadar'], goal: { check: () => S.c.yawRadar >= 0.99, hint: 'Radar yaw ≥ +1.0°.' } },
+  { body: '', ctl: ['yawRadar'], goal: { mc: { q: 'How far off is the lead car 100 m ahead?', opts: ['About 1.75 m (5.7 ft): nearly half a lane', 'About 1 inch', 'About 1 m'], a: 0, why: 'Error = distance × tan(angle). 100 m × tan 1° ≈ 1.75 m. A lane is 3.7 m, so a bit more aim error puts the lead car in the wrong lane.' } } },
+  { body: 'Push it to <b>1.5°</b> or more.', ctl: ['yawRadar'], goal: { check: () => S.c.yawRadar >= 1.49, hint: 'Radar yaw ≥ +1.5°.' } },
+  { body: '', ctl: ['yawRadar'], goal: { mc: { q: 'What could adaptive cruise do now?', opts: ['Ignore the car really ahead of you (it looks like it’s in the left lane) and react to cars in the next lane', 'Nothing changes', 'Brake harder'], a: 0, why: 'That’s why brackets, bumpers and impacts near a radar always call for an aim check.' } } },
+] },
+{ id: 'pitch', title: 'Vertical aim and ride height', sub: 'Lowering springs, loads, sagging', steps: [
+  { body: 'Lower the <b>rear 50 mm</b> (lowering springs, or a heavy load).', setup: { reset: true }, ctl: ['ride'], goal: { check: () => S.c.rideR <= -50, hint: 'Rear ride height ≤ −50 mm.' } },
+  { body: '', ctl: ['ride'], goal: { mc: { q: 'Look at the Vertical aim panel. What happened to the radar beam?', opts: ['It pitched up about 1°: 100 m out, the top of the beam reaches overhead signs, so the car may brake for a bridge or gantry', 'Nothing', 'It pointed down'], a: 0, why: 'Pitch = atan(height change ÷ wheelbase). That’s why ride height is a pre-check, and why suspension changes trigger calibration.' } } },
+] },
+{ id: 'thrust', title: 'Thrust line, not centerline', sub: 'Align first, then calibrate', steps: [
+  { body: 'Rear toe is out: set the <b>thrust angle to +0.3°</b>. Watch the Shop view.', setup: { reset: true, view: 'shop' }, ctl: ['thrust'], goal: { check: () => S.c.thrust >= 0.29, hint: 'Thrust angle ≥ +0.30°.' } },
+  { body: '', ctl: ['thrust'], goal: { mc: { q: 'Why do calibration targets go on the thrust line instead of the body centerline?', opts: ['The car actually travels along the thrust line. A camera aimed down the centerline is off by the thrust angle and steers the car to one side', 'It’s easier to measure', 'Centerline is fine'], a: 0, why: 'And if the thrust angle is out of spec, fix the alignment FIRST, then calibrate. Calibration can’t fix a crooked car.' } } },
+] },
+{ id: 'when', title: 'What triggers calibration', sub: 'Repairs that move sensors', steps: [
+  { body: 'Click the <b>Windshield replaced</b> row in the "When to calibrate" chart, then look at the other rows.', setup: { reset: true }, goal: { check: () => S.c.event === 'windshield' && S.clickedEv, hint: 'Click a row in the chart (Windshield replaced).' } },
+  { body: '', goal: { mc: { q: 'Which of these usually needs an ADAS calibration?', opts: ['All of them can: windshield, alignment, bumper or mirror work, ride height changes, sensor or bracket replacement', 'Only collisions with airbags', 'Only a new sensor'], a: 0, why: 'Anything that moves a sensor, its mount, or the car’s stance or direction of travel. Check OEM position statements: many say "always calibrate after X".' } } },
+  { body: '', goal: { mc: { q: 'Static vs. dynamic calibration?', opts: ['Static uses targets in a level shop; dynamic means driving on marked roads while the scan tool learns', 'Static is free, dynamic costs money', 'They’re the same'], a: 0, why: 'Some sensors need one, some the other, some both. The OEM procedure (and your Autel unit) tells you which.' } } },
+] },
+{ id: 'pre', title: 'Pre-checks', sub: 'Why calibrations fail', steps: [
+  { body: '', setup: { reset: true }, goal: { mc: { q: 'A camera calibration keeps failing. What do you check first?', opts: ['Pre-checks: tire pressure, alignment/thrust angle, ride height, fuel and load, level floor, battery support, clean glass', 'Replace the camera', 'Try again five more times'], a: 0, why: 'The calibration measures the sensor against the car’s stance. If the car sits wrong, the result is wrong (or fails).' } } },
+  { body: '', goal: { mc: { q: 'Where do you measure target distance from?', opts: ['A reference point the procedure names, usually the front wheel centers, and centered on the thrust line', 'The front bumper, by eye', 'The windshield'], a: 0, why: 'Try a full job in Calibrate mode: pick systems, do the pre-checks, choose methods and place the targets.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) { if (!su) return; if (su.reset) S.c = BASEC(); if (su.view) S.view = su.view; S.clickedEv = false; }
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); renderViews(); }
+function checkGoal() { const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return; if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); } }
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets things up, tells you what to change and watch, and checks your answer.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  if (st.ctl) h += `<h4>Controls</h4>` + ctlHTML(st.ctl);
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['ctl', 'Controls']], guided: [['les', 'Lessons']], cal: [['job', 'Job']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'ctl' ? exploreHTML() : S.tab === 'les' ? lessonsHTML() : S.tab === 'job' ? jobHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore' || m === 'guided') { S.c = BASEC(); S.lesson = null; S.view = 'road'; }
+  if (m === 'cal') { if (!S.job || S.job.result) newJob(); else S.view = 'shop'; }
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); else S.c = Object.assign(BASEC(), CAUSES[S.dx.type].set); }
+  renderPanel(); renderViews();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v, w] = b.dataset.act.split(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'show': S.c.show[v] = !S.c.show[v]; renderPanel(); renderViews(); break;
+    case 'reset': S.c = BASEC(); renderPanel(); renderViews(); break;
+    case 'newjob': newJob(); break;
+    case 'pick': case 'stage0': case 'check': case 'fix': case 'stage1': case 'meth': case 'stage2': case 'stage3': case 'drive': case 'run': jobStep(a, v, w); break;
+    case 'test': runTest(v); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('adas.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#viewSeg').addEventListener('click', e => { const v = e.target.closest('button')?.dataset.v; if (!v) return; S.view = v; renderViews(); checkGoal(); });
+$('#cal').addEventListener('click', e => { const tr = e.target.closest('tr[data-ev]'); if (!tr || S.mode === 'diagnose' || S.mode === 'cal') return; S.c.event = tr.dataset.ev; S.clickedEv = true; renderViews(); checkGoal(); });
+$('#pbody').addEventListener('input', e => {
+  const t = e.target, k = t.dataset.c; if (!k) return;
+  const v = +t.value, o = $('#o-' + k);
+  if (k.startsWith('tg-')) { const [, s, f] = k.split('-'); S.job.tg[s][f] = v; if (o) o.textContent = (f === 'y' ? v.toFixed(2) + '°' : v + ' mm'); renderViews(); return; }
+  S.c[k] = v; if (o) o.textContent = (['rideF', 'rideR'].includes(k) ? v.toFixed(0) + ' mm' : k === 'thrust' ? v.toFixed(2) + '°' : v.toFixed(1) + '°');
+  renderViews(); checkGoal();
+});
+
+renderPanel(); renderViews();
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__AD = { S, effects, pitch, LESSONS, CAUSES, EVENTS, METH, TSPEC, PRE, setMode, newJob, jobStep, newCase, runTest, curStep, renderViews, renderPanel, get BAG() { return BAG; },
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>

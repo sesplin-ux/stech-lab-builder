@@ -129,6 +129,7 @@ const I = {
   trim:     '<path d="M3 12h3l2-6 3 12 3-9 2 3h5"/>',
   brake:    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M17 5.5a9 9 0 0 1 2.5 4.5"/>',
   align:    '<path d="M12 3v18"/><path d="M8 5l-2 14M16 5l2 14"/><path d="M4 12h16"/>',
+  adas:     '<path d="M4 18h3l1-4h8l1 4h3"/><path d="M12 10 5 3M12 10l7-7M12 10V2"/><circle cx="12" cy="11" r="1.5"/>',
   gears:    '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><circle cx="12" cy="6.5" r="1.4"/><circle cx="16.8" cy="14.8" r="1.4"/><circle cx="7.2" cy="14.8" r="1.4"/>',
   ac:       '<path d="M12 2v20M4.9 6l14.2 12M19.1 6 4.9 18"/><path d="m9 4 3 2 3-2M9 20l3-2 3 2"/>',
   hv:       '<path d="M12 3 2 20h20z"/><path d="m13 9-3 5h4l-3 4"/>',
@@ -189,6 +190,10 @@ const TOOLS = [
     name: 'Alignment Simulator',
     desc: 'Set camber, caster, toe and tire pressure and see the tire wear, pull and steering wheel position. Read the tires, then align a car to spec.',
     tags: ['A4', 'Diagnose'], keys: 'camber caster toe thrust sai tire wear pull suspension steering' },
+  { id: 'adas', area: 'chassis', href: 'adas/', icon: 'adas', c: '#FF7A6E',
+    name: 'ADAS Calibration Trainer',
+    desc: 'See what radar, cameras and parking sensors cover and what 1° of misaim does at 100 m. Learn when to calibrate, then practice pre-checks and target placement (pairs with the Autel ADAS unit).',
+    tags: ['ADAS', 'Calibrate'], keys: 'adas radar camera lane keeping acc aeb blind spot parking sensor surround view calibration target thrust line autel windshield' },
 
   { id: 'planetary', area: 'trans', href: 'planetary/', icon: 'gears', c: '#B48CFF',
     name: 'Planetary Gear Sandbox',
