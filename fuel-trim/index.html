@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fuel Trim Simulator</title>
+<meta name="description" content="Closed-loop fuel control you can break: watch STFT, LTFT, O2, MAF and fuel pressure respond to vacuum leaks, weak pumps, dirty MAFs, injector faults and exhaust leaks, then diagnose mystery faults.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the DTC Visualizer (scan tool styling reused).
+   Layout ≥1100px: engine + graph | scan tool | notebook. Narrower: engine + graph, then scan | notebook, then stacked. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --air:#5BB8F5; --fuel:#FFA43A; --o2:#3DDC97; --stft:#5BB8F5; --ltft:#FFB224;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;
+  background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),radial-gradient(900px 500px at 100% 110%,rgba(255,164,58,.05),transparent 60%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--fuel)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.grp{display:flex;align-items:center;gap:7px}
+.grp>label{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.35;cursor:not-allowed}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.lit{border-color:rgba(47,155,224,.6);background:rgba(47,155,224,.12);color:#BFE3FA}
+/* layout */
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(250px,.72fr) minmax(300px,.92fr);grid-template-rows:minmax(0,1fr);gap:10px}
+.col{min-height:0;display:flex;flex-direction:column;gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 7px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font:700 10px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--dim);white-space:nowrap}
+.chip.ok{color:#C9F7E2;border-color:rgba(61,220,151,.5)}
+.chip.warn{color:#FFE2A8;border-color:rgba(255,178,36,.6)}
+#engPanel{flex:1.25}
+#eng{width:100%;height:100%;display:block;padding:0 8px 8px}
+#graphPanel{flex:1}
+.gwrap{flex:1;min-height:0;padding:0 10px 10px;position:relative}
+#graph{position:absolute;left:10px;right:10px;top:0;bottom:10px;width:calc(100% - 20px);height:calc(100% - 10px);display:block;border-radius:10px;background:#06090C;border:1px solid var(--line)}
+.leg{display:flex;gap:10px;font:600 10px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle;background:var(--k)}
+.hidden-ov{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--dim);font-size:13px;background:rgba(8,11,15,.6);pointer-events:none}
+/* scan tool (DTC Visualizer styling) */
+.scan{flex:1;min-height:0;margin:0 10px 10px;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;background:#06090C;border:1px solid var(--line-2)}
+.shead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font:700 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase}
+.shead span{color:var(--faint);margin-left:auto;letter-spacing:.1em}
+.led{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.sbody{flex:1;min-height:0;overflow:auto;padding:8px 12px 12px;display:grid;gap:12px;align-content:start}
+.sbody h4{margin:0 0 4px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed #141D26;font-size:12.5px}
+.row span{color:var(--dim);min-width:0}
+.row b{font:500 12.5px/1.2 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.row.flag b{color:var(--warn)}
+.row.bad b{color:#FF8A80}
+.row.hl{background:rgba(47,155,224,.08)}
+.cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.cells div{padding:6px 4px;border-radius:8px;border:1px solid var(--line);text-align:center;font:600 10px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.cells div b{display:block;font:600 13px/1.3 var(--f-mono);color:var(--soft);letter-spacing:0}
+.cells div.on{border-color:var(--accent);background:rgba(47,155,224,.1)}
+.dtc{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--raise);font-size:12.5px;margin-bottom:5px}
+.dtc b{font:600 13px/1.2 var(--f-mono)}
+.dtc i{grid-column:1/-1;font-style:normal;font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.1em}
+.empty{font-size:12.5px;color:var(--faint);padding:7px 9px;border:1px dashed var(--line-2);border-radius:9px}
+/* notebook */
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.cards{display:grid;gap:7px}
+.card{all:unset;cursor:pointer;display:grid;gap:3px;padding:9px 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim);line-height:1.35}
+.cyls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cyls .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.cc{all:unset;cursor:pointer;min-width:30px;height:30px;padding:0 8px;box-sizing:border-box;border-radius:8px;display:grid;place-items:center;border:1px solid var(--line-2);background:var(--raise);font:600 13px/1 var(--f-label);color:var(--soft)}
+.cc[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.cc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tpick{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tpick button{all:unset;cursor:pointer;padding:6px 9px;border-radius:8px;border:1px solid var(--line);font:600 10.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.tpick button[aria-pressed="true"]{border-color:var(--accent);color:var(--fg);background:rgba(47,155,224,.12)}
+.tpick button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.trow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+table.rt{width:100%;border-collapse:collapse;font:500 12px/1.2 var(--f-mono);margin:8px 0 6px}
+table.rt th{font:600 10px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);text-align:right;padding:5px 5px;border-bottom:1px solid var(--line)}
+table.rt td{text-align:right;padding:5px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.rt th:first-child,table.rt td:first-child{text-align:left}
+table.rt td.hi{color:#FFB3AC}
+table.rt td.lo{color:#9fd3ff}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}
+.dots i.on{background:var(--accent)}
+.goal{display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+ol.log{margin:0;padding-left:20px;font:500 12px/1.5 var(--f-mono);color:var(--soft)}
+.ev{margin:8px 0 0;padding-left:18px;font-size:13px}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}
+  .app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto}
+  .col.left{grid-column:1/-1}
+  #engPanel{height:340px;flex:none}
+  #graphPanel{height:220px;flex:none}
+  .col.mid .panel,.col.right .panel{height:620px}
+}
+@media (max-width: 700px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .brand p{display:none}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg></div>
+      <div><h1>Fuel Trim Simulator</h1><p>Closed loop · live data as a story</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button></div>
+    <div class="grp"><label class="hide-sm">Drive</label><div class="seg" id="conds" role="group" aria-label="Operating condition"><button data-c="idle" aria-pressed="true">Idle</button><button data-c="cruise">2500 rpm</button><button data-c="load">Cruise load</button><button data-c="wot">WOT</button></div></div>
+    <button class="btn" id="restart" title="Restart the engine: the O2 sensor starts cold, fuel trim memory (LTFT) is kept">Restart engine</button>
+    <button class="btn lit" id="fast" aria-pressed="true" title="Speed up long-term trim learning and code timers for class">Fast learn</button>
+  </header>
+  <div class="main">
+    <div class="col left">
+      <section class="panel" id="engPanel" aria-label="Inside the engine">
+        <div class="phead"><h2>Inside the engine</h2><div class="r" id="engR"></div></div>
+        <div class="gwrap" style="padding:0"><svg id="eng" viewBox="0 0 660 330" role="img" aria-label="Air and fuel path: air filter, MAF, throttle, intake manifold, injectors, cylinders, exhaust, O2 sensors, catalytic converter, ECM"></svg><div class="hidden-ov" id="engHide" hidden>Inside view is hidden in Diagnose. Use the scan tool and the tests.</div></div>
+      </section>
+      <section class="panel" id="graphPanel" aria-label="Graph">
+        <div class="phead"><h2>Graph</h2><div class="leg r"><span><i style="--k:var(--o2)"></i>O2 B1S1</span><span><i style="--k:var(--stft)"></i>STFT</span><span><i style="--k:var(--ltft)"></i>LTFT</span><span class="hide-sm" style="color:var(--faint)">last 20 s</span></div></div>
+        <div class="gwrap"><canvas id="graph" aria-label="Graph of O2 voltage, short-term and long-term fuel trim over the last 20 seconds"></canvas></div>
+      </section>
+    </div>
+    <div class="col mid">
+      <section class="panel" style="flex:1" aria-label="Scan tool">
+        <div class="phead"><h2>Scan tool</h2><div class="r"><button class="btn small" id="snapBtn" title="Record the current data into the snapshot table">Snapshot</button></div></div>
+        <div class="scan"><div class="shead"><i class="led"></i>ECM · Powertrain<span id="loopTxt">—</span></div>
+          <div class="sbody">
+            <div><h4>Data list</h4><div id="data"></div></div>
+            <div><h4>Long-term trim cells</h4><div class="cells" id="cells"></div></div>
+            <div><h4>Trouble codes <button class="btn small" id="clr" title="Clear codes and reset fuel trim memory">Clear / reset KAM</button></h4><div id="dtcs"></div></div>
+          </div></div>
+      </section>
+    </div>
+    <div class="col right">
+      <section class="panel" style="flex:1" aria-label="Notebook">
+        <div class="tabs" id="tabs" role="tablist"></div>
+        <div class="pbody" id="pbody"></div>
+      </section>
+    </div>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const mod = (a, n) => ((a % n) + n) % n;
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+
+/* ================= engine: 2.0 L inline-4, port fuel injection, narrowband O2 ================= */
+const DISP = 2.0, STOICH = 14.7, INJ_FLOW = 0.0035, DEAD = 0.9, RAIL = 58;   // g/ms at 58 psi; injector dead time ms
+const CONDS = {
+  idle:   { name: 'Idle',        rpm: 750,  maf: 2.6, map: 31, tps: 0,   cell: 'idle' },
+  cruise: { name: '2500 rpm',    rpm: 2500, maf: 7.4, map: 33, tps: 6,   cell: 'cruise' },
+  load:   { name: 'Cruise load', rpm: 2800, maf: 36,  map: 78, tps: 38,  cell: 'load' },
+  wot:    { name: 'WOT',         rpm: 4500, maf: 82,  map: 98, tps: 100, cell: 'wot' },
+};
+const CELLS = [['idle', 'Idle'], ['cruise', 'Cruise'], ['load', 'Load'], ['wot', 'WOT']];
+const FAULTS = {
+  none:    { name: 'Healthy engine', short: 'No fault: fuel control is normal', pick: 'none', fx: 'Everything is metered and delivered correctly. Trims sit within a few percent of zero in every cell.' },
+  vleak:   { name: 'Vacuum leak', short: 'Vacuum leak (unmetered air)', pick: 'none', fx: 'Air sneaks in after the MAF through a cracked PCV hose. It is a fixed amount of air, so it is a big part of the total at idle and almost nothing at load.' },
+  pump:    { name: 'Weak fuel pump', short: 'Weak fuel pump', pick: 'none', fx: 'The pump keeps up at idle but can\'t hold pressure when fuel demand is high. Lean under load; worst at WOT.' },
+  maf:     { name: 'Dirty MAF sensor', short: 'Dirty / contaminated MAF sensor', pick: 'none', fx: 'Contamination makes the MAF under-report airflow, more and more as airflow rises. The ECM meters fuel for less air than is really there.' },
+  clog:    { name: 'Clogged injector', short: 'Clogged injector', pick: 'cyl', fx: 'One injector flows about 35% less. That cylinder runs lean (and misfires at idle); the trims raise all four to compensate, so the other three run a bit rich.' },
+  drip:    { name: 'Leaking injector', short: 'Leaking (dripping) injector', pick: 'cyl', fx: 'One injector drips a small, fixed amount of fuel. It is a big share at idle (rich, negative trims) and tiny at load. After shutdown it bleeds off rail pressure.' },
+  exleak:  { name: 'Exhaust leak ahead of the O2', short: 'Exhaust leak ahead of the upstream O2 sensor', pick: 'none', fx: 'Exhaust pulses pull outside air in at a cracked manifold gasket. The O2 sensor sees the extra oxygen and reports lean, so the ECM adds fuel. The engine actually runs rich. Worst at idle.' },
+};
+const EVIDENCE = {
+  none:   ['Total trim within about ±5% at idle, 2500 and load', 'Fuel pressure steady at about 58 psi; holds after shutdown', 'MAF at WOT within the calculated range', 'No smoke or exhaust leaks'],
+  vleak:  ['Trims high at idle (often +25% or more, P0171), better at 2500, about normal at load', 'MAP a little high at idle', 'Smoke test: smoke from the cracked PCV hose', 'Propane at the leak drops the trims'],
+  pump:   ['Trims normal at idle and 2500, high under load', 'Lean at WOT (O2 low in open loop)', 'Fuel pressure drops under load (about 40 psi)'],
+  maf:    ['Trims rise with airflow: small at idle, higher under load', 'MAF reads about 20% low at WOT vs. the calculated airflow', 'Fuel pressure normal'],
+  clog:   ['Trims a little high (about +8–10%) in every cell', 'Misfire counts on one cylinder at idle', 'Injector balance test: one injector drops much less pressure'],
+  drip:   ['Trims negative at idle (rich), near normal at load', 'Fuel pressure won\'t hold after shutdown', 'Drip check: one injector drips'],
+  exleak: ['Trims high at idle, better with rpm (looks like a vacuum leak)', 'Intake smoke test finds nothing; propane does nothing', 'Exhaust leak check: ticking and smoke at the manifold gasket ahead of the O2'],
+};
+const CONCERN = {
+  none:   () => 'Pre-purchase inspection. The buyer wants the fuel control checked. No lights on, runs fine.',
+  vleak:  () => 'High, slightly rough idle and a check engine light (P0171). Runs fine on the highway.',
+  pump:   () => 'Stumbles and hesitates on hard acceleration and climbing hills. No check engine light. Idles fine.',
+  maf:    () => 'Sluggish and hesitates when accelerating hard; fuel economy is down. No codes. The customer installed an aftermarket oiled air filter last year.',
+  clog:   c => `Rough idle with a check engine light: misfire code P030${c + 1}. Smooths out at highway speed.`,
+  drip:   () => 'Long crank and hard to start after sitting overnight, with a fuel smell at startup. Fine once it is running.',
+  exleak: () => 'Ticking noise from the engine bay when cold, a slightly rough idle, and the exhaust smells rich. No codes yet.',
+};
+const CASE_POOL = [['vleak', 3], ['pump', 2], ['maf', 2], ['clog', 2], ['drip', 2], ['exleak', 2], ['none', 1]];
+
+/* ================= state ================= */
+const LSZ = 400;   // λ delay buffer (10 ms steps)
+const S = {
+  mode: 'explore', tab: 'break', cond: 'idle', fault: null, fast: true,
+  rpm: 750, maf: 2.6, map: 31, tps: 0, tRun: 20, ltft: { idle: 0, cruise: 0, load: 0, wot: 0 }, stft: 0, o2: 0.45, o2b: 0.62, rich: false,
+  lamBuf: new Float32Array(LSZ).fill(1), lamI: 0, lamMix: 1, lamSeen: 1, lamCyl: [1, 1, 1, 1], press: RAIL, pw: 2.9, load: 18,
+  misfire: [0, 0, 0, 0], mfAcc: [0, 0, 0, 0], dtc: {}, tLean: 0, tRich: 0, tMis: [0, 0, 0, 0],
+  hist: [], histT: 0, snaps: {}, res: null, test: 'snap', run: null,
+  lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('fuel.done') || '[]')),
+  dx: null, dxScore: { cases: 0, first: 0, tests: 0 }, inside: true, exploreFault: null, prop: false,
+};
+const RES0 = () => ({ fp: {}, smoke: null, propane: null, balance: null, drip: null, mafchk: null, exh: null });
+S.res = RES0();
+const isF = (t, i) => S.fault?.type === t && (i == null || S.fault.cyl === i);
+
+/* ================= simulation ================= */
+function step(dt) {   // dt in seconds, called in 10 ms substeps
+  const C = CONDS[S.cond], f = S.fault?.type;
+  const k = 1 - Math.exp(-dt / .6);
+  S.rpm += ((C.rpm + (f === 'vleak' && S.cond === 'idle' ? 60 : 0)) - S.rpm) * k;
+  S.maf += (C.maf - S.maf) * k; S.map += (C.map + (f === 'vleak' && S.cond === 'idle' ? 3 : 0) - S.map) * k; S.tps += (C.tps - S.tps) * k;
+  S.tRun += dt;
+  // air
+  const aMet = S.maf;
+  const unmet = f === 'vleak' ? 0.85 * Math.sqrt(Math.max(0, 101 - S.map) / 70) : 0;
+  const aTrue = aMet + unmet;
+  const mafErr = f === 'maf' ? 0.03 + 0.17 * clamp(aMet / 80, 0, 1) : 0;
+  S.mafRead = aMet * (1 - mafErr);
+  // fuel pressure (returnless, regulated 58 psi)
+  const demand = aTrue / STOICH;
+  S.press = f === 'pump' ? clamp(RAIL - 12 * Math.max(0, demand - 1.0), 22, RAIL) - (S.cond === 'idle' ? .4 : 0) : RAIL;
+  const pf = Math.sqrt(S.press / RAIL);
+  // command
+  const open = S.tRun < 12 || S.cond === 'wot';
+  S.loop = S.tRun < 12 ? 'warm' : S.cond === 'wot' ? 'pe' : 'closed';
+  const cmdLam = S.cond === 'wot' ? 0.88 : 1;
+  const lt = S.ltft[C.cell];
+  const trim = (open ? 0 : S.stft) + lt;
+  const fCmd = S.mafRead / (STOICH * cmdLam) * (1 + trim);
+  S.pw = fCmd / 4 / (S.rpm / 120) / INJ_FLOW * 1000 / 1000 + DEAD;   // ms
+  let fTot = 0;
+  for (let i = 0; i < 4; i++) {
+    let fi = fCmd / 4 * pf * (isF('clog', i) ? 0.65 : 1) + (isF('drip', i) ? 0.03 : 0) + (S.prop ? 0.02 : 0);
+    fTot += fi; S.lamCyl[i] = (aTrue / 4) / (fi * STOICH);
+  }
+  S.lamMix = aTrue / (fTot * STOICH);
+  const exAir = f === 'exleak' ? 0.12 * Math.exp(-(aTrue - 2.6) / 4) : 0;
+  S.lamSeen = S.lamMix * (1 + exAir);
+  // transport delay to the O2 sensor
+  S.lamBuf[S.lamI] = S.lamSeen; S.lamI = (S.lamI + 1) % LSZ;
+  const d = Math.round((0.05 + 0.25 * 750 / S.rpm) / 0.01);
+  const lamD = S.lamBuf[mod(S.lamI - 1 - d, LSZ)];
+  const target = S.tRun < 10 ? 0.45 : 0.45 + 0.42 * Math.tanh((1 - lamD) * 40);
+  S.o2 += (target - S.o2) * (1 - Math.exp(-dt / 0.08));
+  S.o2 += (Math.random() - .5) * 0.004;
+  // downstream O2: catalyst oxygen storage smooths it
+  const tb = 0.62 + 0.26 * Math.tanh((1 - S.lamSeen) * 25);
+  S.o2b += (tb - S.o2b) * (1 - Math.exp(-dt / 2.5));
+  // closed loop
+  if (!open) {
+    const rich = S.o2 > 0.45;
+    if (rich !== S.rich) { S.stft += rich ? -0.02 : 0.02; S.rich = rich; }
+    S.stft = clamp(S.stft + (rich ? -1 : 1) * 0.05 * dt, -0.25, 0.25);
+    const rate = S.fast ? 0.35 : 0.05;
+    S.ltft[C.cell] = clamp(S.ltft[C.cell] + S.stft * rate * dt, -0.25, 0.25);
+  } else { S.stft *= Math.exp(-dt * 3); S.rich = S.o2 > 0.45; }
+  // calculated load (from the MAF reading)
+  S.load = clamp(S.mafRead / (DISP * S.rpm / 120 * 1.184) * 100, 0, 100);
+  // misfire: a very lean cylinder at idle misfires
+  for (let i = 0; i < 4; i++) {
+    const lean = S.lamCyl[i] > 1.33 && S.cond === 'idle' && S.tRun > 3 && Math.abs(S.maf - CONDS.idle.maf) < 0.3;
+    if (lean) { S.mfAcc[i] += dt * 3; if (S.mfAcc[i] >= 1) { S.misfire[i] += Math.floor(S.mfAcc[i]); S.mfAcc[i] %= 1; } S.tMis[i] += dt; }
+  }
+  // DTCs
+  const speed = S.fast ? 4 : 1;
+  const tot = (open ? 0 : S.stft) + S.ltft[C.cell];
+  if (!open && tot > 0.25) S.tLean += dt * speed; else S.tLean = Math.max(0, S.tLean - dt);
+  if (!open && tot < -0.25) S.tRich += dt * speed; else S.tRich = Math.max(0, S.tRich - dt);
+  setDtc('P0171', S.tLean, 'System too lean (bank 1)');
+  setDtc('P0172', S.tRich, 'System too rich (bank 1)');
+  for (let i = 0; i < 4; i++) setDtc(`P030${i + 1}`, S.tMis[i] * speed, `Cylinder ${i + 1} misfire detected`);
+}
+function setDtc(code, t, name) {
+  if (t > 20 && !S.dtc[code]) { S.dtc[code] = { name, st: 'pending' }; dtcDirty = true; if (!S.quiet) toast(`${code} set: ${name}`, 'bad'); }
+  if (t > 60 && S.dtc[code]?.st === 'pending') { S.dtc[code].st = 'confirmed · MIL on'; dtcDirty = true; }
+}
+function simulate(sec) { let t = sec; while (t > 1e-6) { const h = Math.min(0.01, t); step(h); t -= h; } }
+
+/* ================= inside view (SVG) ================= */
+const lamCol = l => l > 1.04 ? (l > 1.2 ? '#2F9BE0' : '#5BB8F5') : l < 0.96 ? (l < 0.88 ? '#FF5A1E' : '#FFA43A') : '#3DDC97';
+function engSVG() {
+  const f = S.fault?.type, ins = S.inside;
+  let h = `<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#5A6773"/></marker></defs>`;
+  // air path
+  h += `<rect x="12" y="60" width="54" height="50" rx="8" fill="#141c25" stroke="#2A3644"/><text x="39" y="122" text-anchor="middle" class="tl">Air filter</text>`;
+  h += `<path d="M66 85 H232" stroke="#2A3644" stroke-width="22" fill="none"/><path id="airp" d="M66 85 H232" stroke="none" fill="none"/>`;
+  h += `<rect x="96" y="68" width="42" height="34" rx="5" fill="#1c2b3c" stroke="#5BB8F5"/><text x="117" y="89" text-anchor="middle" class="tm">MAF</text><text x="117" y="60" text-anchor="middle" class="tv" id="vMaf">—</text>`;
+  if (ins && f === 'maf') h += `<circle cx="117" cy="85" r="7" fill="#6b5a2a" opacity=".9"/><text x="117" y="118" text-anchor="middle" class="tw">dirty sensor</text>`;
+  h += `<rect x="176" y="70" width="28" height="30" rx="4" fill="#1a232d" stroke="#5A6773"/><line x1="182" y1="${85 + 10 * Math.cos(S.tps / 100 * 1.3)}" x2="198" y2="${85 - 10 * Math.cos(S.tps / 100 * 1.3)}" stroke="#C5CFD9" stroke-width="3"/><text x="190" y="60" text-anchor="middle" class="tl">Throttle</text>`;
+  // manifold + runners
+  h += `<rect x="232" y="58" width="300" height="54" rx="10" fill="#18222c" stroke="#2A3644"/><text x="382" y="76" text-anchor="middle" class="tl">Intake manifold</text><text x="382" y="98" text-anchor="middle" class="tv" id="vMap">—</text>`;
+  // PCV hose (vacuum leak site)
+  h += `<path d="M500 58 C500 30 560 26 590 34" stroke="#3a4a5c" stroke-width="6" fill="none"/><text x="596" y="30" class="tl">PCV hose</text>`;
+  if (ins && f === 'vleak') h += `<circle cx="540" cy="31" r="10" fill="none" stroke="#FF5A4E" stroke-width="2"/><text x="540" y="20" text-anchor="middle" class="tw">crack: unmetered air</text><path d="M548 22 L540 31" stroke="#5BB8F5" stroke-width="2" marker-end="url(#ar)"/>`;
+  // fuel rail + injectors + cylinders
+  h += `<path d="M260 132 H520" stroke="#FFA43A" stroke-width="6"/><text x="532" y="136" class="tl">Fuel rail</text><text x="532" y="150" class="tv" id="vFp">—</text>`;
+  for (let i = 0; i < 4; i++) {
+    const x = 280 + i * 70;
+    h += `<path d="M${x} 112 V150" stroke="#2A3644" stroke-width="16"/>`;
+    h += `<rect x="${x - 6}" y="126" width="12" height="20" rx="3" fill="${ins && (isF('clog', i) || isF('drip', i)) ? '#FF5A4E' : '#8A98A8'}"/>`;
+    if (ins && isF('drip', i)) h += `<circle cx="${x}" cy="152" r="3" fill="#FFA43A"/><text x="${x}" y="122" text-anchor="middle" class="tw">drips</text>`;
+    if (ins && isF('clog', i)) h += `<text x="${x}" y="122" text-anchor="middle" class="tw">clogged</text>`;
+    h += `<rect x="${x - 26}" y="156" width="52" height="64" rx="8" fill="${ins ? lamCol(S.lamCyl[i]) : '#1c2733'}" fill-opacity="${ins ? .35 : 1}" stroke="#2A3644" id="cyl${i}"/><text x="${x}" y="182" text-anchor="middle" class="tm">Cyl ${i + 1}</text><text x="${x}" y="200" text-anchor="middle" class="tv" id="vLam${i}">${ins ? 'λ ' + S.lamCyl[i].toFixed(2) : ''}</text>`;
+    h += `<path d="M${x} 220 V244" stroke="#2A3644" stroke-width="12"/>`;
+  }
+  // exhaust
+  h += `<path d="M254 252 H540 L560 270 H612" stroke="#2A3644" stroke-width="18" fill="none" stroke-linejoin="round"/><text x="300" y="276" class="tl">Exhaust manifold</text>`;
+  if (ins && f === 'exleak') h += `<circle cx="470" cy="252" r="10" fill="none" stroke="#FF5A4E" stroke-width="2"/><text x="470" y="290" text-anchor="middle" class="tw">gasket leak: air pulled in</text><path d="M470 300 L470 262" stroke="#5BB8F5" stroke-width="2" marker-end="url(#ar)"/>`;
+  h += `<circle cx="512" cy="240" r="9" fill="#141c25" stroke="#3DDC97" stroke-width="2"/><text x="512" y="224" text-anchor="middle" class="tl">O2 B1S1</text><text x="512" y="212" text-anchor="middle" class="tv" id="vO2">—</text>`;
+  h += `<rect x="572" y="256" width="44" height="28" rx="8" fill="#2a2416" stroke="#6b5a2a"/><text x="594" y="300" text-anchor="middle" class="tl">Catalyst</text>`;
+  h += `<circle cx="630" cy="270" r="7" fill="#141c25" stroke="#3DDC97"/><text x="636" y="252" text-anchor="middle" class="tl">B1S2</text>`;
+  // ECM
+  h += `<rect x="12" y="150" width="200" height="140" rx="12" fill="#0e1620" stroke="#2F9BE0"/><text x="112" y="170" text-anchor="middle" class="tm" style="fill:#8fbfe3">ECM</text>
+    <text x="24" y="192" class="te">MAF reads</text><text x="200" y="192" class="tv" text-anchor="end" id="eMaf">—</text>
+    <text x="24" y="210" class="te">base fuel</text><text x="200" y="210" class="tv" text-anchor="end" id="eBase">—</text>
+    <text x="24" y="228" class="te">× (1 + STFT + LTFT)</text><text x="200" y="228" class="tv" text-anchor="end" id="eTrim">—</text>
+    <text x="24" y="246" class="te">injector pulse</text><text x="200" y="246" class="tv" text-anchor="end" id="ePw">—</text>
+    <text x="24" y="270" class="te">${ins ? 'true mixture' : 'O2 says'}</text><text x="200" y="270" class="tv" text-anchor="end" id="eLam">—</text>`;
+  h += `<path d="M138 102 C150 130 160 140 180 150" stroke="#5A6773" fill="none" stroke-dasharray="3 3" marker-end="url(#ar)"/><path d="M212 196 C240 170 250 150 262 136" stroke="#5A6773" fill="none" stroke-dasharray="3 3" marker-end="url(#ar)"/><path d="M503 240 C430 300 300 310 212 270" stroke="#5A6773" fill="none" stroke-dasharray="3 3" marker-end="url(#ar)"/>`;
+  // fuel tank + pump
+  h += `<rect x="12" y="296" width="120" height="30" rx="7" fill="#1e1a12" stroke="#6b5a2a"/><text x="72" y="315" text-anchor="middle" class="tl">Tank + pump${ins && f === 'pump' ? ' (weak)' : ''}</text><path d="M132 311 H240 V132 H260" stroke="#FFA43A" stroke-width="3" fill="none" opacity=".6"/>`;
+  h += `<g id="flow"></g>`;
+  return `<style>#eng .tl{fill:#8A98A8;font:600 10.5px Barlow Semi Condensed;letter-spacing:.04em}#eng .tm{fill:#C5CFD9;font:600 11.5px Barlow Semi Condensed}#eng .tv{fill:#E6EDF3;font:500 10.5px JetBrains Mono}#eng .te{fill:#8A98A8;font:500 10.5px Barlow}#eng .tw{fill:#FF8A80;font:600 10px Barlow Semi Condensed}</style>` + h;
+}
+let engKey = '';
+function renderEng(force) {
+  const key = [S.fault?.type, S.fault?.cyl, S.inside].join();
+  if (force || key !== engKey) { engKey = key; $('#eng').innerHTML = engSVG(); }
+  const set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+  set('vMaf', S.mafRead.toFixed(1) + ' g/s'); set('vMap', S.map.toFixed(0) + ' kPa'); set('vFp', S.press.toFixed(0) + ' psi'); set('vO2', S.o2.toFixed(2) + ' V');
+  set('eMaf', S.mafRead.toFixed(2) + ' g/s'); set('eBase', (S.mafRead / STOICH * 1000).toFixed(0) + ' mg/s');
+  const tot = (S.loop === 'closed' ? S.stft : 0) + S.ltft[CONDS[S.cond].cell];
+  set('eTrim', (tot >= 0 ? '+' : '') + (tot * 100).toFixed(1) + ' %'); set('ePw', S.pw.toFixed(2) + ' ms');
+  set('eLam', S.inside ? 'λ ' + S.lamMix.toFixed(2) : (S.o2 > .45 ? 'rich' : 'lean'));
+  if (S.inside) for (let i = 0; i < 4; i++) { const c = document.getElementById('cyl' + i); if (c) c.setAttribute('fill', lamCol(S.lamCyl[i])); set('vLam' + i, 'λ ' + S.lamCyl[i].toFixed(2)); }
+  // moving air/fuel dots
+  const t = performance.now() / 1000, sp = 0.3 + S.maf / 30;
+  let dots = '';
+  for (let k = 0; k < 6; k++) { const u = mod(t * sp + k / 6, 1); dots += `<circle cx="${(70 + u * 160).toFixed(1)}" cy="${85 + Math.sin(k * 2.1) * 6}" r="2.6" fill="#5BB8F5"/>`; }
+  const fsp = 0.2 + S.maf / 60;
+  for (let k = 0; k < 4; k++) { const u = mod(t * fsp + k / 4, 1); dots += `<circle cx="${(262 + u * 256).toFixed(1)}" cy="132" r="2.4" fill="#FFE2A8"/>`; }
+  const fl = document.getElementById('flow'); if (fl) fl.innerHTML = dots;
+  $('#engR').innerHTML = S.inside ? `<span class="chip ${Math.abs(S.lamMix - 1) < 0.04 ? 'ok' : 'warn'}">True λ ${S.lamMix.toFixed(2)}</span>` : '';
+  $('#engHide').hidden = S.inside;
+}
+
+/* ================= scan tool ================= */
+let dtcDirty = true;
+const pct = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + ' %';
+function renderScan() {
+  const C = CONDS[S.cond], lt = S.ltft[C.cell], st = S.loop === 'closed' ? S.stft : 0, tot = st + lt;
+  const loopTxt = { warm: 'Open loop (O2 warming)', pe: 'Open loop (power enrich)', closed: 'Closed loop' }[S.loop];
+  $('#loopTxt').textContent = loopTxt;
+  const rows = [
+    ['Engine speed', Math.round(S.rpm) + ' rpm'], ['ECT', '197 °F'], ['Calculated load', S.load.toFixed(0) + ' %'], ['MAF', S.mafRead.toFixed(2) + ' g/s'],
+    ['MAP', S.map.toFixed(0) + ' kPa'], ['Throttle position', S.tps.toFixed(0) + ' %'], ['Fuel system status', loopTxt, S.loop !== 'closed' ? 'flag' : ''],
+    ['O2 B1S1', S.o2.toFixed(3) + ' V'], ['O2 B1S2', S.o2b.toFixed(3) + ' V'],
+    ['STFT B1', pct(st), Math.abs(st) > .1 ? 'flag' : ''], ['LTFT B1', pct(lt), Math.abs(lt) > .1 ? 'flag' : ''], ['Total fuel trim', pct(tot), Math.abs(tot) > .25 ? 'bad' : Math.abs(tot) > .1 ? 'flag' : '', 'hl'],
+    ['Injector pulse width', S.pw.toFixed(2) + ' ms'], ['Misfire count 1–4', S.misfire.join(' / '), S.misfire.some(v => v) ? 'bad' : ''],
+  ];
+  $('#data').innerHTML = rows.map(([n, v, c, c2]) => `<div class="row ${c || ''} ${c2 || ''}"><span>${n}</span><b>${v}</b></div>`).join('');
+  $('#cells').innerHTML = CELLS.map(([k, n]) => `<div class="${C.cell === k ? 'on' : ''}">${n}<b>${pct(S.ltft[k]).replace(' ', '')}</b></div>`).join('');
+  if (dtcDirty) { dtcDirty = false; const d = Object.entries(S.dtc); $('#dtcs').innerHTML = d.length ? d.map(([c, x]) => `<div class="dtc"><b>${c}</b><span>${x.name}</span><i>${x.st}</i></div>`).join('') : '<div class="empty">No codes</div>'; }
+}
+
+/* ================= graph ================= */
+const cv = $('#graph'), cx = cv.getContext('2d');
+function drawGraph() {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+  const W = cv.width, H = cv.height; cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, W, H);
+  const padL = 34 * dpr, padR = 34 * dpr, top = 8 * dpr, bot = H - 14 * dpr, ph = bot - top, pw = W - padL - padR;
+  cx.font = `${10 * dpr}px JetBrains Mono`; cx.lineWidth = 1;
+  // grid: O2 0..1 V left; trims −25..+25 right
+  for (const v of [0, .45, 1]) { const y = bot - v * ph; cx.strokeStyle = v === .45 ? '#21402f' : '#16202a'; cx.setLineDash(v === .45 ? [4 * dpr, 4 * dpr] : []); cx.beginPath(); cx.moveTo(padL, y); cx.lineTo(W - padR, y); cx.stroke(); cx.fillStyle = '#3DDC97'; cx.fillText(v.toFixed(v === .45 ? 2 : 0) + 'V', 2 * dpr, y + 4 * dpr); }
+  cx.setLineDash([]);
+  for (const v of [-25, 0, 25]) { const y = bot - (v + 25) / 50 * ph; cx.fillStyle = '#8A98A8'; cx.fillText((v > 0 ? '+' : '') + v + '%', W - padR + 3 * dpr, y + 4 * dpr); }
+  const hs = S.hist; if (hs.length < 2) return;
+  const t1 = hs[hs.length - 1].t, t0 = t1 - 20;
+  const X = t => padL + (t - t0) / 20 * pw;
+  const line = (sel, col, w) => { cx.strokeStyle = col; cx.lineWidth = w * dpr; cx.beginPath(); let st = false; for (const p of hs) { if (p.t < t0) continue; const x = X(p.t), y = sel(p); st ? cx.lineTo(x, y) : cx.moveTo(x, y); st = true; } cx.stroke(); };
+  line(p => bot - p.o2 * ph, '#3DDC97', 1.4);
+  line(p => bot - (p.st * 100 + 25) / 50 * ph, '#5BB8F5', 1.8);
+  line(p => bot - (p.lt * 100 + 25) / 50 * ph, '#FFB224', 1.8);
+}
+
+/* ================= tests ================= */
+function logDx(l) { if (S.mode === 'diagnose' && S.dx && !S.dx.solved) S.dx.log.push(l); }
+function useTest(k) { if (S.mode === 'diagnose' && S.dx && !S.dx.solved) S.dx.used.add(k); }
+function snapshot() {
+  const C = CONDS[S.cond];
+  if (S.tRun < 12 && S.cond !== 'wot') { toast('Wait for closed loop first (the O2 sensor is still warming up).', 'bad'); return; }
+  if (S.hist.length < 30) { toast('Let it run a few seconds first.', 'bad'); return; }
+  // average the last 2 s
+  const hs = S.hist.filter(p => p.t > S.hist[S.hist.length - 1].t - 2);
+  const av = k => hs.reduce((a, p) => a + p[k], 0) / Math.max(1, hs.length);
+  S.snaps[S.cond] = { st: av('st'), lt: av('lt'), o2: av('o2'), maf: S.mafRead, map: S.map, rpm: S.rpm, pw: S.pw, loop: S.loop };
+  useTest('snap'); logDx(`Snapshot ${C.name}: STFT ${pct(av('st'))}, LTFT ${pct(av('lt'))}, MAF ${S.mafRead.toFixed(1)} g/s, MAP ${S.map.toFixed(0)} kPa`);
+  toast(`Snapshot saved: ${C.name}`, 'good'); renderPanel();
+}
+const TESTS = [['snap', 'Snapshots'], ['fp', 'Fuel pressure'], ['smoke', 'Smoke test'], ['propane', 'Propane'], ['balance', 'Injector balance'], ['drip', 'Drip check'], ['mafchk', 'MAF check'], ['exh', 'Exhaust leak']];
+function runTest(k, arg) {
+  const f = S.fault?.type, R = S.res;
+  if (S.run) return;
+  if (k === 'fp') {
+    let v, txt;
+    if (arg === 'prime') { v = f === 'pump' ? 55 : 58; txt = `Key on, pump primes: ${v} psi.`; }
+    if (arg === 'idle') { v = f === 'pump' ? 57.5 : 58; txt = `Idle: ${v} psi, steady.`; }
+    if (arg === 'load') { const dem = (CONDS.load.maf + (f === 'vleak' ? .5 : 0)) / STOICH; v = f === 'pump' ? Math.round(RAIL - 12 * Math.max(0, dem - 1.0)) : 57; txt = `Under load (cruise on a grade): ${v} psi${f === 'pump' ? ', falling as demand rises.' : ', steady.'}`; }
+    if (arg === 'hold') { const end = f === 'drip' ? 12 : 51; v = end; txt = f === 'drip' ? 'Key off: pressure falls from 58 to 12 psi within about a minute. Something is bleeding off rail pressure.' : 'Key off: 58 psi falls slowly to about 51 psi after 5 minutes. That holds.'; }
+    R.fp[arg] = { v, txt }; useTest('fp'); logDx(`Fuel pressure ${arg}: ${v} psi`);
+  }
+  if (k === 'smoke') { R.smoke = f === 'vleak' ? 'Smoke pours out of a cracked PCV hose at the back of the intake manifold.' : 'Intake system pressurized with smoke: no smoke escapes anywhere.'; useTest('smoke'); logDx('Intake smoke test: ' + (f === 'vleak' ? 'leak at PCV hose' : 'no leaks')); }
+  if (k === 'propane') {
+    if (S.cond !== 'idle') { toast('Do this at idle.', 'bad'); return; }
+    if (S.tRun < 12) { toast('Wait for closed loop first.', 'bad'); return; }
+    const before = S.stft + S.ltft.idle;
+    R.propane = f === 'vleak' ? `Total trim ${pct(before)}. When the propane reaches the PCV hose, STFT drops sharply and the idle smooths out: the leak is pulling the propane in.` : `Total trim ${pct(before)}. Propane around the throttle body, manifold gaskets and hoses: no change anywhere.`;
+    useTest('propane'); logDx('Propane around intake: ' + (f === 'vleak' ? 'response at PCV hose' : 'no response'));
+  }
+  if (k === 'balance') {
+    const drops = [0, 1, 2, 3].map(i => +(10 + (Math.sin(i * 7.3 + (S.dx?.n || 1)) * .5) - (isF('clog', i) ? 3.8 : 0)).toFixed(1));
+    R.balance = { drops, drift: f === 'drip' };
+    useTest('balance'); logDx(`Injector balance drops: ${drops.join(' / ')} psi${f === 'drip' ? ' (pressure drifting before each pulse)' : ''}`);
+  }
+  if (k === 'drip') { R.drip = f === 'drip' ? `Rail pulled with the injectors attached and pressurized: injector ${S.fault.cyl + 1} drips steadily. The others stay dry.` : 'Rail pulled and pressurized: all four injectors stay dry.'; useTest('drip'); logDx('Drip check: ' + (f === 'drip' ? `cyl ${S.fault.cyl + 1} drips` : 'none')); }
+  if (k === 'exh') { R.exh = f === 'exleak' ? 'Cold engine: a ticking puff at the exhaust manifold gasket. Smoke fed into the tailpipe escapes at the manifold, ahead of the upstream O2 sensor.' : 'No ticking; exhaust smoke test shows no leaks ahead of the O2 sensors.'; useTest('exh'); logDx('Exhaust leak check: ' + (f === 'exleak' ? 'leak at manifold gasket' : 'none')); }
+  if (k === 'mafchk') {
+    const was = S.cond; setCond('wot'); S.run = { k: 'mafchk', end: S.tRun + 3, was };
+    renderPanel(); return;
+  }
+  renderPanel();
+}
+function finishRun() {
+  const r = S.run; S.run = null;
+  if (r.k === 'mafchk') {
+    S.res.mafchk = { read: S.mafRead, lo: 76, hi: 88 };
+    useTest('mafchk'); logDx(`MAF at WOT 4500 rpm: ${S.mafRead.toFixed(0)} g/s (calculated 76–88)`);
+    setCond(r.was);
+  }
+  renderPanel();
+}
+function snapTable() {
+  const keys = ['idle', 'cruise', 'load', 'wot'].filter(k => S.snaps[k]);
+  if (!keys.length) return '<p class="dim">No snapshots yet.</p>';
+  const cell = (v, t) => `<td class="${v > t ? 'hi' : v < -t ? 'lo' : ''}">${pct(v).replace(' ', '')}</td>`;
+  return `<table class="rt"><tr><th></th>${keys.map(k => `<th>${CONDS[k].name}</th>`).join('')}</tr>
+    <tr><td>STFT</td>${keys.map(k => cell(S.snaps[k].st, .1)).join('')}</tr>
+    <tr><td>LTFT</td>${keys.map(k => cell(S.snaps[k].lt, .1)).join('')}</tr>
+    <tr><td>Total</td>${keys.map(k => cell(S.snaps[k].st + S.snaps[k].lt, .1)).join('')}</tr>
+    <tr><td>O2 avg</td>${keys.map(k => `<td>${S.snaps[k].o2.toFixed(2)}</td>`).join('')}</tr>
+    <tr><td>MAF g/s</td>${keys.map(k => `<td>${S.snaps[k].maf.toFixed(1)}</td>`).join('')}</tr>
+    <tr><td>MAP kPa</td>${keys.map(k => `<td>${S.snaps[k].map.toFixed(0)}</td>`).join('')}</tr></table>`;
+}
+const TEST_UI = {
+  snap: () => `<p class="dim">The most useful fuel trim test is free: compare <b>total trim</b> (STFT + LTFT) at idle, 2500 rpm and under load. Pick a condition in the <b>Drive</b> bar, let it settle a few seconds, then save a snapshot.</p><div class="trow"><button class="btn primary" data-act="snap">Snapshot ${CONDS[S.cond].name}</button></div>${snapTable()}<p class="dim">Rule of thumb: within ±10% total is normal. Lean at idle but fine at load = extra air. Lean at load = fuel delivery or MAF.</p>`,
+  fp: () => `<p class="dim">Gauge on the fuel rail test port. This system is regulated at <b>58 psi</b> and should hold steady under load and hold pressure after shutdown.</p><div class="trow">${[['prime', 'Key on (prime)'], ['idle', 'Idle'], ['load', 'Under load'], ['hold', 'Key off: hold 5 min']].map(([a, n]) => `<button class="btn" data-act="fp:${a}">${n}</button>`).join('')}</div>${Object.values(S.res.fp).map(r => `<div class="msg">${r.txt}</div>`).join('')}`,
+  smoke: () => `<p class="dim">Pressurize the intake with smoke (engine off) and look for where it escapes.</p><div class="trow"><button class="btn primary" data-act="smoke">Run smoke test</button></div>${S.res.smoke ? `<div class="msg">${S.res.smoke}</div>` : ''}`,
+  propane: () => `<p class="dim">At idle in closed loop, move an unlit propane enrichment tool around the throttle body, gaskets and hoses. If a leak pulls propane in, the engine richens right there and the trims drop.</p><div class="trow"><button class="btn primary" data-act="propane">Probe around the intake</button></div>${S.res.propane ? `<div class="msg">${S.res.propane}</div>` : ''}`,
+  balance: () => { const b = S.res.balance; return `<p class="dim">Engine off. Pulse each injector for the same time and record how much rail pressure drops. Good injectors drop about the same amount (about 10 psi here).</p><div class="trow"><button class="btn primary" data-act="balance">Run balance test</button></div>${b ? `<table class="rt"><tr><th>Injector</th><th>1</th><th>2</th><th>3</th><th>4</th></tr><tr><td>Drop psi</td>${b.drops.map(d => `<td class="${d < 8.5 ? 'lo' : ''}">${d}</td>`).join('')}</tr></table>${b.drift ? '<div class="msg warn">Rail pressure keeps drifting down before each pulse: something is leaking fuel.</div>' : ''}` : ''}`; },
+  drip: () => `<p class="dim">Pull the rail with the injectors still attached, aim them into containers, key on to pressurize, and watch for drips.</p><div class="trow"><button class="btn primary" data-act="drip">Run drip check</button></div>${S.res.drip ? `<div class="msg">${S.res.drip}</div>` : ''}`,
+  mafchk: () => { const m = S.res.mafchk; return `<p class="dim">A 2.0 L engine at 4500 rpm and wide-open throttle should flow about <b>76–88 g/s</b> (displacement × rpm × air density × volumetric efficiency). A MAF reading well below that is under-reporting.</p><div class="trow"><button class="btn primary" data-act="mafchk"${S.run ? ' disabled' : ''}>${S.run ? 'WOT pull…' : 'Do a WOT pull and compare'}</button></div>${m ? `<div class="msg ${m.read < m.lo ? 'warn' : 'ok'}">MAF at WOT: <b>${m.read.toFixed(0)} g/s</b> vs. calculated ${m.lo}–${m.hi} g/s (${Math.round((m.read / ((m.lo + m.hi) / 2) - 1) * 100)}%).</div>` : ''}`; },
+  exh: () => `<p class="dim">Cold engine: listen for ticking at the exhaust manifold, then feed smoke into the tailpipe and watch for leaks ahead of the upstream O2 sensor.</p><div class="trow"><button class="btn primary" data-act="exh">Check for exhaust leaks</button></div>${S.res.exh ? `<div class="msg">${S.res.exh}</div>` : ''}`,
+};
+function testsHTML(only) {
+  let h = only ? '' : `<div class="tpick" role="group" aria-label="Test">${TESTS.map(([k, n]) => `<button data-act="test:${k}" aria-pressed="${S.test === k}">${n}</button>`).join('')}</div>`;
+  h += TEST_UI[S.test]();
+  if (S.mode === 'explore' && S.fault) h += `<h4>What this fault should show</h4><ul class="ev">${EVIDENCE[S.fault.type].map(e => `<li>${e}</li>`).join('')}</ul>`;
+  return h;
+}
+
+/* ================= break it ================= */
+function breakHTML() {
+  const t = S.fault?.type || 'none';
+  let h = `<p>Pick a fault, then move through <b>Idle → 2500 rpm → Cruise load</b> in the Drive bar and watch the trims and the inside view. The long-term trim cells remember each condition separately.</p><div class="cards">`;
+  for (const [k, F] of Object.entries(FAULTS)) {
+    const on = t === k;
+    h += `<button class="card" data-act="fault:${k}" aria-pressed="${on}"><b>${F.name}</b>${on ? `<span>${F.fx}</span>` : ''}</button>`;
+    if (on && F.pick === 'cyl') h += `<span class="cyls"><span class="lbl">Cylinder</span>${[0, 1, 2, 3].map(i => `<button class="cc" data-act="fcyl:${i}" aria-pressed="${S.fault.cyl === i}">${i + 1}</button>`).join('')}</span>`;
+  }
+  h += `</div><div class="nav"><button class="btn" data-act="clr">Reset trims & codes</button><button class="btn primary" data-act="tab:tests">Run tests</button></div>`;
+  return h;
+}
+function setFault(f, keepRes) {
+  const same = JSON.stringify(f || null) === JSON.stringify(S.fault || null);
+  S.fault = f || null;
+  if (!same) { if (!keepRes) { S.res = RES0(); S.snaps = {}; } resetKAM(); }
+  renderEng(true); renderPanel();
+}
+function resetKAM() { S.ltft = { idle: 0, cruise: 0, load: 0, wot: 0 }; S.stft = 0; S.dtc = {}; S.tLean = S.tRich = 0; S.tMis = [0, 0, 0, 0]; S.misfire = [0, 0, 0, 0]; dtcDirty = true; }
+
+/* ================= lessons ================= */
+const tot = () => (S.loop === 'closed' ? S.stft : 0) + S.ltft[CONDS[S.cond].cell];
+const LESSONS = [
+{ id: 'loop', title: 'Open loop to closed loop', sub: 'The O2 sensor takes over', steps: [
+  { body: 'The ECM meters fuel from the <b>MAF</b> reading: so many grams of air need about 1/14.7 as much fuel. At first it is a guess. Press <b>Restart engine</b> and watch the scan tool: the O2 sensor starts cold, so the ECM runs <b>open loop</b>.', setup: { fault: null, cond: 'idle' }, goal: { check: () => S.tRun < 6, hint: 'Press Restart engine in the top bar.' } },
+  { body: 'Watch <b>Fuel system status</b>. When the O2 sensor is hot and switching, the ECM goes <b>closed loop</b>: it starts correcting the fuel based on what the O2 sees.', goal: { check: () => S.loop === 'closed' && S.tRun > 15, hint: 'Wait for "Closed loop" (about 12 s).' } },
+  { body: 'Look at the graph: the green O2 trace swings between about 0.1 V (lean) and 0.9 V (rich), crossing 0.45 V about once a second. The blue STFT line ramps the opposite way.', goal: { mc: { q: 'The O2 sensor just switched to 0.8 V (rich). What does the ECM do?', opts: ['Adds fuel: STFT goes up', 'Takes fuel away: STFT goes down', 'Nothing until the next restart'], a: 1, why: 'Rich → pull fuel (STFT ramps negative) until the O2 goes lean, then add fuel again. That constant swing is closed-loop fuel control working.' } } },
+  { body: 'Now pick <b>WOT</b> in the Drive bar.', goal: { check: () => S.cond === 'wot' && S.loop === 'pe', hint: 'Select WOT.' } },
+  { body: '', goal: { mc: { q: 'At WOT the status says "Open loop (power enrich)" and the O2 sits rich. Why?', opts: ['The O2 sensor failed', 'For full power and cooler combustion, the ECM deliberately runs rich and ignores the O2', 'The trims are maxed out'], a: 1, why: 'At wide-open throttle the ECM commands a rich mixture on purpose (about λ 0.88). It stops trimming until you back off. That is why trims can\'t fix a problem that only shows at WOT.' } } },
+] },
+{ id: 'stltft', title: 'Short-term vs long-term trim', sub: 'Quick correction and long memory', steps: [
+  { body: 'We just added a <b>vacuum leak</b>, and the trim memory was reset. Watch the graph at idle: STFT (blue) jumps up first, then LTFT (amber) slowly takes over.', setup: { fault: { type: 'vleak', cyl: 0 }, cond: 'idle', restart: false, fast: true }, goal: { check: () => S.ltft.idle > 0.15, hint: 'Wait for LTFT (idle cell) to pass +15%.' } },
+  { body: '', goal: { mc: { q: 'Which trim is the ECM\'s long-term memory, kept even after you shut the engine off?', opts: ['STFT', 'LTFT'], a: 1, why: 'STFT is the quick, moment-to-moment correction. LTFT learns slowly from it and is stored (KAM), so the next start begins already corrected.' } } },
+  { body: '', goal: { mc: { q: 'STFT is +3% and LTFT is +24%. How much is the ECM correcting in total?', opts: ['+3%', '+24%', '+27%', '+21%'], a: 2, why: 'Always add them: total trim = STFT + LTFT. A positive number means the ECM is adding fuel because it sees lean.' } } },
+  { body: 'Look at the <b>long-term trim cells</b> in the scan tool. Only the <b>Idle</b> cell has learned so far. Now switch to <b>2500 rpm</b>.', goal: { check: () => S.cond === 'cruise', hint: 'Select 2500 rpm.' } },
+  { body: '', goal: { mc: { q: 'Why does the ECM keep separate LTFT cells for idle, cruise and load?', opts: ['To save memory', 'Some problems only matter at certain airflows, so it learns a correction for each', 'Each cylinder has its own'], a: 1, why: 'A fixed leak is a big share of a little airflow and a tiny share of a lot. The cells let the ECM learn that, and they let you read where the problem is.' } } },
+] },
+{ id: 'story', title: 'Read the story: where is it lean?', sub: 'Idle vs 2500 vs load', steps: [
+  { body: 'New engine, P0171 on the dash. Save a <b>snapshot</b> at <b>Idle</b> (on the Snapshots test below). Let the trims settle first.', setup: { fault: { type: 'vleak', cyl: 0 }, cond: 'idle', test: 'snap', inside: false }, test: true, goal: { check: () => !!S.snaps.idle && S.snaps.idle.st + S.snaps.idle.lt > .15, hint: 'Wait for the trims to climb, then press Snapshot Idle.' } },
+  { body: 'Now <b>2500 rpm</b>: switch, wait a few seconds, snapshot.', test: true, goal: { check: () => !!S.snaps.cruise, hint: 'Select 2500 rpm, wait, Snapshot.' } },
+  { body: 'And <b>Cruise load</b>.', test: true, goal: { check: () => !!S.snaps.load, hint: 'Select Cruise load, wait, Snapshot.' } },
+  { body: '', test: true, goal: { mc: { q: 'Lean at idle, better at 2500, about normal at load. What kind of problem fits?', opts: ['Extra air the MAF didn\'t measure (a vacuum leak)', 'A weak fuel pump', 'A dirty MAF'], a: 0, why: 'A leak adds a fixed amount of air. At idle that is a big percentage; at load it is lost in the total. Fuel delivery and MAF problems get worse with airflow, not better.' } } },
+  { body: 'Find it: run the <b>Smoke test</b>.', setup: { test: 'smoke' }, test: true, goal: { check: () => !!S.res.smoke, hint: 'Press Run smoke test.' } },
+  { body: 'There it is. Turn <b>inside view</b> back on to see it: the cracked PCV hose lets air in after the MAF.', setup: { inside: true } },
+] },
+{ id: 'load', title: 'Lean under load', sub: 'Fuel delivery or the MAF?', steps: [
+  { body: 'This engine stumbles on hills. Snapshot <b>Idle</b>, <b>2500 rpm</b> and <b>Cruise load</b>.', setup: { fault: { type: 'pump', cyl: 0 }, cond: 'idle', test: 'snap', inside: false }, test: true, goal: { check: () => S.snaps.idle && S.snaps.cruise && S.snaps.load, hint: 'Three snapshots: Idle, 2500 rpm, Cruise load.' } },
+  { body: '', test: true, goal: { mc: { q: 'Normal at idle and 2500, lean under load. Which two causes fit?', opts: ['Vacuum leak or exhaust leak', 'Weak fuel delivery or a MAF that under-reads at high airflow', 'A leaking injector'], a: 1, why: 'Problems that grow with fuel demand or airflow: the pump can\'t keep up, or the MAF under-reports when there is a lot of air.' } } },
+  { body: 'Split them with the <b>fuel pressure</b> gauge. Check it <b>under load</b>.', setup: { test: 'fp' }, test: true, goal: { check: () => !!S.res.fp.load, hint: 'Press Under load.' } },
+  { body: '', test: true, goal: { mc: { q: 'Pressure drops to about 40 psi under load (spec 58). Conclusion?', opts: ['Weak fuel pump (or restricted filter/pickup)', 'Dirty MAF', 'Normal'], a: 0, why: 'The pump can\'t hold pressure when the engine needs a lot of fuel. Less pressure = less fuel per injector pulse = lean.' } } },
+  { body: 'Now a different engine with the same symptom. Do a <b>MAF check</b>: a WOT pull compared with calculated airflow.', setup: { fault: { type: 'maf', cyl: 0 }, test: 'mafchk', inside: false }, test: true, goal: { check: () => !!S.res.mafchk, hint: 'Press Do a WOT pull and compare.' } },
+  { body: '', test: true, goal: { mc: { q: 'MAF reads about 20% below the calculated airflow at WOT, and fuel pressure is fine. What is it?', opts: ['Weak fuel pump', 'Dirty MAF under-reporting airflow', 'Vacuum leak'], a: 1, why: 'The ECM fuels for the air the MAF reports. If the MAF says 65 g/s when 82 is really going in, the engine runs lean, worst at high airflow. Clean or replace the MAF, then reset fuel trims.' } } },
+] },
+{ id: 'fooled', title: 'The O2 sensor can be fooled', sub: 'An exhaust leak ahead of the sensor', steps: [
+  { body: 'Lean trims at idle again, but this time the customer says the exhaust smells <b>rich</b>. Turn on the inside view and compare <b>true λ</b> (top of the engine panel) with what the O2 sensor is saying.', setup: { fault: { type: 'exleak', cyl: 0 }, cond: 'idle', inside: true }, goal: { check: () => S.ltft.idle > .08 && S.lamMix < .95, hint: 'Wait for the trims to climb.' } },
+  { body: '', goal: { mc: { q: 'The trims are high (ECM adding fuel) but the true mixture is rich. How?', opts: ['The O2 sensor is bad', 'Outside air leaks in ahead of the sensor, so it sees extra oxygen and reports lean', 'The MAF is dirty'], a: 1, why: 'The sensor is honest about what it sees, but what it sees includes air pulled in through the leak. The ECM adds fuel to "fix" it, and the engine runs rich. A new O2 sensor won\'t fix this.' } } },
+  { body: 'Both a vacuum leak and this exhaust leak are lean at idle and better with rpm. Tell them apart: run the <b>exhaust leak check</b>.', setup: { test: 'exh' }, test: true, goal: { check: () => !!S.res.exh, hint: 'Press Check for exhaust leaks.' } },
+] },
+{ id: 'inj', title: 'Injector problems', sub: 'Clogged vs leaking', steps: [
+  { body: 'Rough idle with a misfire code. Watch the <b>misfire counts</b> and the trims at idle.', setup: { fault: { type: 'clog', cyl: 2 }, cond: 'idle', inside: false }, goal: { check: () => S.misfire[2] > 5, hint: 'Wait for misfire counts to climb.' } },
+  { body: '', goal: { mc: { q: 'One cylinder misfires at idle and the trims are a bit high (about +8–10%) in every cell. What fits?', opts: ['A clogged injector on that cylinder', 'A vacuum leak', 'A weak pump'], a: 0, why: 'One cylinder gets less fuel, so it runs lean enough to misfire at idle. The O2 sees the average and raises all four injectors a little.' } } },
+  { body: 'Confirm it with the <b>injector balance test</b>.', setup: { test: 'balance' }, test: true, goal: { check: () => !!S.res.balance, hint: 'Press Run balance test.' } },
+  { body: '', test: true, goal: { mc: { q: 'Injector 3 drops about 6 psi; the others about 10. Meaning?', opts: ['Injector 3 flows less: clogged', 'Injector 3 is leaking', 'The pump is weak'], a: 0, why: 'Less pressure drop for the same pulse = less fuel through that injector.' } } },
+  { body: 'Different car: hard start after sitting overnight. Watch the <b>idle</b> trims.', setup: { fault: { type: 'drip', cyl: 1 }, cond: 'idle', inside: false }, goal: { check: () => S.ltft.idle < -.08, hint: 'Wait for the trims to go negative.' } },
+  { body: 'Negative trims at idle means the ECM is <b>pulling fuel</b>: something is adding fuel it didn\'t ask for. Check that the fuel pressure <b>holds after shutdown</b>.', setup: { test: 'fp' }, test: true, goal: { check: () => !!S.res.fp.hold, hint: 'Press Key off: hold 5 min.' } },
+  { body: '', test: true, goal: { mc: { q: 'Pressure bleeds off fast after shutdown, and idle trims are negative. Most likely?', opts: ['A leaking injector dripping fuel', 'A clogged injector', 'A dirty MAF'], a: 0, why: 'A dripping injector floods its cylinder while parked (hard start, fuel smell) and adds a little fuel at idle. Find which one with a drip check.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) {
+  if (!su) return;
+  if ('fault' in su) setFault(su.fault);
+  if ('inside' in su) { S.inside = su.inside; renderEng(true); }
+  if (su.cond) setCond(su.cond);
+  if (su.test) S.test = su.test;
+  if ('fast' in su) setFast(su.fast);
+}
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); }
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each sets up the engine, tells you what to watch, and checks your answer before moving on.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) { h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`; }
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  if (st.test) h += `<h4>${TESTS.find(t => t[0] === S.test)[1]}</h4>` + testsHTML(true);
+  return h;
+}
+
+/* ================= diagnose ================= */
+function newCase() {
+  const total = CASE_POOL.reduce((a, c) => a + c[1], 0);
+  let r = Math.random() * total, type = 'none';
+  for (const [t, w] of CASE_POOL) if ((r -= w) < 0) { type = t; break; }
+  if (S.dx && S.dx.fault.type === type && Math.random() < .6) return newCase();
+  const cyl = FAULTS[type].pick === 'cyl' ? Math.floor(Math.random() * 4) : 0;
+  S.dx = { n: (S.dx?.n || 0) + 1, fault: { type, cyl }, used: new Set(), log: [], pick: null, pcyl: null, tries: 0, solved: false, wrong: null };
+  S.inside = false; setFault({ type, cyl }); setCond('idle');
+  // the car arrives with learned trims (KAM) and any codes it would have
+  warmLearn();
+  S.test = 'snap'; S.tab = 'case'; renderEng(true); renderPanel();
+}
+function warmLearn() {   // simulate the drive in: learn every cell, keep codes
+  const was = S.cond, fast = S.fast; S.fast = true; S.quiet = true;
+  for (const c of ['load', 'cruise', 'idle']) { S.cond = c; simulate(25); }
+  S.cond = was; S.fast = fast; S.quiet = false; S.tRun = 30; S.hist = []; S.misfire = [0, 0, 0, 0]; S.mfAcc = [0, 0, 0, 0];
+  for (const c of Object.keys(S.dtc)) S.dtc[c].st = 'confirmed · MIL on';
+  dtcDirty = true;
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  const F = FAULTS[d.pick];
+  if (F.pick === 'cyl' && d.pcyl == null) { toast('Pick which cylinder.', 'bad'); return; }
+  const ok = d.pick === d.fault.type && (F.pick !== 'cyl' || d.pcyl === d.fault.cyl);
+  d.tries++;
+  if (ok) { d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += d.used.size; S.inside = true; renderEng(true); toast('✓ Correct diagnosis', 'good'); }
+  else { d.wrong = d.pick === d.fault.type ? 'Right kind of fault, wrong cylinder.' : d.used.size < 2 ? 'Not quite. Gather more evidence first.' : 'Not quite. Compare your snapshots and test results with what each fault would show.'; toast('Not quite', 'bad'); }
+  renderPanel();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const F = FAULTS[d.fault.type], sc = S.dxScore;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${CONCERN[d.fault.type](d.fault.cyl)}</p><p class="dim">2016 sedan, 2.0 L inline-4, port injection, MAF-based. The car arrived with its fuel trim memory intact, so check the LTFT cells too.</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Tests this case</small><b>${d.used.size}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div></div>`;
+  if (!d.solved) {
+    h += `<p class="dim">Use the Drive bar and the scan tool, and run tests on the <b>Tests</b> tab. When you're sure, pick your diagnosis.</p><div class="nav" style="margin:0 0 6px"><button class="btn" data-act="tab:tests">Go to tests</button></div><h4>Your diagnosis</h4><div class="cards">`;
+    for (const [k, Fx] of Object.entries(FAULTS)) {
+      h += `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${Fx.short}</b></button>`;
+      if (d.pick === k && Fx.pick === 'cyl') h += `<span class="cyls"><span class="lbl">Cylinder</span>${[0, 1, 2, 3].map(i => `<button class="cc" data-act="dxc:${i}" aria-pressed="${d.pcyl === i}">${i + 1}</button>`).join('')}</span>`;
+    }
+    h += `</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+    if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  } else {
+    h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try!' : `Correct after ${d.tries} tries.`}</b> ${F.short}${F.pick === 'cyl' ? `, cylinder ${d.fault.cyl + 1}` : ''}. You used ${d.used.size} test type${d.used.size === 1 ? '' : 's'}.</div>
+      <p style="margin-top:10px">${F.fx}</p><h4>The evidence</h4><ul class="ev">${EVIDENCE[d.fault.type].map(e => `<li>${e}</li>`).join('')}</ul><p class="dim">The inside view is on now.</p><div class="nav"><button class="btn primary" data-act="newcase">Next case</button></div>`;
+  }
+  if (d.log.length) h += `<h4>Your test log</h4><ol class="log">${d.log.map(l => `<li>${l}</li>`).join('')}</ol>`;
+  return h;
+}
+
+/* ================= notebook ================= */
+const TABS = { explore: [['break', 'Break it'], ['tests', 'Tests']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case'], ['tests', 'Tests']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('') + (S.mode === 'explore' ? `<span style="margin-left:auto;display:flex;align-items:center;gap:6px;padding-bottom:6px"><span class="seg"><button data-act="inside:1" aria-pressed="${S.inside}">Inside</button><button data-act="inside:0" aria-pressed="${!S.inside}">Hide</button></span></span>` : '');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'break' ? breakHTML() : S.tab === 'tests' ? testsHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  if (S.mode === 'explore') S.exploreFault = S.fault;
+  S.mode = m; S.run = null;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore') { S.inside = true; setFault(S.exploreFault); S.tab = 'break'; }
+  if (m === 'guided') { S.lesson = null; S.tab = 'les'; S.inside = true; setFault(null); }
+  if (m === 'diagnose') { S.tab = 'case'; if (!S.dx || S.dx.solved) newCase(); else { S.inside = false; setFault(S.dx.fault, true); } }
+  renderEng(true); renderPanel();
+}
+function setCond(c) { S.cond = c; document.querySelectorAll('#conds button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === c)); }
+function setFast(on) { S.fast = on; const b = $('#fast'); b.setAttribute('aria-pressed', on); b.classList.toggle('lit', on); }
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#conds').addEventListener('click', e => { const c = e.target.closest('button')?.dataset.c; if (c && !S.run) setCond(c); });
+$('#restart').addEventListener('click', () => { S.tRun = 0; S.stft = 0; S.o2 = .45; S.hist = []; toast('Engine restarted: O2 sensor cold, LTFT memory kept.'); });
+$('#fast').addEventListener('click', () => setFast(!S.fast));
+$('#clr').addEventListener('click', () => { resetKAM(); toast('Codes cleared and fuel trim memory reset.'); });
+$('#snapBtn').addEventListener('click', snapshot);
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+$('#pbody').addEventListener('click', e => onAct(e));
+$('#tabs').addEventListener('click', e => onAct(e));
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':'), n = +v;
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'inside': S.inside = v === '1'; renderEng(true); renderPanel(); break;
+    case 'fault': setFault(v === 'none' ? null : { type: v, cyl: FAULTS[v].pick === 'cyl' ? (S.fault?.type === v ? S.fault.cyl : 1) : 0 }); break;
+    case 'fcyl': setFault({ type: S.fault.type, cyl: n }); break;
+    case 'clr': resetKAM(); toast('Codes cleared and fuel trim memory reset.'); break;
+    case 'test': S.test = v; renderPanel(); break;
+    case 'snap': snapshot(); break;
+    case 'fp': runTest('fp', v); break;
+    case 'smoke': case 'propane': case 'balance': case 'drip': case 'mafchk': case 'exh': runTest(a); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('fuel.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+    case 'dx': S.dx.pick = v; S.dx.pcyl = null; S.dx.wrong = null; renderPanel(); break;
+    case 'dxc': S.dx.pcyl = n; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+  }
+}
+
+/* ================= loop ================= */
+let last = performance.now(), uiT = 0;
+function tickFrame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1); last = Math.max(last, now);
+  simulate(dt);
+  S.histT += dt;
+  if (S.histT >= 0.05) { S.histT = 0; S.hist.push({ t: S.tRun, o2: S.o2, st: S.loop === 'closed' ? S.stft : 0, lt: S.ltft[CONDS[S.cond].cell] }); if (S.hist.length > 500) S.hist.shift(); }
+  if (S.run && S.tRun >= S.run.end) finishRun();
+  if (S.mode === 'guided' && S.lesson && !S.stepOk) { const g = curStep()?.goal; if (g?.check && g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); } }
+  uiT += dt;
+  if (uiT > 0.1) { uiT = 0; renderEng(); renderScan(); drawGraph(); }
+}
+function frame(now) { requestAnimationFrame(frame); tickFrame(now); }
+simulate(1);
+renderEng(true); renderPanel(); renderScan();
+requestAnimationFrame(frame);
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__F = { S, tickFrame, toastOff() { toast = () => {}; }, simulate, setFault, setCond, setMode, newCase, LESSONS, FAULTS, curStep, snapshot, runTest, finishRun, renderPanel,
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>

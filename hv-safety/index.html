@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HV Safety Trainer</title>
+<meta name="description" content="Practice de-energizing a hybrid's high-voltage system in the right order: PPE and glove inspection, 12 V and service plug, lockout, wait time, and live-dead-live verification.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH student tools. The shop scene is a 2D SVG
+   (light enough for any Chromebook). Layout: scene (left) | notebook (right); stacked below 980px. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E; --hv:#FF7A1A;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{min-height:100%;height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;
+  background:radial-gradient(1100px 520px at 18% -12%,rgba(255,122,26,.08),transparent 62%),radial-gradient(900px 500px at 100% 110%,rgba(47,155,224,.06),transparent 60%),var(--bg)}
+/* top bar */
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#2a1a0e,#120c07);border:1px solid #4a3020;color:var(--hv)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 11px;border-radius:7px;font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.hv{background:#3a1d08;border-color:var(--hv);color:#FFD2B0}
+.btn.small{padding:6px 10px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.draft{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,178,36,.55);background:#1a150a;color:#FFE2A8;font-size:13px;line-height:1.35}
+.draft b{color:#FFB224}
+/* layout */
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:10px;padding:10px 14px 8px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12.5px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;font:700 10.5px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--dim);white-space:nowrap}
+.chip.on{color:#C9F7E2;border-color:rgba(61,220,151,.5)}
+.chip.hot{color:#FFD2B0;border-color:rgba(255,122,26,.6)}
+.scene{flex:1;min-height:0;padding:0 10px 10px;display:flex}
+#scene{width:100%;height:100%;display:block}
+.disc{padding:0 14px 10px;font-size:11.5px;color:var(--faint)}
+/* svg scene */
+.it{cursor:pointer}
+.it .hit{fill:transparent;stroke:transparent;stroke-width:2;rx:10}
+.it:hover .hit{stroke:#3a4a5c}
+.it.sel .hit{stroke:var(--accent);stroke-width:2.5}
+.it.target .hit{stroke:var(--warn);stroke-width:3;stroke-dasharray:6 4;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.it:focus{outline:none}
+.it:focus-visible .hit{stroke:var(--accent);stroke-width:3}
+.lbl{fill:#8A98A8;font:600 12px var(--f-label);letter-spacing:.06em;text-anchor:middle}
+.lbl.sm{font-size:10.5px}
+.done-tick{fill:var(--ok);font:700 13px var(--f-label)}
+/* notebook */
+.nb{flex:1;min-height:0;overflow:auto;padding:4px 14px 14px;font-size:14px;color:var(--soft)}
+.nb p{margin:0 0 9px}
+.nb h3{margin:4px 0 6px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.nb h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.card{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:var(--raise);margin-bottom:10px}
+.card.step{border-color:rgba(255,178,36,.5);background:linear-gradient(180deg,#1d1a12,#14130e)}
+.k{font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn)}
+.acts{display:grid;gap:6px}
+.acts button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:#0f151c;font-size:13.5px;color:var(--soft);line-height:1.3}
+.acts button:hover{border-color:#3a4a5c;color:var(--fg)}
+.acts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.acts button.hl{border-color:var(--warn);color:var(--fg)}
+.meter{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:start}
+.lcd{border-radius:10px;background:#a9b79a;color:#121a10;font:600 26px/1 var(--f-mono);padding:12px 10px 10px;text-align:right;border:3px solid #2b3a2b;box-shadow:inset 0 2px 6px rgba(0,0,0,.4);min-height:58px}
+.lcd small{display:block;font:600 10px/1 var(--f-mono);text-align:left;margin-bottom:4px;opacity:.75}
+.mmeta{font:500 11px/1.4 var(--f-mono);color:var(--dim);margin-top:6px}
+.dial{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.dial button{all:unset;cursor:pointer;padding:6px 9px;border-radius:8px;border:1px solid var(--line-2);font:600 12px/1 var(--f-mono);color:var(--dim)}
+.dial button[aria-pressed="true"]{background:#e7e2c9;color:#111;border-color:#e7e2c9}
+.dial button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.probes{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.probes button{all:unset;cursor:pointer;padding:7px 8px;border-radius:8px;border:1px solid var(--line-2);background:#0f151c;font:600 11.5px/1.2 var(--f-label);letter-spacing:.04em;color:var(--soft);text-align:center}
+.probes button:hover{border-color:#3a4a5c}
+.probes button.hl{border-color:var(--warn)}
+.probes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.log li{padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:#0c1117;font-size:13px;line-height:1.35}
+.log li.ok{border-color:rgba(61,220,151,.35)}
+.log li.minor{border-color:rgba(138,152,168,.5)}
+.log li.major{border-color:rgba(255,178,36,.6);background:#17130b}
+.log li.critical{border-color:rgba(255,90,78,.7);background:#1b0f0e}
+.log li b.t{font:700 10px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;margin-right:6px}
+.log li.ok b.t{color:var(--ok)} .log li.minor b.t{color:var(--dim)} .log li.major b.t{color:var(--warn)} .log li.critical b.t{color:var(--fail)}
+.prog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;font-size:12.5px}
+.prog span{display:flex;gap:6px;align-items:center;color:var(--dim)}
+.prog span.y{color:#C9F7E2}
+.prog i{width:14px;height:14px;border-radius:4px;border:1px solid var(--line-2);display:grid;place-items:center;font:700 10px/1 var(--f-ui);font-style:normal}
+.prog span.y i{background:var(--ok);border-color:var(--ok);color:#06140d}
+.mc{display:grid;gap:6px;margin:6px 0 8px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:#0f151c;font-size:13.5px;line-height:1.35}
+.mc button.right{border-color:var(--ok);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 8px}
+.decl{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line)}
+/* modal */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(4,6,9,.72)}
+.sheet{width:min(640px,100%);max-height:calc(100% - 16px);overflow:auto;padding:18px;border-radius:16px;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 30px 80px -20px rgba(0,0,0,.95)}
+.sheet h3{margin:0 0 6px;font:600 19px/1.2 var(--f-label)}
+.sheet p{margin:0 0 10px;color:var(--soft)}
+.insp{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start}
+.checks{display:grid;gap:6px}
+.checks button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:#0f151c;font-size:13.5px}
+.checks button.done{border-color:rgba(47,155,224,.5)}
+.checks button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.find{font-size:13px;color:var(--soft);margin-top:4px}
+.find b{color:var(--fg)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line-2);background:#0b1015;color:var(--fg);font:500 15px var(--f-ui)}
+#cert{background:#fff;color:#111;border-radius:12px;padding:22px 24px;font:14px/1.5 var(--f-ui)}
+#cert h2{margin:0 0 4px;font:700 22px/1.2 var(--f-label)}
+#cert table{width:100%;border-collapse:collapse;margin:10px 0}
+#cert td{padding:5px 6px;border-bottom:1px solid #ddd;vertical-align:top}
+#cert td:first-child{width:38%;color:#555}
+#cert .sig{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+#cert .sig div{border-top:1px solid #333;padding-top:4px;font-size:12px;color:#444}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 979px){
+  html,body{height:auto}
+  .app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .scene{min-height:300px}
+  .nb{max-height:none}
+}
+@media (max-width: 560px){ .insp{grid-template-columns:1fr} .meter{grid-template-columns:1fr} .brand p{display:none} }
+@media print{
+  body *{visibility:hidden}
+  #cert,#cert *{visibility:visible}
+  #cert{position:absolute;left:0;top:0;width:100%;border-radius:0}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+      <div><h1>HV Safety: De-energize</h1><p>Hybrid / EV · live-dead-live</p></div>
+    </div>
+    <div class="seg" id="modes" role="group" aria-label="Mode"><button data-m="learn" aria-pressed="true">Learn</button><button data-m="practice">Practice</button><button data-m="check">Check-off</button></div>
+    <button class="btn" id="restart">Start over</button>
+  </header>
+  <div class="draft" role="note"><b>Draft · instructor review pending.</b> Generic procedure on a fictional vehicle for practice only. It does not replace the OEM service information for a real vehicle, STECH HV training, or your instructor's direction.</div>
+  <div class="main">
+    <section class="panel" aria-label="Shop">
+      <div class="phead"><h2>Service bay</h2>
+        <div class="r" id="status"></div>
+      </div>
+      <div class="scene"><svg id="scene" viewBox="0 0 1000 600" role="group" aria-label="Training hybrid and workbench. Select an item to see what you can do with it."></svg></div>
+      <div class="disc">Fictional STECH training hybrid. Every vehicle is different: always follow the OEM service information for the vehicle in front of you and your instructor's direction. At STECH, hands-on HV work requires instructor oversight.</div>
+    </section>
+    <section class="panel" aria-label="Notebook">
+      <div class="phead"><h2 id="nbTitle">Learn</h2><div class="r" id="nbR"></div></div>
+      <div class="nb" id="nb"></div>
+      <div class="decl" id="decl"></div>
+    </section>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = a => a[Math.floor(Math.random() * a.length)];
+const DAY = 864e5;
+const fmtDate = d => d.toISOString().slice(0, 10);
+
+/* ================= the fictional training vehicle (its "service information") ================= */
+const SI = {
+  name: 'STECH training hybrid (fictional)',
+  battery: '288 V nominal HV battery (NiMH)',
+  system: 'up to about 650 V DC on the inverter side',
+  gloves: 'Class 0 rubber insulating gloves with leather protectors',
+  meter: 'CAT III 1000 V meter and leads',
+  wait: 10,          // minutes after removing the service plug
+  zero: 1,           // a reading under this (V) counts as 0 V for this vehicle
+  steps: [
+    'Set up: barrier and HIGH VOLTAGE signs, trained second person with an insulated rescue hook, no jewelry.',
+    'Power switch off (READY off). Smart key out of range or locked away.',
+    'Disconnect the 12 V auxiliary battery, negative (−) terminal.',
+    'Inspect and put on Class 0 gloves with leather protectors, plus safety glasses.',
+    'Remove the service plug. Lock it out and tag it.',
+    'Wait 10 minutes for the inverter capacitors to discharge.',
+    'Verify 0 V at the inverter test points with a CAT III 1000 V meter, live-dead-live: prove the meter on a known live source, measure HV+ to HV−, HV+ to chassis and HV− to chassis, then prove the meter again.',
+  ],
+};
+const TIME_SCALE = 75;   // the wait runs 75× faster than real time (10 min ≈ 8 s)
+
+/* ================= state ================= */
+let S;
+function newScenario(mode) {
+  const today = new Date();
+  const gDefect = mode === 'learn' ? 'pinhole' : rnd(['none', 'none', 'none', 'none', 'pinhole', 'pinhole', 'expired', 'expired', 'class00', 'cut']);
+  const mDefect = mode === 'learn' ? 'none' : rnd(['none', 'none', 'none', 'none', 'none', 'catII', 'catII', 'lead', 'dead', 'dies']);
+  const pair = d => ({ defect: d, tested: new Date(today - (d === 'expired' ? 200 + Math.random() * 120 : 15 + Math.random() * 110) * DAY), checks: {}, verdict: null });
+  return {
+    mode, sel: null, simT: 0, t0: Date.now(), done: false, failed: null, name: S?.name || '',
+    si: false, signs: false, buddy: false, jewelry: false, readyOff: false, keyAway: false, auxOff: false,
+    glovesOn: false, glassesOn: false, plugOut: false, plugT: null, loto: false, waitFast: false,
+    gloves: pair(gDefect), glovesUsed: 1, glovesRejected: [],
+    meter: { defect: mDefect, checks: {}, verdict: null, uses: 0, id: 1 }, metersRejected: [],
+    dial: mode === 'learn' ? 'vac' : rnd(['off', 'vac', 'vdc', 'ohm']), reading: null, rdLabel: '',
+    meas: [], log: [], errs: { critical: 0, major: 0, minor: 0 }, errList: [],
+    step: 0, mcPick: [], mcOk: false,
+  };
+}
+
+/* ================= scene ================= */
+const ITEMS = {
+  si:      { name: 'Service information', desc: 'This vehicle\'s de-energize procedure.' },
+  signs:   { name: 'Barrier & HV signs', desc: 'Cones, chain and DANGER HIGH VOLTAGE signs to keep people out of the work area.' },
+  buddy:   { name: 'Second person & rescue hook', desc: 'A trained second person with an insulated rescue hook, in case you are shocked and can\'t let go.' },
+  jewelry: { name: 'Watch & rings', desc: 'Metal jewelry can conduct, arc or catch.' },
+  power:   { name: 'Power switch (READY)', desc: 'Shows READY when the high-voltage system is enabled.' },
+  key:     { name: 'Smart key', desc: 'A smart key in range can let the system power back up.' },
+  aux:     { name: '12 V auxiliary battery', desc: 'Powers the modules and the HV contactor coils. Its posts stay live even when disconnected, so it makes a handy known-live source.' },
+  plug:    { name: 'Service plug', desc: 'Splits the HV battery in the middle so the pack can\'t deliver current to the rest of the system.' },
+  hvbat:   { name: 'HV battery', desc: '288 V nominal. Opening or servicing the pack is instructor-only (L3+).' },
+  cable:   { name: 'Orange HV cable', desc: 'Orange = high voltage. Never cut, pierce or unplug it to "check" it.' },
+  inverter:{ name: 'Inverter test points', desc: 'The SI test points: HV+, HV− and a chassis ground. This is where you verify 0 V.' },
+  gloves:  { name: 'HV gloves', desc: 'Rubber insulating gloves with leather protectors over them.' },
+  glasses: { name: 'Safety glasses', desc: 'Eye protection against arc flash and debris.' },
+  meter:   { name: 'Digital multimeter', desc: 'Use only a meter and leads rated for the system voltage.' },
+  loto:    { name: 'Lockout kit', desc: 'Personal lock and tag, so nobody can reinstall the service plug while you work.' },
+  timer:   { name: 'Timer', desc: 'For the SI wait time after removing the service plug.' },
+};
+function sceneSVG() {
+  const s = S, glow = s.mode !== 'check' ? clamp(busV() / 280, 0, 1) : 0;
+  const it = (id, inner, hx, hy, hw, hh, lx, ly, label, done) => `<g class="it${s.sel === id ? ' sel' : ''}${targetItem() === id ? ' target' : ''}" data-item="${id}" tabindex="0" role="button" aria-label="${ITEMS[id].name}"><rect class="hit" x="${hx}" y="${hy}" width="${hw}" height="${hh}" rx="10"/>${inner}${label ? `<text class="lbl${label.length > 14 ? ' sm' : ''}" x="${lx}" y="${ly}">${label}</text>` : ''}${done ? `<text class="done-tick" x="${hx + hw - 14}" y="${hy + 16}">✓</text>` : ''}</g>`;
+  let h = `<defs><linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c2836"/><stop offset="1" stop-color="#121a24"/></linearGradient></defs>`;
+  // floor + barrier
+  h += `<rect x="0" y="330" width="1000" height="2" fill="#1d2732"/>`;
+  if (s.signs) h += `<g><path d="M18 325 l14 -38 l14 38z" fill="#FF7A1A"/><path d="M954 325 l14 -38 l14 38z" fill="#FF7A1A"/><path d="M32 296 Q500 250 968 296" stroke="#FFB224" stroke-width="3" fill="none" stroke-dasharray="10 6"/><rect x="420" y="6" width="160" height="34" rx="6" fill="#FFB224"/><text x="500" y="21" text-anchor="middle" font-family="Barlow Semi Condensed" font-weight="700" font-size="13" fill="#111">DANGER</text><text x="500" y="35" text-anchor="middle" font-family="Barlow Semi Condensed" font-weight="700" font-size="11" fill="#111">HIGH VOLTAGE · DO NOT TOUCH</text></g>`;
+  // car body
+  h += `<path d="M60 262 L60 214 Q66 196 92 192 L300 176 L392 112 Q412 98 452 98 L640 98 Q682 98 712 124 L782 176 L902 184 Q936 188 942 212 L942 290 L60 290 Z" fill="url(#body)" stroke="#2f4256" stroke-width="2"/>`;
+  h += `<path d="M398 118 L452 108 L560 108 L560 172 L322 180 Z" fill="#0d141c" stroke="#26384a"/><path d="M572 108 L638 108 Q672 108 700 130 L748 172 L572 172 Z" fill="#0d141c" stroke="#26384a"/>`;
+  for (const x of [220, 770]) h += `<circle cx="${x}" cy="292" r="44" fill="#0a0e13" stroke="#2f4256" stroke-width="3"/><circle cx="${x}" cy="292" r="18" fill="#1b2633"/>`;
+  // HV cable (glows when the bus is charged, outside check-off)
+  h += it('cable', `<path d="M250 262 C330 284 470 284 560 262" stroke="#FF7A1A" stroke-width="7" fill="none" stroke-linecap="round"/>${glow > .02 ? `<path d="M250 262 C330 284 470 284 560 262" stroke="#ffd27a" stroke-width="13" fill="none" opacity="${(glow * .55).toFixed(2)}" stroke-linecap="round"/>` : ''}`, 300, 258, 220, 36, 410, 314, 'HV cable');
+  // inverter + test points
+  h += it('inverter', `<rect x="132" y="200" width="122" height="66" rx="6" fill="#26303b" stroke="#FF7A1A" stroke-width="2"/><text x="193" y="226" text-anchor="middle" font-family="Barlow Semi Condensed" font-weight="600" font-size="13" fill="#C5CFD9">INVERTER</text><circle cx="168" cy="248" r="7" fill="#d23b2f"/><text x="168" y="252" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">+</text><circle cx="196" cy="248" r="7" fill="#222" stroke="#888"/><text x="196" y="252" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">−</text><rect x="222" y="242" width="16" height="12" rx="2" fill="#7c8691"/><text x="230" y="251" text-anchor="middle" font-size="7" fill="#111" font-weight="700">GND</text>`, 124, 192, 138, 82, 193, 186, 'Inverter test points');
+  // HV battery + service plug
+  h += it('hvbat', `<rect x="560" y="214" width="160" height="58" rx="6" fill="#2a2016" stroke="#FF7A1A" stroke-width="2"/><text x="640" y="250" text-anchor="middle" font-family="Barlow Semi Condensed" font-weight="600" font-size="13" fill="#FFD2B0">HV BATTERY 288 V</text>`, 556, 230, 168, 46, 0, 0, '');
+  h += it('plug', s.plugOut ? `<rect x="618" y="200" width="40" height="16" rx="3" fill="none" stroke="#FF7A1A" stroke-dasharray="4 3"/><text x="638" y="212" text-anchor="middle" font-size="9" fill="#FF7A1A" font-family="JetBrains Mono">OUT</text>` : `<rect x="618" y="196" width="40" height="20" rx="4" fill="#FF7A1A"/><rect x="626" y="190" width="24" height="8" rx="2" fill="#c85f12"/>`, 606, 184, 64, 40, 638, 180, 'Service plug', s.plugOut);
+  // 12 V battery in trunk
+  h += it('aux', `<rect x="822" y="200" width="78" height="52" rx="5" fill="#1d2630" stroke="#7c8691" stroke-width="2"/><text x="861" y="232" text-anchor="middle" font-family="Barlow Semi Condensed" font-weight="700" font-size="15" fill="#C5CFD9">12 V</text><rect x="834" y="192" width="12" height="9" fill="#d23b2f"/><rect x="876" y="192" width="12" height="9" fill="#333" stroke="#888"/>${s.auxOff ? `<path d="M882 190 l20 -26" stroke="#111" stroke-width="5"/><path d="M882 190 l20 -26" stroke="#555" stroke-width="3"/><text x="912" y="172" font-size="12" fill="#FF5A4E" font-weight="700">✕</text>` : `<path d="M882 192 C882 176 904 176 912 186" stroke="#555" stroke-width="4" fill="none"/>`}`, 812, 160, 104, 98, 861, 274, '12 V battery', s.auxOff);
+  // dash power switch + key
+  h += it('power', `<circle cx="420" cy="150" r="15" fill="#0b1015" stroke="#5a6773" stroke-width="2"/><path d="M420 141 v8 M413 145 a9 9 0 1 0 14 0" stroke="#C5CFD9" stroke-width="2" fill="none"/><text x="420" y="183" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="600" fill="${s.readyOff ? '#5A6773' : '#3DDC97'}">${s.readyOff ? 'OFF' : 'READY'}</text>`, 396, 128, 48, 64, 420, 124, 'Power', s.readyOff);
+  h += it('key', s.keyAway ? `<rect x="470" y="150" width="34" height="22" rx="4" fill="none" stroke="#5a6773" stroke-dasharray="3 3"/><text x="487" y="165" text-anchor="middle" font-size="9" fill="#5a6773">gone</text>` : `<rect x="474" y="152" width="26" height="18" rx="5" fill="#2b3a4c" stroke="#8A98A8"/><circle cx="487" cy="161" r="3" fill="#8A98A8"/>`, 462, 140, 50, 40, 487, 132, 'Smart key', s.keyAway);
+  // workbench
+  h += `<rect x="16" y="352" width="968" height="236" rx="14" fill="#0b1015" stroke="#1d2732"/><text x="32" y="374" font-family="Barlow Semi Condensed" font-weight="700" font-size="11" letter-spacing="2" fill="#5A6773">WORKBENCH</text>`;
+  const bx = i => 30 + i * 106, by = 384;
+  h += it('si', `<rect x="${bx(0) + 22}" y="${by + 22}" width="52" height="62" rx="4" fill="#1c2b3c" stroke="#2F9BE0"/><path d="M${bx(0) + 30} ${by + 38} h36 M${bx(0) + 30} ${by + 48} h36 M${bx(0) + 30} ${by + 58} h28" stroke="#8fbfe3" stroke-width="2"/>`, bx(0), by, 96, 120, bx(0) + 48, by + 112, 'Service info', s.si);
+  h += it('signs', `<path d="M${bx(1) + 30} ${by + 86} l18 -56 l18 56z" fill="#FF7A1A"/><rect x="${bx(1) + 26}" y="${by + 84}" width="44" height="6" fill="#c85f12"/>`, bx(1), by, 96, 120, bx(1) + 48, by + 112, 'Barrier & signs', s.signs);
+  h += it('buddy', `<path d="M${bx(2) + 34} ${by + 90} V${by + 40} a14 14 0 1 1 28 0" stroke="#FFB224" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="${bx(2) + 70}" cy="${by + 36}" r="9" fill="#5a6773"/><path d="M${bx(2) + 60} ${by + 90} v-30 a10 10 0 0 1 20 0 v30" fill="#5a6773"/>`, bx(2), by, 96, 120, bx(2) + 48, by + 112, 'Buddy + hook', s.buddy);
+  h += it('jewelry', s.jewelry ? `<rect x="${bx(3) + 22}" y="${by + 50}" width="52" height="30" rx="6" fill="#141c25" stroke="#3a4a5c"/><circle cx="${bx(3) + 38}" cy="${by + 64}" r="7" fill="none" stroke="#d8b25a" stroke-width="3"/><rect x="${bx(3) + 52}" y="${by + 58}" width="14" height="12" rx="3" fill="#8A98A8"/>` : `<circle cx="${bx(3) + 40}" cy="${by + 56}" r="11" fill="none" stroke="#d8b25a" stroke-width="4"/><rect x="${bx(3) + 54}" y="${by + 44}" width="18" height="22" rx="4" fill="#8A98A8"/><path d="M${bx(3) + 63} ${by + 34} v10 M${bx(3) + 63} ${by + 66} v10" stroke="#5a6773" stroke-width="4"/>`, bx(3), by, 96, 120, bx(3) + 48, by + 112, s.jewelry ? 'Jewelry off' : 'Watch & rings', s.jewelry);
+  h += it('gloves', s.glovesOn ? `<text x="${bx(4) + 48}" y="${by + 62}" text-anchor="middle" font-size="12" fill="#3DDC97" font-family="Barlow Semi Condensed" font-weight="700">ON YOUR HANDS</text>` : `<path d="M${bx(4) + 26} ${by + 92} v-34 l-6 -14 a5 5 0 0 1 9 -3 l5 10 v-22 a5 5 0 0 1 10 0 v20 v-26 a5 5 0 0 1 10 0 v26 v-22 a5 5 0 0 1 10 0 v24 v-16 a5 5 0 0 1 10 0 v30 q0 18 -10 27 z" fill="#c43a2f" stroke="#7a1f19"/><rect x="${bx(4) + 24}" y="${by + 88}" width="46" height="8" rx="2" fill="#8a5a33"/>`, bx(4), by, 96, 120, bx(4) + 48, by + 112, `HV gloves${s.glovesUsed > 1 ? ' #' + s.glovesUsed : ''}`, s.glovesOn);
+  h += it('glasses', s.glassesOn ? `<text x="${bx(5) + 48}" y="${by + 62}" text-anchor="middle" font-size="12" fill="#3DDC97" font-family="Barlow Semi Condensed" font-weight="700">WEARING</text>` : `<path d="M${bx(5) + 18} ${by + 56} h60" stroke="#8A98A8" stroke-width="3"/><rect x="${bx(5) + 20}" y="${by + 52}" width="24" height="18" rx="7" fill="#2f9be033" stroke="#8fbfe3" stroke-width="2"/><rect x="${bx(5) + 52}" y="${by + 52}" width="24" height="18" rx="7" fill="#2f9be033" stroke="#8fbfe3" stroke-width="2"/>`, bx(5), by, 96, 120, bx(5) + 48, by + 112, 'Safety glasses', s.glassesOn);
+  h += it('meter', `<rect x="${bx(6) + 26}" y="${by + 18}" width="44" height="74" rx="8" fill="#e6b82e" stroke="#7a5f12"/><rect x="${bx(6) + 32}" y="${by + 26}" width="32" height="16" rx="2" fill="#a9b79a"/><circle cx="${bx(6) + 48}" cy="${by + 64}" r="11" fill="#222" stroke="#555"/><path d="M${bx(6) + 48} ${by + 64} l${s.dial === 'vdc' ? '0 -9' : s.dial === 'vac' ? '-8 -4' : s.dial === 'ohm' ? '8 -4' : '-9 0'}" stroke="#fff" stroke-width="2"/>`, bx(6), by, 96, 120, bx(6) + 48, by + 112, `Meter${s.meter.id > 1 ? ' #' + s.meter.id : ''}`, s.meter.verdict === 'pass');
+  h += it('loto', s.loto ? `<rect x="${bx(7) + 26}" y="${by + 42}" width="40" height="18" rx="4" fill="#FF7A1A"/><rect x="${bx(7) + 52}" y="${by + 56}" width="20" height="22" rx="3" fill="#d23b2f"/><path d="M${bx(7) + 56} ${by + 56} v-8 a6 6 0 0 1 12 0 v8" stroke="#ccc" stroke-width="3" fill="none"/><rect x="${bx(7) + 30}" y="${by + 70}" width="18" height="22" fill="#FFB224"/>` : `<rect x="${bx(7) + 38}" y="${by + 50}" width="22" height="24" rx="3" fill="#d23b2f"/><path d="M${bx(7) + 42} ${by + 50} v-10 a7 7 0 0 1 14 0 v10" stroke="#ccc" stroke-width="3" fill="none"/><rect x="${bx(7) + 22}" y="${by + 56}" width="14" height="28" fill="#FFB224"/>`, bx(7), by, 96, 120, bx(7) + 48, by + 112, s.loto ? 'Plug locked out' : 'Lockout kit', s.loto);
+  const wl = waitLeft();
+  h += it('timer', `<circle cx="${bx(8) + 48}" cy="${by + 54}" r="28" fill="#0b1015" stroke="${s.plugT != null && wl <= 0 ? '#3DDC97' : '#5a6773'}" stroke-width="3"/><text x="${bx(8) + 48}" y="${by + 59}" text-anchor="middle" font-family="JetBrains Mono" font-weight="600" font-size="14" fill="#E6EDF3" id="timerTxt">${timerText()}</text>`, bx(8), by, 96, 120, bx(8) + 48, by + 112, 'Wait timer', s.plugT != null && wl <= 0);
+  return h;
+}
+function renderScene() { $('#scene').innerHTML = sceneSVG(); renderStatus(); }
+function renderStatus() {
+  const s = S, c = (on, t, hot) => `<span class="chip${on ? ' on' : hot ? ' hot' : ''}">${t}</span>`;
+  $('#status').innerHTML = c(s.readyOff, s.readyOff ? 'READY off' : 'READY on', !s.readyOff) + c(s.auxOff, s.auxOff ? '12 V off' : '12 V on') + c(s.plugOut, s.plugOut ? 'Plug out' : 'Plug in', !s.plugOut) + c(s.glovesOn && s.glassesOn, s.glovesOn ? (s.glassesOn ? 'PPE on' : 'Gloves on') : 'No PPE');
+}
+
+/* ================= physics-ish model ================= */
+function busV() {   // inverter capacitor voltage after the plug is pulled (they drain through the discharge circuit)
+  if (!S || S.plugT == null) return S && S.plugOut === false ? 0 : 0;
+  return 280 * Math.exp(-(S.simT - S.plugT) / 90);
+}
+const waitLeft = () => S.plugT == null ? SI.wait * 60 : Math.max(0, SI.wait * 60 - (S.simT - S.plugT));
+function timerText() { if (S.plugT == null) return `${SI.wait}:00`; const w = Math.ceil(waitLeft()); return `${Math.floor(w / 60)}:${String(w % 60).padStart(2, '0')}`; }
+function meterWorks() { const m = S.meter; return !(m.defect === 'dead' || (m.defect === 'dies' && m.uses >= 4)); }
+const PTS = { aux: 'Known live: 12 V battery posts', pn: 'HV+ to HV−', pc: 'HV+ to chassis', nc: 'HV− to chassis' };
+function readingFor(pt) {
+  if (S.dial === 'off') return null;
+  if (S.dial === 'ohm') return 'OL';
+  const works = meterWorks(); S.meter.uses++;
+  const n = () => (Math.random() * .08);
+  if (S.dial === 'vac' || !works) return +(n() * .5).toFixed(1);
+  if (pt === 'aux') return +(12.55 + n()).toFixed(1);
+  const v = busV();
+  return +((pt === 'pn' ? v : v * .5) + n() * 2).toFixed(1);
+}
+
+/* ================= actions & rules ================= */
+// Each action checks its safety rules. A violation is logged with a severity:
+//   critical = could injure or kill (Check-off fails immediately), major = procedure error, minor = not unsafe, but wasteful.
+// Practice/Learn block the action and explain; Check-off logs and fails on critical.
+const ACTIONS = {
+  si:        { item: 'si', label: 'Look up this vehicle\'s de-energize procedure' },
+  signs:     { item: 'signs', label: 'Set up the barrier and HIGH VOLTAGE signs' },
+  buddy:     { item: 'buddy', label: 'Confirm a trained second person with an insulated rescue hook' },
+  jewelry:   { item: 'jewelry', label: 'Take off watch, rings and jewelry' },
+  readyOff:  { item: 'power', label: 'Press the power switch: READY off' },
+  keyAway:   { item: 'key', label: 'Move the smart key out of range / lock it away' },
+  auxNeg:    { item: 'aux', label: 'Disconnect the 12 V negative (−) terminal' },
+  auxPos:    { item: 'aux', label: 'Disconnect the 12 V positive (+) terminal' },
+  gloveInsp: { item: 'gloves', label: 'Inspect these gloves' },
+  gloveOn:   { item: 'gloves', label: 'Put on the gloves with leather protectors' },
+  gloveNew:  { item: 'gloves', label: 'Get a different pair of gloves' },
+  glasses:   { item: 'glasses', label: 'Put on safety glasses' },
+  plugOut:   { item: 'plug', label: 'Remove the service plug' },
+  loto:      { item: 'plug', label: 'Lock out and tag the service plug' },
+  lotoKit:   { item: 'loto', label: 'Lock out and tag the service plug' },
+  wait:      { item: 'timer', label: `Start the ${SI.wait}-minute wait` },
+  openPack:  { item: 'hvbat', label: 'Open the HV battery cover to look inside' },
+  unplug:    { item: 'cable', label: 'Unplug the orange cable at the inverter to check it' },
+  testLight: { item: 'cable', label: 'Check the orange cable with a 12 V test light' },
+  meterInsp: { item: 'meter', label: 'Inspect the meter and test leads' },
+  meterNew:  { item: 'meter', label: 'Get a different meter' },
+};
+const ITEM_ACTS = {
+  si: ['si'], signs: ['signs'], buddy: ['buddy'], jewelry: ['jewelry'], power: ['readyOff'], key: ['keyAway'],
+  aux: ['auxNeg', 'auxPos'], gloves: ['gloveInsp', 'gloveOn', 'gloveNew'], glasses: ['glasses'], plug: ['plugOut', 'loto'],
+  loto: ['lotoKit'], timer: ['wait'], hvbat: ['openPack'], cable: ['unplug', 'testLight'], inverter: [], meter: ['meterInsp', 'meterNew'],
+};
+function violation(sev, msg) { return { sev, msg }; }
+function check(id) {   // returns first rule broken, or null
+  const s = S, v = violation;
+  switch (id) {
+    case 'auxNeg':
+      if (!s.si) return v('major', 'Look up the procedure first. The order and wait times differ by vehicle.');
+      if (!s.readyOff) return v('major', 'Turn the vehicle off (READY off) before disconnecting the 12 V battery.');
+      if (!s.keyAway) return v('major', 'Move the smart key out of range first, so nobody (and no remote start) can power the system back up.');
+      return null;
+    case 'auxPos': return v('major', 'Always disconnect the negative (−) terminal first. If your wrench touches the body while loosening the + terminal, you short the battery.');
+    case 'gloveOn':
+      if (!s.jewelry) return v('major', 'Take off rings and watches before gloving up: they can puncture the rubber and they conduct.');
+      if (!s.gloves.verdict) return v('critical', 'Never put on HV gloves you haven\'t inspected. Check the class, the test date, look them over and air-test them every time.');
+      if (s.gloves.verdict === 'reject') return v('major', 'You rejected these gloves. Get a different pair.');
+      return null;
+    case 'plugOut':
+      if (!s.si) return v('major', 'Look up the procedure first. The order and wait times differ by vehicle.');
+      if (!s.readyOff) return v('critical', 'The HV system is still on (READY). Never pull the service plug with the system powered: it can draw an arc.');
+      if (!s.glovesOn) return v('critical', 'The service plug is part of the HV circuit. Remove it only with inspected Class 0 gloves and leather protectors on.');
+      if (!s.keyAway) return v('major', 'Move the smart key out of range first.');
+      if (!s.auxOff) return v('major', 'This vehicle\'s SI disconnects the 12 V negative before the service plug, so the HV contactors can\'t close while you work.');
+      if (!s.glassesOn) return v('major', 'Put on safety glasses first: an arc can blind you.');
+      if (!s.signs) return v('major', 'Set up the barrier and HIGH VOLTAGE signs before opening the HV circuit.');
+      if (!s.buddy) return v('major', 'A trained second person with an insulated rescue hook must be there before you open the HV circuit.');
+      return null;
+    case 'loto': case 'lotoKit':
+      if (!s.plugOut) return v('minor', 'Remove the service plug first, then lock it out.');
+      return null;
+    case 'wait':
+      if (!s.plugOut) return v('minor', 'The wait starts after the service plug is out: that is when the capacitors begin to drain.');
+      return null;
+    case 'openPack': return v('critical', 'Opening the HV battery is instructor-only (L3+), and only after a verified de-energize. Students identify and locate; they don\'t open the pack.');
+    case 'unplug': return v('critical', 'Never unplug orange HV connectors to "check" them. If voltage is present it can arc. Verify 0 V at the SI test points instead. HV component R&R is instructor-only.');
+    case 'testLight': return v('critical', 'A 12 V test light is not rated for high voltage and can explode in your hand. Use a CAT III 1000 V meter at the SI test points.');
+  }
+  return null;
+}
+function doAction(id) {
+  if (S.done || S.failed) return;
+  if (S.mode === 'learn' && !learnAllows(id)) { toast('In Learn mode, follow the highlighted step.', 'bad'); return; }
+  if (id === 'gloveInsp') return openGloveModal();
+  if (id === 'meterInsp') return openMeterModal();
+  const bad = check(id);
+  if (bad) { err(bad, ACTIONS[id].label); return; }
+  const s = S;
+  switch (id) {
+    case 'si': s.si = true; ok('Read the SI procedure for this vehicle (see the Service information card).'); break;
+    case 'signs': s.signs = true; ok('Barrier and HIGH VOLTAGE signs set up.'); break;
+    case 'buddy': s.buddy = true; ok('Second person with an insulated rescue hook standing by.'); break;
+    case 'jewelry': s.jewelry = true; ok('Jewelry off.'); break;
+    case 'readyOff': s.readyOff = true; ok('Power switch off: READY light out.'); break;
+    case 'keyAway': if (!s.readyOff) { err(violation('minor', 'Turn the system off first, then put the key away.'), ACTIONS[id].label); return; } s.keyAway = true; ok('Smart key out of range.'); break;
+    case 'auxNeg': s.auxOff = true; ok('12 V negative disconnected. (The HV battery is still charged.)'); break;
+    case 'gloveOn': s.glovesOn = true; ok('Class 0 gloves and leather protectors on.'); break;
+    case 'gloveNew':
+      if (s.gloves.verdict !== 'reject' && S.mode !== 'learn') { s.errs.minor++; s.errList.push('Swapped gloves that hadn\'t been rejected'); }
+      if (s.gloves.verdict === 'reject') s.glovesRejected.push(s.gloves.defect);
+      s.gloves = { defect: 'none', tested: new Date(Date.now() - (20 + Math.random() * 60) * DAY), checks: {}, verdict: null }; s.glovesUsed++; s.glovesOn = false;
+      ok(`Got glove pair #${s.glovesUsed}. Inspect them before use.`); break;
+    case 'glasses': s.glassesOn = true; ok('Safety glasses on.'); break;
+    case 'plugOut': s.plugOut = true; s.plugT = s.simT; ok('Service plug removed. Keep it with you.'); break;
+    case 'loto': case 'lotoKit': s.loto = true; ok('Service plug locked out and tagged with your name.'); break;
+    case 'wait': s.waitFast = true; ok(`Waiting ${SI.wait} minutes (sped up here).`); break;
+    case 'meterNew':
+      if (s.meter.verdict !== 'reject' && meterWorks() && S.mode !== 'learn') { s.errs.minor++; s.errList.push('Swapped a meter that hadn\'t failed'); }
+      s.metersRejected.push(s.meter.defect);
+      s.meter = { defect: 'none', checks: {}, verdict: null, uses: 0, id: s.meter.id + 1 }; s.dial = 'off'; s.reading = null;
+      ok(`Got meter #${s.meter.id}. Inspect it before use.`); break;
+  }
+  afterAction(id);
+}
+function setDial(d) {
+  if (S.done || S.failed) return;
+  if (S.mode === 'learn' && !learnAllows('dial:' + d)) { toast('In Learn mode, follow the highlighted step.', 'bad'); return; }
+  S.dial = d; S.reading = null;
+  afterAction('dial:' + d);
+}
+function probe(pt) {
+  if (S.done || S.failed) return;
+  if (S.mode === 'learn' && !learnAllows('probe:' + pt)) { toast('In Learn mode, follow the highlighted step.', 'bad'); return; }
+  const s = S, hv = pt !== 'aux', lab = 'Measure ' + PTS[pt];
+  if (s.mode === 'learn' && hv && waitLeft() > 0) { toast('Let the wait timer finish first.', 'bad'); return; }
+  if (!s.meter.verdict) return err(violation(hv ? 'critical' : 'major', 'Inspect the meter and leads first. On HV, a meter or lead that isn\'t rated for the voltage can fail and arc.'), lab);
+  if (s.meter.verdict === 'reject') return err(violation('major', 'You rejected this meter. Get a different one.'), lab);
+  if (s.dial === 'off') { s.reading = null; s.rdLabel = PTS[pt]; toast('The meter is off. Turn the dial to a range first.', 'bad'); renderAll(); return; }
+  if (s.dial === 'ohm') return err(violation('major', 'Never measure resistance on a circuit that may be live. Ohms is only for a de-energized, verified circuit.'), lab);
+  if (hv) {
+    if (!s.glovesOn) return err(violation('critical', 'Measuring at the HV test points means your hands are next to the HV circuit. Gloves and leather protectors on first.'), lab);
+    if (!s.glassesOn) return err(violation('major', 'Put on safety glasses before probing HV test points.'), lab);
+    if (!s.plugOut) return err(violation('major', 'Verify after de-energizing: remove the service plug and wait first. Then measure.'), lab);
+  }
+  const r = readingFor(pt);
+  s.reading = r; s.rdLabel = PTS[pt];
+  s.meas.push({ pt, dial: s.dial, r, meter: s.meter.id, works: s.dial === 'vdc' && (pt === 'aux' ? r > 10 : true), t: s.simT });
+  const unit = s.dial === 'vac' ? 'V AC' : 'V DC';
+  logLine('ok', `Measured ${PTS[pt]}: <b>${r} ${unit}</b>`);
+  afterAction('probe:' + pt);
+}
+function declare() {
+  if (S.done || S.failed) return;
+  if (S.mode === 'learn' && !learnAllows('declare')) { toast('In Learn mode, follow the highlighted step.', 'bad'); return; }
+  const prob = declareProblem();
+  if (prob) { err(prob, 'Declare the vehicle de-energized and verified'); return; }
+  S.done = true; S.tEnd = Date.now();
+  logLine('ok', '<b>Declared de-energized and verified.</b> The work area stays locked out until your instructor directs re-enable.');
+  afterAction('declare');
+  if (S.mode === 'check') openCert(); else if (S.mode === 'practice') openPracticeDone();
+}
+function declareProblem() {
+  const s = S, v = violation;
+  if (!s.plugOut) return v('critical', 'The service plug is still in. The HV system has not been de-energized.');
+  if (waitLeft() > 0) return v('critical', `The SI requires ${SI.wait} minutes after removing the service plug for the capacitors to drain. The wait isn't over.`);
+  const m = s.meas;
+  if (!m.some(x => x.pt !== 'aux')) return v('critical', 'You haven\'t measured anything. "De-energized" means verified with a meter, never assumed.');
+  // find the last valid live-dead-live: prove → 3 points → prove, same meter, DC range
+  const last = m[m.length - 1];
+  if (last.pt !== 'aux') return v('critical', 'Re-prove the meter on the known live source after measuring (live-dead-live). If the meter failed during the test, every zero means nothing.');
+  if (!(last.dial === 'vdc' && last.r > 10)) return v('critical', `Your last check on the known live source read ${last.r} ${last.dial === 'vac' ? 'V AC' : 'V'}, not about 12.6 V. ${last.dial !== 'vdc' ? 'You were on the wrong range.' : 'The meter has failed, so your zeros can\'t be trusted.'} Fix it, then repeat live-dead-live.`);
+  let i = m.length - 2; const seen = {};
+  while (i >= 0 && m[i].pt !== 'aux') { if (!(m[i].pt in seen)) seen[m[i].pt] = m[i]; i--; }
+  if (i < 0) return v('critical', 'Prove the meter on a known live source BEFORE measuring the HV points, too (live-dead-live).');
+  const first = m[i];
+  if (!(first.dial === 'vdc' && first.r > 10)) return v('critical', `Your first check on the known live source read ${first.r} ${first.dial === 'vac' ? 'V AC' : 'V'}. A meter that can't read 12 V can't prove anything is 0 V. Fix the range or get another meter, then repeat live-dead-live.`);
+  for (const p of ['pn', 'pc', 'nc']) if (!seen[p]) return v('critical', `Measure all three points between your two known-live checks: HV+ to HV−, HV+ to chassis and HV− to chassis. Missing: ${PTS[p]}.`);
+  for (const p of ['pn', 'pc', 'nc']) {
+    const x = seen[p];
+    if (x.dial !== 'vdc') return v('critical', `You measured ${PTS[p]} on the AC range. The HV bus is DC, and an AC range can read about 0 on a live DC circuit. Use V DC.`);
+    if (x.meter !== last.meter || x.meter !== first.meter) return v('critical', 'Use the same meter for the whole live-dead-live sequence.');
+    if (x.r >= SI.zero) return v('critical', `${PTS[p]} read ${x.r} V. That is not 0 V. Don't touch anything: wait longer, re-measure, and get your instructor if it stays above 0.`);
+  }
+  if (!s.loto) return v('major', 'Lock out and tag the service plug before you declare the vehicle safe, so nobody reinstalls it while you work.');
+  return null;
+}
+
+/* ================= feedback / log ================= */
+function logLine(cls, html) { S.log.unshift({ cls, html }); }
+function ok(text) { logLine('ok', text); }
+function err(v, action) {
+  const s = S;
+  if (s.mode === 'learn') { toast(v.msg, 'bad'); logLine(v.sev, `<b class="t">${v.sev}</b>${v.msg}`); renderAll(); return; }
+  s.errs[v.sev]++; s.errList.push(`${v.sev.toUpperCase()}: ${action}. ${v.msg}`);
+  logLine(v.sev, `<b class="t">${v.sev}</b>${action}: ${v.msg}${s.mode === 'practice' ? ' <i>(Not done. Try another step.)</i>' : ''}`);
+  if (s.mode === 'check' && v.sev === 'critical') { s.failed = v; s.tEnd = Date.now(); renderAll(); openFail(v, action); return; }
+  toast(v.sev === 'critical' ? 'STOP: critical safety error' : v.sev === 'major' ? 'Procedure error' : 'Not needed yet', 'bad');
+  renderAll();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+
+/* ================= Learn mode ================= */
+const LEARN = [
+  { act: 'si', why: 'Every hybrid and EV is different: where the service plug is, the order of steps, the wait time and the test points. Always start with the service information (SI) for the vehicle in front of you.' },
+  { act: 'signs', why: 'Mark the area so nobody walks in, touches the car, or plugs something back in while it is open.' },
+  { act: 'buddy', why: 'If you are shocked, your muscles can lock onto the conductor. A trained second person uses an insulated rescue hook to pull you free without becoming a second victim.' },
+  { act: 'jewelry', why: 'Rings and watches conduct, can arc-weld themselves to terminals, and can puncture glove rubber.' },
+  { act: 'readyOff', why: 'READY means the HV system is enabled and the contactors are closed. Turn it off before anything else on the vehicle.' },
+  { act: 'keyAway', why: 'With a smart key nearby, the system can be powered back up by accident, or by a remote start.' },
+  { act: 'auxNeg', why: 'The 12 V battery powers the modules and the coils that close the HV contactors. Disconnecting it keeps them open. Negative first: if your wrench touches the body, nothing happens.',
+    mc: { q: 'The 12 V battery is disconnected. Is the high-voltage system safe now?', opts: ['Yes. Without 12 V, the HV system can\'t run.', 'No. The HV battery is still fully charged, and HV is still present on its side of the contactors.'], a: 1, why: 'Disconnecting the 12 V does NOT de-energize HV. That takes the service plug, the wait, and a verified 0 V.' } },
+  { act: 'gloveInsp', why: 'Inspect HV gloves every single time: class rating, test date, a visual check, and an air test. Open the inspection and do all four checks. (These gloves have a problem.)' },
+  { act: 'gloveNew', why: 'Rejected gloves get tagged out of service. Get a different pair.' },
+  { act: 'gloveInsp', why: 'Inspect the new pair the same way. Never assume a pair is good.' },
+  { act: 'gloveOn', why: 'Rubber gloves insulate; the leather protectors over them keep the rubber from being cut or punctured.' },
+  { act: 'glasses', why: 'An arc flash can burn your eyes. Safety glasses (or a face shield if the SI calls for one) go on before you touch HV parts.' },
+  { act: 'plugOut', why: 'The service plug splits the HV battery in the middle. With it out, the pack can\'t push current into the rest of the system. Remove it with gloves on, exactly as the SI shows.' },
+  { act: 'loto', why: 'Lock and tag it so nobody can reinstall it while you work. Keep the plug with you or in a locked box.' },
+  { act: 'wait', why: `The inverter has capacitors that can stay charged after the plug is pulled. This SI says wait ${SI.wait} minutes for them to drain. (Outside Check-off, the orange cable glows while they are still charged.)`,
+    mc: { q: 'Why wait after pulling the service plug?', opts: ['To let the HV battery cool down', 'The inverter capacitors can stay charged; the wait gives them time to drain', 'So the 12 V modules go to sleep'], a: 1, why: 'Capacitors hold a charge after the source is gone. The SI wait time covers the discharge.' } },
+  { act: 'meterInsp', why: 'Only use a meter and leads rated for the voltage: CAT III 1000 V here. Check the rating and look over the leads for cracks.' },
+  { act: 'dial:vdc', why: 'The HV bus is DC. Turn the dial to V⎓ (DC volts).',
+    mc: { q: 'Why does the meter have to be on V DC, not V AC?', opts: ['AC is more accurate', 'An AC range can read about 0 on a live DC circuit: a false "safe" reading', 'It doesn\'t matter'], a: 1, why: 'The wrong range can show 0 V on a circuit that could kill you. That is one of the things live-dead-live catches.' } },
+  { act: 'probe:aux', why: 'LIVE: prove the meter works on a known live source first. The 12 V battery posts are still live even with the cable off. You should see about 12.6 V.' },
+  { act: 'probe:pn', why: 'DEAD: measure HV+ to HV− at the inverter test points. You are looking for 0 V.' },
+  { act: 'probe:pc', why: 'Also HV+ to chassis…' },
+  { act: 'probe:nc', why: '…and HV− to chassis. All three must read 0 V.' },
+  { act: 'probe:aux', why: 'LIVE again: re-prove the meter on the known live source.',
+    mc: { q: 'Why prove the meter again after measuring 0 V?', opts: ['To double-check the 12 V battery', 'If the meter failed during the test, your zeros mean nothing. A good reading now proves it worked the whole time.', 'It is optional'], a: 1, why: 'Live-dead-live: the meter is proven before AND after, so the "dead" readings in the middle can be trusted.' } },
+  { act: 'declare', why: 'Now, and only now, the vehicle is de-energized and verified. The plug stays locked out until your instructor directs re-enable.' },
+];
+const learnStep = () => S.mode === 'learn' ? LEARN[S.step] : null;
+function learnAllows(id) {
+  const st = learnStep(); if (!st) return true;
+  if (st.mc && !S.mcOk && S.stepDone) return false;
+  if (id === 'lotoKit' && st.act === 'loto') return true;
+  return id === st.act;
+}
+function targetItem() {
+  const st = learnStep(); if (!st || S.stepDone) return null;
+  const a = st.act;
+  if (a.startsWith('dial:') || a.startsWith('probe:')) return a === 'probe:aux' ? 'aux' : a.startsWith('probe:') ? 'inverter' : 'meter';
+  if (a === 'declare') return null;
+  return ACTIONS[a]?.item;
+}
+function afterAction(id) {
+  if (S.mode === 'learn') {
+    const st = learnStep();
+    if (st && (id === st.act || (id === 'lotoKit' && st.act === 'loto'))) {
+      if (st.act === 'gloveInsp' && !S.gloves.verdict) { renderAll(); return; }
+      S.stepDone = true;
+      if (!st.mc) S.mcOk = true;
+    }
+  }
+  renderAll();
+}
+function learnNext() { if (!S.stepDone || !S.mcOk) return; S.step++; S.stepDone = false; S.mcOk = false; S.mcPick = []; S.sel = targetItem(); renderAll(); }
+
+/* ================= inspection modals ================= */
+function openGloveModal() {
+  const g = S.gloves;
+  const today = new Date();
+  const draw = () => {
+    const c = g.checks, cls = g.defect === 'class00' ? { n: '00', col: '#d9c7a1', ac: '500 V AC', dc: '750 V DC' } : { n: '0', col: '#d23b2f', ac: '1,000 V AC', dc: '1,500 V DC' };
+    const infl = c.air ? (g.defect === 'pinhole' ? .35 : 1) : 0;
+    $('#sheet').innerHTML = `<h3>Inspect HV gloves${S.glovesUsed > 1 ? ` (pair #${S.glovesUsed})` : ''}</h3><p>Do all four checks, then decide. This vehicle's SI calls for <b>${SI.gloves}</b>. Today is <b>${fmtDate(today)}</b>.</p>
+      <div class="insp"><svg viewBox="0 0 200 240" aria-hidden="true">
+        <g transform="translate(100 130) scale(${(1 + infl * .18).toFixed(2)}) translate(-100 -130)">
+        <path d="M58 220 v-88 l-16 -36 a12 12 0 0 1 22 -9 l12 24 v-58 a12 12 0 0 1 24 0 v52 v-64 a12 12 0 0 1 24 0 v64 v-56 a12 12 0 0 1 24 0 v60 v-40 a12 12 0 0 1 24 0 v78 q0 46 -26 73 z" fill="${c.air && g.defect === 'pinhole' ? '#a8352c' : '#c43a2f'}" stroke="#7a1f19" stroke-width="2"/>
+        ${c.visual && g.defect === 'cut' ? '<path d="M98 54 l10 6" stroke="#111" stroke-width="3"/><circle cx="103" cy="57" r="11" fill="none" stroke="#FFB224" stroke-width="2"/>' : ''}
+        ${c.air && g.defect === 'pinhole' ? '<circle cx="150" cy="96" r="3" fill="#111"/><circle cx="150" cy="96" r="12" fill="none" stroke="#FFB224" stroke-width="2"/><text x="160" y="84" font-size="11" fill="#FFB224">hiss</text>' : ''}
+        </g>
+        <rect x="62" y="196" width="58" height="22" rx="3" fill="${cls.col}"/><text x="91" y="211" text-anchor="middle" font-size="11" font-weight="700" fill="#111">CLASS ${c.label ? cls.n : '?'}</text>
+      </svg>
+      <div><div class="checks">
+        <button data-g="label" class="${c.label ? 'done' : ''}">1. Read the label (class and rating)</button>${c.label ? `<div class="find">Label: <b>Class ${cls.n}</b> · max use ${cls.ac} / ${cls.dc}.</div>` : ''}
+        <button data-g="date" class="${c.date ? 'done' : ''}">2. Check the test date stamp</button>${c.date ? `<div class="find">Stamped: <b>tested ${fmtDate(g.tested)}</b>. Rubber insulating gloves must be retested every 6 months.</div>` : ''}
+        <button data-g="visual" class="${c.visual ? 'done' : ''}">3. Stretch and look (cuts, cracks, swelling)</button>${c.visual ? `<div class="find">${g.defect === 'cut' ? '<b>A small cut near the index fingertip.</b>' : 'No cuts, cracks, swelling or embedded objects.'}</div>` : ''}
+        <button data-g="air" class="${c.air ? 'done' : ''}">4. Air test: roll the cuff to trap air, then squeeze</button>${c.air ? `<div class="find">${g.defect === 'pinhole' ? '<b>A faint hiss. The glove slowly goes flat.</b>' : 'It holds air. No hiss, no leaks.'}</div>` : ''}
+      </div>
+      <div class="row"><button class="btn primary" data-g="pass">Pass: safe to use</button><button class="btn hv" data-g="reject">Reject: tag it out</button><button class="btn" data-g="close">Cancel</button></div></div></div>`;
+  };
+  draw(); $('#modal').hidden = false;
+  $('#sheet').onclick = e => {
+    const b = e.target.closest('[data-g]'); if (!b) return;
+    const k = b.dataset.g;
+    if (['label', 'date', 'visual', 'air'].includes(k)) { g.checks[k] = true; draw(); return; }
+    if (k === 'close') { closeModal(); return; }
+    const all = ['label', 'date', 'visual', 'air'].every(x => g.checks[x]);
+    const bad = g.defect !== 'none';
+    const reason = { pinhole: 'a pinhole: they failed the air test', expired: `an expired test date (more than 6 months ago)`, class00: 'the wrong class: Class 00 is rated for 500 V AC / 750 V DC, and this vehicle\'s SI calls for Class 0', cut: 'a cut near the fingertip' }[g.defect];
+    if (S.mode === 'learn' && !all) { toast('Do all four checks first.', 'bad'); return; }
+    if (S.mode === 'learn' && k === 'reject' && !bad) { toast('Look again: these gloves pass all four checks.', 'bad'); return; }
+    if (k === 'pass') {
+      if (bad) {
+        if (S.mode === 'learn') { toast(`Look again: these gloves have ${reason}.`, 'bad'); return; }
+        closeModal(); err(violation('critical', `These gloves had ${reason}. Damaged or out-of-date gloves won't protect you.`), 'Passed defective gloves');
+        if (S.mode === 'practice') { g.verdict = null; }
+        return;
+      }
+      if (!all && S.mode !== 'learn') { S.errs.major++; S.errList.push('MAJOR: Passed gloves without doing all four checks'); logLine('major', '<b class="t">major</b>Passed gloves without doing all four checks. These happened to be fine. Do every check, every time.'); }
+      g.verdict = 'pass'; closeModal(); ok('Gloves inspected: pass.'); afterAction('gloveInsp');
+    } else {
+      g.verdict = 'reject'; closeModal();
+      if (!bad) { if (S.mode !== 'learn') { S.errs.minor++; S.errList.push('MINOR: Rejected good gloves'); } logLine('minor', '<b class="t">minor</b>These gloves were actually fine. Rejecting good gloves wastes them, but it is the safe mistake.'); }
+      else ok(`Gloves rejected: ${reason}. Tagged out of service.`);
+      afterAction('gloveInsp');
+    }
+  };
+}
+function openMeterModal() {
+  const m = S.meter;
+  const draw = () => {
+    const c = m.checks;
+    $('#sheet').innerHTML = `<h3>Inspect meter #${m.id} and leads</h3><p>This vehicle's SI calls for a <b>${SI.meter}</b>. A meter that isn't rated for the voltage can fail and arc in your hand.</p>
+      <div class="insp"><svg viewBox="0 0 200 220" aria-hidden="true"><rect x="50" y="20" width="100" height="170" rx="16" fill="#e6b82e" stroke="#7a5f12" stroke-width="3"/><rect x="64" y="36" width="72" height="34" rx="4" fill="#a9b79a"/><circle cx="100" cy="122" r="26" fill="#222" stroke="#555" stroke-width="3"/>
+        ${c.cat ? `<rect x="58" y="160" width="84" height="20" rx="3" fill="#111"/><text x="100" y="174" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${m.defect === 'catII' ? 'CAT II 600V' : 'CAT III 1000V'}</text>` : ''}
+        <path d="M70 190 C60 210 30 210 20 200" stroke="#d23b2f" stroke-width="5" fill="none"/><path d="M130 190 C140 210 170 210 180 200" stroke="#222" stroke-width="5" fill="none"/>
+        ${c.leads && m.defect === 'lead' ? '<circle cx="34" cy="206" r="10" fill="none" stroke="#FFB224" stroke-width="2"/><path d="M30 204 l6 4" stroke="#d9a35a" stroke-width="3"/>' : ''}</svg>
+      <div><div class="checks">
+        <button data-m="cat" class="${c.cat ? 'done' : ''}">1. Check the CAT rating on the meter and leads</button>${c.cat ? `<div class="find">${m.defect === 'catII' ? 'Meter and leads: <b>CAT II 600 V</b>.' : 'Meter and leads: <b>CAT III 1000 V</b> (CAT IV 600 V).'}</div>` : ''}
+        <button data-m="leads" class="${c.leads ? 'done' : ''}">2. Look over the test leads and probes</button>${c.leads ? `<div class="find">${m.defect === 'lead' ? '<b>The red lead\'s insulation is cracked near the probe; copper is showing.</b>' : 'Insulation intact, finger guards in place, tips covered.'}</div>` : ''}
+      </div><p class="find" style="margin-top:8px">A visual check can't prove the meter works. That is what the live-dead-live test is for.</p>
+      <div class="row"><button class="btn primary" data-m="pass">Pass</button><button class="btn hv" data-m="reject">Reject</button><button class="btn" data-m="close">Cancel</button></div></div></div>`;
+  };
+  draw(); $('#modal').hidden = false;
+  $('#sheet').onclick = e => {
+    const b = e.target.closest('[data-m]'); if (!b) return;
+    const k = b.dataset.m;
+    if (k === 'cat' || k === 'leads') { m.checks[k] = true; draw(); return; }
+    if (k === 'close') { closeModal(); return; }
+    const all = m.checks.cat && m.checks.leads;
+    const bad = m.defect === 'catII' || m.defect === 'lead';
+    const reason = m.defect === 'catII' ? 'a CAT II 600 V rating, too low for this system' : 'cracked lead insulation';
+    if (S.mode === 'learn' && !all) { toast('Do both checks first.', 'bad'); return; }
+    if (S.mode === 'learn' && k === 'reject' && !bad) { toast('Look again: this meter and its leads pass both checks.', 'bad'); return; }
+    if (k === 'pass') {
+      if (bad) { closeModal(); err(violation('critical', `This meter had ${reason}. It could fail and arc on the HV test points.`), 'Passed a meter that isn\'t safe for HV'); return; }
+      if (!all && S.mode !== 'learn') { S.errs.major++; S.errList.push('MAJOR: Passed the meter without both checks'); logLine('major', '<b class="t">major</b>Passed the meter without checking both the rating and the leads.'); }
+      m.verdict = 'pass'; closeModal(); ok(`Meter #${m.id} inspected: pass.`); afterAction('meterInsp');
+    } else {
+      m.verdict = 'reject'; closeModal();
+      if (!bad) { if (S.mode !== 'learn') { S.errs.minor++; S.errList.push('MINOR: Rejected a good meter'); } logLine('minor', '<b class="t">minor</b>That meter was fine. Rejecting it is the safe mistake.'); }
+      else ok(`Meter rejected: ${reason}.`);
+      afterAction('meterInsp');
+    }
+  };
+}
+function closeModal() { $('#modal').hidden = true; $('#sheet').onclick = null; }
+
+/* ================= results ================= */
+function vcode(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, '0').slice(-7); }
+function duration() { const ms = (S.tEnd || Date.now()) - S.t0, m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60; return `${m} min ${s} s`; }
+function openFail(v, action) {
+  $('#sheet').innerHTML = `<h3 style="color:#FFB3AC">Check-off stopped: critical safety error</h3><p><b>${action}.</b></p><div class="card" style="border-color:rgba(255,90,78,.6)">${v.msg}</div>
+    <p>In the shop, this mistake could injure or kill. Review it in Learn or Practice, then try the check-off again. You'll get a new random scenario.</p>
+    <div class="row"><button class="btn primary" id="again">Try again</button><button class="btn" id="toPractice">Go to Practice</button></div>`;
+  $('#modal').hidden = false;
+  $('#again').onclick = () => { closeModal(); startMode('check', true); };
+  $('#toPractice').onclick = () => { closeModal(); startMode('practice'); };
+}
+function openPracticeDone() {
+  const e = S.errs;
+  $('#sheet').innerHTML = `<h3>${e.critical + e.major === 0 ? 'Clean run!' : 'Done, with errors to review'}</h3>
+    <p>Critical: <b>${e.critical}</b> · Major: <b>${e.major}</b> · Minor: <b>${e.minor}</b> · Time: ${duration()}</p>
+    ${S.errList.length ? `<ul>${S.errList.map(x => `<li>${x}</li>`).join('')}</ul>` : '<p>No errors. You are ready to try the Check-off.</p>'}
+    <div class="row"><button class="btn primary" id="again">New practice scenario</button><button class="btn" id="toCheck">Try the Check-off</button><button class="btn" id="cl">Close</button></div>`;
+  $('#modal').hidden = false;
+  $('#again').onclick = () => { closeModal(); startMode('practice', true); };
+  $('#toCheck').onclick = () => { closeModal(); startMode('check'); };
+  $('#cl').onclick = closeModal;
+}
+function openCert() {
+  const s = S, e = s.errs, pass = e.critical === 0 && e.major === 0, when = new Date(s.tEnd);
+  const sum = `${s.name}|${when.toISOString().slice(0, 16)}|${pass ? 'PASS' : 'NOPASS'}|${e.major}|${e.minor}|${s.glovesRejected.join(',')}|${s.metersRejected.join(',')}`;
+  const found = [...s.glovesRejected.filter(d => d !== 'none').map(d => `Rejected gloves (${{ pinhole: 'pinhole', expired: 'expired test date', class00: 'wrong class', cut: 'cut' }[d]})`),
+    ...s.metersRejected.filter(d => d !== 'none').map(d => `Replaced meter (${{ catII: 'CAT II rating', lead: 'cracked lead', dead: 'failed known-live check', dies: 'failed the re-prove' }[d]})`)];
+  $('#sheet').innerHTML = `<div id="cert">
+    <h2>${pass ? 'HV De-energize Check-off: PASS' : 'HV De-energize Check-off: NOT PASSED'}</h2>
+    <div style="color:#555">STECH Automotive Technology · simulated procedure on a fictional training hybrid</div>
+    <table>
+      <tr><td>Student</td><td><b>${esc(s.name) || '—'}</b></td></tr>
+      <tr><td>Date / time</td><td>${when.toLocaleString()}</td></tr>
+      <tr><td>Time taken</td><td>${duration()}</td></tr>
+      <tr><td>Result</td><td><b>${pass ? 'Pass: no critical or major errors' : `Not passed: ${e.major} major error(s)`}</b></td></tr>
+      <tr><td>Minor notes</td><td>${e.minor ? s.errList.filter(x => x.startsWith('MINOR')).map(x => esc(x.replace('MINOR: ', ''))).join('<br>') : 'None'}</td></tr>
+      ${e.major ? `<tr><td>Major errors</td><td>${s.errList.filter(x => x.startsWith('MAJOR')).map(x => esc(x.replace('MAJOR: ', ''))).join('<br>')}</td></tr>` : ''}
+      <tr><td>Hazards found</td><td>${found.length ? found.join('<br>') : 'None in this scenario'}</td></tr>
+      <tr><td>Verification code</td><td style="font-family:monospace;font-size:15px">${vcode(sum)}</td></tr>
+    </table>
+    <p style="font-size:12px;color:#555;margin:0">This record shows the student completed the simulated procedure. It does not authorize HV work. Hands-on HV service at STECH requires instructor oversight, following the OEM service information for the actual vehicle.</p>
+    <div class="sig"><div>Student signature</div><div>Instructor signature / date</div></div>
+  </div>
+  <div class="row"><button class="btn primary" id="print">Print or save as PDF</button><button class="btn" id="again">New check-off</button><button class="btn" id="cl">Close</button></div>`;
+  $('#modal').hidden = false;
+  $('#print').onclick = () => window.print();
+  $('#again').onclick = () => { closeModal(); startMode('check', true); };
+  $('#cl').onclick = closeModal;
+}
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function openCheckStart() {
+  $('#sheet').innerHTML = `<h3>HV de-energize check-off</h3>
+    <p>Do the whole procedure on your own, in a safe order. There are <b>no hints</b>. The gloves and meter may or may not be good: inspect them.</p>
+    <ul><li><b>Critical</b> error (could injure or kill): the check-off stops.</li><li><b>Major</b> error (procedure): you won't pass, but you can finish.</li><li><b>Minor</b> (wasteful, not unsafe): noted only.</li></ul>
+    <p>When you finish, you get a record to print for your instructor.</p>
+    <label for="nm" class="k" style="display:block;margin:10px 0 6px">Your name</label><input type="text" id="nm" autocomplete="name" value="${esc(S.name || '')}">
+    <div class="row"><button class="btn primary" id="go">Start check-off</button><button class="btn" id="cl">Cancel</button></div>`;
+  $('#modal').hidden = false; setTimeout(() => $('#nm').focus(), 30);
+  $('#go').onclick = () => { const n = $('#nm').value.trim(); if (!n) { toast('Enter your name for the record.', 'bad'); return; } closeModal(); S.name = n; S.t0 = Date.now(); renderAll(); };
+  $('#cl').onclick = () => { closeModal(); startMode('practice'); };
+}
+
+/* ================= notebook rendering ================= */
+const PROG = [['si', 'Procedure looked up'], ['signs', 'Barrier & signs'], ['buddy', 'Second person'], ['jewelry', 'Jewelry off'], ['readyOff', 'READY off'], ['keyAway', 'Key away'], ['auxOff', '12 V − off'],
+  ['glovesOn', 'Inspected gloves on'], ['glassesOn', 'Glasses on'], ['plugOut', 'Service plug out'], ['loto', 'Locked out'], ['waited', 'Wait over'], ['meterOk', 'Meter inspected'], ['ldl', 'Live-dead-live done']];
+function progFlags() {
+  const s = S, m = s.meas;
+  return { ...s, waited: s.plugT != null && waitLeft() <= 0, meterOk: s.meter.verdict === 'pass', ldl: s.done };
+}
+function renderNB() {
+  const s = S, nb = $('#nb'), keep = nb.scrollTop;
+  $('#nbTitle').textContent = { learn: 'Learn', practice: 'Practice', check: 'Check-off' }[s.mode];
+  $('#nbR').innerHTML = s.mode === 'check' ? `<span class="chip">${esc(s.name || 'no name')}</span>` : s.mode === 'practice' ? `<span class="chip">${s.errs.critical} critical · ${s.errs.major} major</span>` : `<span class="chip">Step ${Math.min(s.step + 1, LEARN.length)} of ${LEARN.length}</span>`;
+  let h = '';
+  if (s.mode === 'learn') {
+    const st = learnStep();
+    if (st) {
+      const a = st.act, what = a.startsWith('dial:') ? 'Meter: set the dial to V⎓' : a.startsWith('probe:') ? 'Meter: measure ' + PTS[a.slice(6)] : a === 'declare' ? 'Declare the vehicle de-energized and verified' : ACTIONS[a].label;
+      h += `<div class="card step"><span class="k">Step ${s.step + 1}: ${s.stepDone ? 'done' : 'do this'}</span><h3>${what}</h3><p>${st.why}</p>`;
+      if (s.stepDone && st.mc) {
+        h += `<p><b>${st.mc.q}</b></p><div class="mc">${st.mc.opts.map((o, i) => `<button data-mc="${i}" class="${s.mcOk && i === st.mc.a ? 'right' : s.mcPick.includes(i) ? 'wrong' : ''}"${s.mcOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${s.mcOk ? `<div class="why">${st.mc.why}</div>` : ''}`;
+      }
+      if (s.stepDone && s.mcOk) h += `<button class="btn primary" data-act="next">${s.step === LEARN.length - 1 ? 'Finish' : 'Next step'}</button>`;
+      h += `</div>`;
+    } else {
+      h += `<div class="card step"><span class="k">Complete</span><h3>You've walked through the whole procedure</h3><p>Next, try <b>Practice</b>: a random scenario where the gloves or meter might be bad and nothing is highlighted. Then the <b>Check-off</b>.</p><button class="btn primary" data-act="toPractice">Go to Practice</button></div>`;
+    }
+  }
+  if (s.sel) {
+    const I = ITEMS[s.sel], acts = ITEM_ACTS[s.sel] || [], tgt = learnStep()?.act;
+    h += `<div class="card"><span class="k" style="color:var(--dim)">Selected</span><h3>${I.name}</h3><p class="find" style="margin:0 0 8px">${I.desc}</p>`;
+    if (acts.length) h += `<div class="acts">${acts.map(a => `<button data-a="${a}" class="${s.mode === 'learn' && tgt === a ? 'hl' : ''}">${ACTIONS[a].label}</button>`).join('')}</div>`;
+    if (s.sel === 'si' && s.si) h += `<div style="margin-top:10px">${siCard()}</div>`;
+    if (s.sel === 'inverter' || s.sel === 'aux' || s.sel === 'meter') h += `<p class="find" style="margin:8px 0 0">Use the meter card below to measure.</p>`;
+    h += `</div>`;
+  } else h += `<p class="find">Select anything in the bay or on the workbench to see what you can do with it.</p>`;
+  h += meterCard();
+  if (s.mode === 'practice') {
+    const f = progFlags();
+    h += `<h4>Progress</h4><div class="prog">${PROG.map(([k, n]) => `<span class="${f[k] ? 'y' : ''}"><i>${f[k] ? '✓' : ''}</i>${n}</span>`).join('')}</div>`;
+  }
+  if (s.log.length) h += `<h4>Log</h4><ul class="log">${s.log.slice(0, 30).map(l => `<li class="${l.cls}">${l.cls === 'ok' ? '<b class="t">✓</b>' : ''}${l.html}</li>`).join('')}</ul>`;
+  nb.innerHTML = h; nb.scrollTop = keep;
+  $('#decl').innerHTML = s.done ? `<span class="chip on">De-energized and verified</span>${s.mode !== 'learn' ? '<button class="btn" data-act="restart">New scenario</button>' : ''}` :
+    `<button class="btn hv" data-act="declare"${s.failed ? ' disabled' : ''}>Declare de-energized &amp; verified</button>${s.mode === 'check' && s.name ? `<span class="chip">Time ${duration()}</span>` : ''}`;
+}
+function siCard() {
+  return `<div class="card" style="background:#0d1520;border-color:#24435f"><span class="k" style="color:#8fbfe3">SI · ${SI.name}</span>
+    <p class="find" style="margin:6px 0">${SI.battery}; ${SI.system}. Gloves: ${SI.gloves}. Meter: ${SI.meter}. Wait after removing the service plug: <b>${SI.wait} minutes</b>. Verified 0 V: under ${SI.zero} V on all three test-point pairs.</p>
+    <ol style="margin:0;padding-left:18px;font-size:13px">${SI.steps.map(x => `<li>${x}</li>`).join('')}</ol></div>`;
+}
+function meterCard() {
+  const s = S, tgt = learnStep()?.act || '';
+  const unit = s.dial === 'vdc' ? 'V DC' : s.dial === 'vac' ? 'V AC' : s.dial === 'ohm' ? 'Ω' : '';
+  const disp = s.dial === 'off' ? '' : s.reading == null ? (s.dial === 'ohm' ? 'OL' : '0.0') : s.reading;
+  return `<div class="card"><span class="k" style="color:var(--dim)">Meter #${s.meter.id}${s.meter.verdict ? ` · ${s.meter.verdict === 'pass' ? 'inspected' : 'rejected'}` : ' · not inspected'}</span>
+    <div class="meter" style="margin-top:8px"><div><div class="lcd"><small>${s.rdLabel ? esc(s.rdLabel) : '&nbsp;'}</small>${disp}<span style="font-size:13px"> ${s.dial === 'off' ? '' : unit}</span></div><div class="mmeta">Dial: ${{ off: 'OFF', vdc: 'V⎓', vac: 'V~', ohm: 'Ω' }[s.dial]}</div></div>
+    <div><div class="dial" role="group" aria-label="Meter dial">${[['off', 'OFF'], ['vdc', 'V⎓'], ['vac', 'V~'], ['ohm', 'Ω']].map(([k, n]) => `<button data-dial="${k}" aria-pressed="${s.dial === k}" class="${tgt === 'dial:' + k ? 'hl' : ''}" title="${{ off: 'Off', vdc: 'DC volts', vac: 'AC volts', ohm: 'Resistance' }[k]}">${n}</button>`).join('')}</div>
+    <div class="probes">${Object.entries(PTS).map(([k, n]) => `<button data-probe="${k}" class="${tgt === 'probe:' + k ? 'hl' : ''}">${n}</button>`).join('')}</div></div></div></div>`;
+}
+function renderAll() { renderScene(); renderNB(); }
+
+/* ================= events ================= */
+$('#scene').addEventListener('click', e => { const g = e.target.closest('.it'); if (!g) return; S.sel = g.dataset.item; renderAll(); });
+$('#scene').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.it')) { e.preventDefault(); S.sel = e.target.closest('.it').dataset.item; renderAll(); const b = $('#nb .acts button'); if (b) b.focus(); } });
+$('#nb').addEventListener('click', e => {
+  const a = e.target.closest('[data-a]'); if (a) return doAction(a.dataset.a);
+  const d = e.target.closest('[data-dial]'); if (d) return setDial(d.dataset.dial);
+  const p = e.target.closest('[data-probe]'); if (p) return probe(p.dataset.probe);
+  const mc = e.target.closest('[data-mc]');
+  if (mc && !S.mcOk) { const n = +mc.dataset.mc, st = learnStep(); if (n === st.mc.a) S.mcOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderNB(); return; }
+  const x = e.target.closest('[data-act]');
+  if (x) { if (x.dataset.act === 'next') learnNext(); if (x.dataset.act === 'toPractice') startMode('practice'); }
+});
+$('#decl').addEventListener('click', e => { const x = e.target.closest('[data-act]'); if (!x) return; if (x.dataset.act === 'declare') declare(); if (x.dataset.act === 'restart') startMode(S.mode, true); });
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) startMode(m, true); });
+$('#restart').addEventListener('click', () => startMode(S.mode, true));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').hidden && !S.done && !S.failed && !(S.mode === 'check' && !S.name)) closeModal(); });
+
+function startMode(m) {
+  S = newScenario(m);
+  document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m));
+  closeModal();
+  if (m === 'learn') S.sel = targetItem();
+  renderAll();
+  if (m === 'check') openCheckStart();
+  try { history.replaceState(null, '', '#' + m); } catch (e) {}
+}
+
+/* ================= clock ================= */
+let lastT = performance.now(), lastTxt = '', lastGlow = -1;
+function tick(now) {
+  requestAnimationFrame(tick);
+  const dt = Math.min(.25, (now - lastT) / 1000); lastT = now;
+  if (!S || S.done || S.failed) return;
+  S.simT += dt * (S.waitFast && waitLeft() > 0 ? TIME_SCALE : 1);
+  if (S.waitFast && waitLeft() <= 0) { S.waitFast = false; logLine('ok', `${SI.wait}-minute wait complete.`); renderAll(); }
+  const t = timerText(); if (t !== lastTxt) { lastTxt = t; const el = document.getElementById('timerTxt'); if (el) el.textContent = t; }
+  const g = Math.round(busV() / 28); if (g !== lastGlow && S.mode !== 'check') { lastGlow = g; renderScene(); }
+}
+const hm = location.hash.slice(1);
+startMode(['learn', 'practice', 'check'].includes(hm) ? hm : 'learn');
+requestAnimationFrame(tick);
+window.__H = { get S() { return S; }, doAction, setDial, probe, declare, startMode, tickSim(sec) { S.simT += sec; renderAll(); }, LEARN, learnNext, declareProblem };
+</script>
+</body>
+</html>
