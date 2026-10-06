@@ -219,13 +219,40 @@ const TIME_SCALE = 75;   // the wait runs 75× faster than real time (10 min ≈
 
 /* ================= state ================= */
 let S;
+/* Shuffle bags for Practice and Check-off: every glove defect and every meter defect comes up once per
+   round, in a random order, before any repeat. Gloves and meter draw from separate bags, so either,
+   both or neither can be bad. A draw counts once the student has used that scenario. Saved per browser. */
+const GEAR = { gloves: ['none', 'pinhole', 'expired', 'class00', 'cut'], meter: ['none', 'catII', 'lead', 'dead', 'dies'] };
+const BAG_KEY = 'hv-gear-bag-v1';
+let BAGS = {};
+try { BAGS = JSON.parse(localStorage.getItem(BAG_KEY)) || {}; } catch (e) { BAGS = {}; }
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function gearBag(k) {
+  const ids = GEAR[k]; let g = BAGS[k];
+  if (!(g && Array.isArray(g.order) && g.order.length === ids.length && ids.every(id => g.order.includes(id)) && g.i >= 0)) g = BAGS[k] = { order: shuffled(ids), i: 0 };
+  if (g.i >= g.order.length) { g.order = shuffled(ids, g.order[g.order.length - 1]); g.i = 0; }
+  return g;
+}
+const peekGear = k => { const g = gearBag(k); return g.order[g.i]; };
+function commitGear(s) {   // advance both bags past this scenario's gear, once, if the student used it
+  if (!s || s.mode === 'learn' || s.gearDone) return;
+  if (!(s.log.length || s.done || s.failed || Object.keys(s.gloves.checks).length || Object.keys(s.meter.checks).length || s.glovesUsed > 1 || s.meter.id > 1)) return;
+  s.gearDone = true;
+  for (const k of ['gloves', 'meter']) { const g = gearBag(k); if (g.order[g.i] === s.gear[k]) g.i++; }
+  try { localStorage.setItem(BAG_KEY, JSON.stringify(BAGS)); } catch (e) {}
+}
 function newScenario(mode) {
   const today = new Date();
-  const gDefect = mode === 'learn' ? 'pinhole' : rnd(['none', 'none', 'none', 'none', 'pinhole', 'pinhole', 'expired', 'expired', 'class00', 'cut']);
-  const mDefect = mode === 'learn' ? 'none' : rnd(['none', 'none', 'none', 'none', 'none', 'catII', 'catII', 'lead', 'dead', 'dies']);
+  const gDefect = mode === 'learn' ? 'pinhole' : peekGear('gloves');
+  const mDefect = mode === 'learn' ? 'none' : peekGear('meter');
   const pair = d => ({ defect: d, tested: new Date(today - (d === 'expired' ? 200 + Math.random() * 120 : 15 + Math.random() * 110) * DAY), checks: {}, verdict: null });
   return {
-    mode, sel: null, simT: 0, t0: Date.now(), done: false, failed: null, name: S?.name || '',
+    mode, gear: { gloves: gDefect, meter: mDefect }, gearDone: false, sel: null, simT: 0, t0: Date.now(), done: false, failed: null, name: S?.name || '',
     si: false, signs: false, buddy: false, jewelry: false, readyOff: false, keyAway: false, auxOff: false,
     glovesOn: false, glassesOn: false, plugOut: false, plugT: null, loto: false, waitFast: false,
     gloves: pair(gDefect), glovesUsed: 1, glovesRejected: [],
@@ -456,7 +483,7 @@ function declare() {
   if (prob) { err(prob, 'Declare the vehicle de-energized and verified'); return; }
   S.done = true; S.tEnd = Date.now();
   logLine('ok', '<b>Declared de-energized and verified.</b> The work area stays locked out until your instructor directs re-enable.');
-  afterAction('declare');
+  afterAction('declare'); commitGear(S);
   if (S.mode === 'check') openCert(); else if (S.mode === 'practice') openPracticeDone();
 }
 function declareProblem() {
@@ -653,6 +680,7 @@ function closeModal() { $('#modal').hidden = true; $('#sheet').onclick = null; }
 function vcode(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(7, '0').slice(-7); }
 function duration() { const ms = (S.tEnd || Date.now()) - S.t0, m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60; return `${m} min ${s} s`; }
 function openFail(v, action) {
+  commitGear(S);
   $('#sheet').innerHTML = `<h3 style="color:#FFB3AC">Check-off stopped: critical safety error</h3><p><b>${action}.</b></p><div class="card" style="border-color:rgba(255,90,78,.6)">${v.msg}</div>
     <p>In the shop, this mistake could injure or kill. Review it in Learn or Practice, then try the check-off again. You'll get a new random scenario.</p>
     <div class="row"><button class="btn primary" id="again">Try again</button><button class="btn" id="toPractice">Go to Practice</button></div>`;
@@ -786,9 +814,11 @@ $('#nb').addEventListener('click', e => {
 $('#decl').addEventListener('click', e => { const x = e.target.closest('[data-act]'); if (!x) return; if (x.dataset.act === 'declare') declare(); if (x.dataset.act === 'restart') startMode(S.mode, true); });
 $('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) startMode(m, true); });
 $('#restart').addEventListener('click', () => startMode(S.mode, true));
+addEventListener('pagehide', () => commitGear(S));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').hidden && !S.done && !S.failed && !(S.mode === 'check' && !S.name)) closeModal(); });
 
 function startMode(m) {
+  commitGear(S);
   S = newScenario(m);
   document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m));
   closeModal();

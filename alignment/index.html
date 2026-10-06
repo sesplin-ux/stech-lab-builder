@@ -136,6 +136,11 @@ input[type=range]{width:100%;accent-color:var(--accent);height:20px}
 .score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
 .score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 .score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
 .order{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
 .order span{padding:4px 8px;border-radius:999px;border:1px solid var(--line-2);font:600 10.5px/1 var(--f-label);letter-spacing:.08em;color:var(--dim)}
 .order span.done{border-color:rgba(61,220,151,.5);color:#C9F7E2}
@@ -475,9 +480,34 @@ function alignHTML() {
 }
 
 /* ================= diagnose ================= */
+/* Shuffle bag: every case type comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'alignment-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You've solved all ${n} case types once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
 function newCase() {
-  let type = CASE_POOL[Math.floor(Math.random() * CASE_POOL.length)];
-  if (S.dx && S.dx.type === type) type = CASE_POOL[(CASE_POOL.indexOf(type) + 1 + Math.floor(Math.random() * 5)) % CASE_POOL.length];
+  const type = bagNext();
   const side = Math.random() < .5 ? 'L' : 'R', C = CAUSES[type];
   S.A = BASE(); S.bent = null; S.crown = false;
   const a = S.A; C.make(a, side);
@@ -493,7 +523,7 @@ function submitDx() {
   if (C.side && !d.pside) { toast('Pick which side.', 'bad'); return; }
   const ok = d.pick === d.type && (!C.side || d.pside === d.side);
   d.tries++;
-  if (ok) { d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; if (!d.rack) S.dxScore.expert++; toast('✓ Correct', 'good'); }
+  if (ok) { d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; if (!d.rack) S.dxScore.expert++; bagSolved(d.type, d.tries); toast('✓ Correct', 'good'); }
   else d.wrong = d.pick === d.type ? 'Right cause, wrong side.' : !d.rack ? 'Not quite. If the tires and road test aren\'t enough, put it on the rack.' : 'Not quite. Compare the rack numbers with the tire wear and road test.';
   renderPanel(); renderViews();
 }
@@ -501,7 +531,7 @@ function caseHTML() {
   const d = S.dx; if (!d) return '';
   const C = CAUSES[d.type], sc = S.dxScore, concern = typeof C.concern === 'function' ? C.concern(d.side) : C.concern;
   let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${concern}</p><p class="dim">Look at the tire wear (15k miles since the tires were new) and the road test. Put it on the rack only if you need the numbers.</p></div>
-    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Solved without the rack</small><b>${sc.expert}</b></div><div><small>Case</small><b>${d.n}</b></div></div>`;
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Solved without the rack</small><b>${sc.expert}</b></div><div><small>Case</small><b>${d.n}</b></div></div>${bagHTML()}`;
   if (!d.solved) {
     h += `<div class="nav" style="margin:0 0 6px"><button class="btn" data-act="gauge"${d.gauge ? ' disabled' : ''}>${d.gauge ? 'Pressure checked' : 'Check tire pressure'}</button><button class="btn" data-act="rack"${d.rack ? ' disabled' : ''}>${d.rack ? 'On the rack' : 'Put it on the rack'}</button><button class="btn" data-act="tryadj"${d.rack ? '' : ' disabled'} title="Try to bring camber into spec with the adjusters">Try to adjust camber</button></div>${d.adj ? `<div class="msg">${d.adj}</div>` : ''}<h4>Your diagnosis</h4><div class="cards">`;
     for (const [k, Cx] of Object.entries(CAUSES)) {
@@ -511,7 +541,7 @@ function caseHTML() {
     h += `</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
     if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
   } else {
-    h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}${d.rack ? '.' : ', without the rack!'}</b> ${C.name}${C.side ? ` (${d.side === 'L' ? 'left' : 'right'})` : ''}.</div><h4>The evidence</h4><ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${EVIDENCE[d.type].map(e => `<li>${e}</li>`).join('')}</ul><div class="nav"><button class="btn primary" data-act="newcase">Next case</button></div>`;
+    h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}${d.rack ? '.' : ', without the rack!'}</b> ${C.name}${C.side ? ` (${d.side === 'L' ? 'left' : 'right'})` : ''}.</div><h4>The evidence</h4><ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${EVIDENCE[d.type].map(e => `<li>${e}</li>`).join('')}</ul><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
   }
   return h;
 }
