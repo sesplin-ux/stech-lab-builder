@@ -141,6 +141,7 @@ const I = {
   hybrid:   '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="6.5" r="1.3"/><circle cx="16.8" cy="14.8" r="1.3"/><circle cx="7.2" cy="14.8" r="1.3"/>',
   diff:     '<path d="M2 12h6M16 12h6"/><rect x="8" y="7" width="8" height="10" rx="2"/><path d="M12 17v5M10 9.5h4M10 14.5h4"/>',
   scope:    '<rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="M5 14h3l1.5-5 2.5 8 2-6 1 3h4"/>',
+  hyd:      '<rect x="2" y="9" width="20" height="6" rx="1.5"/><path d="M7 9v6M11 9v6M16 9v6M5 9V4h4M18 15v5h-4"/>',
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
 
@@ -206,6 +207,10 @@ const TOOLS = [
     name: 'Planetary Gear Sandbox',
     desc: 'Pick the input, held and output members and see the ratio and direction. Follow power flow through a 4L60-E and an 8-speed, then find failed clutches.',
     tags: ['A2', 'Diagnose'], keys: 'planetary gearset sun ring carrier clutch band apply chart 4l60e 8hp automatic' },
+  { id: 'at-hydraulics', area: 'trans', href: 'at-hydraulics/', icon: 'hyd', c: '#B48CFF',
+    name: 'AT Hydraulic Flow',
+    desc: 'Follow transmission fluid from the pump through the regulator, manual valve, solenoids and shift valves to the clutches and bands, and watch the gears respond. Zoom into spool valves, then diagnose stuck valves, dead solenoids and leaking seals.',
+    tags: ['A2', 'Diagnose'], keys: 'automatic transmission hydraulic valve body pump pressure regulator line pressure manual valve shift valve shift solenoid pcs accumulator servo band clutch seal leak 4l60e 8hp mechatronic' },
   { id: 'differential', area: 'trans', href: 'differential/', icon: 'diff', c: '#B48CFF',
     name: 'Differential Visualizer',
     desc: 'Drive a truck with an open, limited-slip or locking diff, traction control and 4WD on ice, in turns and with a wheel in the air. Look inside in 2D or 3D, read gear patterns, set up a ring and pinion, and diagnose diff noises.',

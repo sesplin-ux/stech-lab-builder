@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AT Hydraulic Flow</title>
+<meta name="description" content="Watch transmission fluid travel from the pump through the pressure regulator, manual valve, solenoids and shift valves to apply the clutches and bands, and see the gear ratio that results. GM 4L60-E and a ZF 8HP-style 8-speed, with zoomable spool valves, guided lessons and hydraulic diagnosis.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. Views: hydraulic schematic
+   (click a part to zoom), gear train, apply chart, notebook. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --sun:#4FA3E3; --car:#3DDC97; --ring:#FFB224; --pin:#9FB3C8;
+  --o-line:#FF5A4E; --o-sig:#4FA3E3; --o-range:#FFB224; --o-apply:#3DDC97; --o-suct:#8C7BE0;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.seg.big button{padding:8px 12px;font-size:12px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn.on{border-color:var(--accent);color:#CFE8F8}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,350px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);grid-template-rows:minmax(0,2.15fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vbox{flex:1;min-height:0;padding:0 8px 8px;position:relative}
+.vbox svg{width:100%;height:100%;display:block}
+.schScroll{width:100%;height:100%}
+#pSch{grid-column:1/-1}
+.legend{display:flex;gap:9px;flex-wrap:wrap}
+.lg{display:inline-flex;align-items:center;gap:5px;font:600 9.5px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.lg i{width:14px;height:4px;border-radius:2px;display:inline-block}
+.svgt{font:600 11.5px var(--f-label);fill:#C5CFD9;letter-spacing:.03em}
+.svgs{font:600 9px var(--f-label);fill:#6E7C8B;letter-spacing:.08em;text-transform:uppercase}
+.svgv{font:500 10px var(--f-mono);fill:#E6EDF3}
+.plab{font:700 9.5px var(--f-label);letter-spacing:.1em;text-transform:uppercase}
+/* oil passages */
+.pipe{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.pipe.base{stroke:#0B1015;stroke-width:8.5}
+.pipe.empty{stroke:#1F2A36;stroke-width:4.5}
+.pipe.oil{stroke-width:4.5}
+.pipe.oil.low{stroke-dasharray:5 4}
+.pipe.flow{stroke:#fff;stroke-opacity:.55;stroke-width:1.5;stroke-dasharray:2.5 11.5;animation:flow 1.1s linear infinite;pointer-events:none}
+@keyframes flow{to{stroke-dashoffset:-14}}
+.spd0 .pipe.flow,.spd0 .spin{animation-play-state:paused}
+.spd2 .pipe.flow{animation-duration:.45s}
+.spin{transform-box:fill-box;transform-origin:center;animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.pipe.flow,.spin{animation:none}}
+.comp{cursor:pointer}
+.comp .box{fill:#121922;stroke:#2A3644;stroke-width:1}
+.comp:hover .box{stroke:#4a5c70}
+.comp:focus{outline:none}
+.comp:focus-visible .box,.comp.sel .box{stroke:var(--accent);stroke-width:2}
+/* zoom card */
+#zoom{position:absolute;right:14px;top:4px;width:min(480px,calc(100% - 28px));max-height:calc(100% - 10px);overflow:auto;z-index:5;border-radius:14px;border:1px solid var(--line-2);background:rgba(11,16,21,.97);box-shadow:0 24px 60px -20px rgba(0,0,0,.9);padding:10px 12px 12px}
+#zoom h3{margin:0;font:600 16px/1.2 var(--f-label);color:var(--fg)}
+#zoom .zh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#zoom .zh .btn{margin-left:auto}
+#zoom p{margin:6px 0 0;font-size:13.5px;color:var(--soft)}
+#zoom svg{width:100%;height:auto;display:block;margin:4px 0}
+#zoom ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--soft)}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+.gres{padding:0 12px 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--dim)}
+.gres b.r{font:600 22px/1 var(--f-mono);color:var(--fg)}
+.chip{padding:3px 7px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft)}
+.chip.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}
+.chip.warn{border-color:rgba(255,178,36,.55);color:#FFE2A8}
+.chip.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+.chip.info{border-color:rgba(47,155,224,.55);color:#CFE8F8}
+table.rt{width:100%;border-collapse:collapse;font:500 12px/1.2 var(--f-mono)}
+table.rt th{font:600 9.5px/1.15 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:center;padding:4px 3px;border-bottom:1px solid var(--line);vertical-align:bottom}
+table.rt td{text-align:center;padding:5px 3px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.rt th:first-child,table.rt td:first-child{text-align:left;font-family:var(--f-ui);font-size:12.5px;color:var(--dim)}
+table.rt td.r,table.rt th.r{text-align:right}
+table.rt th.sol{color:#7FB8E6}
+table.rt tr.sel td{background:rgba(47,155,224,.12)}
+table.rt tr.click{cursor:pointer}
+table.rt tr.click:hover td{background:rgba(255,255,255,.03)}
+table.rt td.A span,table.rt td.H span,table.rt td.O span,table.rt td.ON span{display:inline-grid;place-items:center;min-width:20px;height:18px;border-radius:5px;padding:0 3px}
+table.rt td.A span{background:var(--accent);color:#fff;font-weight:700}
+table.rt td.H span{background:#2b6c50;color:#C9F7E2}
+table.rt td.O span{border:1px dashed var(--line-2);color:var(--dim)}
+table.rt td.ON span{background:rgba(79,163,227,.22);color:#CFE8F8;font-size:10px}
+table.rt td.OFF{color:var(--faint);font-size:10px}
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.flowtxt{font-size:13px;color:var(--soft);margin:4px 0 0;padding-left:16px}
+.flowtxt li{margin:3px 0}
+.soltab{display:grid;gap:4px}
+.soltab div{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 9px;border-radius:8px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.soltab small{color:var(--dim);font-size:11.5px;display:block}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.tests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.tests .btn{white-space:normal;text-align:center;line-height:1.2;padding:8px 8px}
+.btn.used{border-color:rgba(61,220,151,.4);color:#C9F7E2}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f > b{display:block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.find .f div{margin:2px 0}
+.find .f .bad{color:#FFC2BC}.find .f .warn{color:#FFE2A8}.find .f .ok{color:#BFEBD6}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pSch{height:560px}
+  #pGear,#pChart{height:auto;min-height:300px}
+  .main>.panel{height:640px}
+}
+@media (max-width: 700px){ .views{grid-template-columns:minmax(0,1fr)} #pSch{height:auto} .schScroll{overflow-x:auto;height:auto} #svSch{min-width:780px;height:auto} #pGear{min-height:0} #svGear{height:auto} .brand p{display:none} #zoom{left:8px;right:8px;width:auto} }
+@media (max-width: 700px){ .schScroll::after{content:'Scroll sideways to see the whole circuit';display:block;padding:4px 2px 0;font-size:11.5px;color:var(--dim);position:sticky;left:0;width:max-content} }
+/* back to the tools hub (site root) */
+.hublink{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);color:var(--soft);font:600 12px/1 var(--f-label);letter-spacing:.05em;text-decoration:none;white-space:nowrap;pointer-events:auto}
+.hublink:hover{color:var(--fg);border-color:#3a4a5c}
+.hublink:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:640px){.hublink{padding:0 8px}.hublink span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <a class="hublink" href="../" title="All STECH student tools"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>All tools</span></a>
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="9" width="20" height="6" rx="1.5"/><path d="M7 9v6M11 9v6M16 9v6M5 9V4h4M18 15v5h-4"/></svg></div>
+      <div><h1>AT Hydraulic Flow</h1><p>Pump · valve body · clutch apply</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pSch" aria-label="Hydraulic circuit">
+        <div class="phead"><h2>Hydraulic circuit</h2><span id="sSub"></span>
+          <div class="r">
+            <span class="legend" aria-label="Oil color key"><span class="lg"><i style="background:var(--o-line)"></i>Line / system</span><span class="lg"><i style="background:var(--o-range)"></i>Range</span><span class="lg"><i style="background:var(--o-sig)"></i>Signal</span><span class="lg"><i style="background:var(--o-apply)"></i>Apply</span><span class="lg"><i style="background:#1F2A36"></i>Empty</span></span>
+            <span class="seg mini" id="spd" role="group" aria-label="Animation speed"><button data-v="0">Pause</button><button data-v="1" aria-pressed="true">Slow</button><button data-v="2.5">Fast</button></span>
+          </div>
+        </div>
+        <div class="vbox spd1" id="schBox"><div class="schScroll"><svg id="svSch" viewBox="0 0 1000 490" role="img" aria-label="Simplified hydraulic schematic. Colored passages are full of pressurized oil; gray passages are empty or exhausted. Select a valve, solenoid, clutch or accumulator to zoom in."></svg></div><div id="zoom" hidden role="dialog" aria-label="Close-up view"></div></div>
+      </section>
+      <section class="panel" id="pGear" aria-label="Gear train"><div class="phead"><h2>Gear train</h2><span id="gSub"></span></div><div class="vbox"><svg id="svGear" viewBox="0 0 640 230" role="img" aria-label="Face view of the planetary gearsets, turning at their true relative speeds for the clutches and bands the oil has applied"></svg></div><div class="gres" id="gres"></div></section>
+      <section class="panel" id="pChart" aria-label="Apply chart"><div class="phead"><h2>Apply chart</h2><span id="cSub"></span></div><div class="ro" id="chart"></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const f0 = n => (Math.round(n) || 0).toLocaleString('en-US');
+const r2 = n => (Math.abs(n) < 5e-3 ? 0 : n).toFixed(2);
+const ORD = ['', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+
+/* ================= gear train (kinematics engine from #8 Planetary Gear Sandbox) ================= */
+// Willis equation per simple gearset: ωs·S + ωr·R = ωc·(S + R)
+function solve(nodes, sets, cons) {
+  const idx = Object.fromEntries(nodes.map((n, i) => [n, i])), N = nodes.length, rows = [];
+  for (const g of sets) { const r = Array(N + 1).fill(0); r[idx[g.s]] += g.S; r[idx[g.r]] += g.R; r[idx[g.c]] -= g.S + g.R; rows.push(r); }
+  for (const k of cons) { const r = Array(N + 1).fill(0); if (k.t === 'hold') r[idx[k.a]] = 1; else if (k.t === 'join') { r[idx[k.a]] += 1; r[idx[k.b]] -= 1; } else if (k.t === 'in') { r[idx[k.a]] = 1; r[N] = 1; } rows.push(r); }
+  const M = rows.map(r => r.slice()), piv = []; let row = 0;
+  for (let col = 0; col < N && row < M.length; col++) {
+    let p = row; for (let i = row; i < M.length; i++) if (Math.abs(M[i][col]) > Math.abs(M[p][col])) p = i;
+    if (Math.abs(M[p][col]) < 1e-9) continue;
+    [M[row], M[p]] = [M[p], M[row]];
+    for (let i = 0; i < M.length; i++) if (i !== row) { const f = M[i][col] / M[row][col]; for (let j = col; j <= N; j++) M[i][j] -= f * M[row][j]; }
+    piv.push(col); row++;
+  }
+  for (let i = row; i < M.length; i++) if (Math.abs(M[i][N]) > 1e-6) return { bind: true, v: {} };
+  const v = {}, free = new Set(nodes.map((_, i) => i).filter(i => !piv.includes(i)));
+  piv.forEach((col, r) => { let det = true; for (let j = 0; j < N; j++) if (j !== col && Math.abs(M[r][j]) > 1e-9 && free.has(j)) det = false; v[nodes[col]] = det ? M[r][N] / M[r][col] : null; });
+  for (const i of free) v[nodes[i]] = null;
+  return { v, bind: false };
+}
+const TRANS = {
+  '4l60e': {
+    name: 'GM 4L60-E', sub: '4-speed RWD · two simple gearsets',
+    nodes: ['in', 'out', 'is', 'irc', 'rs'],
+    sets: [{ id: 'Input set', s: 'is', c: 'out', r: 'irc', S: 34, R: 70 }, { id: 'Reaction set', s: 'rs', c: 'irc', r: 'out', S: 34, R: 78 }],
+    els: [
+      { k: 'band', n: '2-4 band', t: 'hold', a: 'rs', d: 'holds the reaction sun' },
+      { k: 'rev', n: 'Reverse input clutch', t: 'join', a: 'in', b: 'rs', d: 'drives the reaction sun' },
+      { k: 'ovr', n: 'Overrun clutch', t: 'join', a: 'in', b: 'is', d: 'drives the input sun around the sprag (engine braking)' },
+      { k: 'fwd', n: 'Forward clutch + sprag', t: 'join', a: 'in', b: 'is', ow: 'drive', d: 'drives the input sun through the forward sprag' },
+      { k: 'c34', n: '3-4 clutch', t: 'join', a: 'in', b: 'irc', d: 'drives the input ring / reaction carrier' },
+      { k: 'roll', n: 'Lo roller clutch', t: 'hold', a: 'irc', ow: 'hold', d: 'holds the reaction carrier (one-way, mechanical)' },
+      { k: 'lr', n: 'Low/reverse clutch', t: 'hold', a: 'irc', d: 'holds the reaction carrier' },
+    ],
+  },
+  '8hp': {
+    name: 'ZF 8HP-style 8-speed', sub: '8-speed RWD · four simple gearsets · 5 shift elements',
+    nodes: ['in', 'out', 's12', 'r1', 'c1r4', 'r2s3', 'r3s4', 'c3'],
+    sets: [{ id: 'Set 1', s: 's12', c: 'c1r4', r: 'r1', S: 48, R: 96 }, { id: 'Set 2', s: 's12', c: 'in', r: 'r2s3', S: 48, R: 96 },
+           { id: 'Set 3', s: 'r2s3', c: 'c3', r: 'r3s4', S: 69, R: 111 }, { id: 'Set 4', s: 'r3s4', c: 'out', r: 'c1r4', S: 23, R: 85 }],
+    els: [
+      { k: 'A', n: 'Brake A', t: 'hold', a: 's12', d: 'holds sun 1/2' },
+      { k: 'B', n: 'Brake B', t: 'hold', a: 'r1', d: 'holds ring 1' },
+      { k: 'C', n: 'Clutch C', t: 'join', a: 'in', b: 'r3s4', d: 'drives sun 4 from the input' },
+      { k: 'D', n: 'Clutch D', t: 'join', a: 'c3', b: 'out', d: 'joins carrier 3 to the output' },
+      { k: 'E', n: 'Clutch E', t: 'join', a: 'r2s3', b: 'r3s4', d: 'joins sun 3 to ring 3' },
+    ],
+    gears: { 1: ['A', 'B', 'C'], 2: ['A', 'B', 'E'], 3: ['B', 'C', 'E'], 4: ['B', 'D', 'E'], 5: ['B', 'C', 'D'], 6: ['C', 'D', 'E'], 7: ['A', 'C', 'D'], 8: ['A', 'D', 'E'] },
+  },
+};
+// one-way elements hold/drive only when needed (power on)
+function transSolve(T, applied) {
+  const els = T.els.filter(e => applied.includes(e.k));
+  const fixed = els.filter(e => !e.ow), ows = els.filter(e => e.ow);
+  const con = e => e.t === 'hold' ? { t: 'hold', a: e.a } : { t: 'join', a: e.a, b: e.b };
+  const subsets = [[]]; for (const o of ows) for (const s of subsets.slice()) subsets.push([...s, o]);
+  subsets.sort((a, b) => a.length - b.length);
+  let best = null;
+  for (const sub of subsets) {
+    const r = solve(T.nodes, T.sets, [{ t: 'in', a: 'in' }, ...fixed.map(con), ...sub.map(con)]);
+    if (r.bind || r.v.out == null) continue;
+    const okFree = ows.filter(o => !sub.includes(o)).every(o => o.ow === 'hold' ? r.v[o.a] >= -1e-6 : r.v[o.b] >= 1 - 1e-6);
+    if (!okFree) continue;
+    best = { v: r.v, holding: sub.map(o => o.k) }; break;
+  }
+  const state = {}; for (const e of T.els) if (applied.includes(e.k)) state[e.k] = e.ow ? (best && (best.holding.includes(e.k) || Math.abs((e.ow === 'hold' ? best.v[e.a] : best.v[e.b] - 1)) < 1e-6) ? 'H' : 'O') : 'A';
+  if (!best) { const r0 = solve(T.nodes, T.sets, [{ t: 'in', a: 'in' }, ...fixed.map(con)]); return { neutral: !r0.bind, bind: r0.bind, v: {}, state, ratio: null }; }
+  return { v: best.v, ratio: 1 / best.v.out, state, neutral: false, bind: false };
+}
+
+/* ================= hydraulic models ================= */
+// Circuits: t = oil type (color). Numbers are teaching values for this sim, not service specs.
+const CIRC = {
+  suction: { t: 'suct', n: 'Suction (sump to pump)' },
+  line: { t: 'line', n: 'Line pressure' }, pcs: { t: 'sig', n: 'PCS signal (regulator boost)' }, afl: { t: 'sig', n: 'Actuator feed (solenoid supply)' },
+  sigA: { t: 'sig', n: 'Signal A' }, sigB: { t: 'sig', n: 'Signal B' }, sigA12: { t: 'sig', n: 'Signal A to the 1-2 valve' }, sigA34: { t: 'sig', n: 'Signal A to the 3-4 valve' },
+  d4: { t: 'range', n: 'D4 fluid' }, d2: { t: 'range', n: 'D2 fluid' }, lo: { t: 'range', n: 'LO fluid' }, rev: { t: 'range', n: 'REV (reverse) fluid' },
+  c2: { t: 'apply', n: '2nd fluid' }, c3: { t: 'apply', n: '3rd fluid' }, c4: { t: 'apply', n: '4th apply fluid' },
+  sys: { t: 'line', n: 'System pressure' }, pilot: { t: 'sig', n: 'Pilot pressure' }, lpc: { t: 'sig', n: 'Line PC signal' },
+  sA: { t: 'sig', n: 'PC signal A' }, sB: { t: 'sig', n: 'PC signal B' }, sC: { t: 'sig', n: 'PC signal C' }, sD: { t: 'sig', n: 'PC signal D' }, sE: { t: 'sig', n: 'PC signal E' }, sPark: { t: 'sig', n: 'Park lock signal' },
+  aA: { t: 'apply', n: 'Brake A apply' }, aB: { t: 'apply', n: 'Brake B apply' }, aC: { t: 'apply', n: 'Clutch C apply' }, aD: { t: 'apply', n: 'Clutch D apply' }, aE: { t: 'apply', n: 'Clutch E apply' }, park: { t: 'apply', n: 'Park lock release' },
+};
+const OILC = { suct: '#8C7BE0', line: '#FF5A4E', sig: '#4FA3E3', range: '#FFB224', apply: '#3DDC97' };
+const ccol = c => OILC[CIRC[c].t];
+
+const L60 = {
+  ranges: ['P', 'R', 'N', 'D', '2', '1'], gears: 4,
+  solCmd(st) { if (st.range === 'D') return [[1, 1], [0, 1], [0, 0], [1, 0]][st.gear - 1]; if (st.range === '2') return [0, 1]; return [1, 1]; },
+};
+function model60(st, f) {
+  f = f || '';
+  const R = st.range, P = {}, nom = R === 'R' ? 75 : 62, low = new Set();
+  let line = nom;
+  if (f === 'low_line') line = Math.round(nom * 0.6);
+  if (f === 'pcs_open') line = R === 'R' ? 230 : 178;
+  const [cA, cB] = L60.solCmd(st); let A = !!cA, B = !!cB;
+  if (f === 'ssA_open') A = false; if (f === 'ssB_open') B = false;
+  P.suction = 1; P.pcs = f === 'pcs_open' ? 90 : 40;
+  P.d4 = 'D21'.includes(R) ? 1 : 0; P.d2 = '21'.includes(R) ? 1 : 0; P.lo = R === '1' ? 1 : 0; P.rev = R === 'R' ? 1 : 0;
+  // leaks pull line pressure down a little whenever the leaking circuit is fed
+  const LEAK = { leak_fwd: 'd4', leak_rev: 'rev' };
+  let up23 = !(B || P.d2); if (f === 'v23_stuck') up23 = false;
+  const sA12 = !up23 && A, sA34 = up23 && A;
+  let up12 = !(P.lo || sA12); if (f === 'v12_stuck') up12 = false;
+  const c2 = up12 && P.d4, c3 = up23 && c2, up34 = sA34, c4 = up34 && c3;
+  if ((f === 'leak_fwd' && P.d4) || (f === 'leak_rev' && P.rev) || (f === 'leak_c34' && c3) || (f === 'leak_servo2' && c2 && !c4)) line -= 8;
+  P.line = line; P.afl = Math.min(line, 90);
+  for (const k of ['d4', 'd2', 'lo', 'rev']) P[k] = P[k] ? line : 0;
+  P.sigA = A ? P.afl : 0; P.sigB = B ? P.afl : 0; P.sigA12 = sA12 ? P.afl : 0; P.sigA34 = sA34 ? P.afl : 0;
+  P.c2 = c2 ? line : 0; P.c3 = c3 ? line : 0; P.c4 = c4 ? line : 0;
+  const E = { fwd: P.d4, c34: P.c3, rev: P.rev, lr: Math.max(P.rev, P.lo), ovr: P.d2, band: P.c4 || (P.c2 && !P.c3 ? P.c2 : 0) };
+  const leakEl = { leak_fwd: 'fwd', leak_c34: 'c34', leak_rev: 'rev', leak_servo2: 'band' }[f];
+  if (leakEl && E[leakEl] && !(leakEl === 'band' && P.c4)) { E[leakEl] = Math.round(E[leakEl] * 0.45); low.add({ fwd: 'd4', c34: 'c3', rev: 'rev', band: 'c2' }[leakEl]); }
+  if (f === 'low_line') for (const k of Object.keys(P)) if (CIRC[k] && CIRC[k].t !== 'sig' && k !== 'suction' && P[k]) low.add(k);
+  const stt = {}, applied = [];
+  for (const [k, v] of Object.entries(E)) if (v > 0) { stt[k] = v < 0.75 * nom ? 'slip' : 'on'; applied.push(k); }
+  if (P.d4) applied.push('roll');
+  return { tk: '4l60e', st, f, P, E, stt, applied, low, nom, line, A, B, cA: !!cA, cB: !!cB, up12, up23, up34,
+    reg: f === 'low_line' ? 'low' : f === 'pcs_open' ? 'max' : 'reg', harsh: f === 'pcs_open' ? 'all' : f === 'acc12' ? '12' : '' };
+}
+const H8 = { ranges: ['P', 'R', 'N', 'D'], gears: 8 };
+function model8(st, f) {
+  f = f || '';
+  const R = st.range, nom = R === 'R' ? 120 : 90, P = { suction: 1, pilot: 70, lpc: 40 }, low = new Set();
+  let sys = nom; if (f === 'h_lowSys') sys = Math.round(nom * 0.55);
+  const cmd = R === 'R' ? ['A', 'B', 'D'] : R === 'D' ? TRANS['8hp'].gears[st.gear] : [];
+  const E = {}, stt = {}, applied = [], sol = {};
+  if (f === 'h_leakE' && cmd.includes('E')) sys -= 8;
+  P.sys = sys;
+  for (const k of 'ABCDE') {
+    sol[k] = cmd.includes(k) && !(f === 'h_pcA' && k === 'A');
+    P['s' + k] = sol[k] ? P.pilot : 0;
+    let ap = sol[k] ? sys : 0;
+    if (f === 'h_stuckD' && k === 'D') ap = sys;
+    if (f === 'h_leakE' && k === 'E' && ap) { ap = Math.round(ap * 0.45); low.add('aE'); }
+    P['a' + k] = ap; E[k] = ap;
+    if (ap > 0) { stt[k] = ap < 0.75 * nom ? 'slip' : 'on'; applied.push(k); }
+  }
+  if (f === 'h_lowSys') for (const k of ['sys', 'aA', 'aB', 'aC', 'aD', 'aE', 'park']) low.add(k);
+  P.sPark = R !== 'P' ? P.pilot : 0; P.park = R !== 'P' ? sys : 0;
+  return { tk: '8hp', st, f, P, E, stt, applied, low, nom, line: sys, cmd, sol, reg: f === 'h_lowSys' ? 'low' : 'reg', harsh: '' };
+}
+const model = (tk, st, f) => tk === '8hp' ? model8(st, f) : model60(st, f);
+function outcome(tk, st, f) {
+  const m = model(tk, st, f), res = transSolve(TRANS[tk], m.applied);
+  return { m, res, slip: Object.keys(m.stt).filter(k => m.stt[k] === 'slip') };
+}
+// normal ratio for each gear (for naming what gear the car is really in)
+const NORM = {};
+for (const tk of ['4l60e', '8hp']) {
+  const n = tk === '8hp' ? 8 : 4; NORM[tk] = [];
+  for (let g = 1; g <= n; g++) NORM[tk].push({ g, r: outcome(tk, { range: 'D', gear: g }).res.ratio });
+  NORM[tk].rev = outcome(tk, { range: 'R', gear: 1 }).res.ratio;
+}
+function gearName(tk, res) {
+  if (res.bind) return 'tie-up';
+  if (res.ratio == null) return 'neutral';
+  if (Math.abs(res.ratio - NORM[tk].rev) < 1e-3) return 'reverse';
+  const g = NORM[tk].find(x => Math.abs(x.r - res.ratio) < 1e-3);
+  return g ? ORD[g.g] : r2(res.ratio) + ':1';
+}
+
+/* ================= schematic layouts ================= */
+const pth = (c, ...pts) => ({ c, pts });
+const LAYOUT = {
+  '4l60e': {
+    comps: [
+      { id: 'sump', k: 'misc', x: 20, y: 440, w: 120, h: 36, n: 'Sump / filter' },
+      { id: 'pump', k: 'pump', x: 20, y: 360, w: 120, h: 56, n: 'Pump', s: 'engine-driven vane' },
+      { id: 'reg', k: 'valve', x: 20, y: 262, w: 140, h: 50, n: 'Pressure regulator' },
+      { id: 'pcs', k: 'sol', x: 20, y: 180, w: 140, h: 44, n: 'PCS', s: 'sets line pressure' },
+      { id: 'afl', k: 'misc', x: 170, y: 110, w: 80, h: 36, n: 'AFL valve', s: 'solenoid feed' },
+      { id: 'ssB', k: 'sol', x: 300, y: 20, w: 110, h: 36, n: 'Shift sol. B', s: '2-3' },
+      { id: 'ssA', k: 'sol', x: 450, y: 20, w: 110, h: 36, n: 'Shift sol. A', s: '1-2 / 3-4' },
+      { id: 'v23', k: 'valve', x: 420, y: 96, w: 200, h: 34, n: '2-3 shift valve' },
+      { id: 'v12', k: 'valve', x: 420, y: 196, w: 200, h: 34, n: '1-2 shift valve' },
+      { id: 'v34', k: 'valve', x: 640, y: 150, w: 140, h: 34, n: '3-4 shift valve' },
+      { id: 'man', k: 'valve', x: 220, y: 300, w: 140, h: 76, n: 'Manual valve' },
+      { id: 'acc12', k: 'acc', x: 735, y: 228, w: 60, h: 24, n: '1-2 accum.', c: 'c2' },
+      { id: 'accF', k: 'acc', x: 735, y: 266, w: 60, h: 24, n: 'Fwd accum.', c: 'd4' },
+      { id: 'acc34', k: 'acc', x: 790, y: 186, w: 60, h: 24, n: '3-4 accum.', c: 'c4' },
+      { id: 'c34', k: 'elem', x: 860, y: 40, w: 130, h: 44, n: '3-4 clutch', e: 'c34' },
+      { id: 'servo', k: 'elem', x: 860, y: 110, w: 130, h: 132, n: '2-4 servo / band', e: 'band' },
+      { id: 'fwd', k: 'elem', x: 860, y: 296, w: 130, h: 38, n: 'Forward clutch', e: 'fwd' },
+      { id: 'ovr', k: 'elem', x: 860, y: 346, w: 130, h: 34, n: 'Overrun clutch', e: 'ovr' },
+      { id: 'rev', k: 'elem', x: 860, y: 392, w: 130, h: 34, n: 'Reverse input clutch', e: 'rev' },
+      { id: 'lr', k: 'elem', x: 860, y: 438, w: 130, h: 44, n: 'Low/reverse clutch', e: 'lr' },
+    ],
+    paths: [
+      pth('suction', [80, 440], [80, 416]),
+      pth('line', [80, 360], [80, 312]), pth('line', [80, 338], [220, 338]), pth('line', [210, 338], [210, 146]),
+      pth('pcs', [90, 224], [90, 262]),
+      pth('afl', [210, 110], [210, 8], [505, 8], [505, 20]), pth('afl', [355, 8], [355, 20]),
+      pth('sigB', [355, 56], [355, 113], [420, 113]),
+      pth('sigA', [505, 56], [505, 96]),
+      pth('sigA12', [470, 130], [470, 196]),
+      pth('sigA34', [600, 130], [600, 167], [640, 167]),
+      pth('rev', [290, 376], [290, 409], [860, 409]), pth('rev', [320, 409], [320, 452], [860, 452]),
+      pth('d4', [360, 314], [860, 314]), pth('d4', [520, 314], [520, 230]), pth('d4', [765, 314], [765, 290]),
+      pth('d2', [360, 334], [840, 334], [840, 363], [860, 363]), pth('d2', [380, 334], [380, 150], [440, 150], [440, 130]),
+      pth('lo', [360, 354], [400, 354], [400, 470], [860, 470]), pth('lo', [400, 354], [400, 213], [420, 213]),
+      pth('c2', [620, 213], [860, 213]), pth('c2', [560, 196], [560, 130]), pth('c2', [765, 213], [765, 228]),
+      pth('c3', [620, 105], [640, 105], [640, 62], [860, 62]), pth('c3', [640, 105], [640, 140], [860, 140]), pth('c3', [710, 140], [710, 150]),
+      pth('c4', [780, 167], [860, 167]), pth('c4', [820, 167], [820, 186]),
+    ],
+    labels: [
+      ['line', 150, 332, 'Line'], ['afl', 262, 4, 'Actuator feed'], ['pcs', 96, 246, 'PCS'], ['sigB', 362, 108, 'Sig B'], ['sigA', 511, 82, 'Sig A'],
+      ['sigA12', 476, 170, 'Sig A'], ['sigA34', 606, 160, 'Sig A'], ['d4', 640, 309, 'D4'], ['d2', 640, 329, 'D2'], ['lo', 640, 465, 'LO'], ['rev', 640, 404, 'REV'],
+      ['c2', 650, 208, '2nd'], ['c3', 730, 57, '3rd'], ['c3', 760, 135, '3rd (release)'], ['c4', 826, 162, '4th'],
+    ],
+    ports: [['3rd release', 'c3', 140], ['4th apply', 'c4', 167], ['2nd apply', 'c2', 213]],
+  },
+  '8hp': (() => {
+    const comps = [
+      { id: 'sump', k: 'misc', x: 20, y: 440, w: 120, h: 36, n: 'Sump / filter' },
+      { id: 'pump', k: 'pump', x: 20, y: 360, w: 120, h: 56, n: 'Pump', s: 'chain-driven vane' },
+      { id: 'mpv', k: 'valve', x: 20, y: 262, w: 140, h: 50, n: 'Main pressure valve' },
+      { id: 'lpc', k: 'sol', x: 20, y: 180, w: 140, h: 44, n: 'Line PC sol.', s: 'sets system pressure' },
+      { id: 'pilot', k: 'misc', x: 20, y: 100, w: 140, h: 40, n: 'Pilot valve', s: 'solenoid feed' },
+    ], paths = [
+      pth('suction', [80, 440], [80, 416]), pth('sys', [80, 360], [80, 312]), pth('sys', [160, 287], [270, 287]), pth('sys', [270, 287], [270, 72]), pth('sys', [270, 287], [270, 472]),
+      pth('sys', [270, 120], [160, 120]), pth('pilot', [90, 100], [90, 12], [320, 12], [320, 447]), pth('pilot', [90, 140], [90, 180]), pth('lpc', [90, 224], [90, 262]),
+    ], labels = [['sys', 200, 282, 'System'], ['pilot', 200, 8, 'Pilot'], ['lpc', 96, 248, 'Line PC']];
+    'ABCDE'.split('').forEach((k, i) => {
+      const y = 30 + i * 80, el = TRANS['8hp'].els[i];
+      comps.push({ id: 'sol' + k, k: 'sol', x: 350, y, w: 100, h: 34, n: 'PC sol. ' + k });
+      comps.push({ id: 'cv' + k, k: 'valve', x: 490, y, w: 160, h: 34, n: 'Clutch valve ' + k });
+      comps.push({ id: 'el' + k, k: 'elem', x: 840, y, w: 150, h: 34, n: el.n, e: k });
+      paths.push(pth('sys', [270, y + 42], [570, y + 42], [570, y + 34]), pth('pilot', [320, y + 17], [350, y + 17]), pth('s' + k, [450, y + 17], [490, y + 17]), pth('a' + k, [650, y + 17], [840, y + 17]));
+      labels.push(['a' + k, 745, y + 12, el.n + ' apply']);
+    });
+    comps.push({ id: 'parkS', k: 'sol', x: 350, y: 430, w: 100, h: 34, n: 'Park lock sol.' }, { id: 'parkV', k: 'valve', x: 490, y: 430, w: 160, h: 34, n: 'Park lock valve' }, { id: 'parkC', k: 'elem', x: 840, y: 430, w: 150, h: 34, n: 'Park lock cylinder', e: 'park' });
+    paths.push(pth('sys', [270, 472], [570, 472], [570, 464]), pth('sPark', [450, 447], [490, 447]), pth('park', [650, 447], [840, 447]));
+    return { comps, paths, labels, ports: [] };
+  })(),
+};
+
+/* ================= spool valves (zoom view) ================= */
+// One spool geometry for every ON/OFF-type valve: lands at p..p+10, p+38..p+48, p+70..p+80 in a 140-long bore.
+// p = 20: OUT open to EX, FEED blocked.   p = 40: FEED open to OUT, EX blocked.   End chambers never touch a port.
+const LANDS = [[0, 10], [38, 48], [70, 80]];
+const SPOOL = {
+  v12: { ports: [[44, 'EX', 'ex'], [54, '2nd fluid', 'out', 'c2'], [63, 'D4 (feed)', 'feed', 'd4']], sig: ['right', 'Signal A', 'sigA12'], spring: 'left', pos: m => m.up12 ? 40 : 20,
+    say: m => m.up12 ? 'No signal A at this valve, so the spring holds it in the <b>upshift</b> position: D4 fluid flows out as 2nd fluid to the 2-4 servo (2nd apply), the 1-2 accumulator and the 2-3 valve.' : `${m.st.range === '1' ? 'LO fluid holds the valve down (manual 1).' : 'Signal A pushes the spool against the spring into the <b>downshift</b> position.'} D4 fluid is blocked and the 2nd circuit is open to exhaust.` },
+  v23: { ports: [[44, 'EX', 'ex'], [54, '3rd fluid', 'out', 'c3'], [63, '2nd (feed)', 'feed', 'c2']], sig: ['right', 'Signal B', 'sigB'], spring: 'left', pos: m => m.up23 ? 40 : 20,
+    say: m => (m.up23 ? 'Signal B is off, so the spring moves the valve <b>up</b>: 2nd fluid flows out as 3rd fluid to the 3-4 clutch, the servo release side and the 3-4 valve.' : `${m.P.d2 ? 'D2 fluid holds the valve down (manual 2 or 1).' : 'Signal B holds the valve <b>down</b> against the spring.'} 3rd fluid is exhausted.`) + ' This valve also steers signal A: to the 1-2 valve when it is down, and to the 3-4 valve when it is up.' },
+  v34: { ports: [[44, 'EX', 'ex'], [54, '4th apply', 'out', 'c4'], [63, '3rd (feed)', 'feed', 'c3']], sig: ['left', 'Signal A', 'sigA34'], spring: 'right', pos: m => m.up34 ? 40 : 20,
+    say: m => m.up34 ? 'Signal A (sent here by the upshifted 2-3 valve) pushes this valve <b>up</b>: 3rd fluid flows out as 4th apply fluid to the servo, and the band reapplies for overdrive.' : 'No signal A here, so the spring holds it <b>down</b>: 4th apply is open to exhaust.' },
+  reg: { ports: [[40, 'Bleed to pump intake', 'ex'], [54, 'Line (from pump)', 'feed', 'line'], [63, 'Converter / lube feed', 'out', 'line']], sig: ['right', 'Line feedback', 'line'], spring: 'left', springSig: 'pcs', regulating: true,
+    pos: m => m.reg === 'low' ? 26 : m.reg === 'max' ? 36 : 31,
+    say: m => m.reg === 'low' ? 'Line pressure is low: the spool sits open to the bleed port, so pump oil dumps back to the intake (worn pump, or a sticking regulator).' : m.reg === 'max' ? 'The PCS boost is at maximum, so the spool nearly closes the bleed port and line pressure goes to its maximum.' : 'The spring and the PCS boost push the spool one way; line pressure on the other end pushes back. The spool hovers right at the bleed port, dumping just enough oil to hold line steady.' },
+  mpv: { ports: [[40, 'Bleed to pump intake', 'ex'], [54, 'System (from pump)', 'feed', 'sys'], [63, 'Converter / lube feed', 'out', 'sys']], sig: ['right', 'System feedback', 'sys'], spring: 'left', springSig: 'lpc', regulating: true,
+    pos: m => m.reg === 'low' ? 26 : 31,
+    say: m => m.reg === 'low' ? 'System pressure is low: the spool is wide open to the bleed port (worn pump or sticking valve).' : 'The line PC solenoid signal and the spring push one way; system pressure pushes back. The TCM raises system pressure with engine torque, just enough to hold the applied elements.' },
+};
+'ABCDE'.split('').forEach(k => {
+  SPOOL['cv' + k] = { ports: [[44, 'EX', 'ex'], [54, 'To ' + TRANS['8hp'].els.find(e => e.k === k).n, 'out', 'a' + k], [63, 'System (feed)', 'feed', 'sys']], sig: ['left', 'PC signal ' + k, 's' + k], spring: 'right',
+    pos: m => m.E[k] > 0 ? 40 : 20,
+    say: m => m.E[k] > 0 ? (m.sol[k] ? `PC solenoid ${k} sends pilot signal, so the valve opens: system oil applies the element. The TCM sets the apply pressure (and how fast it rises) with solenoid current.` : `<b>No signal, but the valve is open anyway:</b> the spool is stuck, so the element stays applied.`) : `No signal from PC solenoid ${k}: the spring holds the valve closed and the element is open to exhaust.` };
+});
+SPOOL.parkV = { ports: [[44, 'EX', 'ex'], [54, 'To park cylinder', 'out', 'park'], [63, 'System (feed)', 'feed', 'sys']], sig: ['left', 'Park lock signal', 'sPark'], spring: 'right', pos: m => m.P.park ? 40 : 20,
+  say: m => m.P.park ? 'Out of Park: the valve sends system oil to the park lock cylinder, which holds the pawl released.' : 'In Park: the valve exhausts the cylinder and a spring pushes the park pawl into the output gear.' };
+
+function spoolSVG(id, m) {
+  const V = SPOOL[id], W = 460, H = 158, x0 = 30, sc = (W - 60) / 140, X = x => x0 + x * sc, y1 = 46, y2 = 84;
+  const p = V.pos(m), lands = LANDS.map(([a, b]) => [a + p, b + p]);
+  const cav = [[0, lands[0][0]], [lands[0][1], lands[1][0]], [lands[1][1], lands[2][0]], [lands[2][1], 140]];
+  const open = (x, c) => x + 3.5 > c[0] && x - 3.5 < c[1];
+  const cavCol = cav.map((c, i) => {
+    if (i === 0 || i === 3) { const end = i === 0 ? 'left' : 'right'; const sg = V.sig[0] === end ? V.sig[2] : V.spring === end && V.springSig ? V.springSig : null; return sg && m.P[sg] ? ccol(sg) : null; }
+    const fd = V.ports.find(q => q[2] === 'feed' && open(q[0], c)), ou = V.ports.find(q => q[2] === 'out' && open(q[0], c));
+    return fd && m.P[fd[3]] ? (ou && m.P[ou[3]] ? ccol(ou[3]) : ccol(fd[3])) : null;
+  });
+  let h = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cross-section of the spool valve">`;
+  h += `<rect x="${X(0)}" y="${y1}" width="${140 * sc}" height="${y2 - y1}" rx="4" fill="#0b1015" stroke="#3a4a5c"/>`;
+  cav.forEach((c, i) => { if (c[1] - c[0] > 0.2 && cavCol[i]) h += `<rect x="${X(c[0])}" y="${y1 + 2}" width="${(c[1] - c[0]) * sc}" height="${y2 - y1 - 4}" fill="${cavCol[i]}" fill-opacity=".5"/>`; });
+  // ports
+  V.ports.forEach(([x, lab, role, c], i) => {
+    const ci = cav.findIndex(cc => open(x, cc)), col = ci > 0 && ci < 3 && cavCol[ci] ? cavCol[ci] : '#2A3644', blocked = ci < 0;
+    const below = i % 2 === 0, yA = below ? y2 : y1, yB = below ? y2 + 26 : y1 - 26;
+    h += `<rect x="${X(x) - 3.5 * sc}" y="${Math.min(yA, yB)}" width="${7 * sc}" height="26" fill="${blocked ? '#1a222c' : col}" fill-opacity="${blocked ? 1 : .85}" stroke="#3a4a5c" stroke-width=".8"/>`;
+    h += `<text x="${X(x)}" y="${below ? y2 + 40 : y1 - 32}" class="svgs" text-anchor="middle" style="fill:${role === 'ex' ? '#8A98A8' : '#C5CFD9'};text-transform:none;font-size:10px">${lab}${role === 'ex' ? ' ▽' : ''}</text>`;
+    if (blocked) h += `<text x="${X(x)}" y="${below ? y2 + 52 : y1 - 44}" class="svgs" text-anchor="middle" style="fill:#FF8A80">blocked</text>`;
+  });
+  // spool: stem + lands
+  h += `<rect x="${X(lands[0][0])}" y="${(y1 + y2) / 2 - 3}" width="${(lands[2][1] - lands[0][0]) * sc}" height="6" fill="#6f8297"/>`;
+  lands.forEach(([a, b]) => { h += `<rect x="${X(a)}" y="${y1 + 1}" width="${(b - a) * sc}" height="${y2 - y1 - 2}" rx="2" fill="#9FB3C8" stroke="#0b1015"/>`; });
+  // spring
+  const sl = V.spring === 'left', sx0 = sl ? X(0) + 2 : X(lands[2][1]) + 2, sx1 = sl ? X(lands[0][0]) - 2 : X(140) - 2;
+  if (sx1 - sx0 > 6) { let d = `M${sx0} ${(y1 + y2) / 2}`; const n = 7; for (let i = 1; i <= n; i++) d += ` L${sx0 + (sx1 - sx0) * (i - 0.5) / n} ${i % 2 ? y1 + 7 : y2 - 7}`; d += ` L${sx1} ${(y1 + y2) / 2}`; h += `<path d="${d}" fill="none" stroke="#C5CFD9" stroke-width="1.6"/>`; }
+  h += `<text x="${sl ? X(0) : X(140)}" y="${H - 6}" class="svgs" text-anchor="${sl ? 'start' : 'end'}" style="text-transform:none;font-size:10px">Spring${V.springSig ? ' + ' + CIRC[V.springSig].n.split(' (')[0] : ''}</text>`;
+  // signal end
+  const sr = V.sig[0] === 'right', sgOn = m.P[V.sig[2]] > 0, sgx = sr ? X(140) : X(0);
+  h += `<path d="M${sgx + (sr ? 22 : -22)} ${(y1 + y2) / 2} H${sgx}" stroke="${sgOn ? ccol(V.sig[2]) : '#2A3644'}" stroke-width="7"/>`;
+  if (sgOn) h += `<path d="M${sgx} ${(y1 + y2) / 2} l${sr ? 9 : -9} -7 v14z" fill="${ccol(V.sig[2])}" transform="translate(${sr ? 2 : -2} 0)"/>`;
+  h += `<text x="${sr ? X(140) : X(0)}" y="${y1 - 32}" class="svgs" text-anchor="${sr ? 'end' : 'start'}" style="fill:${sgOn ? '#CFE8F8' : '#5A6773'};text-transform:none;font-size:10px">${V.sig[1]}: ${sgOn ? 'ON' : 'none'}</text>`;
+  return h + '</svg>';
+}
+function manualSVG(m) {
+  const R = m.st.range, W = 460, H = 150, rs = L60.ranges, xi = i => 60 + i * 64;
+  let h = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Manual valve positions and the circuits each position feeds">`;
+  h += `<rect x="30" y="20" width="400" height="26" rx="6" fill="#0b1015" stroke="#3a4a5c"/>`;
+  rs.forEach((r, i) => { const on = r === R; h += `<text x="${xi(i)}" y="38" text-anchor="middle" style="font:700 14px var(--f-label);fill:${on ? '#fff' : '#5A6773'}">${r}</text>`; if (on) h += `<rect x="${xi(i) - 15}" y="22" width="30" height="22" rx="5" fill="none" stroke="#2F9BE0" stroke-width="2"/>`; });
+  const outs = [['rev', 'REV'], ['d4', 'D4'], ['d2', 'D2'], ['lo', 'LO']];
+  h += `<path d="M30 92 H430" stroke="${ccol('line')}" stroke-width="6"/><text x="30" y="84" class="svgs" style="text-transform:none;font-size:10px;fill:#FFD2CD">Line in (${m.line} psi)</text>`;
+  outs.forEach(([c, lab], i) => { const x = 110 + i * 90, on = m.P[c] > 0; h += `<path d="M${x} 92 V128" stroke="${on ? ccol(c) : '#1F2A36'}" stroke-width="6"/><circle cx="${x}" cy="92" r="6" fill="${on ? ccol(c) : '#1a222c'}" stroke="#0b1015"/><text x="${x}" y="144" text-anchor="middle" class="svgs" style="fill:${on ? '#FFE2A8' : '#5A6773'};font-size:10px">${lab}</text>`; });
+  return h + '</svg>';
+}
+function accSVG(c, m, k) {
+  const on = m.P[c.c] > 0, fill = k == null ? (on ? 1 : 0) : k;
+  const W = 460, H = 110; let h = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Accumulator piston and spring">`;
+  h += `<rect x="120" y="20" width="220" height="60" rx="6" fill="#0b1015" stroke="#3a4a5c"/>`;
+  const px = 140 + fill * 130;
+  h += `<rect x="122" y="22" width="${px - 122}" height="56" fill="${on ? ccol(c.c) : '#1F2A36'}" fill-opacity=".55"/>`;
+  h += `<rect x="${px}" y="22" width="12" height="56" fill="#9FB3C8"/>`;
+  let d = `M${px + 12} 50`; for (let i = 1; i <= 8; i++) d += ` L${px + 12 + (336 - px - 12) * (i - 0.5) / 8} ${i % 2 ? 30 : 70}`; h += `<path d="${d} L336 50" fill="none" stroke="#C5CFD9" stroke-width="1.6"/>`;
+  h += `<path d="M60 50 H120" stroke="${on ? ccol(c.c) : '#1F2A36'}" stroke-width="7"/><text x="60" y="40" class="svgs" style="text-transform:none;font-size:10px">${CIRC[c.c].n}</text>`;
+  h += `<text x="230" y="100" text-anchor="middle" class="svgs" style="text-transform:none;font-size:10px">oil pushes the piston against the spring: pressure rises gradually</text>`;
+  return h + '</svg>';
+}
+
+/* ================= state ================= */
+const S = {
+  mode: 'explore', tab: 'ctl', tk: '4l60e', st: { range: 'D', gear: 1 }, zoom: null, speed: 1, rpm: 1500, auto: false,
+  lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('athyd.done') || '[]')), demo: null, seen: new Set(),
+  dx: null, dxScore: { cases: 0, first: 0, tests: 0 }, ang: {}, shiftT: 0, prev: null,
+};
+const SPEC = tk => tk === '8hp' ? H8 : L60;
+const curModel = () => model(S.tk, S.st, S.mode === 'guided' ? S.demo : null);
+const SHIFT_MS = 750;
+const shiftK = () => { if (!S.prev || S.speed === 0) return 1; return Math.min(1, (performance.now() - S.shiftT) / (SHIFT_MS / Math.max(1, S.speed * 0.8))); };
+function setSt(st, tk) {
+  S.prev = curModel();
+  if (tk && tk !== S.tk) { S.tk = tk; S.prev = null; S.ang = {}; if (S.zoom && !LAYOUT[tk].comps.some(c => c.id === S.zoom)) S.zoom = null; }
+  S.st = { range: st.range, gear: st.gear || 1 };
+  if (S.tk === '4l60e' && S.st.range === '2') S.st.gear = 2;
+  if (S.tk === '4l60e' && S.st.range === '1') S.st.gear = 1;
+  if (S.st.range === 'D') S.seen.add(S.tk + S.st.gear);
+  S.shiftT = performance.now();
+  renderPanel(); renderViews(); checkGoal();
+}
+
+/* ================= schematic ================= */
+function compSVG(c, m, k) {
+  const sel = S.zoom === c.id ? ' sel' : '';
+  let h = `<g class="comp${sel}" data-z="${c.id}" tabindex="0" role="button" aria-label="${c.n}: zoom in">`;
+  h += `<rect class="box" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="7"/>`;
+  const tx = c.x + 8;
+  if (c.k === 'elem') {
+    const v = m.E[c.e] ?? (c.e === 'park' ? m.P.park : 0), st = c.e === 'park' ? (v ? 'on' : null) : m.stt[c.e];
+    let on = v > 0 ? 1 : 0;
+    if (S.prev && k < 1) { const pv = c.e === 'park' ? S.prev.P.park : S.prev.E[c.e]; if (v > 0 && !(pv > 0)) on = k; else if (!(v > 0) && pv > 0) on = 1 - k; }
+    const col = st === 'slip' ? '#FFB224' : '#3DDC97';
+    h += `<rect x="${c.x}" y="${c.y}" width="5" height="${c.h}" rx="2" fill="${on > 0 ? col : '#2A3644'}" fill-opacity="${on > 0 ? Math.max(.25, on) : 1}"/>`;
+    h += `<text x="${tx + 2}" y="${c.y + 15}" class="svgt">${c.n}</text>`;
+    const label = c.e === 'park' ? (v > 0 ? 'pawl released' : 'PARK: pawl engaged') : v > 0 ? (st === 'slip' ? `slipping · ${v} psi` : `applied · ${v} psi`) : 'released';
+    h += `<text x="${tx + 2}" y="${c.y + c.h - 8}" class="svgs" style="fill:${v > 0 ? (st === 'slip' ? '#FFE2A8' : '#BFEBD6') : '#5A6773'};text-transform:none;font-size:10px">${label}</text>`;
+    // piston gauge
+    const gx = c.x + c.w - 13, gy = c.y + 5, gh = c.h - 10;
+    h += `<rect x="${gx}" y="${gy}" width="8" height="${gh}" rx="2" fill="#0b1015" stroke="#2A3644"/><rect x="${gx + 1.5}" y="${gy + 1.5 + (gh - 3) * (1 - on)}" width="5" height="${(gh - 3) * on}" fill="${col}" fill-opacity=".8"/>`;
+    if (c.id === 'servo') LAYOUT['4l60e'].ports.forEach(([n, cc, y]) => { h += `<text x="${tx + 2}" y="${y + 3}" class="svgs" style="text-transform:none;font-size:9px;fill:${m.P[cc] ? '#BFEBD6' : '#5A6773'}">◂ ${n}</text>`; });
+  } else if (c.k === 'sol') {
+    const on = c.id === 'ssA' ? m.A : c.id === 'ssB' ? m.B : c.id === 'pcs' ? true : c.id === 'lpc' ? true : c.id === 'parkS' ? m.P.sPark > 0 : m.sol[c.id.slice(3)];
+    const open = (c.id === 'ssA' && m.f === 'ssA_open') || (c.id === 'ssB' && m.f === 'ssB_open') || (c.id === 'pcs' && m.f === 'pcs_open') || (c.id === 'solA' && m.f === 'h_pcA');
+    h += `<text x="${tx}" y="${c.y + 15}" class="svgt">${c.n}</text>`;
+    if (c.s) h += `<text x="${tx}" y="${c.y + c.h - 7}" class="svgs">${c.s}</text>`;
+    const chip = open ? 'OPEN CKT' : c.id === 'pcs' ? (m.f === 'pcs_open' ? '0 A' : '0.9 A') : c.id === 'lpc' ? 'ON' : on ? 'ON' : 'OFF';
+    const cw = chip.length * 6 + 12, cx = c.x + c.w - cw - 6, cy = c.y + (c.h - 16) / 2;
+    h += `<rect x="${cx}" y="${cy}" width="${cw}" height="16" rx="8" fill="${open ? 'rgba(255,90,78,.25)' : on ? 'rgba(79,163,227,.25)' : '#0b1015'}" stroke="${open ? '#FF5A4E' : on ? '#4FA3E3' : '#2A3644'}"/><text x="${cx + cw / 2}" y="${cy + 11.5}" text-anchor="middle" style="font:700 9px var(--f-label);letter-spacing:.08em;fill:${open ? '#FFD2CD' : on ? '#CFE8F8' : '#5A6773'}">${chip}</text>`;
+  } else if (c.k === 'valve') {
+    h += `<text x="${tx}" y="${c.y + 14}" class="svgt">${c.n}</text>`;
+    if (c.id === 'man') {
+      h += `<text x="${tx}" y="${c.y + 30}" class="svgs">shift linkage</text>`;
+      L60.ranges.forEach((r, i) => { const on = r === m.st.range, x = tx + 4 + i * 20; h += `<text x="${x}" y="${c.y + 56}" text-anchor="middle" style="font:700 12px var(--f-label);fill:${on ? '#fff' : '#5A6773'}">${r}</text>`; if (on) h += `<rect x="${x - 8}" y="${c.y + 43}" width="16" height="18" rx="4" fill="none" stroke="#2F9BE0" stroke-width="1.5"/>`; });
+    } else if (SPOOL[c.id]) {
+      // mini spool: same geometry as the zoom view
+      const V = SPOOL[c.id], p = V.pos(m), bw = c.w - 20, sc = bw / 140, bx = c.x + 10, by = c.y + c.h - 12;
+      h += `<rect x="${bx}" y="${by - 4}" width="${bw}" height="8" rx="2" fill="#0b1015" stroke="#2A3644" stroke-width=".7"/>`;
+      h += `<rect x="${bx + (LANDS[0][0] + p) * sc}" y="${by - 1}" width="${80 * sc}" height="2" fill="#6f8297"/>`;
+      LANDS.forEach(([a, b]) => { h += `<rect x="${bx + (a + p) * sc}" y="${by - 3.5}" width="${(b - a) * sc}" height="7" rx="1" fill="#9FB3C8"/>`; });
+      const word = V.regulating ? (m.reg === 'low' ? 'bleeding' : m.reg === 'max' ? 'max' : 'regulating') : p === 40 ? (c.id.startsWith('cv') || c.id === 'parkV' ? 'open' : 'up') : (c.id.startsWith('cv') || c.id === 'parkV' ? 'closed' : 'down');
+      h += `<text x="${c.x + c.w - 8}" y="${c.y + (c.h >= 50 ? 28 : 14)}" class="svgs" text-anchor="end" style="fill:${p === 40 || V.regulating ? '#CFE8F8' : '#6E7C8B'}">${word}</text>`;
+    }
+  } else if (c.k === 'acc') {
+    let fill = m.P[c.c] > 0 ? 1 : 0;
+    if (S.prev && k < 1) { const pv = S.prev.P[c.c] > 0; if (fill && !pv) fill = m.harsh === '12' && c.id === 'acc12' ? 1 : k; else if (!fill && pv) fill = 1 - k; }
+    h += `<text x="${c.x + c.w / 2}" y="${c.y - 3}" class="svgs" text-anchor="middle">${c.n}</text>`;
+    const px = c.x + 4 + fill * (c.w - 18);
+    h += `<rect x="${c.x + 2}" y="${c.y + 3}" width="${px - c.x - 2}" height="${c.h - 6}" fill="${fill > 0 ? ccol(c.c) : '#1F2A36'}" fill-opacity=".5"/><rect x="${px}" y="${c.y + 3}" width="5" height="${c.h - 6}" fill="#9FB3C8"/>`;
+    let d = `M${px + 5} ${c.y + c.h / 2}`; for (let i = 1; i <= 5; i++) d += ` L${px + 5 + (c.x + c.w - 3 - px - 5) * (i - 0.5) / 5} ${i % 2 ? c.y + 6 : c.y + c.h - 6}`; h += `<path d="${d} L${c.x + c.w - 3} ${c.y + c.h / 2}" fill="none" stroke="#8A98A8" stroke-width="1"/>`;
+  } else if (c.k === 'pump') {
+    h += `<text x="${tx}" y="${c.y + 16}" class="svgt">${c.n}</text><text x="${tx}" y="${c.y + c.h - 8}" class="svgs">${c.s}</text>`;
+    const cx = c.x + c.w - 24, cy = c.y + c.h / 2;
+    h += `<circle cx="${cx}" cy="${cy}" r="16" fill="#0b1015" stroke="#3a4a5c"/><g class="spin"><circle cx="${cx}" cy="${cy}" r="10" fill="#6f8297"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<line x1="${cx + 6 * Math.cos(a)}" y1="${cy + 6 * Math.sin(a)}" x2="${cx + 15 * Math.cos(a)}" y2="${cy + 15 * Math.sin(a)}" stroke="#C5CFD9" stroke-width="2"/>`; }).join('')}</g>`;
+  } else {
+    h += `<text x="${tx}" y="${c.y + 15}" class="svgt">${c.n}</text>`;
+    if (c.s) h += `<text x="${tx}" y="${c.y + c.h - 7}" class="svgs">${c.s}</text>`;
+  }
+  return h + '</g>';
+}
+function renderSchematic() {
+  const L = LAYOUT[S.tk], m = curModel(), k = shiftK(), pm = k < 1 ? S.prev : null;
+  let h = '';
+  for (const seg of L.paths) {
+    const d = 'M' + seg.pts.map(p => p.join(' ')).join(' L'), psi = m.P[seg.c] || 0, prev = pm ? (pm.P[seg.c] || 0) : psi;
+    let op = psi > 0 ? 1 : 0;
+    if (pm) { if (psi > 0 && !(prev > 0)) op = k; else if (!(psi > 0) && prev > 0) op = 1 - k; }
+    h += `<path class="pipe base" d="${d}"/><path class="pipe empty" d="${d}"/>`;
+    if (op > 0) h += `<path class="pipe oil${m.low.has(seg.c) ? ' low' : ''}" d="${d}" stroke="${ccol(seg.c)}" stroke-opacity="${op.toFixed(2)}"><title>${CIRC[seg.c].n}${psi > 1 ? ': ' + psi + ' psi' : ''}</title></path>`;
+    if (psi > 0 && op > 0.6) h += `<path class="pipe flow" d="${d}"/>`;
+  }
+  for (const [c, x, y, t] of L.labels) h += `<text x="${x}" y="${y}" class="plab" style="fill:${m.P[c] > 0 ? ccol(c) : '#4a5866'}">${t}</text>`;
+  for (const c of L.comps) h += compSVG(c, m, k);
+  if (S.tk === '4l60e') h += `<text x="250" y="482" class="svgs" style="text-transform:none;font-size:9.5px">Excess regulator oil feeds the converter, cooler and lube. TCC not shown. Lo roller and forward sprag are mechanical (no oil).</text>`;
+  else h += `<text x="20" y="486" class="svgs" style="text-transform:none;font-size:9.5px">No manual valve: shift-by-wire. No shift valves or accumulators: the TCM ramps each element with its own solenoid. TCC not shown.</text>`;
+  $('#svSch').innerHTML = h;
+  const sub = S.mode === 'diagnose' ? 'Service info: normal oil flow · pick a range on the apply chart' : S.mode === 'guided' && S.demo ? `DEMO FAULT: ${CAUSES[S.demo].lab}` : `${TRANS[S.tk].name} · tap a part to zoom`;
+  const ss = $('#sSub'); ss.textContent = sub; ss.style.color = S.mode === 'guided' && S.demo ? '#FFB224' : '';
+}
+function renderZoom() {
+  const z = $('#zoom');
+  if (!S.zoom) { z.hidden = true; z.innerHTML = ''; return; }
+  const m = curModel(), c = LAYOUT[S.tk].comps.find(x => x.id === S.zoom); if (!c) { S.zoom = null; z.hidden = true; return; }
+  let h = `<div class="zh"><h3>${c.n}</h3>${zoomChip(c, m)}<button class="btn small" data-zclose="1" aria-label="Close close-up">Close</button></div>`;
+  if (c.id === 'man') h += manualSVG(m) + `<p>The driver moves this valve with the shift linkage. It is the only valve the driver controls directly. <b>P/N:</b> line oil stops here. <b>R:</b> REV fluid. <b>D:</b> D4 fluid. <b>2:</b> D4 + D2. <b>1:</b> D4 + D2 + LO.</p>`;
+  else if (SPOOL[c.id]) h += spoolSVG(c.id, m) + `<p>${SPOOL[c.id].say(m)}</p>`;
+  else if (c.k === 'acc') h += accSVG(c, m) + `<p>${INFO[c.id] || ''}</p>`;
+  else h += `<p>${typeof INFO[c.id] === 'function' ? INFO[c.id](m) : INFO[c.id] || ''}</p>`;
+  z.innerHTML = h; z.hidden = false;
+}
+function zoomChip(c, m) {
+  if (c.k === 'elem') { const v = m.E[c.e] ?? m.P.park; return v > 0 ? `<span class="chip ${m.stt[c.e] === 'slip' ? 'warn' : 'ok'}">${m.stt[c.e] === 'slip' ? 'slipping' : 'applied'} · ${v} psi</span>` : '<span class="chip">released</span>'; }
+  if (c.id === 'reg' || c.id === 'mpv') return `<span class="chip info">${m.line} psi</span>`;
+  return '';
+}
+const INFO = {
+  sump: 'The pan holds the fluid. The pump pulls it up through the filter (purple). A clogged filter starves the pump: whining, low pressure, slipping.',
+  pump: m => `Driven by the torque converter hub, so it turns whenever the engine runs. A pump makes <b>flow</b>, not pressure. Pressure only builds because the oil meets resistance and the regulator holds it at a set value. ${m.tk === '8hp' ? 'This 8HP-style pump sits off-axis and is driven by a chain.' : 'The 4L60-E uses a variable-displacement vane pump.'} Right now: ${m.line} psi.`,
+  pcs: m => `A variable-force solenoid the PCM controls by current. In a 4L60-E it works <b>backward</b>: more current = <b>lower</b> line pressure. 0 A (unplugged or an open circuit) = <b>maximum</b> line, so the truck still moves, but every engagement and shift is harsh.${m.f === 'pcs_open' ? ' <b>Demo: the circuit is open, so line is at maximum.</b>' : ''}`,
+  afl: 'The actuator feed limit valve caps line pressure at about 90 psi to make a steady supply for the shift solenoids and the PCS.',
+  ssA: m => `Normally open, ON/OFF. <b>OFF:</b> its exhaust is open, so signal A drops to zero. <b>ON:</b> it seals the exhaust, so signal A builds. The 2-3 valve decides where signal A goes: the 1-2 valve (1st/2nd) or the 3-4 valve (3rd/4th). Commanded <b>${m.cA ? 'ON' : 'OFF'}</b>${m.f === 'ssA_open' ? ', but the circuit is open, so it can never turn on' : ''}.`,
+  ssB: m => `Normally open, ON/OFF. Signal B holds the 2-3 shift valve down. <b>ON</b> in 1st and 2nd, <b>OFF</b> in 3rd and 4th. Commanded <b>${m.cB ? 'ON' : 'OFF'}</b>${m.f === 'ssB_open' ? ', but the circuit is open, so it can never turn on' : ''}.`,
+  accF: 'A spring-loaded piston on the forward clutch circuit. When you shift into Drive, D4 oil fills it first, so forward clutch pressure rises gradually: a soft engagement instead of a clunk.',
+  acc12: 'A spring-loaded piston on the 2nd circuit. It soaks up oil as the 2-4 band applies, so the 1-2 shift is firm but smooth. A broken spring or a stuck piston means a harsh 1-2 shift.',
+  acc34: 'A spring-loaded piston on the 4th apply circuit. It cushions the band reapplying on the 3-4 shift.',
+  c34: m => `Multi-plate clutch applied by 3rd fluid in 3rd and 4th. It drives the input ring / reaction carrier. ${state60(m, 'c34')}`,
+  servo: m => `The 2-4 band is applied by a servo with three oil areas: <b>2nd apply</b> (applies the band in 2nd), <b>3rd release</b> (3rd fluid plus the spring push it off in 3rd; it also cushions the 2-3 shift), and <b>4th apply</b> (a second piston reapplies the band in 4th and overpowers the release side). ${state60(m, 'band')}`,
+  fwd: m => `Applied by D4 fluid in every forward range. It drives the input sun through the forward sprag. ${state60(m, 'fwd')}`,
+  ovr: m => `Applied by D2 fluid in manual 2 and 1. It bypasses the forward sprag, so the engine can brake the vehicle on a downhill. ${state60(m, 'ovr')}`,
+  rev: m => `Applied by REV fluid in Reverse. It drives the reaction sun. ${state60(m, 'rev')}`,
+  lr: m => `Holds the reaction carrier: REV fluid in Reverse, LO fluid in manual 1 (engine braking in 1st). In D1 the lo roller clutch does this job mechanically. ${state60(m, 'lr')}`,
+  lpc: 'The TCM sets system pressure with this solenoid. It raises pressure with engine torque so the elements never slip, and lowers it at light load to save fuel.',
+  pilot: 'Reduces system pressure to a steady, low pilot pressure that feeds every PC solenoid.',
+  parkS: m => `Shift-by-wire park lock. Out of Park the solenoid signals the park lock valve and latches the pawl released. Now: ${m.P.sPark ? 'ON' : 'OFF (Park)'}.`,
+  parkC: m => `Out of Park, system oil in this cylinder holds the park pawl released. In P it exhausts and a spring engages the pawl. Now: ${m.P.park ? 'released' : 'engaged'}.`,
+};
+'ABCDE'.split('').forEach(k => {
+  INFO['sol' + k] = m => `A variable-bleed solenoid the TCM controls with current. It sends a pilot signal to clutch valve ${k}, which then applies the element at a controlled pressure. One solenoid per element means the TCM times every clutch-to-clutch shift in software: one element fills while another exhausts. Now: <b>${m.sol[k] ? 'commanding apply' : 'off'}</b>${m.f === 'h_pcA' && k === 'A' ? ' (<b>demo: circuit open</b>)' : ''}.`;
+  const el = TRANS['8hp'].els.find(e => e.k === k);
+  INFO['el' + k] = m => `${el.n} ${el.d}. Applied in gears ${Object.entries(TRANS['8hp'].gears).filter(([, v]) => v.includes(k)).map(([g]) => g).join(', ')}${['A', 'B', 'D'].includes(k) ? ' and R' : ''}. Now: <b>${m.E[k] > 0 ? (m.stt[k] === 'slip' ? 'slipping, ' : 'applied, ') + m.E[k] + ' psi' : 'released'}</b>.`;
+});
+function state60(m, k) { const v = m.E[k]; return `Now: <b>${v > 0 ? (m.stt[k] === 'slip' ? 'slipping, ' : 'applied, ') + v + ' psi' : 'released'}</b>.`; }
+
+/* ================= gear train view ================= */
+function gearPath(N, rp, internal) {
+  const m = 2 * rp / N, add = m * 0.95, ded = m * 1.15, ro = internal ? rp - add : rp + add, rr = internal ? rp + ded : rp - ded, pa = 2 * Math.PI / N;
+  let d = '';
+  for (let i = 0; i < N; i++) {
+    const a = i * pa, pts = [[rr, a - pa * 0.27], [ro, a - pa * 0.13], [ro, a + pa * 0.13], [rr, a + pa * 0.27], [rr, a + pa * 0.73]];
+    pts.forEach(([r, t], j) => { d += (i === 0 && j === 0 ? 'M' : 'L') + (r * Math.cos(t)).toFixed(2) + ' ' + (r * Math.sin(t)).toFixed(2); });
+  }
+  return d + 'Z';
+}
+function gearsetSVG(id, cx, cy, Rp, S_, R_, roles) {
+  const P = (R_ - S_) / 2, m = 2 * Rp / R_, rs = m * S_ / 2, rpn = m * P / 2, a = m * (S_ + P) / 2, n = 3;
+  const stroke = k => roles?.[k] === 'held' ? '#FF5A4E' : roles?.[k] === 'in' ? '#fff' : roles?.[k] === 'out' ? '#E6EDF3' : '#0b1015';
+  const sw = k => roles?.[k] === 'held' || roles?.[k] === 'in' || roles?.[k] === 'out' ? 2 : 0.8;
+  const RO = (Rp + m * 3.2).toFixed(1);
+  let h = `<g transform="translate(${cx} ${cy})">`;
+  h += `<g id="${id}r"><path d="M${RO} 0 A${RO} ${RO} 0 1 0 ${-RO} 0 A${RO} ${RO} 0 1 0 ${RO} 0 ${gearPath(R_, Rp, true)}" fill="var(--ring)" fill-opacity=".75" fill-rule="evenodd" stroke="${stroke('r')}" stroke-width="${sw('r')}"/><circle cx="${Rp + m * 2.2}" cy="0" r="${Math.max(2, m * 0.7)}" fill="#0b1015"/></g>`;
+  let tri = ''; for (let i = 0; i < n; i++) { const t = i * 2 * Math.PI / n; tri += (i ? 'L' : 'M') + (a * Math.cos(t)).toFixed(1) + ' ' + (a * Math.sin(t)).toFixed(1); }
+  h += `<g id="${id}c"><path d="${tri}Z" fill="var(--car)" fill-opacity=".22" stroke="var(--car)" stroke-width="${Math.max(3, rpn * 0.35)}" stroke-linejoin="round" stroke-opacity=".8"/>`;
+  for (let i = 0; i < n; i++) { const t = i * 2 * Math.PI / n; h += `<g transform="translate(${(a * Math.cos(t)).toFixed(1)} ${(a * Math.sin(t)).toFixed(1)})"><g class="${id}p"><path d="${gearPath(P, rpn, false)}" fill="var(--pin)" fill-opacity=".9" stroke="#0b1015" stroke-width=".6"/><circle r="${Math.max(2, rpn * 0.28)}" fill="var(--car)"/><circle cx="${rpn * 0.6}" r="${Math.max(1.2, m * 0.5)}" fill="#0b1015"/></g></g>`; }
+  h += `</g><g id="${id}s"><path d="${gearPath(S_, rs, false)}" fill="var(--sun)" stroke="${stroke('s')}" stroke-width="${sw('s')}"/><circle r="${Math.max(2.5, rs * 0.3)}" fill="#0b1015"/><circle cx="${rs * 0.6}" r="${Math.max(1.5, m * 0.6)}" fill="#0b1015"/></g></g>`;
+  return h;
+}
+function placeAngles(id, set, v, dt) {
+  const A = S.ang[id] || (S.ang[id] = { s: 0, c: 0, r: 0, p: 0 });
+  const P = (set.R - set.S) / 2, ws = v.s ?? 0, wc = v.c ?? 0, wr = v.r ?? 0, wp = wc - (ws - wc) * set.S / P;
+  const k = 360 * 0.25 * S.speed * dt;
+  A.s += ws * k; A.c += wc * k; A.r += wr * k; A.p += (wp - wc) * k;
+  const e = x => document.getElementById(id + x);
+  e('s')?.setAttribute('transform', `rotate(${A.s % 360})`); e('c')?.setAttribute('transform', `rotate(${A.c % 360})`); e('r')?.setAttribute('transform', `rotate(${A.r % 360})`);
+  document.querySelectorAll('.' + id + 'p').forEach(g => g.setAttribute('transform', `rotate(${A.p % 360})`));
+}
+let VIEW = null;
+function renderGear() {
+  const T = TRANS[S.tk], m = curModel(), res = transSolve(T, m.applied);
+  const n = T.sets.length, cw = 640 / n, Rp = n === 2 ? 74 : 50, cy = n === 2 ? 100 : 92;
+  let h = '';
+  T.sets.forEach((st, i) => {
+    const cx = cw * i + cw / 2, v = { s: res.v[st.s], c: res.v[st.c], r: res.v[st.r] };
+    const roles = {}; for (const k of ['s', 'c', 'r']) { const node = st[k]; roles[k] = node === 'in' ? 'in' : node === 'out' ? 'out' : (v[k] != null && Math.abs(v[k]) < 1e-9) ? 'held' : 'free'; }
+    h += gearsetSVG('g' + i, cx, cy, Rp, st.S, st.R, roles);
+    const ly = cy + Rp + 24, sp = k => v[k] == null ? 'free' : f0(v[k] * S.rpm);
+    h += `<text x="${cx}" y="${ly}" class="svgt" text-anchor="middle" style="fill:#E6EDF3">${st.id.toUpperCase()}</text>`;
+    h += `<text x="${cx}" y="${ly + 13}" class="svgs" text-anchor="middle"><tspan style="fill:#4FA3E3">S ${sp('s')}</tspan> · <tspan style="fill:#3DDC97">C ${sp('c')}</tspan> · <tspan style="fill:#FFB224">R ${sp('r')}</tspan></text>`;
+  });
+  $('#svGear').innerHTML = h;
+  VIEW = { sets: T.sets.map((st, i) => ({ id: 'g' + i, set: st, v: { s: res.v[st.s], c: res.v[st.c], r: res.v[st.r] } })) };
+  $('#gSub').textContent = `${T.sub} · rpm at ${f0(S.rpm)} input`;
+  const slip = Object.keys(m.stt).filter(k => m.stt[k] === 'slip'), gn = gearName(S.tk, res);
+  let g = `<b class="r">${res.ratio == null ? '—' : r2(Math.abs(res.ratio)) + ' : 1'}</b>`;
+  g += res.bind ? '<span class="chip bad">Tie-up (bind)</span>' : res.ratio == null ? `<span class="chip warn">${m.st.range === 'P' ? 'Park' : 'Neutral'}</span>` : `<span class="chip ${res.ratio < 0 ? 'bad' : 'ok'}">${gn === 'reverse' ? 'Reverse' : gn + ' gear'}</span>`;
+  if (slip.length) g += `<span class="chip warn">slipping: ${slip.map(k => elN(S.tk, k)).join(', ')}</span>`;
+  if (res.ratio != null) g += `<span>output ${f0(S.rpm / res.ratio)} rpm${res.ratio < 0 ? ' (backward)' : ''}</span>`;
+  $('#gres').innerHTML = g;
+}
+const elN = (tk, k) => TRANS[tk].els.find(e => e.k === k)?.n.replace(' + sprag', '') || k;
+
+/* ================= apply chart ================= */
+function chartRows(tk) {
+  if (tk === '8hp') return [{ g: 'P', st: { range: 'P' } }, { g: 'R', st: { range: 'R' } }, { g: 'N', st: { range: 'N' } }, ...[1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ g: 'D' + n, st: { range: 'D', gear: n } }))];
+  return [{ g: 'P', st: { range: 'P' } }, { g: 'R', st: { range: 'R' } }, { g: 'N', st: { range: 'N' } }, ...[1, 2, 3, 4].map(n => ({ g: 'D' + n, st: { range: 'D', gear: n } })), { g: '2 (man.)', st: { range: '2', gear: 2 } }, { g: '1 (man.)', st: { range: '1', gear: 1 } }];
+}
+const sameSt = (a, b) => a.range === b.range && (a.range !== 'D' || a.gear === b.gear) && (S.tk === '8hp' || a.range !== '2' || true);
+function renderChart() {
+  const T = TRANS[S.tk], rows = chartRows(S.tk), is60 = S.tk === '4l60e';
+  $('#cSub').textContent = S.mode === 'diagnose' ? 'service information · click a range to view its normal oil flow' : 'click a range · A applied · H holding · O overrunning';
+  let t = `<table class="rt"><tr><th>Range</th>${is60 ? '<th class="sol">Sol<br>A</th><th class="sol">Sol<br>B</th>' : ''}${T.els.map(e => `<th>${e.n.replace(' + sprag', '<br>+ sprag').replace(' clutch', '<br>clutch').replace('Brake ', 'Brake<br>').replace('Clutch ', 'Clutch<br>').replace('Reverse input', 'Rev.<br>input').replace('Low/reverse', 'Low/<br>rev.')}</th>`).join('')}<th class="r">Ratio</th></tr>`;
+  for (const row of rows) {
+    const m = model(S.tk, row.st), res = transSolve(T, m.applied), sel = sameSt(row.st, S.st);
+    t += `<tr class="click${sel ? ' sel' : ''}" data-row="${row.g}"><td>${row.g}</td>`;
+    if (is60) t += [m.cA, m.cB].map(on => `<td class="${on ? 'ON' : 'OFF'}">${on ? '<span>ON</span>' : 'off'}</td>`).join('');
+    t += T.els.map(e => { const s = res.state[e.k]; return `<td class="${s || ''}">${s ? `<span>${s}</span>` : ''}</td>`; }).join('');
+    t += `<td class="r">${res.ratio == null ? '—' : r2(res.ratio)}</td></tr>`;
+  }
+  t += '</table>';
+  t += is60 ? '<p class="dim" style="margin:8px 0 0">Two ON/OFF shift solenoids make four combinations: four gears. The forward sprag and lo roller are one-way clutches: they hold or overrun on their own.</p>' : '<p class="dim" style="margin:8px 0 0">One PC solenoid per element: the TCM applies three of the five in every gear, and each upshift swaps just one.</p>';
+  $('#chart').innerHTML = t;
+}
+function renderViews() { renderSchematic(); renderZoom(); renderGear(); renderChart(); }
+
+/* ================= explore controls ================= */
+function narrative(m) {
+  const L = [], R = m.st.range;
+  if (m.tk === '4l60e') {
+    L.push(`The pump pulls oil from the sump. The pressure regulator holds <b>line at ${m.line} psi</b>${m.reg === 'max' ? ' (maximum: PCS circuit open)' : m.reg === 'low' ? ' (<b>low</b>)' : ''}.`);
+    if (R === 'P' || R === 'N') L.push('Manual valve in ' + R + ': line oil stops at the manual valve. No clutch or band applies.');
+    if (R === 'R') L.push('Manual valve in R: REV fluid applies the <b>reverse input clutch</b> and the <b>low/reverse clutch</b>.');
+    if (m.P.d4) L.push('Manual valve sends D4 fluid to the <b>forward clutch</b> (through the forward accumulator) and to the 1-2 shift valve.');
+    if (m.P.d2) L.push('D2 fluid applies the <b>overrun clutch</b> (engine braking) and holds the 2-3 valve down.');
+    if (m.P.lo) L.push('LO fluid applies the <b>low/reverse clutch</b> and holds the 1-2 valve down.');
+    if (m.P.d4) {
+      L.push(`Shift solenoids: A <b>${m.A ? 'ON' : 'OFF'}</b>, B <b>${m.B ? 'ON' : 'OFF'}</b>.`);
+      L.push(m.up12 ? '1-2 valve <b>up</b>: D4 becomes 2nd fluid and applies the 2-4 band (2nd apply).' : '1-2 valve <b>down</b>: 2nd circuit exhausted. 1st gear: the lo roller holds.');
+      if (m.up12) L.push(m.up23 ? '2-3 valve <b>up</b>: 2nd becomes 3rd fluid: it applies the 3-4 clutch and pushes the band off (servo release).' : '2-3 valve <b>down</b>: 3rd circuit exhausted.');
+      if (m.up23 && m.P.c3) L.push(m.up34 ? '3-4 valve <b>up</b>: 4th apply fluid reapplies the band: overdrive.' : '3-4 valve <b>down</b>: 4th apply exhausted.');
+    }
+  } else {
+    L.push(`The pump feeds the main pressure valve. The TCM sets <b>system pressure to ${m.line} psi</b> with the line PC solenoid. The pilot valve feeds all the PC solenoids.`);
+    if (R === 'P') L.push('Park: no elements applied, and the park lock cylinder is exhausted, so the pawl is engaged.');
+    else L.push('Out of Park: system oil holds the park pawl released.');
+    if (R === 'N') L.push('Neutral: every clutch valve is closed.');
+    if (m.cmd.length) L.push(`${R === 'R' ? 'Reverse' : ORD[m.st.gear] + ' gear'}: the TCM commands PC solenoids <b>${m.cmd.join(', ')}</b>, so clutch valves ${m.cmd.join(', ')} open and apply ${m.cmd.map(k => elN('8hp', k)).join(', ')}. The other valves exhaust.`);
+  }
+  return L;
+}
+function ctlHTML(inLesson) {
+  const sp = SPEC(S.tk), m = curModel();
+  let h = '';
+  if (!inLesson) h += `<p class="dim">Pick a range and a gear and follow the oil. Tap any valve, solenoid, accumulator or clutch in the diagram for a close-up.</p>`;
+  h += `<h4>Transmission</h4><div class="rowb"><span class="seg mini">${Object.entries(TRANS).map(([k, t]) => `<button data-act="tk:${k}" aria-pressed="${S.tk === k}">${t.name}</button>`).join('')}</span></div>`;
+  h += `<h4>Range (shift lever)</h4><div class="rowb"><span class="seg big">${sp.ranges.map(r => `<button data-act="range:${r}" aria-pressed="${S.st.range === r}">${r}</button>`).join('')}</span></div>`;
+  if (S.st.range === 'D') h += `<h4>Gear (commanded by the computer)</h4><div class="rowb"><span class="seg">${Array.from({ length: sp.gears }, (_, i) => i + 1).map(g => `<button data-act="gear:${g}" aria-pressed="${S.st.gear === g}">${ORD[g]}</button>`).join('')}</span><button class="btn small${S.auto ? ' on' : ''}" data-act="auto">${S.auto ? 'Stop auto-shift' : 'Auto-shift'}</button></div>`;
+  else if (S.tk === '4l60e' && (S.st.range === '2' || S.st.range === '1')) h += `<p class="dim">Manual ${S.st.range}: holds ${ORD[+S.st.range]} gear with engine braking.</p>`;
+  h += `<h4>Solenoids</h4><div class="soltab">`;
+  if (S.tk === '4l60e') {
+    h += `<div><span>Shift solenoid A<small>1-2 and 3-4 valves</small></span><span class="chip ${m.A ? 'info' : ''}">${m.A ? 'ON' : 'OFF'}</span></div><div><span>Shift solenoid B<small>2-3 valve</small></span><span class="chip ${m.B ? 'info' : ''}">${m.B ? 'ON' : 'OFF'}</span></div><div><span>Pressure control solenoid<small>sets line pressure</small></span><span class="chip info">${m.f === 'pcs_open' ? '0 A' : '0.9 A'}</span></div>`;
+  } else {
+    h += 'ABCDE'.split('').map(k => `<div><span>PC solenoid ${k}<small>${elN('8hp', k)}</small></span><span class="chip ${m.sol[k] ? 'info' : ''}">${m.sol[k] ? 'APPLY' : 'off'}</span></div>`).join('');
+  }
+  h += `</div><h4>What the oil is doing</h4><ul class="flowtxt">${narrative(m).map(x => `<li>${x}</li>`).join('')}</ul>`;
+  return h;
+}
+
+/* ================= lessons ================= */
+const atSt = (tk, r, g) => S.tk === tk && S.st.range === r && (g == null || S.st.gear === g);
+const LESSONS = [
+{ id: 'source', title: 'Where the pressure comes from', sub: 'Pump, regulator, line pressure', steps: [
+  { body: 'Everything starts at the <b>pump</b>. It is driven by the torque converter hub, so it turns whenever the engine runs. Line oil (red) runs to the manual valve, which is in Park, so the oil stops there.', setup: { tk: '4l60e', st: { range: 'P' }, demo: null }, goal: { mc: { q: 'The pump makes flow. What turns that flow into pressure?', opts: ['Resistance: the pressure regulator valve bleeds off the extra oil to hold line pressure at a set value', 'The pump itself makes pressure', 'The torque converter'], a: 0, why: 'A pump with nowhere for the oil to go would make huge pressure. The regulator dumps just enough oil to hold line steady.' } } },
+  { body: 'Tap the <b>Pressure regulator</b> in the diagram to zoom in on its spool valve.', goal: { check: () => S.zoom === 'reg', hint: 'Tap "Pressure regulator" (left side of the diagram).' } },
+  { body: '', goal: { mc: { q: 'Look at the spool. What pushes the regulator to RAISE line pressure?', opts: ['The spring and the PCS boost signal; line pressure on the other end pushes back and opens the bleed', 'Line pressure itself', 'Nothing: line pressure is fixed'], a: 0, why: 'Two forces balance: spring + PCS boost against line feedback. The spool hovers at the bleed port.' } } },
+  { body: 'The <b>PCS</b> (pressure control solenoid) is the computer\'s hand on that balance.', goal: { mc: { q: 'In a 4L60-E, what happens to line pressure if the PCS circuit opens (0 A)?', opts: ['It goes to MAXIMUM: harsh engagements and shifts, but the vehicle still moves', 'It goes to zero: no movement', 'Nothing changes'], a: 0, why: 'The PCS works backward: more current = lower pressure. Failing to maximum is a fail-safe: harsh, but the clutches don\'t burn.' } } },
+] },
+{ id: 'manual', title: 'The manual valve', sub: 'The driver picks the circuits', steps: [
+  { body: 'Shift to <b>R</b>.', setup: { tk: '4l60e', st: { range: 'P' }, demo: null }, ctl: true, goal: { check: () => atSt('4l60e', 'R'), hint: 'Range: R.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'Follow the amber REV fluid. Which elements does it apply?', opts: ['The reverse input clutch and the low/reverse clutch', 'The forward clutch', 'The 2-4 band'], a: 0, why: 'Two elements: one drives the reaction sun, one holds the reaction carrier. That makes reverse.' } } },
+  { body: 'Now shift to <b>D</b> (1st gear).', ctl: true, goal: { check: () => atSt('4l60e', 'D'), hint: 'Range: D.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'D4 fluid goes two places. Which element does it apply in EVERY forward gear?', opts: ['The forward clutch', 'The 3-4 clutch', 'The overrun clutch'], a: 0, why: 'A forward clutch problem shows up in every forward gear, but not in reverse. That is a powerful clue.' } } },
+] },
+{ id: 'shift', title: 'Solenoids and shift valves', sub: 'How the computer picks a gear', steps: [
+  { body: 'In <b>D</b>, command <b>1st</b>. Both shift solenoids are ON.', setup: { tk: '4l60e', st: { range: 'D', gear: 1 }, demo: null }, ctl: true, goal: { check: () => atSt('4l60e', 'D', 1), hint: 'Range D, gear 1st.' } },
+  { body: 'Command <b>2nd</b> and watch solenoid A and the 1-2 valve.', ctl: true, goal: { check: () => atSt('4l60e', 'D', 2), hint: 'Gear: 2nd.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'What moved the 1-2 shift valve?', opts: ['Solenoid A turned OFF and exhausted its signal, so the spring moved the valve up: D4 fluid flowed out as 2nd fluid', 'The driver moved it', 'Solenoid B turned on'], a: 0, why: 'The solenoids don\'t apply anything themselves. They move valves, and the valves route the big oil.' } } },
+  { body: 'Tap the <b>1-2 shift valve</b> to see the spool.', ctl: true, goal: { check: () => S.zoom === 'v12', hint: 'Tap "1-2 shift valve" in the diagram.' } },
+  { body: 'Now command <b>3rd</b>, then <b>4th</b>.', ctl: true, goal: { check: () => atSt('4l60e', 'D', 4) && S.seen.has('4l60e3'), hint: 'Gear: 3rd, then 4th.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'In 4th, solenoid A is ON again, just like in 1st. Why doesn\'t the 1-2 valve go back down?', opts: ['The 2-3 valve is up, so it sends signal A to the 3-4 valve instead of the 1-2 valve', 'The 1-2 valve is stuck', 'Solenoid B holds it up'], a: 0, why: 'One solenoid controls two valves. The 2-3 valve is the switch that decides which one gets the signal.' } } },
+] },
+{ id: 'servo', title: 'Clutches, bands and the servo', sub: 'Apply, release, reapply', steps: [
+  { body: 'Command <b>3rd</b> and tap the <b>2-4 servo / band</b>.', setup: { tk: '4l60e', st: { range: 'D', gear: 2 }, demo: null }, ctl: true, goal: { check: () => atSt('4l60e', 'D', 3) && S.zoom === 'servo', hint: 'Gear 3rd, then tap the 2-4 servo.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'In 3rd, 2nd fluid is still on the servo apply side. Why is the band off?', opts: ['3rd fluid pushes on the release side, and with the spring it overpowers 2nd apply', '2nd fluid is exhausted', 'The band is broken'], a: 0, why: 'Same pressure, but more area and a spring on the release side. That also cushions the 2-3 shift.' } } },
+  { body: 'Command <b>4th</b>.', ctl: true, goal: { check: () => atSt('4l60e', 'D', 4), hint: 'Gear: 4th.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'What puts the band back on in 4th?', opts: ['4th apply fluid on a second servo piston', 'Releasing the 3-4 clutch', 'The overrun clutch'], a: 0, why: 'The 3-4 clutch stays on and the band holds the reaction sun: overdrive (0.70:1).' } } },
+] },
+{ id: 'accum', title: 'Accumulators', sub: 'Smooth, not harsh', steps: [
+  { body: 'Watch the <b>1-2 accumulator</b> while you shift from 1st to 2nd. Command <b>1st</b>, then <b>2nd</b>.', setup: { tk: '4l60e', st: { range: 'D', gear: 1 }, demo: null }, ctl: true, goal: { check: () => atSt('4l60e', 'D', 2) && S.seen.has('4l60e1'), hint: 'Gear 1st, then 2nd. Watch the small piston.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'What does an accumulator do?', opts: ['It soaks up apply oil against a spring, so pressure rises gradually: a cushioned shift', 'It stores oil for when the pump stops', 'It filters the oil'], a: 0, why: 'A broken accumulator spring or a stuck piston gives one harsh shift, and the rest feel normal. That pattern points right at it.' } } },
+] },
+{ id: 'faults', title: 'When the hydraulics go wrong', sub: 'Wrong gear vs. slipping', steps: [
+  { body: '<b>Demo fault: shift solenoid B circuit open.</b> In D, command 1st, 2nd, 3rd and 4th, and watch which gear you really get (Gear train panel).', setup: { tk: '4l60e', st: { range: 'D', gear: 1 }, demo: 'ssB_open', seen: true }, ctl: true, goal: { check: () => [1, 2, 3, 4].every(g => S.seen.has('4l60e' + g)), hint: 'Command all four gears.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'You got 4th, 3rd, 3rd, 4th. Why?', opts: ['Signal B can\'t build, so the 2-3 valve is always up. Only solenoid A changes anything: OFF = 3rd, ON = 4th', 'The 1-2 valve is stuck', 'Low line pressure'], a: 0, why: 'A dead solenoid or a stuck valve gives a clean but WRONG gear. The pattern of gears tells you which part.' } } },
+  { body: '<b>Demo fault: leaking 3-4 clutch seal.</b> Command <b>3rd</b> and look at the 3-4 clutch.', setup: { tk: '4l60e', st: { range: 'D', gear: 2 }, demo: 'leak_c34' }, ctl: true, goal: { check: () => atSt('4l60e', 'D', 3), hint: 'Gear: 3rd.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'How is a leaking seal different from a stuck valve?', opts: ['A leak gives the RIGHT gear, but it slips, flares or engages late, and the fluid burns', 'A leak gives the wrong gear', 'There is no difference'], a: 0, why: 'Wrong gear: think solenoids and valves. Right gear but slipping: think seals, pistons and pressure. Diagnose mode uses exactly this logic.' } } },
+] },
+{ id: 'zf', title: '8-speed: one solenoid per element', sub: 'Clutch-to-clutch shifts', steps: [
+  { body: 'Switch to the <b>ZF 8HP-style</b> unit, <b>D</b>, <b>1st</b>.', setup: { demo: null }, ctl: true, goal: { check: () => atSt('8hp', 'D', 1), hint: 'Transmission: ZF 8HP-style · Range D · 1st.' } },
+  { body: 'Command <b>2nd</b>.', ctl: true, goal: { check: () => atSt('8hp', 'D', 2), hint: 'Gear: 2nd.' } },
+  { body: '', ctl: true, goal: { mc: { q: 'What changed from 1st to 2nd?', opts: ['Clutch C released and clutch E applied: two solenoids timed against each other (clutch-to-clutch)', 'All five elements changed', 'Nothing: a shift valve moved'], a: 0, why: 'No shift valves, no accumulators: the TCM ramps one pressure down while ramping the other up.' } } },
+  { body: 'Tap any <b>clutch valve</b> to zoom in.', ctl: true, goal: { check: () => /^cv/.test(S.zoom || ''), hint: 'Tap "Clutch valve A" (or B–E).' } },
+  { body: '', ctl: true, goal: { mc: { q: 'If one of these clutch valves sticks open, what happens?', opts: ['That element stays applied in every gear: in gears that don\'t use it, the gear train ties up, and the TCM sets a code and goes to limp mode', 'Nothing', 'The pump stops'], a: 0, why: 'Four applied elements over-constrain the gear train. You\'ll see this in Diagnose.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) {
+  if (!su) return;
+  if ('demo' in su) S.demo = su.demo;
+  if (su.seen) S.seen = new Set();
+  if (su.tk || su.st) { S.prev = null; if (su.tk) S.tk = su.tk; if (su.st) S.st = { range: su.st.range, gear: su.st.gear || 1 }; S.ang = {}; }
+  if (S.st.range === 'D') S.seen.add(S.tk + S.st.gear);
+}
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); renderViews(); }
+function checkGoal() {
+  const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return;
+  if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); }
+}
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets things up, tells you what to change and watch, and checks your answer.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  if (st.ctl) h += `<h4>Controls</h4>` + ctlHTML(true);
+  return h;
+}
+
+/* ================= diagnose ================= */
+const CAUSES = {
+  ssA_open:    { tk: '4l60e', lab: 'Shift solenoid A (circuit open)', concern: 'It feels lazy pulling away from a stop, and on the highway the engine revs high, like it never gets into overdrive. The check engine light is on.' },
+  ssB_open:    { tk: '4l60e', lab: 'Shift solenoid B (circuit open)', concern: 'It is really sluggish from a stop, like it starts in a high gear. Then it seems to shift down and back up again. The check engine light is on.' },
+  pcs_open:    { tk: '4l60e', lab: 'Pressure control solenoid (circuit open)', concern: 'It bangs into gear, and every shift is hard, even when I barely touch the gas. The check engine light is on.' },
+  v12_stuck:   { tk: '4l60e', lab: '1-2 shift valve stuck', concern: 'It never shifts out of first. The engine screams on the highway. The check engine light came on after a few miles.' },
+  v23_stuck:   { tk: '4l60e', lab: '2-3 shift valve stuck', concern: 'It shifts once, then stays there. Sometimes at highway speed it suddenly drops way down and the engine flares hard.' },
+  acc12:       { tk: '4l60e', lab: '1-2 accumulator', concern: 'The first shift is a hard bang every time. The rest of the shifts feel fine, and there are no warning lights.' },
+  leak_fwd:    { tk: '4l60e', lab: 'Forward clutch seal leak', concern: 'When I put it in Drive it takes a couple of seconds to catch, and it slips when I step on it in every gear. Reverse works fine.' },
+  leak_c34:    { tk: '4l60e', lab: '3-4 clutch seal leak', concern: 'Fine around town, but it flares on the second shift and slips on the highway when I pass.' },
+  leak_servo2: { tk: '4l60e', lab: '2-4 servo (2nd apply) seal leak', concern: 'Right after the first shift it slips, like it goes into neutral for a moment, then it catches on the next shift. The highway feels normal.' },
+  leak_rev:    { tk: '4l60e', lab: 'Reverse input clutch seal leak', concern: 'Reverse is slow to engage and slips backing up my driveway. Drive is fine.' },
+  low_line:    { tk: '4l60e', lab: 'Pump / pressure regulator (low line)', concern: 'It is slow to engage in both Drive and Reverse, and it slips in every gear when I accelerate hard. The fluid smells burnt.' },
+  h_pcA:       { tk: '8hp', lab: 'PC solenoid A (circuit open)', concern: 'Transmission warning light. No reverse, and it pulls away sluggish, then it stays stuck in one gear.' },
+  h_leakE:     { tk: '8hp', lab: 'Clutch E seal leak', concern: 'It flares on a lot of the upshifts and slips when I pass. The warning light came on after a while.' },
+  h_stuckD:    { tk: '8hp', lab: 'Clutch valve D stuck open', concern: 'Pulling away it feels like it is binding up and the engine bogs. Then the warning light comes on and it stays in one gear.' },
+  h_lowSys:    { tk: '8hp', lab: 'Pump / main pressure valve (low system pressure)', concern: 'It is slow to engage in Drive and Reverse, and it slips in every gear when I accelerate.' },
+  h_slowC:     { tk: '8hp', lab: 'Clutch valve C sticking (slow fill)', concern: 'There is a delay going into Drive, and some upshifts flare, maybe every other one. No warning lights yet.' },
+};
+const CASE_POOL = Object.keys(CAUSES);
+const TESTS = {
+  '4l60e': [['road', 'Road test'], ['scan', 'Scan data + DTCs'], ['line', 'Line pressure test'], ['sol', 'Solenoid ohm / click test'], ['fluid', 'Fluid check']],
+  '8hp': [['road', 'Road test'], ['scan', 'Scan data + DTCs'], ['adapt', 'Adaptation values'], ['sysp', 'System pressure test'], ['sol', 'Solenoid ohm test'], ['fluid', 'Fluid check']],
+};
+const CONFIRM = {
+  '4l60e': [['air:fwd', 'Air check: forward clutch', 'leak_fwd'], ['air:c34', 'Air check: 3-4 clutch', 'leak_c34'], ['air:servo2', 'Air check: servo 2nd apply', 'leak_servo2'], ['air:servo4', 'Air check: servo 4th apply', ''], ['air:rev', 'Air check: reverse input', 'leak_rev'], ['air:lr', 'Air check: low/reverse', ''], ['air:ovr', 'Air check: overrun clutch', ''],
+    ['vb:v12', 'Inspect 1-2 shift valve', 'v12_stuck'], ['vb:v23', 'Inspect 2-3 shift valve', 'v23_stuck'], ['vb:v34', 'Inspect 3-4 shift valve', ''], ['vb:acc12', 'Inspect 1-2 accumulator', 'acc12'], ['vb:pump', 'Inspect pump + regulator', 'low_line']],
+  '8hp': [...'ABCDE'.split('').map(k => ['air:' + k, 'Air check: ' + elN('8hp', k), k === 'E' ? 'h_leakE' : '']), ...'ABCDE'.split('').map(k => ['vb:cv' + k, 'Inspect clutch valve ' + k, k === 'D' ? 'h_stuckD' : k === 'C' ? 'h_slowC' : '']), ['vb:pump', 'Inspect pump + main valve', 'h_lowSys']],
+};
+/* Shuffle bag: every case type comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed the last one. */
+const BAG_KEY = 'athyd-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You've solved all ${n} case types once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function newCase() {
+  const type = bagNext(), C = CAUSES[type];
+  S.tk = C.tk; S.st = { range: 'D', gear: 1 }; S.prev = null; S.zoom = null; S.ang = {};
+  S.dx = { n: (S.dx?.n || 0) + 1, type, tk: C.tk, tests: {}, log: [], pick: null, tries: 0, solved: false, wrong: null };
+  S.tab = 'case'; renderPanel(); renderViews();
+}
+const SLIPF = ['leak_fwd', 'leak_c34', 'leak_servo2', 'leak_rev', 'low_line', 'h_leakE', 'h_lowSys'];
+function gearsMismatch(tk, f) {
+  const n = tk === '8hp' ? 8 : 4, out = [];
+  for (let g = 1; g <= n; g++) { const o = outcome(tk, { range: 'D', gear: g }, f), got = gearName(tk, o.res); if (got !== ORD[g]) out.push({ g, got }); }
+  return out;
+}
+function limpGear(tk, f) { for (const g of [3, 4, 5, 6]) { const o = outcome(tk, { range: 'D', gear: g }, f); if (gearName(tk, o.res) === ORD[g] && !o.slip.length) return g; } return 3; }
+function dtcs(tk, f) {
+  const c = [];
+  if (tk === '4l60e') {
+    if (f === 'ssA_open') c.push('P0753 Shift solenoid A circuit');
+    if (f === 'ssB_open') c.push('P0758 Shift solenoid B circuit');
+    if (f === 'pcs_open') c.push('P0748 Pressure control solenoid circuit');
+    if (f === 'v12_stuck' || f === 'v23_stuck') for (const x of gearsMismatch(tk, f)) c.push(`P073${x.g} Gear ${x.g} incorrect ratio`);
+    if (SLIPF.includes(f)) c.push('P0894 Transmission component slipping');
+  } else {
+    if (f === 'h_pcA') c.push('PC solenoid A: circuit open', 'Gear ratio monitoring: gears ' + gearsMismatch(tk, f).map(x => x.g).join(', ') + ' implausible', 'TCM limp-home active');
+    if (f === 'h_stuckD') c.push('Gear ratio monitoring: gears ' + gearsMismatch(tk, f).map(x => x.g).join(', ') + ' implausible (tie-up)', 'TCM limp-home active');
+    if (f === 'h_leakE') c.push('Clutch E: slip monitoring (stored after repeated flares)');
+    if (f === 'h_lowSys') c.push('Slip monitoring: several elements');
+  }
+  return c;
+}
+function testOut(k) {
+  const d = S.dx, f = d.type, tk = d.tk, L = [], n = tk === '8hp' ? 8 : 4;
+  const oD = g => outcome(tk, { range: 'D', gear: g }, f), oR = () => outcome(tk, { range: 'R', gear: 1 }, f);
+  switch (k) {
+    case 'road': {
+      const e = oD(1), slipD = e.slip.length, harsh = f === 'pcs_open';
+      L.push(f === 'h_slowC' ? ['bad', 'N → D: a 2-second delay before it engages.'] : slipD ? ['bad', 'N → D: slow, soft engagement (about 2 s).'] : harsh ? ['bad', 'N → D: bangs into gear.'] : ['ok', 'N → D: engages normally.']);
+      const r = oR(), rn = gearName(tk, r.res);
+      L.push(rn !== 'reverse' ? ['bad', `Reverse: no reverse (${rn === 'tie-up' ? 'binds up' : 'no drive'}).`] : r.slip.length ? ['bad', 'Reverse: slow to engage and slips backing up.'] : harsh ? ['bad', 'Reverse: bangs into reverse.'] : ['ok', 'Reverse: normal.']);
+      const ok = [];
+      for (let g = 1; g <= n; g++) {
+        const o = oD(g), got = gearName(tk, o.res);
+        if (got === 'tie-up') L.push(['bad', `Commanded ${ORD[g]}: the gear train binds up; the engine bogs and the vehicle shudders.`]);
+        else if (got !== ORD[g]) L.push(['bad', `Commanded ${ORD[g]}: ${got === 'neutral' ? 'no drive: the engine flares (neutral)' : g === 1 ? `it takes off in ${got}${['3rd', '4th', '5th', '6th', '7th', '8th'].includes(got) ? ' (very sluggish)' : ' (sluggish)'}` : `the car is really in ${got}${parseInt(got) < g ? ' (engine flares hard)' : ''}`}.`]);
+        else if (o.slip.length) L.push(['bad', `${ORD[g]}: correct gear, but it slips and flares under throttle.`]);
+        else ok.push(ORD[g]);
+      }
+      if (ok.length) L.push(['ok', `Normal: ${ok.join(', ')}.`]);
+      if (f === 'acc12') L.push(['bad', '1-2 shift: a hard bang. The 2-3 and 3-4 shifts feel normal.']);
+      if (f === 'pcs_open') L.push(['bad', 'Every shift is harsh and firm, even at light throttle.']);
+      if (f === 'h_slowC') L.push(['bad', 'Upshifts 2→3, 4→5 and 6→7 flare (the engine revs up between gears). 1→2, 3→4, 5→6 and 7→8 feel normal.']);
+      if (f === 'h_pcA' || f === 'h_stuckD') L.push(['warn', `Warning light on. The TCM goes to limp-home and holds ${ORD[limpGear(tk, f)]} gear.`]);
+      break;
+    }
+    case 'scan': {
+      for (let g = 1; g <= n; g++) {
+        const o = oD(g), got = gearName(tk, o.res), bad = got !== ORD[g] || o.slip.length;
+        const sols = tk === '4l60e' ? `SS A ${o.m.cA ? 'ON' : 'OFF'} · SS B ${o.m.cB ? 'ON' : 'OFF'}` : `PC ${TRANS['8hp'].gears[g].join('+')}`;
+        L.push([bad ? 'bad' : 'ok', `Cmd ${ORD[g]} · ${sols} · ${got === 'tie-up' ? 'speed ratio implausible (bind)' : o.res.ratio == null ? 'no output speed (slip)' : `ratio ${r2(o.res.ratio)}${got !== ORD[g] ? ` (= ${got})` : o.slip.length ? ', slip rpm high' : ''}`}`]);
+      }
+      if (tk === '4l60e') L.push([f === 'pcs_open' ? 'bad' : '', `PCS: commanded 0.90 A at idle · actual ${f === 'pcs_open' ? '0.00 A' : '0.90 A'}`]);
+      if (f === 'ssA_open') L.push(['bad', 'SS A circuit status: FAULT (open)']);
+      if (f === 'ssB_open') L.push(['bad', 'SS B circuit status: FAULT (open)']);
+      const c = dtcs(tk, f); L.push(c.length ? ['bad', 'DTCs: ' + c.join(' · ')] : ['ok', 'DTCs: none stored.']);
+      break;
+    }
+    case 'line': {
+      const lp = r => { const m = model60({ range: r, gear: 1 }, f); const max = f === 'pcs_open' ? m.line : f === 'low_line' ? Math.round((r === 'R' ? 230 : 175) * 0.6) : (r === 'R' ? 230 : 175) - (m.line < (r === 'R' ? 75 : 62) ? 18 : 0); return [m.line, max]; };
+      const [dI, dM] = lp('D'), [rI, rM] = lp('R'), inD = (v, lo, hi) => v >= lo && v <= hi;
+      L.push(['', 'Gauge on the line pressure tap, engine running, vehicle stopped (1st gear in D). Sim spec: D 55–70 psi at idle, 160–190 psi with the PCS commanded to max; R 65–85 / 210–250 psi.']);
+      L.push([inD(dI, 55, 70) && inD(dM, 160, 190) ? 'ok' : 'bad', `D: ${dI} psi idle · ${dM} psi PCS max${dI === dM ? ' (won\'t change with PCS command)' : ''}`]);
+      L.push([inD(rI, 65, 85) && inD(rM, 210, 250) ? 'ok' : 'bad', `R: ${rI} psi idle · ${rM} psi PCS max${rI === rM ? ' (won\'t change with PCS command)' : ''}`]);
+      if (f === 'leak_c34' || f === 'leak_servo2') L.push(['', 'Note: this test is done stopped in 1st, so a circuit that only fills in a higher gear isn\'t being tested.']);
+      break;
+    }
+    case 'sol': {
+      if (tk === '4l60e') {
+        L.push([f === 'ssA_open' ? 'bad' : 'ok', `Shift solenoid A: ${f === 'ssA_open' ? 'OL (open) · no click' : '24 Ω · clicks'} (spec 20–30 Ω)`]);
+        L.push([f === 'ssB_open' ? 'bad' : 'ok', `Shift solenoid B: ${f === 'ssB_open' ? 'OL (open) · no click' : '25 Ω · clicks'} (spec 20–30 Ω)`]);
+        L.push([f === 'pcs_open' ? 'bad' : 'ok', `PCS: ${f === 'pcs_open' ? 'OL (open)' : '4.4 Ω'} (spec 3–6 Ω)`]);
+      } else {
+        for (const x of 'ABCDE') L.push([f === 'h_pcA' && x === 'A' ? 'bad' : 'ok', `PC solenoid ${x}: ${f === 'h_pcA' && x === 'A' ? 'OL (open)' : '5.2 Ω'} (spec 4–7 Ω)`]);
+        L.push(['ok', 'Line PC solenoid: 5.1 Ω']);
+      }
+      break;
+    }
+    case 'adapt': {
+      for (const x of 'ABCDE') {
+        const v = f === 'h_leakE' && x === 'E' ? ['bad', 'fill pressure adaptation at the MAXIMUM limit'] : f === 'h_slowC' && x === 'C' ? ['bad', 'fill time adaptation at the limit (slow to fill)'] : f === 'h_lowSys' ? ['warn', 'adaptation high'] : f === 'h_pcA' && x === 'A' ? ['bad', 'not learnable (no response)'] : ['ok', 'within range'];
+        L.push([v[0], `${elN('8hp', x)}: ${v[1]}`]);
+      }
+      L.push(['', 'Adaptations show how much the TCM has had to add to fill and apply each element smoothly.']);
+      break;
+    }
+    case 'sysp': {
+      const low = f === 'h_lowSys';
+      L.push(['', 'System pressure with a test adapter. Sim spec: 80–100 psi at idle in D, 210–250 psi at full torque request.']);
+      L.push([low ? 'bad' : 'ok', `D: ${low ? 50 : 90} psi idle · ${low ? 125 : 230} psi max`]);
+      L.push([low ? 'bad' : 'ok', `R: ${low ? 66 : 120} psi idle · ${low ? 140 : 240} psi max`]);
+      if (f === 'h_leakE') L.push(['', 'In a gear with clutch E applied, system pressure dips about 8 psi.']);
+      break;
+    }
+    case 'fluid': {
+      L.push(SLIPF.includes(f) ? ['warn', 'Level correct, but the fluid is dark with a burnt smell, and there is friction material on the magnet.'] : f === 'v12_stuck' || f === 'v23_stuck' || f === 'h_stuckD' || f === 'h_slowC' ? ['ok', 'Level correct, color red. Some varnish on the dipstick.'] : ['ok', 'Level correct, color red, no burnt smell.']);
+      break;
+    }
+  }
+  return L;
+}
+function runTest(k) {
+  const d = S.dx; if (!d || d.solved || d.tests[k]) return;
+  d.tests[k] = true;
+  if (k.includes(':')) {
+    const item = CONFIRM[d.tk].find(x => x[0] === k), hit = item[2] === d.type, isAir = k.startsWith('air:');
+    const L = isAir ? [hit ? ['bad', 'Air hisses past the seals; the piston barely applies.'] : ['ok', 'A solid apply: you hear the clunk and it holds air.']]
+      : k === 'vb:pump' ? [hit ? ['bad', 'Pump wear well past spec, and the regulator valve is sticky in its bore.'] : ['ok', 'Pump clearances in spec; the regulator moves freely.']]
+      : k === 'vb:acc12' ? [hit ? ['bad', 'The accumulator spring is broken and the piston is stuck at the end of its bore.'] : ['ok', 'Spring and piston OK; the piston moves freely.']]
+      : [hit ? ['bad', 'The valve sticks: varnish and scoring in the bore. It won\'t move under its own spring.'] : ['ok', 'The valve slides freely under its own weight.']];
+    d.log.unshift({ name: item[1], lines: L });
+  } else d.log.unshift({ name: TESTS[d.tk].find(t => t[0] === k)[1], lines: testOut(k) });
+  renderPanel();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return;
+  d.tries++;
+  if (d.pick === d.type) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += Object.keys(d.tests).length; toast('✓ Correct', 'good'); }
+  else d.wrong = 'Not quite. Wrong gear (cleanly) points at solenoids and valves. Right gear that slips points at seals and pressure. A bad shift feel with normal gears points at accumulators and line pressure control.';
+  renderPanel();
+}
+const WHY = {
+  ssA_open: 'Signal A can never build, so the 1-2 valve is always up (no 1st) and the 3-4 valve never gets a signal (no 4th): 2-2-3-3. The ohm test and P0753 confirm it.',
+  ssB_open: 'Signal B can never build, so the 2-3 valve is always up. Only solenoid A changes anything: 4-3-3-4. The ohm test and P0758 confirm it.',
+  pcs_open: '0 A through the PCS means maximum line pressure: harsh everything, and line won\'t drop when commanded. P0748.',
+  v12_stuck: 'The solenoids work, but the 1-2 valve never moves, so no 2nd fluid: stuck in 1st. Ratio codes set for 2nd–4th.',
+  v23_stuck: 'No 3rd fluid, ever. And in 4th, signal A goes to the 1-2 valve (because the 2-3 valve is down), dropping it to 1st.',
+  acc12: 'Gears are all correct and nothing slips: only the 1-2 shift feel is wrong. Its accumulator is the cushion for that one shift.',
+  leak_fwd: 'Right gears, but every forward gear slips, and D engagement is slow. Reverse is fine. Line drops only in D. The forward clutch is the one element every forward gear shares.',
+  leak_c34: 'Right gears, slipping only in 3rd and 4th: the 3-4 clutch. The stationary line test can\'t see it, because the circuit isn\'t filled in 1st.',
+  leak_servo2: 'Slips only in 2nd: the band on 2nd apply. In 4th a second piston (4th apply) holds the band, so 4th is fine.',
+  leak_rev: 'Only reverse slips, and line drops only in R. The reverse input clutch is the leaking circuit.',
+  low_line: 'Everything slips and engagements are slow in both D and R: the shared supply. The line pressure test is low in every range.',
+  h_pcA: 'Solenoid A reads open, so brake A never applies: no R, 1st, 2nd, 7th or 8th. The TCM goes limp in a gear without A.',
+  h_leakE: 'Right gears, but the E gears (2, 3, 4, 6, 8) slip, and the E fill adaptation is maxed out.',
+  h_stuckD: 'D is applied in every gear. In 1st–3rd that makes four elements: tie-up. The solenoids test fine, so it is the valve.',
+  h_lowSys: 'Every element slips and engages slowly: system pressure is low, and every adaptation is high.',
+  h_slowC: 'Steady gears are fine; only the shifts INTO clutch C (N→D, 2→3, 4→5, 6→7) flare. The C fill-time adaptation is at its limit.',
+};
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const C_ = CAUSES[d.type], sc = S.dxScore, T = TRANS[d.tk];
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${C_.concern}</p><p class="dim">${T.name}. Fluid level and shift linkage already checked OK by the service writer.</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div><div><small>Tests here</small><b>${Object.keys(d.tests).length}</b></div></div>${bagHTML()}`;
+  if (d.solved) h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}</b> with ${Object.keys(d.tests).length} tests: <b>${C_.lab}</b>.</div><p class="dim">${WHY[d.type]}</p><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  else {
+    h += `<h4>Tests</h4><div class="tests">${TESTS[d.tk].map(([k, n]) => `<button class="btn${d.tests[k] ? ' used' : ''}" data-act="test:${k}"${d.tests[k] ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+    h += `<h4>Confirm (valve body / unit off)</h4><div class="rowb">${CONFIRM[d.tk].map(([k, n]) => `<button class="btn small${d.tests[k] ? ' used' : ''}" data-act="test:${k}"${d.tests[k] ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+  }
+  if (d.log.length) h += `<h4>Findings</h4><div class="find">${d.log.map(e => `<div class="f"><b>${e.name}</b>${e.lines.map(([k, s]) => `<div class="${k}">${s}</div>`).join('')}</div>`).join('')}</div>`;
+  if (!d.solved) {
+    const opts = CASE_POOL.filter(k => CAUSES[k].tk === d.tk);
+    h += `<h4>What failed?</h4><div class="cards">${opts.map(k => `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${CAUSES[k].lab}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+    if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  }
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['ctl', 'Controls']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'ctl' ? ctlHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m; S.ang = {}; S.prev = null; S.demo = null; stopAuto();
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'guided') S.lesson = null;
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); else { S.tk = S.dx.tk; } }
+  renderPanel(); renderViews();
+}
+let autoT = null;
+function stopAuto() { S.auto = false; clearInterval(autoT); autoT = null; }
+function toggleAuto() {
+  if (S.auto) { stopAuto(); renderPanel(); return; }
+  S.auto = true;
+  autoT = setInterval(() => { if (S.st.range !== 'D') { stopAuto(); renderPanel(); return; } setSt({ range: 'D', gear: S.st.gear % SPEC(S.tk).gears + 1 }); }, 2600);
+  renderPanel();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const p = b.dataset.act.split(':'), a = p[0], v = p.slice(1).join(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'tk': stopAuto(); setSt({ range: S.st.range === 'D' ? 'D' : SPEC(v).ranges.includes(S.st.range) ? S.st.range : 'D', gear: 1 }, v); break;
+    case 'range': if (v !== 'D') stopAuto(); setSt({ range: v, gear: v === 'D' ? (S.st.range === 'D' ? S.st.gear : 1) : 1 }); break;
+    case 'gear': stopAuto(); setSt({ range: 'D', gear: +v }); break;
+    case 'auto': toggleAuto(); break;
+    case 'test': runTest(v); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; S.ang = {}; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; S.demo = null; renderPanel(); renderViews(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('athyd.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; S.demo = null; renderPanel(); renderViews(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#chart').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-row]'); if (!tr) return;
+  const row = chartRows(S.tk).find(r => r.g === tr.dataset.row); stopAuto(); setSt(row.st);
+});
+function openZoom(id) { S.zoom = S.zoom === id ? null : id; renderSchematic(); renderZoom(); checkGoal(); }
+$('#svSch').addEventListener('click', e => { const g = e.target.closest('[data-z]'); if (g) openZoom(g.dataset.z); });
+$('#svSch').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('[data-z]'); if (g) { e.preventDefault(); openZoom(g.dataset.z); } });
+$('#zoom').addEventListener('click', e => { if (e.target.closest('[data-zclose]')) { S.zoom = null; renderSchematic(); renderZoom(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.zoom) { S.zoom = null; renderSchematic(); renderZoom(); } });
+$('#spd').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; S.speed = +b.dataset.v;
+  document.querySelectorAll('#spd button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  $('#schBox').className = 'vbox ' + (S.speed === 0 ? 'spd0' : S.speed > 1 ? 'spd2' : 'spd1');
+});
+
+/* animation loop: gears turn; during a shift the oncoming circuits fill and the off-going ones exhaust */
+let lastT = performance.now(), wasShifting = false;
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if (VIEW && S.speed > 0) for (const g of VIEW.sets) placeAngles(g.id, g.set, g.v, dt);
+  const shifting = S.prev && shiftK() < 1;
+  if (shifting || wasShifting) { renderSchematic(); if (!shifting) S.prev = null; }
+  wasShifting = shifting;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+renderPanel(); renderViews();
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__AH = { S, model, model60, model8, outcome, transSolve, gearName, NORM, TRANS, LAYOUT, CAUSES, testOut, runTest, newCase, setMode, setSt, LESSONS, curStep, renderViews, renderPanel, gearsMismatch, dtcs, get BAG() { return BAG; },
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; }, zoom: openZoom };
+})();
+</script>
+</body>
+</html>
