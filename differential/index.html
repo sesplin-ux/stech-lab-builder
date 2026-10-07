@@ -422,7 +422,7 @@ async function open3d() {
     const cv = $('#cv3d'), rend = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
     rend.setPixelRatio(Math.min(2, devicePixelRatio || 1));
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-    cam.position.set(1.2, 2.3, 3.6);
+    cam.position.set(-2.4, 2.6, 2.8);
     const ctl = new OrbitControls(cam, cv); ctl.enableDamping = true; ctl.target.set(0, 0, 0.2); ctl.minDistance = 2; ctl.maxDistance = 9;
     scene.add(new THREE.HemisphereLight(0xdde8f5, 0x202830, 1.4)); const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(4, 6, 5); scene.add(dl);
     const mat = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.55, roughness: 0.42 });
@@ -439,10 +439,10 @@ async function open3d() {
     const cse = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.7, 40, 1, true), caseM); cse.rotation.z = Math.PI / 2; carrier.add(cse);
     const pinM = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.9, 16), mat(0x8a98a8)); carrier.add(pinM);   // cross shaft along Y
     const spM = mat(0x3ddc97), spiders = [];
-    for (const d of [1, -1]) { const s = bevel(0.38, 0.22, 0.3, 10, spM); const holder = new THREE.Group(); s.rotation.x = d > 0 ? -Math.PI / 2 : Math.PI / 2; s.position.y = 0.5 * d; holder.add(s); carrier.add(holder); spiders.push([s, d]); }
+    for (const d of [1, -1]) { const s = bevel(0.38, 0.22, 0.3, 10, spM); const holder = new THREE.Group(); s.rotation.x = d > 0 ? Math.PI / 2 : -Math.PI / 2; s.position.y = 0.5 * d; /* narrow end points in at the center, like the side gears */ holder.add(s); carrier.add(holder); spiders.push([s, d]); }
     const sideM = mat(0x4fa3e3), sides = [];
     for (const d of [-1, 1]) { const g = new THREE.Group(); const b = bevel(0.5, 0.3, 0.32, 16, sideM); b.rotation.y = d < 0 ? Math.PI / 2 : -Math.PI / 2; b.position.x = 0.52 * d; g.add(b); const ax = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 3.2, 16), mat(0x2a6fa8)); ax.rotation.z = Math.PI / 2; ax.position.x = 2.15 * d; g.add(ax); scene.add(g); sides.push(g); }
-    const pin = new THREE.Group(); const pb = bevel(0.42, 0.24, 0.5, 11, mat(0xff7a3d)); pin.add(pb); const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 16), mat(0xb0562a)); shaft.rotation.x = Math.PI / 2; shaft.position.z = 1.5; pin.add(shaft);
+    const pin = new THREE.Group(); const pb = bevel(0.42, 0.24, 0.5, 11, mat(0xff7a3d)); pb.rotation.x = Math.PI; /* narrow end toward the ring gear */ pin.add(pb); const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 16), mat(0xb0562a)); shaft.rotation.x = Math.PI / 2; shaft.position.z = 1.5; pin.add(shaft);
     pin.position.set(0.55, -0.38, 1.45); scene.add(pin);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.95, 0.95, 1.7, 16, 1, true)), new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.35 })); edges.rotation.z = Math.PI / 2; carrier.add(edges);
     const resize = () => { const w = cv.clientWidth, hh = cv.clientHeight; if (!w || !hh) return; rend.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); };
@@ -455,7 +455,7 @@ function draw3d() {
   if (!G3 || S.view !== '3d') return;
   const sl = 0.12, thL = X.th[2] * sl, thR = X.th[3] * sl, thc = (thL + thR) / 2, ths = (thL - thR) / 2 * SIDE_T / SPIDER_T;
   G3.carrier.rotation.x = thc; G3.sides[0].rotation.x = thL; G3.sides[1].rotation.x = thR;
-  for (const [s, d] of G3.spiders) s.rotation.y = ths * d;
+  for (const [s, d] of G3.spiders) s.rotation.z = ths * d;   // spin on the cross shaft (the gear's own axis)
   G3.pin.rotation.z = -thc * FD;
   G3.ctl.update(); G3.rend.render(G3.scene, G3.cam);
 }
