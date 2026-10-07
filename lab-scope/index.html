@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Virtual Lab Scope</title>
+<meta name="description" content="A virtual automotive lab scope. Set range, timebase and trigger yourself on known-good and faulty crank, cam, injector, ignition, CAN, O2, wheel speed and PWM waveforms, then diagnose mystery cases.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. The scope screen itself
+   follows a common PC-scope layout: light graticule, blue Ch A, red Ch B, trigger bar at the bottom. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --chA:#4EA8FF; --chB:#FF6B6B; --chM:#3DDC97; --trg:#F5A400;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.35;cursor:not-allowed}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 7px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,400px);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+/* ---- scope ---- */
+.tbar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 10px}
+.tbar.top{border-bottom:1px solid var(--line)}
+.tbar.bot{border-top:1px solid var(--line)}
+.lbl{font:600 10px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+select,.num{background:var(--raise);color:var(--fg);border:1px solid var(--line-2);border-radius:8px;padding:5px 6px;font:500 12px/1.1 var(--f-mono);height:28px}
+.num{width:76px}
+select:hover,.num:hover{border-color:#3a4a5c}
+.runb{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:8px;font:700 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;background:#173a26;border:1px solid #2b6c50;color:#C9F7E2}
+.runb.stopped{background:#3a1717;border-color:#7a2e2e;color:#FFD2CD}
+.runb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chg{display:inline-flex;align-items:center;gap:5px;padding:2px 6px 2px 2px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);border-left:3px solid var(--c)}
+.chon{all:unset;cursor:pointer;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font:700 12px/1 var(--f-label);background:var(--c);color:#06101a}
+.chon[aria-pressed="false"]{background:transparent;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line-2)}
+.chon:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chg .pd{font:500 10.5px/1 var(--f-mono);color:var(--dim);min-width:52px}
+.chg .seg,.tbar .seg{flex-wrap:nowrap}
+.ovr{font:700 9px/1 var(--f-label);letter-spacing:.12em;color:#fff;background:var(--fail);padding:3px 5px;border-radius:5px}
+.tog{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.06em;color:var(--dim);white-space:nowrap}
+.tog i{width:10px;height:10px;border-radius:3px}
+.tog[aria-pressed="true"]{color:var(--fg);border-color:#3a4a5c;background:#17222d}
+.tog[aria-pressed="false"] i{opacity:.25}
+.tog[disabled]{opacity:.35;cursor:not-allowed}
+.tog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sp{flex:1}
+.screen{flex:1;min-height:240px;position:relative;padding:8px 10px}
+.screen canvas{width:100%;height:100%;display:block;border-radius:10px;touch-action:none}
+.stat{padding:4px 8px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft);white-space:nowrap}
+.stat.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}.stat.wait{border-color:rgba(255,178,36,.55);color:#FFE2A8}.stat.off{border-color:rgba(255,90,78,.5);color:#FFD2CD}
+.pre{display:inline-flex;align-items:center;gap:6px}
+.pre input{width:90px;accent-color:var(--trg)}
+.pre output{font:500 11px/1 var(--f-mono);color:var(--soft);min-width:30px}
+.meas{padding:0 10px 8px;overflow-x:auto}
+.meas table{width:100%;border-collapse:collapse;font:500 11.5px/1.2 var(--f-mono);color:var(--soft)}
+.meas th{font:600 9.5px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:5px 6px;text-align:right;border-bottom:1px solid var(--line)}
+.meas td{padding:4px 6px;text-align:right;border-bottom:1px solid #121a22;white-space:nowrap}
+.meas th:first-child,.meas td:first-child{text-align:left}
+.meas td i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+/* ---- notebook ---- */
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.pbody ul{margin:0 0 8px;padding-left:18px}
+.pbody li{margin:2px 0}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 62px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.grp{font:700 9.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:8px 0 2px}
+.conn{display:grid;gap:4px;margin:4px 0 8px}
+.conn div{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:12.5px;color:var(--soft)}
+.conn i{width:22px;height:18px;border-radius:5px;display:grid;place-items:center;font:700 10.5px/1 var(--f-label);font-style:normal;color:#06101a}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.msg ul{margin:4px 0 0;padding-left:18px}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:12px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.steps{display:grid;gap:4px;margin:10px 0 4px}
+.steps div{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--dim)}
+.steps div i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 10px/1 var(--f-label);background:var(--line-2);color:var(--fg);font-style:normal}
+.steps div.done{color:#C9F7E2}.steps div.done i{background:var(--ok);color:#06140d}
+.steps div.cur{color:var(--fg)}.steps div.cur i{background:var(--accent)}
+table.tips{width:100%;border-collapse:collapse;font-size:12px;margin:4px 0 8px}
+table.tips th{font:600 9.5px/1.15 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:4px 3px;border-bottom:1px solid var(--line);text-align:left}
+table.tips td{padding:5px 3px;border-bottom:1px solid #151d26;color:var(--soft);vertical-align:top}
+table.tips td:not(:first-child){font:500 11px/1.3 var(--f-mono)}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .scope .screen{height:420px;flex:none}
+  .main>.panel.nb{height:640px}
+}
+@media (max-width: 640px){ .scope .screen{height:300px;padding:6px} .brand p{display:none} .chg .pd{display:none} .tbar{padding:7px 8px} }
+/* back to the tools hub (site root) */
+.hublink{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);color:var(--soft);font:600 12px/1 var(--f-label);letter-spacing:.05em;text-decoration:none;white-space:nowrap;pointer-events:auto}
+.hublink:hover{color:var(--fg);border-color:#3a4a5c}
+.hublink:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:640px){.hublink{padding:0 8px}.hublink span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <a class="hublink" href="../" title="All STECH student tools"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>All tools</span></a>
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="M5 14h3l1.5-5 2.5 8 2-6 1 3h4"/></svg></div>
+      <div><h1>Virtual Lab Scope</h1><p>Range · timebase · trigger · waveforms</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <section class="panel scope" aria-label="Lab scope">
+      <div class="tbar top" id="tbTop">
+        <button class="runb" id="runBtn" title="Run / stop the scope">■ Stop</button>
+        <span class="lbl">Timebase</span><select id="tbSel" aria-label="Timebase (time per division)"></select>
+        <span class="chg" id="chgA" style="--c:var(--chA)"><button class="chon" data-ch="A" aria-pressed="true" title="Channel A on/off">A</button><select data-ch="A" aria-label="Channel A range"></select><span class="pd" id="pdA"></span><span class="seg mini" data-ch="A" data-k="cpl" aria-label="Channel A coupling"><button data-v="DC">DC</button><button data-v="AC">AC</button></span><span class="seg mini" data-ch="A" data-k="z" aria-label="Channel A zero position"><button data-v="mid" title="Zero line in the center">Ctr</button><button data-v="low" title="Zero line near the bottom (more room for positive signals)">Low</button></span><span class="ovr" id="ovA" hidden>Over range</span></span>
+        <span class="chg" id="chgB" style="--c:var(--chB)"><button class="chon" data-ch="B" aria-pressed="true" title="Channel B on/off">B</button><select data-ch="B" aria-label="Channel B range"></select><span class="pd" id="pdB"></span><span class="seg mini" data-ch="B" data-k="cpl" aria-label="Channel B coupling"><button data-v="DC">DC</button><button data-v="AC">AC</button></span><span class="seg mini" data-ch="B" data-k="z" aria-label="Channel B zero position"><button data-v="mid" title="Zero line in the center">Ctr</button><button data-v="low" title="Zero line near the bottom">Low</button></span><span class="ovr" id="ovB" hidden>Over range</span></span>
+        <span class="sp"></span>
+        <button class="tog" id="mathBtn" aria-pressed="false" title="Math channel: A minus B"><i style="background:var(--chM)"></i>A − B</button>
+        <button class="tog" id="rulBtn" aria-pressed="false" title="Time and signal rulers"><i style="background:#C5CFD9"></i>Rulers</button>
+        <button class="tog" id="scrBtn" aria-pressed="true" title="Light or dark screen"><i style="background:#fff"></i>Light</button>
+      </div>
+      <div class="screen" id="screenBox"><canvas id="cv" role="img" aria-label="Scope screen"></canvas></div>
+      <div class="tbar bot" id="tbBot">
+        <span class="lbl">Trigger</span>
+        <span class="seg mini" id="trMode" aria-label="Trigger mode"><button data-v="none">None</button><button data-v="auto">Auto</button><button data-v="repeat">Repeat</button><button data-v="single">Single</button></span>
+        <span class="seg mini" id="trSrc" aria-label="Trigger source"><button data-v="A">Ch A</button><button data-v="B">Ch B</button></span>
+        <span class="seg mini" id="trEdge" aria-label="Trigger edge"><button data-v="rise" title="Rising edge">↑ Rise</button><button data-v="fall" title="Falling edge">↓ Fall</button></span>
+        <span class="pre"><span class="lbl">Level</span><input class="num" id="trLvl" type="number" step="any" aria-label="Trigger level"><span class="dim" id="trUnit" style="font-size:12px">V</span></span>
+        <span class="pre"><span class="lbl">Pre</span><input type="range" id="trPre" min="0" max="90" step="5" aria-label="Pre-trigger percent"><output id="trPreO">10%</output></span>
+        <span class="sp"></span>
+        <span class="stat" id="trStat">—</span>
+      </div>
+      <div class="meas" id="meas"></div>
+    </section>
+    <section class="panel nb" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const mod = (a, n) => ((a % n) + n) % n;
+const TAU = Math.PI * 2;
+const gauss = (x, m, s) => Math.exp(-0.5 * ((x - m) / s) ** 2);
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const trim = n => (Math.abs(n) < 1e-12 ? '0' : String(+n.toPrecision(3)));
+function fmtT(s) { const a = Math.abs(s); if (a < 0.9995e-3) return trim(s * 1e6) + ' µs'; if (a < 0.9995) return trim(s * 1e3) + ' ms'; return trim(s) + ' s'; }
+function fmtU(v, u) { const a = Math.abs(v); if (u === 'V' && a < 1 && a > 0) return trim(v * 1e3) + ' mV'; if (u === 'A' && a < 1 && a > 0) return trim(v * 1e3) + ' mA'; return trim(v) + ' ' + u; }
+const fmtHz = f => f >= 1000 ? trim(f / 1000) + ' kHz' : trim(f) + ' Hz';
+const fmtR = (R, u) => '±' + fmtU(R, u);
+
+/* ================= scope hardware (generic 2-channel PC scope) ================= */
+const TBS = [1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2, 0.5, 1, 2, 5];
+const RANGES = { V: [0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500], A: [0.5, 1, 2, 5, 10, 20], kV: [5, 10, 20, 50] };
+const visR = (R, z) => z === 'low' ? { lo: -R / 5, hi: 9 * R / 5 } : { lo: -R, hi: R };   // 10 vertical divisions
+
+/* ================= engine / vehicle operating points ================= */
+const RPM = {
+  crank: { n: 'Cranking', rpm: 250, bp: 10.4, jit: 4, pw: 5.5e-3, dw: 4.0e-3 },
+  idle:  { n: 'Idle', rpm: 750, bp: 14.2, jit: 0.4, pw: 2.9e-3, dw: 3.0e-3 },
+  rev:   { n: '2500 rpm', rpm: 2500, bp: 14.3, jit: 0.1, pw: 3.6e-3, dw: 2.6e-3 },
+};
+const theta = (t, E) => E.w * t + E.jit * Math.sin(TAU * E.f2 * t);   // crank degrees (small speed ripple at firing frequency)
+
+/* ================= CAN frames (500 kbps, 11-bit, stuffed) ================= */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function canFrame(r, id) {
+  const bits = [0], push = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >> i) & 1); };
+  const dlc = 2 + Math.floor(r() * 7);
+  push(id ?? Math.floor(r() * 0x7FF), 11); bits.push(0, 0, 0); push(dlc, 4);
+  for (let i = 0; i < dlc * 8; i++) bits.push(r() < 0.5 ? 1 : 0);
+  for (let i = 0; i < 15; i++) bits.push(r() < 0.5 ? 1 : 0);
+  const out = []; let run = 0, last = -1;
+  for (const b of bits) { out.push(b); if (b === last) run++; else { run = 1; last = b; } if (run === 5) { out.push(1 - b); last = 1 - b; run = 1; } }
+  out.push(1, 0, 1, 1, 1, 1, 1, 1, 1, 1);   // CRC delimiter, ACK slot (dominant), ACK delimiter, EOF
+  return out;
+}
+const CANB = 2e-6;
+const CAN = (() => { const r = rng(11); const frames = []; for (let i = 0; i < 12; i++) frames.push(canFrame(r)); return { frames, slot: 0.5e-3 }; })();
+const BAB = (() => { const f = canFrame(rng(7), 0x010); return { frames: [f], slot: (f.length + 3) * CANB }; })();
+function canState(t, bus) {
+  const k = Math.floor(t / bus.slot), loc = t - k * bus.slot, Fr = bus.frames[mod(k, bus.frames.length)], x = loc / CANB, bi = Math.floor(x);
+  const cur = bi < Fr.length ? Fr[bi] : 1, prv = bi >= 1 && bi - 1 < Fr.length ? Fr[bi - 1] : 1;
+  return [cur === 0 ? 1 : 0, prv === 0 ? 1 : 0, (x - bi) * CANB];   // dominant now, dominant before, time since bit start
+}
+
+/* ================= ignition fault table ================= */
+const IGN = {
+  good:    { vpk: 340, vsl: 38, kpk: 10, ksl: 1.5, ds: 1.5e-3, osc: 1, slope: -0.15 },
+  gap:     { vpk: 440, vsl: 58, kpk: 18, ksl: 2.6, ds: 0.95e-3, osc: 1, slope: -0.1 },
+  fouled:  { vpk: 190, vsl: 28, kpk: 4.2, ksl: 0.9, ds: 2.2e-3, osc: 0.6, slope: -0.1 },
+  open:    { vpk: 470, vsl: 85, kpk: 27, ksl: 4.2, ds: 0.35e-3, osc: 1.6, slope: 0 },
+  shorted: { vpk: 210, vsl: 30, kpk: 6, ksl: 1.1, ds: 1.1e-3, osc: 0, slope: -0.1 },
+  lean:    { vpk: 370, vsl: 42, kpk: 13, ksl: 1.5, ds: 1.25e-3, osc: 1, slope: 0.6 },
+};
+
+/* ================= signal library =================
+   f(t, E, F, O) writes the clean channel values at stream time t into O[0], O[1] (channel units).
+   Generic teaching waveforms; real values vary by make, model and sensor. */
+const PRE = {
+ckpMag: { name: 'Crank sensor: magnetic', group: 'Engine', op: 'rpm', icon: 'CKP',
+  chs: [{ n: 'CKP signal', u: 'V', z: 'mid', probe: 'Back-probe the CKP signal wire at the sensor. Ground lead on engine ground.' }],
+  about: 'A magnetic (variable-reluctance) sensor makes its own AC voltage as the reluctor teeth pass. This wheel has 36 teeth with one missing; the missing tooth tells the ECM where the crankshaft is.',
+  good: ['An AC wave: one cycle per tooth, every tooth the same height.', 'A bigger, wider swing once per revolution, at the missing tooth.', 'Amplitude grows with speed: about 1 V peak cranking, 3 V at idle, 10 V at 2500 rpm.'],
+  f(t, E, F, O) {
+    const th = theta(t, E), p = mod(th, 360); let amp = E.rpm / 250; if (F === 'weak') amp *= 0.22;
+    let v = 0;
+    if (F !== 'open') {
+      if (p >= 340) v = 1.6 * amp * Math.sin(TAU * (p - 340) / 20);
+      else { v = amp * Math.sin(TAU * mod(p, 10) / 10); if (F === 'tooth' && Math.floor(p / 10) === 12) v *= 0.4; }
+      if (F === 'reversed') v = -v;
+      if (F === 'emi') { const q = mod(th, 180); if (q < 1.5) { const s = q / 0.3; v += 1.1 * Math.exp(-s) * Math.cos(5 * s); } }
+    }
+    O[0] = v;
+  },
+  nz: [0.03], needTrig: true, allowAC: true,
+  period: E => 60 / E.rpm, tStep: E => 10 / E.w / 40, trigMod: E => 60 / E.rpm, span: E => 120 / E.rpm, tb: E => [60 / E.rpm, 300 / E.rpm],
+  trigHint: 'It fires on every tooth, so the gap lands somewhere new each sweep. Raise the trigger level above the normal teeth but below the bigger swing at the missing tooth, so it fires once per revolution.',
+  rec: (E, F) => ({ tr: { src: 'A', edge: 'rise', lvl: +(1.3 * E.rpm / 250 * (F === 'weak' ? 0.22 : 1)).toFixed(2), pre: 0.1 } }),
+  faults: {
+    weak: { n: 'Weak signal (excessive air gap)', rpm: 'crank', concern: 'Long crank before it starts, worse when hot. Sometimes it won’t start at all. Runs fine once it’s going.', dtc: 'P0335 Crankshaft position sensor A circuit (intermittent)', see: 'Same pattern and gap, but only about a quarter of the normal voltage. At cranking speed the ECM may not see it. Check the air gap, sensor seating and for debris on the tip.' },
+    tooth: { n: 'Damaged reluctor tooth', concern: 'Random misfire codes and a slight stumble at idle.', dtc: 'P0300 Random/multiple cylinder misfire', see: 'One tooth (always the same one, the 12th after the gap) is much smaller than the rest. The ECM sees a speed glitch it reads as a misfire.' },
+    reversed: { n: 'Sensor wires reversed (polarity)', concern: 'After a CKP sensor was replaced with a spliced connector, the engine feels down on power and timing looks wrong on the scan tool.', dtc: 'None stored (timing reads wrong)', see: 'The whole signal is upside down: at the gap it swings negative first. The ECM times off the wrong edge, so ignition timing is off.' },
+    emi: { n: 'Ignition interference (wiring routed by the coils)', concern: 'Random stumble or stall at idle since recent engine work. Codes come and go.', dtc: 'P0336 Crankshaft position sensor A range/performance', see: 'Sharp spikes twice per revolution, right at the firing points: noise from the ignition coupling into the sensor wires. Reroute the harness away from the coils and check the shield.' },
+    open: { n: 'Open circuit (sensor or wire)', rpm: 'crank', concern: 'Cranks, no start. The tach doesn’t move while cranking.', dtc: 'P0335 Crankshaft position sensor A circuit', see: 'A flat line at 0 V while the engine turns: no signal at all. Measure sensor resistance and check the wiring for an open.' },
+  } },
+
+ckpCmp: { name: 'Crank + cam sensors: Hall', group: 'Engine', op: 'rpm', icon: 'CMP',
+  chs: [{ n: 'CKP signal (60-2)', u: 'V', z: 'low', probe: 'Ch A back-probes the CKP signal wire.' }, { n: 'CMP signal', u: 'V', z: 'mid', probe: 'Ch B back-probes the CMP (cam) signal wire.' }],
+  about: 'Hall-effect sensors switch a 5 V signal on and off. The crank wheel has 60 teeth with 2 missing (one gap per revolution). The cam turns once per engine cycle (two crank turns), so its single pulse tells the ECM which revolution is the compression stroke.',
+  good: ['Both signals: clean square waves between about 0 V and 5 V.', 'Crank: a long low spot (the two missing teeth) once per revolution.', 'Cam: one pulse every two crank revolutions, always in the same place relative to the crank gap.'],
+  f(t, E, F, O) {
+    const th = theta(t, E), p = mod(th, 360), idx = Math.floor(p / 6), hi = 4.85, lo = F === 'lowref' ? 1.15 : 0.15;
+    let a = idx >= 58 ? lo : (mod(p, 6) < 3 ? hi : lo);
+    if (F === 'dropout' && mod(Math.floor(th / 360), 3) === 1 && idx >= 20 && idx < 30) a = lo;
+    const c = mod(th - (F === 'camtime' ? 18 : 0), 720);
+    O[0] = a; O[1] = F === 'cmpdead' ? 4.92 : (c >= 60 && c < 150 ? 4.85 : 0.15);
+  },
+  nz: [0.02, 0.02], needTrig: true, allowAC: false,
+  period: E => 120 / E.rpm, tStep: E => 1 / E.w, trigMod: E => 120 / E.rpm, span: E => 480 / E.rpm, tb: E => [120 / E.rpm, 480 / E.rpm],
+  trigHint: 'Triggering on the crank teeth fires 58 times per revolution, so the cam pulse jumps around. Trigger on the cam signal (Ch B): it happens once per cycle.',
+  rec: () => ({ tr: { src: 'B', edge: 'rise', lvl: 2.5, pre: 0.2 } }),
+  faults: {
+    camtime: { n: 'Cam timing off (chain jumped a tooth)', concern: 'Rough idle and low power. The timing chain rattled on cold starts for months.', dtc: 'P0016 Crankshaft/camshaft position correlation (bank 1, sensor A)', see: 'Both signals look healthy, but the cam pulse starts about 3 crank teeth later, relative to the crank gap, than on a good engine. The parts they read have moved relative to each other.' },
+    cmpdead: { n: 'Cam sensor failed (no pulses)', concern: 'Long crank before it starts. Check engine light on.', dtc: 'P0340 Camshaft position sensor A circuit', see: 'The crank signal is fine. The cam channel sits flat at about 5 V (the pull-up voltage) with no pulses at all.' },
+    lowref: { n: 'Poor sensor ground (high resistance)', concern: 'Stalls now and then once warm. Restarts after it cools down.', dtc: 'P0336 Crankshaft position sensor A range/performance', see: 'The crank signal’s low level only drops to about 1.1 V instead of near 0 V. Do a voltage-drop test on the sensor ground.' },
+    dropout: { n: 'Intermittent dropout (chafed wire)', concern: 'The engine cuts out for a split second at random. The tach drops to zero for a moment.', dtc: 'P0335 / P0336 (intermittent)', see: 'Every few revolutions, about 10 crank pulses go missing, which looks like a second gap. Wiggle-test the harness while watching the scope.' },
+  } },
+
+injector: { name: 'Fuel injector: voltage + current', group: 'Engine', op: 'rpm', icon: 'INJ',
+  chs: [{ n: 'Injector control pin', u: 'V', z: 'low', probe: 'Ch A back-probes the injector control (ECM) wire.' }, { n: 'Injector current', u: 'A', z: 'low', probe: 'Ch B: low-amp current clamp around the injector control wire.' }],
+  about: 'The injector gets battery voltage all the time. The ECM grounds the other side (a low-side driver) to open it. Voltage shows when and how long; current shows that the coil and valve really worked.',
+  good: ['Rest at battery voltage (about 14 V running).', 'Drops to near 0 V for the pulse width (about 2.9 ms at idle).', 'A flat-topped spike (about 60 V, the ECM clamp) at turn-off, then a small bump as the valve closes.', 'Current ramps up to about 1 A, with a small dip near 1 ms: the pintle opening.'],
+  f(t, E, F, O) {
+    const P = 120 / E.rpm, x = mod(t, P), pw = E.pw, bp = E.bp;
+    if (F === 'open') { O[0] = 0; O[1] = 0; return; }
+    let R = 13, L = 0.013, hump = 1, von = 0.25;
+    if (F === 'shorted') { R = 4; L = 0.007; hump = 0; } else if (F === 'feedres') { R = 33; hump = 0.5; } else if (F === 'sticky') hump = 0; else if (F === 'gnd') { von = 2.6; R = 15.5; }
+    const Im = (bp - von) / R, tau = L / R;
+    const iAt = s => Im * (1 - Math.exp(-s / tau)) - hump * 0.09 * Im * gauss(s, 0.95e-3, 0.12e-3);
+    if (x < pw) { const i = iAt(x); O[0] = von + 0.04 * i; O[1] = i; return; }
+    const y = x - pw, Ie = iAt(pw), pk = Math.min(62, 18 + 48 * Ie), tc = 0.13e-3 * Math.min(3, Ie / 0.95) * (L / 0.013);
+    O[0] = (y < tc ? pk : bp + (pk - bp) * Math.exp(-(y - tc) / 40e-6)) + hump * 1.4 * gauss(y, 0.8e-3 + tc, 0.11e-3);
+    O[1] = Ie * Math.max(0, 1 - y / Math.max(tc, 30e-6));
+  },
+  nz: [0.06, 0.008], needTrig: true, allowAC: false,
+  period: E => 120 / E.rpm, tStep: () => 20e-6, trigMod: E => 120 / E.rpm, span: E => 120 / E.rpm, tb: E => [E.pw + 2e-3, 25e-3],
+  trigHint: 'Trigger on the moment the driver turns on: Ch A, falling edge, with the level between the on-voltage and battery voltage (about 7 V).',
+  rec: () => ({ tb: 1e-3, tr: { src: 'A', edge: 'fall', lvl: 7, pre: 0.1 } }),
+  faults: {
+    shorted: { n: 'Shorted injector winding (low resistance)', concern: 'Misfire on cylinder 1 and a rough idle.', dtc: 'P0301 Cylinder 1 misfire, P0201 Injector 1 circuit', see: 'Current climbs to about 3 A instead of about 1 A, and there’s no pintle hump. An ohmmeter reads about 4 Ω (spec 12–16 Ω).' },
+    open: { n: 'Open injector winding', concern: 'A dead miss on cylinder 1.', dtc: 'P0201 Injector 1 circuit, P0301', see: 'Flat at 0 V: no battery voltage gets through the open coil to the control pin, so the ECM has nothing to switch. Current stays at zero.' },
+    sticky: { n: 'Injector stuck closed (mechanical)', concern: 'Cylinder 1 misfire, but no injector circuit code.', dtc: 'P0301 Cylinder 1 misfire (no circuit code)', see: 'Electrically normal, but there’s no pintle hump in the current and no closing bump after the spike: the valve isn’t moving.' },
+    feedres: { n: 'High resistance in the injector feed', concern: 'Lean misfire on cylinder 1, worse under load.', dtc: 'P0301, P0171 System too lean', see: 'Current only reaches about 0.4 A and levels off early, and the turn-off spike is smaller. Rest voltage still reads B+ because no current flows then. A voltage-drop test with the injector pulsing finds the corroded connector.' },
+    gnd: { n: 'ECM driver ground fault (high on-voltage)', concern: 'Lean codes and rough running. All cylinders look about the same.', dtc: 'P0171 / P0174 System too lean', see: 'When the driver turns on, the pin only drops to about 2.6 V instead of near 0 V. Voltage-drop test the ECM grounds.' },
+  } },
+
+ignition: { name: 'Ignition: primary + secondary', group: 'Engine', op: 'rpm', icon: 'IGN',
+  chs: [{ n: 'Coil primary (10:1 probe)', u: 'V', z: 'mid', probe: 'Ch A: coil primary control wire, through a 10:1 attenuator (the spikes reach hundreds of volts).' }, { n: 'Secondary (kV probe)', u: 'kV', z: 'low', probe: 'Ch B: capacitive secondary pickup on the coil (reads kilovolts).' }],
+  about: 'The ECM (or igniter) grounds the coil primary to build a magnetic field (dwell). When it lets go, the field collapses and the secondary jumps to thousands of volts to fire the plug. The secondary picture is the classic ignition pattern.',
+  good: ['Primary: battery voltage, then about 1 V during dwell (about 3 ms), then a spike of about 340 V when it fires.', 'Secondary: a firing line of about 10 kV, then a fairly flat spark line about 1.5 kV high and 1.5 ms long.', 'After the spark: 3 to 5 coil oscillations (a healthy coil rings).'],
+  f(t, E, F, O) {
+    const P = 120 / E.rpm, x = mod(t, P), d = E.dw, bp = E.bp, K = IGN[F] || IGN.good;
+    if (x < d) { O[0] = 0.8 + 0.9 * x / d; O[1] = -0.9 * Math.exp(-x / 0.12e-3) * Math.cos(TAU * 6000 * x) - 0.12; return; }
+    const y = x - d;
+    if (y < K.ds) {
+      const g = 1 + K.slope * y / K.ds, sl = K.vsl * g, ks = K.ksl * g;
+      O[0] = sl + (K.vpk - sl) * Math.exp(-y / 22e-6) + 1.5 * Math.sin(TAU * 7000 * y);
+      O[1] = ks + (K.kpk - ks) * Math.exp(-y / 16e-6) + 0.06 * Math.sin(TAU * 11000 * y);
+      return;
+    }
+    const z = y - K.ds, e = Math.exp(-z / 0.3e-3) * Math.cos(TAU * 3500 * z);
+    O[0] = bp + K.osc * 45 * e; O[1] = -K.osc * 1.3 * e;
+  },
+  nz: [1.2, 0.05], needTrig: true, allowAC: false,
+  period: E => 120 / E.rpm, tStep: () => 4e-6, trigMod: E => 120 / E.rpm, span: E => 120 / E.rpm, tb: E => [E.dw + 2.5e-3, 25e-3],
+  trigHint: 'Trigger on the firing line: Ch B, rising edge, with the level above the coil oscillations (about 3 kV). Give it some pre-trigger so the dwell shows too.',
+  rec: () => ({ tb: 1e-3, tr: { src: 'B', edge: 'rise', lvl: 3, pre: 0.45 } }),
+  faults: {
+    gap: { n: 'Worn spark plug (wide gap)', concern: 'Misfire on cylinder 1 under hard acceleration.', dtc: 'P0301 Cylinder 1 misfire', see: 'Firing line about 18 kV (normal is about 10) and a short spark line (about 1 ms): it takes more voltage to jump the worn gap, leaving less energy for the spark.' },
+    fouled: { n: 'Fouled spark plug', concern: 'Misfire on cylinder 1 at idle. The engine uses some oil.', dtc: 'P0301 Cylinder 1 misfire', see: 'Low firing line (about 4 kV) and a long, low spark line: current leaks across the deposits instead of jumping the gap.' },
+    open: { n: 'Open / high resistance in the coil boot', concern: 'Misfire on cylinder 1, worse in damp weather. The coil boot looks burned.', dtc: 'P0301 Cylinder 1 misfire', see: 'Very tall firing line (about 27 kV) and almost no spark line: the spark can’t get through to the plug.' },
+    shorted: { n: 'Coil with shorted windings', concern: 'Misfire on cylinder 1 that gets worse as the engine warms up.', dtc: 'P0351 Ignition coil A primary/secondary, P0301', see: 'Low firing line and NO coil oscillations after the spark line. A healthy coil rings 3 to 5 times.' },
+    lean: { n: 'Lean cylinder (restricted injector)', concern: 'Slight stumble. Cylinder 1 runs lean.', dtc: 'P0301 (intermittent), P0171', see: 'The spark line slopes upward and the firing line is a little taller: a lean mixture is harder to ionize.' },
+  } },
+
+can: { name: 'CAN bus: H + L', group: 'Network', op: null, icon: 'CAN',
+  chs: [{ n: 'CAN H (DLC pin 6)', u: 'V', z: 'mid', probe: 'Ch A on DLC pin 6 (CAN H) with a breakout box. Ground lead on DLC pin 4/5.' }, { n: 'CAN L (DLC pin 14)', u: 'V', z: 'mid', probe: 'Ch B on DLC pin 14 (CAN L).' }],
+  about: 'High-speed CAN uses two wires that move in opposite directions. Modules read the difference between them, which is why noise that hits both wires equally doesn’t matter. 500 kbps means each bit lasts 2 µs.',
+  good: ['Idle (recessive): both wires at about 2.5 V.', 'Dominant bits: CAN H up to about 3.5 V, CAN L down to about 1.5 V, mirror images.', 'Messages (frames) with short quiet gaps between them. Clean, square edges.'],
+  f(t, E, F, O) {
+    if (F === 'babble') { const [d] = canState(t, BAB); O[0] = 2.5 + d; O[1] = 2.5 - d; return; }
+    const [d, dp, ts] = canState(t, CAN);
+    let m = d !== dp && ts < 0.12e-6 ? dp + (d - dp) * ts / 0.12e-6 : d;
+    if (F === 'term') {
+      let ring = 0; m = d;
+      if (d !== dp) { ring = 0.4 * Math.exp(-ts / 0.25e-6) * Math.sin(TAU * ts / 0.2e-6) * (d > dp ? 1 : -1); if (d < dp) m = Math.exp(-ts / 0.35e-6); else m = ts < 0.12e-6 ? ts / 0.12e-6 : 1; }
+      O[0] = 2.5 + 1.25 * m + ring; O[1] = 2.5 - 1.25 * m - ring; return;
+    }
+    if (F === 'shortHL') { O[0] = O[1] = 2.5 - 0.06 * m; return; }
+    if (F === 'hgnd') { O[0] = 0.02; O[1] = 0.25 + 0.03 * m; return; }
+    let n = 0; if (F === 'noise') n = 0.5 * Math.sin(TAU * 230e3 * t) + 0.3 * Math.sin(TAU * 910e3 * t + 1);
+    O[0] = 2.5 + m + n; O[1] = 2.5 - m + n;
+  },
+  nz: [0.02, 0.02], needTrig: true, allowAC: false,
+  period: () => 1e-3, tStep: () => 0.4e-6, trigMod: () => 0, span: () => CAN.slot * CAN.frames.length, tb: () => [50e-6, 500e-6],
+  trigHint: 'Trigger on Ch A rising at about 3 V (the start of a dominant bit).',
+  rec: () => ({ tb: 2e-5, tr: { src: 'A', edge: 'rise', lvl: 3, pre: 0.1 } }),
+  faults: {
+    term: { n: 'Open terminating resistor', concern: 'Intermittent communication codes from several modules. Gauges glitch now and then.', dtc: 'U0100 / U0121 Lost communication (intermittent)', see: 'Slightly taller signals with ringing on every edge (reflections). Key off, DLC pins 6–14 read about 120 Ω instead of 60 Ω.' },
+    shortHL: { n: 'CAN H shorted to CAN L', concern: 'The scan tool can’t talk to anything. Lots of warning lights.', dtc: 'No communication (bus off)', see: 'Both lines sit at about 2.5 V and look identical: no difference between them, so no messages. Pins 6–14 read near 0 Ω.' },
+    hgnd: { n: 'CAN H shorted to ground', concern: 'No start, no communication, dash lit up like a Christmas tree.', dtc: 'No communication (bus off)', see: 'CAN H is flat at 0 V and CAN L is pulled down near 0 V too. Unplug modules (or open bus splices) one at a time to find the short.' },
+    noise: { n: 'Common-mode noise (untwisted repair)', concern: 'Intermittent communication codes since a remote starter was installed.', dtc: 'U0140 Lost communication with body control module (intermittent)', see: 'Both lines carry the same noise. Math A − B is still clean, which is why CAN tolerates it, but the untwisted splice should be fixed before it gets worse.' },
+    babble: { n: 'Babbling module (bus flooded)', concern: 'Battery dies overnight. Modules never go to sleep and the scan tool is slow.', dtc: 'Various U-codes, high bus load', see: 'No quiet gaps between frames: one module transmits nonstop. Unplug modules one at a time until the bus goes quiet.' },
+  } },
+
+o2: { name: 'O2 sensors: upstream + downstream', group: 'Emissions', op: null, icon: 'O2',
+  chs: [{ n: 'Upstream O2 (B1S1)', u: 'V', z: 'low', probe: 'Ch A back-probes the upstream (before the catalyst) O2 signal wire.' }, { n: 'Downstream O2 (B1S2)', u: 'V', z: 'low', probe: 'Ch B back-probes the downstream (after the catalyst) O2 signal wire.' }],
+  about: 'Narrowband zirconia O2 sensors make about 0.1 V when the exhaust is lean and about 0.9 V when it’s rich. The engine is held at 2500 rpm, warm, in closed loop. (Wideband A/F sensors are read with the scan tool. A scope on them mostly checks the heater circuit.)',
+  good: ['Upstream switches between about 0.1 V and 0.9 V, roughly once per second.', 'Fast transitions (under about 100 ms), full height each time.', 'Downstream steady around 0.6–0.7 V: the catalyst stores oxygen and evens things out.'],
+  f(t, E, F, O) {
+    const sw = (ph, k, c, lo, hi) => lo + (hi - lo) * (Math.tanh(k * (Math.sin(TAU * ph) - c)) + 1) / 2;
+    const ph = t / 1.05 + 0.04 * Math.sin(TAU * t / 6.3);
+    let up = sw(ph, 4, 0, 0.08, 0.86), dn = 0.67 + 0.025 * Math.sin(TAU * t / 8.7) + 0.012 * Math.sin(TAU * t / 2.1);
+    if (F === 'lazy') up = sw(t / 3.2 + 0.03 * Math.sin(TAU * t / 9), 1.1, 0, 0.24, 0.68);
+    else if (F === 'cat') { const t2 = t - 0.3; dn = sw(t2 / 1.05 + 0.04 * Math.sin(TAU * t2 / 6.3), 2.5, 0, 0.12, 0.78); }
+    else if (F === 'lean') { up = sw(ph, 4, 0.6, 0.06, 0.62); dn = 0.18 + 0.02 * Math.sin(TAU * t / 7); }
+    else if (F === 'rich') { up = sw(ph, 4, -0.6, 0.42, 0.9); dn = 0.82 + 0.01 * Math.sin(TAU * t / 7); }
+    else if (F === 'dead') up = 0.445 + 0.004 * Math.sin(TAU * t / 5);
+    O[0] = up; O[1] = dn;
+  },
+  nz: [0.006, 0.004], needTrig: false, allowAC: false,
+  period: () => 4, tStep: () => 5e-3, trigMod: () => 0, span: () => 20, tb: () => [4, 25],
+  trigHint: '',
+  rec: () => ({ tb: 1, mode: 'none', tr: { src: 'A', edge: 'rise', lvl: 0.45, pre: 0.2 } }),
+  faults: {
+    lazy: { n: 'Slow (lazy) upstream O2 sensor', concern: 'Fuel mileage dropped. Slight surge at steady cruise.', dtc: 'P0133 O2 sensor circuit slow response (bank 1 sensor 1)', see: 'Switches only about every 3 seconds, with slow, rounded transitions and a smaller swing (about 0.25–0.65 V).' },
+    cat: { n: 'Failed catalytic converter', concern: 'Check engine light. Otherwise it runs fine.', dtc: 'P0420 Catalyst system efficiency below threshold (bank 1)', see: 'The downstream sensor copies the upstream switching: the catalyst no longer stores oxygen.' },
+    lean: { n: 'Lean condition (low fuel pressure)', concern: 'Hesitation when accelerating. Fuel trims are high.', dtc: 'P0171 System too lean (bank 1)', see: 'Upstream spends most of its time below 0.45 V with short rises. Downstream is low too (about 0.2 V).' },
+    rich: { n: 'Rich condition (leaking injector)', concern: 'Fuel smell and black soot at the tailpipe.', dtc: 'P0172 System too rich (bank 1)', see: 'Upstream stays mostly high with short dips. Downstream is high too (about 0.8 V).' },
+    dead: { n: 'Dead upstream O2 sensor', concern: 'Check engine light and poor fuel mileage.', dtc: 'P0134 O2 sensor circuit no activity (bank 1 sensor 1)', see: 'Flat at about 0.45 V: that’s the bias voltage the ECM puts on the circuit. The sensor isn’t generating anything (check its heater too).' },
+  } },
+
+wssP: { name: 'Wheel speed: passive (magnetic)', group: 'Chassis', op: 'speed', icon: 'WSS',
+  chs: [{ n: 'LF wheel speed', u: 'V', z: 'mid', probe: 'Ch A across the LF sensor’s two wires at the ABS module connector.' }, { n: 'RF wheel speed (compare)', u: 'V', z: 'mid', probe: 'Ch B across the RF sensor: the known-good side to compare.' }],
+  about: 'A passive wheel speed sensor is a magnet and coil, like a magnetic crank sensor. Each tone-ring tooth makes one AC cycle (48 teeth here). Compare side to side: the good wheel is your reference.',
+  good: ['A smooth AC sine wave, every cycle the same height.', 'Frequency and amplitude both rise with speed (about 1.6 V peak and 215 Hz at 20 mph).', 'LF and RF look about the same.'],
+  f(t, E, F, O) {
+    const rev = E.rps * t, amp = Math.max(0.15, 0.08 * E.mph);
+    let a = amp * Math.sin(TAU * 48 * rev);
+    if (F === 'airgap') a *= 0.14; else if (F === 'open') a = 0;
+    else if (F === 'tonering') { const tooth = Math.floor(mod(rev, 1) * 48); if (tooth === 17 || tooth === 18) a *= 0.12; }
+    else if (F === 'bearing') a *= 1 + 0.6 * Math.sin(TAU * rev);
+    O[0] = a; O[1] = amp * 0.97 * Math.sin(TAU * 48 * rev * 1.004 + 1.3);
+  },
+  nz: [0.02, 0.02], needTrig: true, allowAC: true,
+  period: E => 1 / E.rps, tStep: E => 1 / (48 * E.rps) / 20, trigMod: () => 0, span: E => 2 / E.rps, tb: E => [2 / (48 * E.rps), 0.6],
+  trigHint: 'Trigger on Ch A, rising, at about 0 V.',
+  rec: () => ({ tb: 5e-3, tr: { src: 'A', edge: 'rise', lvl: 0, pre: 0.1 } }),
+  faults: {
+    airgap: { n: 'Excessive air gap (sensor not seated)', concern: 'ABS light on. The ABS kicks in at low speed on the left front.', dtc: 'C0035 Left front wheel speed sensor circuit', see: 'LF has the right frequency but only a small fraction of RF’s amplitude. Check sensor seating, mounting and the air gap.' },
+    tonering: { n: 'Damaged tone ring (cracked)', concern: 'ABS clicks in at very low speed when stopping.', dtc: 'C0035 Left front wheel speed sensor (erratic)', see: 'Once per wheel turn, the LF signal nearly drops out for two teeth. Zoom out to see a whole wheel revolution.' },
+    bearing: { n: 'Loose wheel bearing (hub play)', concern: 'Growling noise from the left front. The ABS light comes on now and then.', dtc: 'C0035 (intermittent)', see: 'The LF amplitude swells and shrinks once per wheel turn as the tone ring wobbles toward and away from the sensor.' },
+    open: { n: 'Open sensor circuit', concern: 'ABS and traction lights come on as soon as the car drives off.', dtc: 'C0035 Left front wheel speed sensor circuit open', see: 'LF is flat at 0 V while RF is normal.' },
+  } },
+
+wssA: { name: 'Wheel speed: active (2-wire)', group: 'Chassis', op: 'speed', icon: 'WSS',
+  chs: [{ n: 'LF wheel speed', u: 'V', z: 'low', probe: 'Ch A at the LF sensor signal pin of the ABS module. The module measures the sensor’s current (about 7 / 14 mA) as a voltage.' }, { n: 'RF wheel speed (compare)', u: 'V', z: 'low', probe: 'Ch B at the RF sensor signal pin: the known-good side.' }],
+  about: 'An active sensor is powered by the ABS module and switches its current between two levels as a magnetic encoder ring (often built into the bearing seal) passes. It works down to almost 0 mph.',
+  good: ['A square wave switching between two levels (here about 0.8 V and 1.6 V).', 'Same height at any speed: only the frequency changes.', 'LF and RF look about the same.'],
+  f(t, E, F, O) {
+    const rev = E.rps * t; let a = mod(48 * rev, 1) < 0.5 ? 1.62 : 0.81;
+    if (F === 'encoder') { const pole = Math.floor(mod(rev, 1) * 48); if (pole >= 10 && pole < 16) a = 0.81; }
+    else if (F === 'nosig') a = 0.82; else if (F === 'open') a = 0;
+    O[0] = a; O[1] = mod(48 * rev * 1.004 + 0.3, 1) < 0.5 ? 1.62 : 0.81;
+  },
+  nz: [0.01, 0.01], needTrig: true, allowAC: false,
+  period: E => 1 / E.rps, tStep: E => 1 / (48 * E.rps) / 20, trigMod: () => 0, span: E => 2 / E.rps, tb: E => [2 / (48 * E.rps), 0.6],
+  trigHint: 'Trigger on Ch A, rising, at about 1.2 V (between the two levels).',
+  rec: () => ({ tb: 5e-3, tr: { src: 'A', edge: 'rise', lvl: 1.2, pre: 0.1 } }),
+  faults: {
+    nosig: { n: 'Internal sensor failure (no switching)', concern: 'ABS and stability-control lights on.', dtc: 'C0035 Left front wheel speed sensor signal', see: 'LF is flat at about 0.8 V: the sensor is powered (it draws its low-level current) but never switches.' },
+    open: { n: 'Open sensor wire', concern: 'ABS light on as soon as the key is turned on.', dtc: 'C0035 Left front wheel speed sensor circuit open', see: 'LF is flat at 0 V: no current flows through the sensor at all.' },
+    encoder: { n: 'Damaged encoder ring (in the bearing)', concern: 'ABS kicks in at low speed since a wheel bearing was replaced.', dtc: 'C0035 Left front wheel speed sensor (erratic)', see: 'Once per wheel turn, the LF pulses stop for a short stretch. Check the bearing’s encoder side faces the sensor, and look for damage or metal debris.' },
+  } },
+
+pwm: { name: 'PWM actuator: EVAP purge', group: 'Actuators', op: 'duty', icon: 'PWM',
+  chs: [{ n: 'Purge solenoid control pin', u: 'V', z: 'low', probe: 'Ch A back-probes the purge solenoid control (ECM) wire.' }, { n: 'Solenoid current', u: 'A', z: 'low', probe: 'Ch B: low-amp current clamp around the solenoid wire.' }],
+  about: 'The ECM pulses the purge solenoid at a fixed frequency (20 Hz here) and varies the on-time. That’s pulse-width modulation (PWM). Like an injector, it’s B+ fed and ECM grounded (low-side driver).',
+  good: ['Rests at battery voltage, drops to near 0 V for each on-time.', 'A clamped spike at each turn-off.', 'Current ramps to about 0.6 A with a small dip when the plunger moves.', 'Frequency stays at 20 Hz; only the on-time changes with the command.'],
+  f(t, E, F, O) {
+    const P = 0.05, x = mod(t, P), on = P * E.duty / 100, bp = 14.2;
+    if (F === 'open') { O[0] = 0; O[1] = 0; return; }
+    if (F === 'stuckon') { O[0] = 0.22; O[1] = (bp - 0.2) / 24; return; }
+    let R = 24, L = 0.03, arm = 1; if (F === 'shorted') { R = 6; L = 0.012; } else if (F === 'stuck') arm = 0;
+    const Im = (bp - 0.2) / R, tau = L / R, iAt = s => Im * (1 - Math.exp(-s / tau)) - arm * 0.1 * Im * gauss(s, 2.2e-3, 0.35e-3);
+    if (x < on) { const i = iAt(x); O[0] = 0.2 + 0.1 * i; O[1] = i; return; }
+    const y = x - on, Ie = iAt(on), pk = Math.min(48, 16 + 50 * Ie), tc = 0.25e-3 * (Ie / 0.58) * (L / 0.03);
+    O[0] = (y < tc ? pk : bp + (pk - bp) * Math.exp(-(y - tc) / 60e-6)) + arm * 1.2 * gauss(y, 1.6e-3, 0.3e-3);
+    O[1] = Ie * Math.max(0, 1 - y / Math.max(tc, 40e-6));
+  },
+  nz: [0.06, 0.006], needTrig: true, allowAC: false,
+  period: () => 0.05, tStep: () => 50e-6, trigMod: () => 0.05, span: () => 0.1, tb: () => [0.05, 0.25],
+  trigHint: 'Trigger on the driver turning on: Ch A, falling, at about 7 V.',
+  rec: () => ({ tb: 1e-2, tr: { src: 'A', edge: 'fall', lvl: 7, pre: 0.1 } }),
+  faults: {
+    open: { n: 'Open solenoid winding', concern: 'Check engine light came on after a fill-up.', dtc: 'P0443 EVAP purge control valve circuit', see: 'Flat at 0 V: no battery voltage gets through the open coil to the control pin. No current.' },
+    shorted: { n: 'Shorted solenoid winding', concern: 'Check engine light. Purge works some days and not others.', dtc: 'P0443 / P0459 EVAP purge control circuit', see: 'Current climbs to about 2 A (normal is about 0.6 A). The ECM driver may shut down to protect itself.' },
+    stuck: { n: 'Valve stuck (mechanical)', concern: 'EVAP code. The purge flow test fails.', dtc: 'P0441 EVAP incorrect purge flow', see: 'Electrically normal, but no plunger dip in the current ramp and no release bump after the spike: the plunger isn’t moving.' },
+    stuckon: { n: 'ECM driver shorted (always on)', concern: 'Rough idle and stalling right after refueling.', dtc: 'P0496 EVAP high purge flow', see: 'The control pin stays at about 0.2 V all the time and current is a steady 0.6 A: the valve is held wide open.' },
+  } },
+};
+const GROUPS = ['Engine', 'Network', 'Emissions', 'Chassis', 'Actuators'];
+
+/* ================= state ================= */
+const S = {
+  mode: 'explore', tab: 'sig', p: 'ckpCmp', F: 'good', rpmKey: 'idle', mph: 20, duty: 30, E: null,
+  tb: 0.02, sc: { A: { on: true, r: 5, cpl: 'DC', z: 'mid' }, B: { on: true, r: 5, cpl: 'DC', z: 'mid' } },
+  tr: { mode: 'repeat', src: 'B', edge: 'rise', lvl: 2.5, pre: 0.2 },
+  math: false, rul: { on: false, t1: 0.3, t2: 0.7, v1: 0, v2: 1 }, light: true, run: true,
+  tNow: 10, cap: null, waiting: false, hist: [], ovr: { A: false, B: false }, meas: null,
+  lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('scope.done') || '[]')),
+  dx: null, dxSnap: null, dxScore: { cases: 0, setupFirst: 0, dxFirst: 0 },
+};
+let ENV = [], ENVG = [], FLAT = [];
+const O = new Float64Array(2);
+const P_ = () => PRE[S.p];
+const nCh = () => P_().chs.length;
+const chI = k => k === 'A' ? 0 : 1;
+const unitOf = k => (P_().chs[chI(k)] || P_().chs[0]).u;
+const visOf = k => visR(S.sc[k].r, S.sc[k].z);
+const useCh = k => chI(k) < nCh() && S.sc[k].on;
+
+function mkE(rk) { const r = RPM[rk || S.rpmKey]; return Object.assign({}, r, { w: r.rpm * 6, f2: r.rpm / 30, mph: S.mph, duty: S.duty, rps: S.mph * 0.44704 / 2.0 }); }
+function envOf(P, E, F) {
+  const n = P.chs.length, N = 20000, span = P.span(E), dt = span / N, o = [];
+  for (let k = 0; k < n; k++) o.push({ min: Infinity, max: -Infinity, sum: 0, tmin: 0, tmax: 0 });
+  const B = new Float64Array(2);
+  const upd = (t, cnt) => { P.f(t, E, F, B); for (let k = 0; k < n; k++) { const v = B[k], e = o[k]; if (v < e.min) { e.min = v; e.tmin = t; } if (v > e.max) { e.max = v; e.tmax = t; } if (cnt) e.sum += v; } };
+  for (let i = 0; i < N; i++) upd(0.0137 + i * dt, true);
+  for (let k = 0; k < n; k++) { const e = o[k], a = e.tmax, b = e.tmin; for (let j = 0; j <= 200; j++) { upd(a - dt + j * dt / 100, false); upd(b - dt + j * dt / 100, false); } }
+  return o.map(e => ({ min: e.min, max: e.max, mean: e.sum / N }));
+}
+function refreshEnv() {
+  const P = P_(); S.E = mkE();
+  ENV = envOf(P, S.E, S.F); ENVG = S.F === 'good' ? ENV : envOf(P, S.E, 'good');
+  FLAT = ENV.map((e, i) => (e.max - e.min) < 0.08 * (ENVG[i].max - ENVG[i].min));
+}
+function autoRange(u, z, lo, hi, nz) {
+  for (const R of RANGES[u]) { const v = visR(R, z), sp = v.hi - v.lo; if (hi + nz <= v.hi && lo - nz >= v.lo && (Math.max(hi, 0) - Math.min(lo, 0)) >= 0.2 * sp) return R; }
+  for (const R of RANGES[u]) { const v = visR(R, z); if (hi + nz <= v.hi && lo - nz >= v.lo) return R; }
+  return RANGES[u][RANGES[u].length - 1];
+}
+function computeRec(pk, F, rk) {
+  const P = PRE[pk], E = mkE(rk), eg = envOf(P, E, 'good'), ea = F === 'good' ? eg : envOf(P, E, F), sc = {};
+  ['A', 'B'].forEach((k, i) => {
+    if (i < P.chs.length) { const c = P.chs[i]; sc[k] = { on: true, r: autoRange(c.u, c.z, Math.min(eg[i].min, ea[i].min), Math.max(eg[i].max, ea[i].max), P.nz[i]), cpl: 'DC', z: c.z }; }
+    else sc[k] = { on: false, r: 5, cpl: 'DC', z: 'mid' };
+  });
+  const R = P.rec(E, F) || {}, [mn, mx] = P.tb(E);
+  const tb = R.tb || TBS.find(x => 10 * x >= mn * 1.2 && 10 * x <= mx) || TBS.find(x => 10 * x >= mn);
+  const tr = Object.assign({ mode: 'repeat', src: 'A', edge: 'rise', lvl: 0, pre: 0.1 }, R.tr); if (R.mode) tr.mode = R.mode;
+  const si = chI(tr.src);
+  if (P.needTrig && (ea[si].max - ea[si].min) < 0.08 * (eg[si].max - eg[si].min)) tr.mode = 'auto';
+  return { sc, tb, tr };
+}
+function applyRec() { const r = computeRec(S.p, S.F, S.rpmKey); S.sc = r.sc; S.tb = r.tb; S.tr = r.tr; S.math = false; changed('sig'); }
+
+/* ================= acquisition ================= */
+function val(ki, t) { P_().f(t, S.E, S.F, O); return O[ki] - (S.sc[ki ? 'B' : 'A'].cpl === 'AC' ? ENV[ki].mean : 0); }
+function findTrig(t0, W) {
+  const P = P_(), k = S.tr.src, ki = chI(k); if (!useCh(k)) return null;
+  const v = visOf(k), h = 0.02 * (v.hi - v.lo), L = S.tr.lvl, rising = S.tr.edge === 'rise';
+  const span = Math.max(2 * W, 1.25 * P.period(S.E));
+  let step = Math.min(P.tStep(S.E), W / 400); if (span / step > 150000) step = span / 150000;
+  let armed = false;
+  for (let t = t0; t <= t0 + span; t += step) {
+    const x = val(ki, t);
+    if (rising) { if (x < L - h) armed = true; else if (armed && x >= L) return refine(ki, t - step, t, L, rising); }
+    else { if (x > L + h) armed = true; else if (armed && x <= L) return refine(ki, t - step, t, L, rising); }
+  }
+  return null;
+}
+function refine(ki, a, b, L, rising) {
+  for (let i = 0; i < 22; i++) { const m = (a + b) / 2, x = val(ki, m); if (rising ? x >= L : x <= L) b = m; else a = m; }
+  return b;
+}
+function acquire(now) {
+  const P = P_(), W = S.tb * 10, mode = S.tr.mode; let start, trigT = null, roll = false;
+  if (mode === 'none') { roll = W >= 1; start = roll ? S.tNow - W : S.tNow; }
+  else {
+    const tt = findTrig(S.tNow, W);
+    if (tt !== null) { trigT = tt; start = tt - S.tr.pre * W; S.hist.push({ t: tt, w: now }); if (S.hist.length > 10) S.hist.shift(); if (mode === 'single') { S.run = false; syncRun(); } }
+    else if (mode === 'auto') { roll = W >= 1; start = roll ? S.tNow - W : S.tNow; }
+    else { S.waiting = true; return; }
+  }
+  S.waiting = false;
+  const N = clamp(Math.round(cv.clientWidth * 6), 1200, 8000), n = nCh(), A = new Float32Array(N), B = new Float32Array(N), nz = P.nz;
+  const mA = S.sc.A.cpl === 'AC' ? ENV[0].mean : 0, mB = n > 1 && S.sc.B.cpl === 'AC' ? ENV[1].mean : 0;
+  for (let i = 0; i < N; i++) {
+    const t = start + i * W / (N - 1); P.f(t, S.E, S.F, O);
+    A[i] = O[0] - mA + (Math.random() * 2 - 1) * nz[0];
+    if (n > 1) B[i] = O[1] - mB + (Math.random() * 2 - 1) * nz[1];
+  }
+  S.cap = { start, W, trigT, roll, A, B, N };
+  measure();
+}
+function chMeas(arr, N, W) {
+  let mx = -Infinity, mn = Infinity, sum = 0;
+  for (let i = 0; i < N; i++) { const v = arr[i]; if (v > mx) mx = v; if (v < mn) mn = v; sum += v; }
+  const r = { max: mx, min: mn, pp: mx - mn, avg: sum / N, freq: null, duty: null };
+  if (r.pp > 1e-6) {
+    const mid = (mx + mn) / 2, h = 0.1 * r.pp; let low = arr[0] < mid - h, first = -1, last = -1, cnt = 0, hiN = 0;
+    for (let i = 1; i < N; i++) { const v = arr[i]; if (v < mid - h) low = true; else if (low && v >= mid) { low = false; if (first < 0) first = i; last = i; cnt++; } }
+    if (cnt >= 2 && last > first) { r.freq = (cnt - 1) / ((last - first) / (N - 1) * W); for (let i = first; i < last; i++) if (arr[i] > mid) hiN++; r.duty = hiN / (last - first) * 100; }
+  }
+  return r;
+}
+function measure() {
+  const c = S.cap; if (!c) { S.meas = null; return; }
+  S.meas = { A: chMeas(c.A, c.N, c.W), B: nCh() > 1 ? chMeas(c.B, c.N, c.W) : null };
+  for (const k of ['A', 'B']) {
+    if (!useCh(k)) { S.ovr[k] = false; continue; }
+    const v = visOf(k), m = S.meas[k], tol = 0.003 * (v.hi - v.lo);
+    S.ovr[k] = m.max > v.hi + tol || m.min < v.lo - tol;
+  }
+}
+
+/* ================= drawing ================= */
+const cv = $('#cv'), cx = cv.getContext('2d');
+let DPR = 1;
+function fit() { DPR = Math.min(2, window.devicePixelRatio || 1); const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return; cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); draw(); }
+function plotRect() { const w = cv.clientWidth, h = cv.clientHeight, two = useCh('B'); return { L: 50, R: w - (two ? 50 : 14), T: 10, B: h - 24, w, h }; }
+const PAL = { light: { bg: '#ffffff', grid: '#e3e7ec', mid: '#c3cbd4', txt: '#4a5663', A: '#1d5fd1', B: '#d42a2a', M: '#13914a', trg: '#e09100', rul: '#3b4652', box: 'rgba(255,255,255,.92)' },
+              dark:  { bg: '#05080b', grid: '#16202a', mid: '#2a3644', txt: '#8A98A8', A: '#4ea8ff', B: '#ff6b6b', M: '#3ddc97', trg: '#F5A400', rul: '#C5CFD9', box: 'rgba(10,15,20,.9)' } };
+function yOf(v, k, r) { const s = visOf(k); return r.B - (v - s.lo) / (s.hi - s.lo) * (r.B - r.T); }
+function vOfY(y, k, r) { const s = visOf(k); return s.lo + (r.B - y) / (r.B - r.T) * (s.hi - s.lo); }
+function draw() {
+  const r = plotRect(), C = S.light ? PAL.light : PAL.dark; if (!r.w) return;
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  cx.fillStyle = S.light ? '#eef1f4' : '#05080b'; cx.fillRect(0, 0, r.w, r.h);
+  cx.fillStyle = C.bg; cx.fillRect(r.L, r.T, r.R - r.L, r.B - r.T);
+  // graticule
+  cx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) {
+    const x = Math.round(r.L + i * (r.R - r.L) / 10) + .5, y = Math.round(r.T + i * (r.B - r.T) / 10) + .5;
+    cx.strokeStyle = i === 5 ? C.mid : C.grid;
+    cx.beginPath(); cx.moveTo(x, r.T); cx.lineTo(x, r.B); cx.stroke();
+    cx.beginPath(); cx.moveTo(r.L, y); cx.lineTo(r.R, y); cx.stroke();
+  }
+  cx.strokeStyle = C.mid; cx.strokeRect(r.L + .5, r.T + .5, r.R - r.L - 1, r.B - r.T - 1);
+  // axes
+  cx.font = '500 10px "JetBrains Mono", monospace'; cx.textBaseline = 'middle';
+  const yStep = (r.B - r.T) < 220 ? 2 : 1;
+  for (const k of ['A', 'B']) {
+    if (!useCh(k)) continue;
+    const s = visOf(k), u = unitOf(k); cx.fillStyle = k === 'A' ? C.A : C.B; cx.textAlign = k === 'A' ? 'right' : 'left';
+    for (let i = 0; i <= 10; i += yStep) { const v = s.lo + i * (s.hi - s.lo) / 10, y = r.B - i * (r.B - r.T) / 10; cx.fillText(trim(v), k === 'A' ? r.L - 5 : r.R + 5, clamp(y, r.T + 5, r.B - 5)); }
+    // zero marker
+    const y0 = yOf(0, k, r); if (y0 >= r.T && y0 <= r.B) { cx.beginPath(); const x0 = k === 'A' ? r.L : r.R, d = k === 'A' ? 1 : -1; cx.moveTo(x0, y0 - 4); cx.lineTo(x0 + 6 * d, y0); cx.lineTo(x0, y0 + 4); cx.fill(); }
+    cx.textAlign = k === 'A' ? 'left' : 'right'; cx.font = '600 10px "Barlow Semi Condensed", sans-serif';
+    cx.fillText(u, k === 'A' ? 4 : r.w - 4, r.T + 4); cx.font = '500 10px "JetBrains Mono", monospace';
+  }
+  const c = S.cap, W = S.tb * 10;
+  const ref = c ? (c.trigT !== null ? c.trigT : c.start) : 0, t0 = c ? c.start - ref : -S.tr.pre * W;
+  cx.fillStyle = C.txt; cx.textAlign = 'center'; cx.textBaseline = 'alphabetic';
+  const xStep = (r.R - r.L) < 330 ? 5 : (r.R - r.L) < 520 ? 2 : 1;
+  for (let i = 0; i <= 10; i += xStep) { const x = r.L + i * (r.R - r.L) / 10, tv = t0 + i * W / 10; cx.fillText(fmtT(Math.abs(tv) < W * 1e-4 ? 0 : tv).replace(' ', ''), clamp(x, r.L + 16, r.R - 16), r.B + 15); }
+  cx.save(); cx.beginPath(); cx.rect(r.L, r.T, r.R - r.L, r.B - r.T); cx.clip();
+  if (c && c.W === W) {
+    // peak-detect display: each pixel column draws the min and max of its samples, in the order they happened
+    const tr = (arr, k, col, sub) => {
+      const s = visOf(k), sy = (r.B - r.T) / (s.hi - s.lo), N = c.N, cols = Math.max(2, Math.floor(r.R - r.L)), per = N / cols, Y = v => clamp(r.B - (v - s.lo) * sy, r.T - 1, r.B + 1);
+      cx.strokeStyle = col; cx.lineWidth = 1.4; cx.lineJoin = 'round'; cx.beginPath();
+      for (let ci = 0; ci < cols; ci++) {
+        const i0 = Math.floor(ci * per), i1 = Math.max(i0 + 1, Math.min(N, Math.floor((ci + 1) * per)));
+        let mn = Infinity, mx = -Infinity, imn = i0, imx = i0;
+        for (let i = i0; i < i1; i++) { const v = sub ? arr[i] - sub[i] : arr[i]; if (v < mn) { mn = v; imn = i; } if (v > mx) { mx = v; imx = i; } }
+        const x = r.L + (ci + 0.5) * (r.R - r.L) / cols, y1 = Y(imn < imx ? mn : mx), y2 = Y(imn < imx ? mx : mn);
+        if (ci) cx.lineTo(x, y1); else cx.moveTo(x, y1); cx.lineTo(x, y2);
+      }
+      cx.stroke();
+    };
+    if (useCh('B')) tr(c.B, 'B', C.B);
+    if (useCh('A')) tr(c.A, 'A', C.A);
+    if (S.math && mathOk()) tr(c.A, 'A', C.M, c.B);
+  }
+  // trigger marker
+  if (S.tr.mode !== 'none' && useCh(S.tr.src)) {
+    const x = r.L + S.tr.pre * (r.R - r.L), y = clamp(yOf(S.tr.lvl, S.tr.src, r), r.T, r.B);
+    cx.fillStyle = C.trg; cx.strokeStyle = S.light ? '#5a3a00' : '#000'; cx.lineWidth = 1;
+    cx.beginPath(); cx.moveTo(x, y - 7); cx.lineTo(x + 7, y); cx.lineTo(x, y + 7); cx.lineTo(x - 7, y); cx.closePath(); cx.fill(); cx.stroke();
+  }
+  // rulers
+  if (S.rul.on) {
+    cx.setLineDash([5, 4]); cx.strokeStyle = C.rul; cx.lineWidth = 1;
+    for (const f of [S.rul.t1, S.rul.t2]) { const x = Math.round(r.L + f * (r.R - r.L)) + .5; cx.beginPath(); cx.moveTo(x, r.T); cx.lineTo(x, r.B); cx.stroke(); }
+    const rk = rulCh(); if (rk) { cx.strokeStyle = rk === 'A' ? C.A : C.B; for (const v of [S.rul.v1, S.rul.v2]) { const y = Math.round(yOf(v, rk, r)) + .5; cx.beginPath(); cx.moveTo(r.L, y); cx.lineTo(r.R, y); cx.stroke(); } }
+    cx.setLineDash([]);
+    const dt = Math.abs(S.rul.t2 - S.rul.t1) * W, lines = [`Δt ${fmtT(dt)}   1/Δt ${dt > 0 ? fmtHz(1 / dt) : '—'}`];
+    if (rk) { const u = unitOf(rk); lines.push(`${rk}: ${fmtU(S.rul.v1, u)} → ${fmtU(S.rul.v2, u)}   Δ ${fmtU(Math.abs(S.rul.v2 - S.rul.v1), u)}`); }
+    cx.font = '500 11px "JetBrains Mono", monospace'; const bw = Math.max(...lines.map(l => cx.measureText(l).width)) + 14;
+    cx.fillStyle = C.box; cx.strokeStyle = C.mid; cx.fillRect(r.L + 6, r.T + 6, bw, 8 + lines.length * 15); cx.strokeRect(r.L + 6.5, r.T + 6.5, bw, 8 + lines.length * 15);
+    cx.fillStyle = S.light ? '#1e2730' : '#E6EDF3'; cx.textAlign = 'left'; lines.forEach((l, i) => cx.fillText(l, r.L + 13, r.T + 19 + i * 15));
+  }
+  // overlays
+  cx.font = '700 11px "Barlow Semi Condensed", sans-serif'; cx.textAlign = 'right';
+  let oy = r.T + 16;
+  for (const k of ['A', 'B']) if (S.ovr[k] && useCh(k)) { cx.fillStyle = '#e0352b'; cx.fillText(`CH ${k} OVER RANGE`, r.R - 8, oy); oy += 15; }
+  if (!c || c.W !== W) { cx.textAlign = 'center'; cx.fillStyle = C.txt; cx.font = '600 13px "Barlow", sans-serif'; cx.fillText(S.tr.mode === 'none' || S.tr.mode === 'auto' ? 'Acquiring…' : 'Waiting for trigger…', (r.L + r.R) / 2, (r.T + r.B) / 2); }
+  cx.restore();
+  cv.setAttribute('aria-label', `Scope screen. Timebase ${fmtT(S.tb)} per division. ` + ['A', 'B'].filter(useCh).map(k => `Channel ${k}: ${P_().chs[chI(k)].n}, range ${fmtR(S.sc[k].r, unitOf(k))}`).join('. ') + `. ${statText()[0]}.`);
+}
+const mathOk = () => nCh() > 1 && useCh('A') && useCh('B') && unitOf('A') === unitOf('B');
+const rulCh = () => useCh('A') ? 'A' : useCh('B') ? 'B' : null;
+
+/* ================= toolbar ================= */
+function statText() {
+  if (!S.run) return S.tr.mode === 'single' && S.cap ? ['Captured · stopped', 'ok'] : ['Stopped', 'off'];
+  const m = S.tr.mode, c = S.cap;
+  if (m === 'none') return [c && c.roll ? 'Free run · roll' : 'Free run (no trigger)', ''];
+  if (m === 'auto') return c && c.trigT !== null ? ['Triggered (auto)', 'ok'] : ['Auto: not triggering', 'wait'];
+  if (S.waiting) return ['Waiting for trigger', 'wait'];
+  return [m === 'single' ? 'Armed' : 'Triggered', 'ok'];
+}
+function syncRun() { const b = $('#runBtn'); b.textContent = S.run ? '■ Stop' : '▶ Run'; b.classList.toggle('stopped', !S.run); }
+function renderControls() {
+  const P = P_(), two = nCh() > 1;
+  $('#tbSel').innerHTML = TBS.map(t => `<option value="${t}"${t === S.tb ? ' selected' : ''}>${fmtT(t)}/div</option>`).join('');
+  for (const k of ['A', 'B']) {
+    const g = $('#chg' + k), has = chI(k) < nCh(); g.hidden = !has; if (!has) continue;
+    const c = S.sc[k], u = unitOf(k), sel = g.querySelector('select');
+    if (!RANGES[u].includes(c.r)) c.r = RANGES[u][4] || RANGES[u][0];
+    sel.innerHTML = RANGES[u].map(R => `<option value="${R}"${R === c.r ? ' selected' : ''}>${fmtR(R, u)}</option>`).join('');
+    sel.disabled = !c.on;
+    g.querySelector('.chon').setAttribute('aria-pressed', c.on);
+    g.querySelectorAll('[data-k="cpl"] button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === c.cpl));
+    g.querySelectorAll('[data-k="z"] button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === c.z));
+    $('#pd' + k).textContent = fmtU(c.r / 5, u) + '/div';
+    g.title = P.chs[chI(k)].n;
+  }
+  $('#mathBtn').disabled = !two || unitOf('A') !== unitOf('B'); $('#mathBtn').setAttribute('aria-pressed', S.math && mathOk());
+  $('#rulBtn').setAttribute('aria-pressed', S.rul.on);
+  $('#scrBtn').setAttribute('aria-pressed', S.light); $('#scrBtn').lastChild.textContent = S.light ? 'Light' : 'Dark';
+  $$('#trMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.tr.mode));
+  $$('#trSrc button').forEach(b => { b.setAttribute('aria-pressed', b.dataset.v === S.tr.src); b.disabled = chI(b.dataset.v) >= nCh(); });
+  $$('#trEdge button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.tr.edge));
+  const lv = $('#trLvl'), sv = visOf(S.tr.src); lv.value = +S.tr.lvl.toPrecision(4); lv.step = trim((sv.hi - sv.lo) / 100);
+  $('#trUnit').textContent = unitOf(S.tr.src);
+  $('#trPre').value = Math.round(S.tr.pre * 100); $('#trPreO').textContent = Math.round(S.tr.pre * 100) + '%';
+  syncRun(); syncStat();
+}
+function syncStat() {
+  const [t, k] = statText(), el = $('#trStat'); if (el.textContent !== t) el.textContent = t; el.className = 'stat ' + k;
+  for (const k2 of ['A', 'B']) { const o = $('#ov' + k2); const want = !(S.ovr[k2] && useCh(k2)); if (o.hidden !== want) o.hidden = want; }
+}
+function changed(kind) {
+  S.hist = []; S.waiting = false;
+  if (kind === 'sig' || kind === 'tb') S.cap = null;
+  if (kind === 'sig' && !S.run) { S.run = true; }
+  renderControls(); measure(); draw(); renderMeas();
+}
+function renderMeas() {
+  const m = S.meas, rows = [];
+  for (const k of ['A', 'B']) {
+    if (!useCh(k) || !m || !m[k]) continue; const x = m[k], u = unitOf(k);
+    rows.push(`<tr><td><i style="background:var(--ch${k})"></i>${k} · ${P_().chs[chI(k)].n}</td><td>${fmtU(x.max, u)}</td><td>${fmtU(x.min, u)}</td><td>${fmtU(x.pp, u)}</td><td>${fmtU(x.avg, u)}</td><td>${x.freq ? fmtHz(x.freq) : '—'}</td><td>${x.duty !== null ? trim(x.duty) + '%' : '—'}</td></tr>`);
+  }
+  $('#meas').innerHTML = rows.length ? `<table><tr><th>Measurements</th><th>Max</th><th>Min</th><th>Pk-Pk</th><th>Avg</th><th>Freq</th><th>+Duty</th></tr>${rows.join('')}</table>` : '';
+}
+$('#runBtn').addEventListener('click', () => { S.run = !S.run; if (S.run) { S.hist = []; } syncRun(); syncStat(); });
+$('#tbSel').addEventListener('change', e => { S.tb = +e.target.value; changed('tb'); afterUser(); });
+for (const k of ['A', 'B']) {
+  const g = $('#chg' + k);
+  g.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.classList.contains('chon')) { S.sc[k].on = !S.sc[k].on; if (!S.sc[k].on && S.tr.src === k && useCh(k === 'A' ? 'B' : 'A')) S.tr.src = k === 'A' ? 'B' : 'A'; }
+    else { const kk = b.parentElement.dataset.k; if (!kk) return; S.sc[k][kk] = b.dataset.v; }
+    changed(); afterUser();
+  });
+  g.querySelector('select').addEventListener('change', e => { S.sc[k].r = +e.target.value; changed(); afterUser(); });
+}
+$('#mathBtn').addEventListener('click', () => { S.math = !S.math; renderControls(); draw(); afterUser(); });
+$('#rulBtn').addEventListener('click', () => {
+  S.rul.on = !S.rul.on;
+  if (S.rul.on) { const k = rulCh(); if (k) { const v = visOf(k); S.rul.v1 = +(v.lo + 0.3 * (v.hi - v.lo)).toPrecision(3); S.rul.v2 = +(v.lo + 0.7 * (v.hi - v.lo)).toPrecision(3); } }
+  renderControls(); draw(); afterUser();
+});
+$('#scrBtn').addEventListener('click', () => { S.light = !S.light; store.set('scope.light', S.light ? '1' : '0'); renderControls(); draw(); });
+$('#trMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.tr.mode = b.dataset.v; if (S.tr.mode === 'single' || !S.run) S.run = true; changed(); afterUser(); });
+$('#trSrc').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.tr.src = b.dataset.v; if (!S.sc[S.tr.src].on) S.sc[S.tr.src].on = true; changed(); afterUser(); });
+$('#trEdge').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.tr.edge = b.dataset.v; changed(); afterUser(); });
+$('#trLvl').addEventListener('change', e => { const v = parseFloat(e.target.value); if (isFinite(v)) S.tr.lvl = v; changed(); afterUser(); });
+$('#trPre').addEventListener('input', e => { S.tr.pre = +e.target.value / 100; $('#trPreO').textContent = e.target.value + '%'; S.hist = []; draw(); afterUser(); });
+
+/* ================= drag: trigger diamond, rulers ================= */
+let drag = null;
+function hit(x, y) {
+  const r = plotRect();
+  if (S.tr.mode !== 'none' && useCh(S.tr.src)) { const dx = r.L + S.tr.pre * (r.R - r.L), dy = clamp(yOf(S.tr.lvl, S.tr.src, r), r.T, r.B); if (Math.abs(x - dx) < 11 && Math.abs(y - dy) < 11) return 'trig'; }
+  if (S.rul.on) {
+    for (const k of ['t1', 't2']) if (Math.abs(x - (r.L + S.rul[k] * (r.R - r.L))) < 7) return k;
+    const rk = rulCh(); if (rk) for (const k of ['v1', 'v2']) if (Math.abs(y - yOf(S.rul[k], rk, r)) < 7) return k;
+  }
+  return null;
+}
+function pos(e) { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; }
+cv.addEventListener('pointerdown', e => { const [x, y] = pos(e); drag = hit(x, y); if (drag) { cv.setPointerCapture(e.pointerId); e.preventDefault(); } });
+cv.addEventListener('pointermove', e => {
+  const [x, y] = pos(e), r = plotRect();
+  if (!drag) { const h = hit(x, y); cv.style.cursor = h === 'trig' ? 'move' : h === 't1' || h === 't2' ? 'ew-resize' : h ? 'ns-resize' : 'default'; return; }
+  const fx = clamp((x - r.L) / (r.R - r.L), 0, 1);
+  if (drag === 'trig') {
+    const s = visOf(S.tr.src), stp = (s.hi - s.lo) / 200;
+    S.tr.pre = Math.round(clamp(fx, 0, 0.9) * 20) / 20; S.tr.lvl = +(Math.round(clamp(vOfY(y, S.tr.src, r), s.lo, s.hi) / stp) * stp).toPrecision(4);
+    S.hist = []; $('#trLvl').value = S.tr.lvl; $('#trPre').value = Math.round(S.tr.pre * 100); $('#trPreO').textContent = Math.round(S.tr.pre * 100) + '%';
+  } else if (drag === 't1' || drag === 't2') S.rul[drag] = fx;
+  else { const rk = rulCh(), s = visOf(rk); S.rul[drag] = +clamp(vOfY(y, rk, r), s.lo, s.hi).toPrecision(4); }
+  draw();
+});
+const endDrag = () => { if (drag) { drag = null; afterUser(); } };
+cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+
+/* ================= setup grading ================= */
+function chState(k) {
+  const i = chI(k), v = visOf(k), sp = v.hi - v.lo, ac = S.sc[k].cpl === 'AC';
+  const e = ac ? { min: ENV[i].min - ENV[i].mean, max: ENV[i].max - ENV[i].mean } : ENV[i], g = ac ? { min: ENVG[i].min - ENVG[i].mean, max: ENVG[i].max - ENVG[i].mean } : ENVG[i];
+  const clip = e.max > v.hi + 0.01 * sp || e.min < v.lo - 0.01 * sp, lo = Math.min(e.min, g.min, 0), hi = Math.max(e.max, g.max, 0);
+  return { clip, fill: (hi - lo) / sp, e, v };   // fill = how much of the screen the signal reaches, measured from the zero line
+}
+const fits = (k, fill = 0.2) => useCh(k) && (s => !s.clip && s.fill >= fill)(chState(k));
+function recentTrig() { const now = performance.now(); return S.hist.filter(h => now - h.w < 2000); }
+function stableNow() {
+  if (S.tr.mode === 'none') return false;
+  if (S.tr.mode === 'single') return !!(S.cap && S.cap.trigT !== null);
+  const h = recentTrig(); if (h.length < 3) return false;
+  const M = P_().trigMod(S.E); if (!M || FLAT.some(Boolean)) return true;
+  const W = S.tb * 10, tol = Math.max(W * 0.004, 1e-6);
+  return h.every(x => Math.abs(mod(x.t - h[0].t + M / 2, M) - M / 2) <= tol);
+}
+function setupIssues() {
+  const P = P_(), E = S.E, out = [], keys = ['A', 'B'].slice(0, nCh());
+  for (const k of keys) if (!S.sc[k].on) out.push(`<b>Ch ${k} is off.</b> Turn it on: it shows the ${P.chs[chI(k)].n}.`);
+  const W = S.tb * 10, [mn, mx] = P.tb(E);
+  if (W < mn * 0.999) out.push(`<b>Timebase too fast.</b> The screen only covers ${fmtT(W)}, so you can’t see a whole event. You need at least ${fmtT(mn)} on screen (screen = 10 × time/div).`);
+  else if (W > mx * 1.001) out.push(`<b>Timebase too slow.</b> ${fmtT(W)} on screen squashes the detail together. Keep it under about ${fmtT(mx)}.`);
+  for (const k of keys) {
+    if (!S.sc[k].on) continue;
+    if (S.sc[k].cpl === 'AC' && !P.allowAC) out.push(`<b>Ch ${k} is AC coupled.</b> AC coupling removes the DC level, and the DC level is part of this signal (where it sits matters). Use DC.`);
+    const s = chState(k);
+    if (s.clip) out.push(`<b>Ch ${k} is clipping</b> (over range): part of the signal is cut off at the ${s.e.max > s.v.hi ? 'top' : 'bottom'}. Pick a bigger range${s.e.min >= -0.05 * (s.v.hi - s.v.lo) && S.sc[k].z === 'mid' ? ', or move the zero line Low' : ''}.`);
+    else if (s.fill < 0.2) out.push(`<b>Ch ${k} trace is tiny.</b> It uses only ${Math.round(s.fill * 100)}% of the screen height. Pick a smaller range so you can see detail.`);
+  }
+  const src = S.tr.src, si = chI(src);
+  if (P.needTrig) {
+    if (S.tr.mode !== 'none' && !useCh(src)) out.push(`<b>The trigger source (Ch ${src}) is off.</b>`);
+    else if (FLAT[si]) { if ((S.tr.mode === 'repeat' || S.tr.mode === 'single') && !recentTrig().length) out.push(`<b>The scope is waiting for a trigger that never comes.</b> Ch ${src} has no edges to trigger on. Switch to Auto (or None) so you can see what’s there (or isn’t).`); }
+    else if (S.tr.mode === 'none') out.push(`<b>No trigger.</b> The picture starts at a random point each sweep, so it won’t hold still. Use Repeat (or Auto) with a level inside the signal.`);
+    else if (!stableNow()) {
+      const e = ENV[si], L = S.tr.lvl, sh = S.sc[src].cpl === 'AC' ? ENV[si].mean : 0;
+      if (L > e.max - sh || L < e.min - sh) out.push(`<b>Not triggering.</b> The level (${fmtU(L, unitOf(src))}) is outside the Ch ${src} signal (about ${fmtU(e.min - sh, unitOf(src))} to ${fmtU(e.max - sh, unitOf(src))}). Move it inside.`);
+      else if (recentTrig().length < 3) out.push(`<b>Not triggering reliably</b> yet. Check the level, edge and source, and give it a second to sweep.`);
+      else out.push(`<b>The picture isn’t stable.</b> ${P.trigHint}`);
+    }
+  } else if ((S.tr.mode === 'repeat' || S.tr.mode === 'single') && !recentTrig().length && !(S.cap && S.cap.trigT !== null)) out.push(`<b>Waiting for a trigger.</b> Slow signals like this are easiest with Trigger: None (roll mode).`);
+  return out;
+}
+
+/* ================= explore panel ================= */
+function opHTML(only) {
+  const P = P_(); let h = '';
+  if (P.op === 'rpm' && (!only || only.includes('rpm'))) h += `<h4>Engine</h4><div class="rowb"><span class="seg mini">${Object.entries(RPM).map(([k, r]) => `<button data-act="rpm:${k}" aria-pressed="${S.rpmKey === k}">${r.n}</button>`).join('')}</span></div>`;
+  if (P.op === 'speed' && (!only || only.includes('speed'))) h += `<h4>Vehicle speed</h4><div class="sl"><label for="opSpeed">Speed</label><input type="range" id="opSpeed" data-op="mph" min="2" max="60" step="1" value="${S.mph}"><output id="o-mph">${S.mph} mph</output></div>`;
+  if (P.op === 'duty' && (!only || only.includes('duty'))) h += `<h4>ECM command</h4><div class="sl"><label for="opDuty">Purge duty</label><input type="range" id="opDuty" data-op="duty" min="10" max="90" step="5" value="${S.duty}"><output id="o-duty">${S.duty}%</output></div>`;
+  return h;
+}
+function condHTML(list) {
+  const P = P_(), keys = list || ['good', ...Object.keys(P.faults)];
+  return `<div class="rowb">${keys.map(k => `<button class="tog" data-act="cond:${k}" aria-pressed="${S.F === k}"><i style="background:${k === 'good' ? 'var(--ok)' : 'var(--fail)'}"></i>${k === 'good' ? 'Known good' : P.faults[k].n}</button>`).join('')}</div>`;
+}
+function connHTML() { const P = P_(); return `<div class="conn">${P.chs.map((c, i) => `<div><i style="background:var(--ch${i ? 'B' : 'A'})">${i ? 'B' : 'A'}</i><span><b>${c.n}.</b> ${c.probe}</span></div>`).join('')}</div>`; }
+function sigHTML() {
+  const P = P_(), Fx = P.faults[S.F];
+  let h = `<p class="dim">Pick a signal. The scope loads a recommended setup. Then change the settings, break it, and see what happens.</p>`;
+  for (const g of GROUPS) {
+    const ks = Object.keys(PRE).filter(k => PRE[k].group === g); if (!ks.length) continue;
+    h += `<div class="grp">${g}</div><div class="cards">${ks.map(k => `<button class="card" data-act="sig:${k}" aria-pressed="${S.p === k}"><b>${PRE[k].name}</b></button>`).join('')}</div>`;
+  }
+  h += `<h4>Connected</h4>${connHTML()}<p>${P.about}</p>`;
+  h += opHTML();
+  h += `<h4>Condition</h4>${condHTML()}`;
+  if (Fx) h += `<div class="msg warn"><b>${Fx.n}</b><br>${Fx.see}<br><span class="dim">Typical concern: ${Fx.concern} · ${Fx.dtc}</span></div>`;
+  h += `<h4>What good looks like</h4><ul>${P.good.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  h += `<div class="nav"><button class="btn" data-act="rec">Load recommended setup</button></div>`;
+  return h;
+}
+function tipsHTML() {
+  let h = `<h3>Setting up a scope</h3>
+  <p><b>1. Range (volts):</b> make the biggest part of the signal as tall as you can without running off the screen. Start big, then go smaller. “Over range” means part of the signal is cut off. The screen is 10 divisions tall, so ±5 V is 1 V per division.</p>
+  <p><b>2. Zero:</b> Ctr puts 0 V in the middle. Low puts it one division from the bottom, which gives positive-only signals (most sensors) nearly the whole screen.</p>
+  <p><b>3. Timebase:</b> screen time = 10 × time/div. Show one to a few events. Too fast and you only see a slice; too slow and the detail squashes together.</p>
+  <p><b>4. Trigger:</b> the scope starts drawing when the signal crosses the <b>level</b> in the chosen <b>direction</b> on the <b>source</b> channel. That’s what makes the picture hold still. Pick an edge that happens once per event.</p>
+  <ul><li><b>Repeat:</b> redraws every time it triggers (the normal setting).</li><li><b>Auto:</b> like Repeat, but free-runs if nothing triggers. Use it to find out if there’s any signal at all.</li><li><b>Single:</b> grabs one capture and stops. Use it for one-off glitches.</li><li><b>None:</b> no trigger. At 100 ms/div or slower it rolls like a chart recorder (O2 sensors).</li></ul>
+  <p><b>5. Coupling:</b> almost always DC in automotive work. AC removes the DC level; use it only for AC sensors or small ripple on top of a big DC voltage.</p>
+  <p><b>6. Rulers and measurements:</b> drag the dashed rulers to measure time (pulse width, period) and voltage. The table under the screen measures each channel automatically.</p>
+  <h4>Starting points (idle, known good)</h4><table class="tips"><tr><th>Signal</th><th>Ranges</th><th>Time/div</th><th>Trigger</th></tr>`;
+  for (const [k, P] of Object.entries(PRE)) {
+    const r = computeRec(k, 'good', 'idle');
+    h += `<tr><td>${P.name}</td><td>${P.chs.map((c, i) => { const s = r.sc[i ? 'B' : 'A']; return `${i ? 'B' : 'A'} ${fmtR(s.r, c.u)}${s.z === 'low' ? ' low' : ''}`; }).join('<br>')}</td><td>${fmtT(r.tb)}</td><td>${r.tr.mode === 'none' ? 'None (roll)' : `${r.tr.src} ${r.tr.edge === 'rise' ? '↑' : '↓'} ${fmtU(r.tr.lvl, P.chs[chI(r.tr.src)].u)}`}</td></tr>`;
+  }
+  return h + `</table><p class="dim">Generic teaching waveforms. Real values vary by make, model and sensor; use known-good captures from the same vehicle when you can.</p>`;
+}
+
+/* ================= diagnose ================= */
+const CASE_POOL = Object.entries(PRE).flatMap(([pk, P]) => Object.keys(P.faults).map(f => pk + ':' + f));
+/* Shuffle bag: every case comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'scope-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You’ve solved all ${n} cases once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function scramble() {
+  const P = P_(), E = S.E, ops = ['tb'], extra = [Math.random() < 0.5 ? 'rSmall' : 'rBig'];
+  if (P.needTrig) extra.push(Math.random() < 0.5 ? 'tNone' : 'tLvl');
+  if (!P.allowAC) extra.push('ac');
+  if (nCh() > 1) extra.push('bOff');
+  ops.push(...shuffled(extra).slice(0, Math.random() < 0.5 ? 1 : 2));
+  const [mn, mx] = P.tb(E), i0 = TBS.indexOf(S.tb);
+  for (const o of ops) {
+    if (o === 'tb') { const bad = TBS.map((t, i) => i).filter(i => (10 * TBS[i] < mn || 10 * TBS[i] > mx) && Math.abs(i - i0) >= 3 && Math.abs(i - i0) <= 6); const pool = bad.length ? bad : TBS.map((t, i) => i).filter(i => 10 * TBS[i] < mn || 10 * TBS[i] > mx); S.tb = TBS[pool[Math.floor(Math.random() * pool.length)]]; }
+    else if (o === 'rSmall' || o === 'rBig') { const u = unitOf('A'), L = RANGES[u], j = L.indexOf(S.sc.A.r); S.sc.A.r = L[clamp(j + (o === 'rSmall' ? -3 : 3), 0, L.length - 1)]; }
+    else if (o === 'tNone') S.tr.mode = 'none';
+    else if (o === 'tLvl') { const si = chI(S.tr.src), g = ENVG[si]; S.tr.lvl = +(g.max + 0.35 * (g.max - g.min)).toPrecision(3); S.tr.mode = Math.random() < 0.5 ? 'auto' : 'repeat'; }
+    else if (o === 'ac') S.sc.A.cpl = 'AC';
+    else if (o === 'bOff') { S.sc.B.on = false; if (S.tr.src === 'B') S.tr.src = 'A'; }
+  }
+  if (S.tr.mode === 'auto' && Math.random() < 0.5 && !ops.includes('tLvl')) S.tr.mode = 'repeat';
+}
+function newCase() {
+  const key = bagNext(), [pk, F] = key.split(':'), P = PRE[pk];
+  S.p = pk; S.F = F; S.rpmKey = P.faults[F].rpm || 'idle'; S.mph = 20; S.duty = 30; refreshEnv();
+  const r = computeRec(pk, F, S.rpmKey); S.sc = r.sc; S.tb = r.tb; S.tr = r.tr; S.math = false; S.rul.on = false;
+  scramble(); S.run = true;
+  S.dx = { n: (S.dx?.n || 0) + 1, key, pk, F, setupOk: false, setupTries: 0, issues: null, pick: null, tries: 0, solved: false, wrong: null };
+  S.tab = 'case'; changed('sig'); renderPanel();
+}
+function checkSetup() {
+  const d = S.dx; if (!d || d.setupOk) return;
+  const iss = setupIssues();
+  if (!iss.length) { d.setupOk = true; d.issues = null; if (!d.setupTries) S.dxScore.setupFirst++; toast('✓ Scope dialed in', 'good'); }
+  else { d.setupTries++; d.issues = iss; }
+  renderPanel();
+}
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick || !d.setupOk) return;
+  d.tries++;
+  if (d.pick === d.F) { bagSolved(d.key, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.dxFirst++; toast('✓ Correct', 'good'); }
+  else d.wrong = d.pick === 'good' ? 'Look again: compare with what good looks like (Explore mode shows known-good).' : 'Not quite. What exactly is different from a known-good waveform?';
+  renderPanel();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return '';
+  const P = PRE[d.pk], Fx = P.faults[d.F], sc = S.dxScore;
+  const st = P.op === 'rpm' ? RPM[S.rpmKey].n === 'Cranking' ? 'Engine cranking (won’t start)' : `Engine at ${RPM[S.rpmKey].n.toLowerCase()}, warm` : d.pk === 'o2' ? 'Engine held at 2500 rpm, warm, closed loop' : P.op === 'speed' ? 'Driving at 20 mph' : P.op === 'duty' ? 'Engine idling, purge commanded 30%' : 'Key on, engine running';
+  let h = `<div class="case"><span class="qk">Case ${d.n} · ${P.name}</span><h3>Customer concern</h3><p>${Fx.concern}</p><p class="dim"><b>Scan:</b> ${Fx.dtc}<br><b>Now:</b> ${st}</p></div>
+    <div class="score"><div><small>Cases</small><b>${sc.cases}</b></div><div><small>Setup 1st try</small><b>${sc.setupFirst}</b></div><div><small>Dx 1st try</small><b>${sc.dxFirst} / ${sc.cases}</b></div></div>${bagHTML()}`;
+  h += `<h4>Connected</h4>${connHTML()}`;
+  h += `<div class="steps"><div class="${d.setupOk ? 'done' : 'cur'}"><i>${d.setupOk ? '✓' : 1}</i>Dial in the scope: the settings start out wrong</div><div class="${d.solved ? 'done' : d.setupOk ? 'cur' : ''}"><i>${d.solved ? '✓' : 2}</i>Read the waveform and pick the cause</div></div>`;
+  if (!d.setupOk) {
+    h += `<p class="dim">Fix the range, timebase, coupling and trigger until you get a clear, steady picture of every channel. Then check it.</p><div class="nav"><button class="btn primary" data-act="chk">Check my setup</button></div>`;
+    if (d.issues) h += `<div class="msg bad">Not yet. ${d.issues.length} thing${d.issues.length > 1 ? 's' : ''} to fix:<ul>${d.issues.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
+    return h;
+  }
+  if (d.solved) return h + `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}:</b> ${Fx.n}.<br>${Fx.see}</div><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  h += `<div class="msg ok">Setup is good: a clear, steady picture.</div><h4>What’s wrong?</h4><div class="cards">${['good', ...Object.keys(P.faults)].map(k => `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${k === 'good' ? 'Nothing: the waveform is known-good' : P.faults[k].n}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`;
+  if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`;
+  return h;
+}
+
+/* ================= lessons ================= */
+const W_ = () => S.tb * 10;
+const rulDt = () => Math.abs(S.rul.t2 - S.rul.t1) * W_();
+const LESSONS = [
+{ id: 'screen', title: 'Reading the screen', sub: 'Volts up, time across, range', steps: [
+  { body: 'This is a crank sensor (Ch A, blue) at idle. <b>Up and down is volts</b>, <b>left to right is time</b>. Right now the signal is a thin strip because the range is ±20 V. Pick a smaller <b>Ch A range</b> so the signal is as tall as it can be <b>without running off the screen</b>.', setup: { p: 'ckpCmp', set() { S.sc.A.r = 20; S.sc.A.z = 'mid'; S.sc.B.on = false; Object.assign(S.tr, { mode: 'auto', src: 'A', edge: 'rise', lvl: 2.5, pre: 0.2 }); } }, goal: { check: () => fits('A', 0.45), hint: 'Ch A range ±5 V, nothing clipped.' } },
+  { body: '', goal: { mc: { q: 'Read the blue scale on the left. What does the crank signal do?', opts: ['It switches between about 0 V and 5 V: a digital square wave', 'It sits at about 12 V, like the battery', 'It stays around 0.5 V'], a: 0, why: 'A Hall-effect sensor switches its signal between ground and its 5 V supply. Each switch is a tooth passing the sensor.' } } },
+  { body: 'Turn on <b>Ch B</b> (red): the cam sensor. Give it a range that fits too.', goal: { check: () => fits('B', 0.45), hint: 'Ch B on, range ±5 V.' } },
+  { body: '', goal: { mc: { q: 'Where do you read Ch B’s voltage?', opts: ['On the red scale on the right: each channel has its own range', 'On the blue scale on the left', 'You can’t, only one scale counts'], a: 0, why: 'Colors match: blue scale = Ch A, red scale = Ch B. The little arrows on each side mark that channel’s 0 V line.' } } },
+] },
+{ id: 'time', title: 'Time per division', sub: 'Timebase, period, rpm', steps: [
+  { body: 'At <b>1 ms/div</b> the whole screen is only 10 ms: a few crank teeth and no cam pulse. Change the <b>Timebase</b> until the screen shows at least one full engine cycle (one cam pulse).', setup: { p: 'ckpCmp', set() { S.tb = 1e-3; } }, goal: { check: () => W_() >= 0.16 && W_() <= 0.64, hint: 'Timebase 20 or 50 ms/div.' } },
+  { body: '', goal: { mc: { q: 'The screen is 10 divisions wide. At 20 ms/div, how much time fits on it?', opts: ['200 ms', '20 ms', '2 seconds'], a: 0, why: '10 × 20 ms = 200 ms. Fast signals need microseconds or milliseconds per division; slow ones (O2 sensors) need seconds per division.' } } },
+  { body: 'Set <b>50 ms/div</b> so two cam pulses show. Turn on <b>Rulers</b> and drag the two dashed time rulers onto the rising edges of two cam pulses in a row. (Tip: Stop the scope first if the picture moves.)', goal: { check: () => S.rul.on && Math.abs(rulDt() - 0.16) / 0.16 < 0.06, hint: 'Δt between the time rulers ≈ 160 ms.' } },
+  { body: '', goal: { mc: { q: 'One engine cycle (two crank revolutions) took about 160 ms. What’s the engine speed?', opts: ['About 750 rpm: 2 revolutions in 0.16 s = 12.5 rev/s × 60', 'About 160 rpm', 'About 1,600 rpm'], a: 0, why: 'Time between events gives frequency, and frequency gives rpm. The measurements table does it too: Ch B frequency ≈ 6.25 Hz (one pulse per cycle).' } } },
+] },
+{ id: 'trig', title: 'Triggering', sub: 'A picture that holds still', steps: [
+  { body: 'Trigger is set to <b>None</b>: the scope starts drawing wherever it happens to be, so the picture jumps. Set the trigger mode to <b>Repeat</b>.', setup: { p: 'ckpCmp', set() { Object.assign(S.tr, { mode: 'none', src: 'A', edge: 'rise', lvl: 2.5, pre: 0.2 }); } }, goal: { check: () => S.tr.mode === 'repeat' && recentTrig().length >= 2, hint: 'Trigger mode: Repeat.' } },
+  { body: 'Now it triggers, but on <i>every</i> crank tooth, so the cam pulse still jumps around. Trigger on something that happens once per cycle: set the trigger <b>source to Ch B</b> (the cam).', goal: { check: () => S.tr.src === 'B' && stableNow(), hint: 'Source: Ch B, level between 0 and 5 V.' } },
+  { body: 'Drag the yellow diamond up (or type a level) to <b>8 V</b>, above the signal.', goal: { check: () => S.tr.lvl > 5.2, hint: 'Trigger level above 5.2 V.' } },
+  { body: '', goal: { mc: { q: 'The picture froze and the status says “Waiting for trigger.” Why?', opts: ['No edge ever crosses 8 V, so the trigger condition never happens', 'The sensor just failed', 'The timebase is wrong'], a: 0, why: 'Repeat only redraws when the trigger happens. Auto would free-run instead, which is handy for checking whether there’s any signal at all. Keep the level inside the signal.' } } },
+  { body: 'Put the level back inside the signal (about 2.5 V). Then set <b>Pre</b>-trigger to about 50%.', goal: { check: () => S.tr.lvl > 0.5 && S.tr.lvl < 4.5 && S.tr.pre >= 0.4 && S.tr.pre <= 0.6 && stableNow(), hint: 'Level 0.5–4.5 V, pre-trigger 40–60%, Repeat, steady picture.' } },
+  { body: '', goal: { mc: { q: 'What does 50% pre-trigger show you?', opts: ['The trigger point moves to the middle: the left half shows what happened before the trigger', 'The signal gets 50% bigger', 'Half the samples are skipped'], a: 0, why: 'Pre-trigger shows what led up to an event, like a missing pulse right before a stall.' } } },
+] },
+{ id: 'inj', title: 'Injector voltage and current', sub: 'Pulse width, spike, pintle hump', steps: [
+  { body: '', setup: { p: 'injector' }, goal: { mc: { q: 'Blue is the injector control pin; red is current from a clamp. When is the injector open (spraying)?', opts: ['When the blue trace drops to near 0 V: the ECM grounds the circuit', 'When the blue trace sits at 14 V', 'During the tall spike'], a: 0, why: 'The injector has battery voltage all the time; the ECM switches the ground side (a low-side driver). The low part is the on-time, or pulse width.' } } },
+  { body: 'Turn on <b>Rulers</b> and measure the pulse width: put one time ruler where the voltage drops and the other where it shoots up.', goal: { check: () => S.rul.on && Math.abs(rulDt() - S.E.pw) < 0.25e-3, hint: 'Δt ≈ 2.9 ms.' } },
+  { body: '', goal: { mc: { q: 'What makes the tall spike when the injector turns off?', opts: ['The coil’s magnetic field collapsing. The ECM clamps it at about 60 V', 'The battery', 'Fuel pressure'], a: 0, why: 'A flat-topped spike means the clamp is working. A short, low spike points to low current, for example high resistance in the circuit.' } } },
+  { body: '', goal: { mc: { q: 'Look at the red current ramp. What’s the little dip about 1 ms after turn-on?', opts: ['The pintle (valve) opening: proof the injector moved', 'A bad ground', 'Noise'], a: 0, why: 'No hump means the valve didn’t move (a stuck injector), even when the electrical side looks fine. The small bump after the spike is the valve closing.' } } },
+  { body: 'Here’s an injector with a <b>shorted winding</b>. Its current is cut off at the top: fix the <b>Ch B range</b> so nothing clips.', setup: { p: 'injector', F: 'shorted', set() { S.sc.B.r = 1; } }, goal: { check: () => fits('B', 0.2), hint: 'Ch B range big enough that the current isn’t cut off.' } },
+  { body: '', goal: { mc: { q: 'What changed?', opts: ['Current climbs to about 3 A (normal is about 1 A): the winding’s resistance is too low', 'Nothing', 'The pulse width doubled'], a: 0, why: 'Ohm’s law: less resistance, more current. An ohmmeter confirms it: about 4 Ω against a 12–16 Ω spec.' } } },
+] },
+{ id: 'cam', title: 'Crank / cam correlation', sub: 'Gap, sync, cam timing', steps: [
+  { body: '', setup: { p: 'ckpCmp' }, goal: { mc: { q: 'In the crank signal (blue) there’s a long low spot once per revolution. What is it?', opts: ['The missing teeth: the ECM’s reference mark for crankshaft position', 'A dropout fault', 'The cam pulse'], a: 0, why: 'A 60-2 wheel has 58 teeth and a gap. The ECM counts teeth from the gap to know where each piston is.' } } },
+  { body: '', goal: { mc: { q: 'Why does the ECM need the cam sensor too?', opts: ['The crank turns twice per engine cycle. The cam tells it which turn is the compression stroke, for sequential fuel and spark', 'To measure speed', 'It doesn’t'], a: 0, why: 'Crank = where the pistons are. Cam = which stroke they’re on.' } } },
+  { body: 'Break it: set the condition to <b>Cam timing off</b>. Watch where the cam pulse sits compared to the crank gap.', ctl: ['cond'], conds: ['good', 'camtime'], goal: { check: () => S.F === 'camtime', hint: 'Condition: Cam timing off.' } },
+  { body: '', ctl: ['cond'], conds: ['good', 'camtime'], goal: { mc: { q: 'What’s different? (Flip between Known good and Cam timing off.)', opts: ['The cam pulse starts about 3 crank teeth later compared to the crank gap: cam and crank are out of time (P0016)', 'The cam signal is missing', 'Nothing'], a: 0, why: 'Both sensors are fine; the parts they read have moved relative to each other. Typical causes: stretched chain, a jumped tooth, timing installed wrong, or a stuck cam phaser.' } } },
+] },
+{ id: 'ign', title: 'Ignition patterns', sub: 'Firing line, spark line, coil rings', steps: [
+  { body: '', setup: { p: 'ignition' }, goal: { mc: { q: 'Red is the secondary (spark plug side), in kV. The tall line where the spark starts is the firing line. What does its height show?', opts: ['How much voltage it took to jump the spark plug gap', 'Battery voltage', 'Coil current'], a: 0, why: 'Wide gaps, lean mixtures or open boots need more voltage (taller). Fouled or shorted plugs need less (shorter).' } } },
+  { body: 'Measure the <b>spark line</b>: put the time rulers where the firing line drops to the flat spark line, and where the spark line ends.', goal: { check: () => S.rul.on && Math.abs(rulDt() - 1.5e-3) < 0.25e-3, hint: 'Δt ≈ 1.5 ms.' } },
+  { body: '', goal: { mc: { q: 'After the spark line, the trace rings a few times (coil oscillations). What does that tell you?', opts: ['The coil had energy left over and its windings are healthy', 'The plug is fouled', 'The ECM is faulty'], a: 0, why: 'A coil with shorted windings shows few or no oscillations.' } } },
+  { body: 'Break it: set the condition to <b>Worn spark plug (wide gap)</b>. Fix the ranges if anything clips.', ctl: ['cond'], conds: ['good', 'gap'], goal: { check: () => S.F === 'gap' && fits('A', 0.15) && fits('B', 0.15), hint: 'Condition: wide gap, with neither channel over range.' } },
+  { body: '', ctl: ['cond'], conds: ['good', 'gap'], goal: { mc: { q: 'What changed?', opts: ['The firing line is much taller (about 18 kV) and the spark line shorter: it took more voltage to jump the gap', 'The firing line got lower', 'Nothing'], a: 0, why: 'Energy spent breaking down the gap isn’t available for the spark line. Compare cylinders: the odd one out is your clue.' } } },
+] },
+{ id: 'can', title: 'CAN bus', sub: 'Mirror images and differential', steps: [
+  { body: '', setup: { p: 'can' }, goal: { mc: { q: 'Blue is CAN H and red is CAN L. What do you notice?', opts: ['Mirror images: H goes up to about 3.5 V while L goes down to about 1.5 V; both rest at about 2.5 V', 'They’re identical', 'Only H moves'], a: 0, why: 'Resting at 2.5 V is a recessive bit (1); spread apart is dominant (0). At 500 kbps each bit lasts 2 µs.' } } },
+  { body: 'Turn on <b>Math A − B</b> (green).', goal: { check: () => S.math, hint: 'Toolbar: A − B.' } },
+  { body: '', goal: { mc: { q: 'What is the green trace?', opts: ['The difference between H and L: what the modules actually read (about 0 V or 2 V)', 'Ground', 'Battery voltage'], a: 0, why: 'CAN is differential: modules read the difference between the wires, not each wire against ground.' } } },
+  { body: 'Break it: set the condition to <b>Common-mode noise</b>.', ctl: ['cond'], conds: ['good', 'noise'], goal: { check: () => S.F === 'noise', hint: 'Condition: Common-mode noise.' } },
+  { body: '', ctl: ['cond'], conds: ['good', 'noise'], goal: { mc: { q: 'Both wires are noisy now. Why is the green trace still clean?', opts: ['The same noise is on both wires, so it cancels out when you subtract them. That’s why CAN wires are twisted together', 'The scope filters it out', 'It isn’t clean'], a: 0, why: 'Keep repairs twisted (about one twist per inch) and close to the original length.' } } },
+  { body: '', goal: { mc: { q: 'Key off, an ohmmeter across DLC pins 6 and 14 reads 120 Ω. What does that mean?', opts: ['One of the two 120 Ω terminating resistors is open (it should read about 60 Ω)', 'Normal', 'A short circuit'], a: 0, why: 'Two 120 Ω resistors in parallel make 60 Ω. A much lower reading suggests H and L are shorted together.' } } },
+] },
+{ id: 'o2', title: 'O2 sensors and the catalyst', sub: 'Slow signals, roll mode', steps: [
+  { body: '', setup: { p: 'o2' }, goal: { mc: { q: 'Blue is the upstream O2 sensor at 2500 rpm, switching between about 0.1 V and 0.9 V roughly once per second. What does that mean?', opts: ['Closed-loop fuel control is working: the ECM keeps nudging the mixture rich, then lean', 'The sensor is bad', 'The engine runs rich'], a: 0, why: 'Above 0.45 V means rich; below means lean. Fast, full-height switching is a healthy sensor.' } } },
+  { body: '', goal: { mc: { q: 'Red, the downstream sensor, stays steady around 0.6–0.7 V. Why?', opts: ['The catalyst stores oxygen and evens out the exhaust: a sign it’s working', 'The sensor is dead', 'It’s unplugged'], a: 0, why: 'A working catalyst smooths the switching out.' } } },
+  { body: 'Break it: set the condition to <b>Failed catalytic converter</b>.', ctl: ['cond'], conds: ['good', 'cat'], goal: { check: () => S.F === 'cat', hint: 'Condition: Failed catalytic converter.' } },
+  { body: '', ctl: ['cond'], conds: ['good', 'cat'], goal: { mc: { q: 'What happened?', opts: ['The downstream sensor now copies the upstream switching: the catalyst can’t store oxygen anymore (P0420)', 'The upstream sensor stopped switching', 'Nothing'], a: 0, why: 'This is how the ECM grades the catalyst: it compares downstream activity to upstream activity.' } } },
+  { body: 'Set the timebase to <b>1 ms/div</b>.', goal: { check: () => S.tb <= 1e-2, hint: 'Timebase 10 ms/div or faster.' } },
+  { body: '', goal: { mc: { q: 'Why is this setting useless here?', opts: ['The O2 signal changes about once per second, so 10 ms of it is just a flat slice. Match the timebase to how fast the signal changes', 'The range is wrong', 'The trigger is off'], a: 0, why: 'Slow signals: seconds per division with Trigger None (roll mode). Fast signals: µs or ms per division with a trigger.' } } },
+] },
+{ id: 'wss', title: 'Wheel speed sensors', sub: 'Passive vs. active', steps: [
+  { body: 'Passive (magnetic) sensors: LF on blue, RF on red, at 20 mph. Raise the <b>vehicle speed</b> to 40 mph or more and watch.', setup: { p: 'wssP' }, ctl: ['speed'], goal: { check: () => S.mph >= 40, hint: 'Speed 40 mph or more.' } },
+  { body: '', ctl: ['speed'], goal: { mc: { q: 'What happened?', opts: ['Both frequency and amplitude went up (fix the range if it clips)', 'Only the frequency went up', 'Only the amplitude went up'], a: 0, why: 'A magnetic sensor makes its own voltage, so it gets weaker as the wheel slows. That’s why it can’t read near 0 mph.' } } },
+  { body: 'Now an active sensor. Change the speed to <b>10 mph or less</b>.', setup: { p: 'wssA' }, ctl: ['speed'], goal: { check: () => S.mph <= 10, hint: 'Speed 10 mph or less.' } },
+  { body: '', ctl: ['speed'], goal: { mc: { q: 'What changes with speed on an active sensor?', opts: ['Only the frequency: the square wave stays the same height at any speed, even near 0 mph', 'Both frequency and height', 'Neither'], a: 0, why: 'Active sensors are powered by the ABS module and switch their current between two levels (about 7 and 14 mA). Many also report direction.' } } },
+] },
+{ id: 'pwm', title: 'Duty cycle (PWM)', sub: 'Fixed frequency, variable on-time', steps: [
+  { body: '', setup: { p: 'pwm' }, goal: { mc: { q: 'This is an EVAP purge solenoid that the ECM pulses at 20 Hz. When is the solenoid ON?', opts: ['When the blue trace is low: the ECM grounds it (low-side driver)', 'When it’s high', 'During the spike'], a: 0, why: 'Same idea as an injector: B+ on one side, the ECM switches the ground.' } } },
+  { body: 'Raise the commanded <b>duty cycle</b> to 70% or more.', ctl: ['duty'], goal: { check: () => S.duty >= 70, hint: 'Purge duty ≥ 70%.' } },
+  { body: '', ctl: ['duty'], goal: { mc: { q: 'What changed?', opts: ['The on-time (low part) got longer while the frequency stayed at 20 Hz', 'The frequency doubled', 'The voltage went up'], a: 0, why: 'PWM means a fixed frequency with a variable on-time. The average current sets how far the valve opens.' } } },
+  { body: '', ctl: ['duty'], goal: { mc: { q: 'The measurements table shows “+Duty” about 30% while the ECM commands 70%. Why?', opts: ['+Duty measures the HIGH part. With a low-side driver the ON time is the low part: 100% − 30% = 70%', 'The scope is broken', 'The ECM is lying'], a: 0, why: 'Know which side the driver switches before you read duty cycle.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function applySetup(su) {
+  if (!su) return;
+  S.p = su.p; S.F = su.F || 'good'; S.rpmKey = su.rpm || 'idle'; S.mph = 20; S.duty = 30; refreshEnv();
+  const r = computeRec(S.p, S.F, S.rpmKey); S.sc = r.sc; S.tb = r.tb; S.tr = r.tr; S.math = false; S.rul.on = false; S.run = true;
+  if (su.set) su.set();
+  changed('sig');
+}
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; applySetup(st.setup); renderPanel(); }
+function checkGoal() { const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return; if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); } }
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up the scope, tells you what to change and look for, and checks your work.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  if (st.ctl) { if (st.ctl.includes('cond')) h += `<h4>Condition</h4>${condHTML(st.conds)}`; h += opHTML(st.ctl); }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['sig', 'Signals'], ['tips', 'Scope tips']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'sig' ? sigHTML() : S.tab === 'tips' ? tipsHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  if (S.mode === 'diagnose' && S.dx && !S.dx.solved) S.dxSnap = { sc: JSON.parse(JSON.stringify(S.sc)), tb: S.tb, tr: { ...S.tr }, math: S.math };
+  S.mode = m;
+  $$('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore') { S.lesson = null; S.F = 'good'; S.rpmKey = 'idle'; refreshEnv(); applyRec(); }
+  if (m === 'guided') { S.lesson = null; S.F = 'good'; refreshEnv(); applyRec(); }
+  if (m === 'diagnose') {
+    if (!S.dx || S.dx.solved) newCase();
+    else { const d = S.dx; S.p = d.pk; S.F = d.F; S.rpmKey = PRE[d.pk].faults[d.F].rpm || 'idle'; S.mph = 20; S.duty = 30; refreshEnv(); if (S.dxSnap) { S.sc = S.dxSnap.sc; S.tb = S.dxSnap.tb; S.tr = S.dxSnap.tr; S.math = S.dxSnap.math; } changed('sig'); }
+  }
+  renderPanel();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function afterUser() { if (S.mode === 'diagnose' && S.dx && S.dx.issues) { /* keep the list until they check again */ } }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'sig': S.p = v; S.F = 'good'; S.rpmKey = 'idle'; S.mph = 20; S.duty = 30; refreshEnv(); applyRec(); renderPanel(); break;
+    case 'cond': S.F = v; refreshEnv(); changed(); renderPanel(); checkGoal(); break;
+    case 'rpm': S.rpmKey = v; refreshEnv(); changed('tb'); renderPanel(); break;
+    case 'rec': applyRec(); renderPanel(); break;
+    case 'chk': checkSetup(); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('scope.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#pbody').addEventListener('input', e => {
+  const t = e.target, k = t.dataset.op; if (!k) return;
+  S[k] = +t.value; const o = $('#o-' + k); if (o) o.textContent = k === 'mph' ? t.value + ' mph' : t.value + '%';
+  refreshEnv(); S.hist = []; measure(); renderMeas(); checkGoal();
+});
+
+/* ================= loop ================= */
+let lastWall = performance.now(), lastAcq = 0, lastGoal = 0;
+function loop(now) {
+  const dt = Math.min(0.1, (now - lastWall) / 1000); lastWall = now; S.tNow += dt;
+  const iv = S.tb * 10 >= 1 ? 100 : 60;
+  if (now - lastAcq >= iv) {
+    lastAcq = now;
+    if (S.run) { acquire(now); renderMeas(); }
+    if (!drag) draw();
+    syncStat();
+    if (now - lastGoal > 300) { lastGoal = now; checkGoal(); }
+  }
+  requestAnimationFrame(loop);
+}
+S.light = store.get('scope.light') !== '0';
+refreshEnv(); applyRec(); renderPanel();
+new ResizeObserver(fit).observe($('#screenBox')); fit();
+requestAnimationFrame(loop);
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__LS = { S, PRE, LESSONS, CASE_POOL, setMode, newCase, setupIssues, computeRec, refreshEnv, changed, acquire, stableNow, checkSetup, submitDx, curStep, get ENV() { return ENV; }, get FLAT() { return FLAT; }, get BAG() { return BAG; },
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
