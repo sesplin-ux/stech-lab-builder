@@ -139,6 +139,7 @@ const I = {
   flask:    '<path d="M9 2h6M10 2v6L4 19a2 2 0 0 0 1.7 3h12.6a2 2 0 0 0 1.7-3L14 8V2"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   hybrid:   '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="6.5" r="1.3"/><circle cx="16.8" cy="14.8" r="1.3"/><circle cx="7.2" cy="14.8" r="1.3"/>',
+  diff:     '<path d="M2 12h6M16 12h6"/><rect x="8" y="7" width="8" height="10" rx="2"/><path d="M12 17v5M10 9.5h4M10 14.5h4"/>',
   scope:    '<rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="M5 14h3l1.5-5 2.5 8 2-6 1 3h4"/>',
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
@@ -148,7 +149,7 @@ const AREAS = [
   { id: 'elec',   name: 'Electrical',            note: 'ASE A6 · the foundation for diagnosing everything else' },
   { id: 'engine', name: 'Engine & Driveability', note: 'ASE A1, A8' },
   { id: 'chassis',name: 'Brakes & Chassis',      note: 'ASE A4, A5' },
-  { id: 'trans',  name: 'Transmission',          note: 'ASE A2' },
+  { id: 'trans',  name: 'Transmission & Drivetrain', note: 'ASE A2, A3' },
   { id: 'hvac',   name: 'Heating & A/C',         note: 'ASE A7' },
   { id: 'hybrid', name: 'Hybrid & EV',           note: 'ASE L3 · high-voltage safety comes first' },
   { id: 'labs',   name: 'Lab Job Sheets',        note: 'Lab Builder: fill, grade and author job sheets' },
@@ -205,6 +206,10 @@ const TOOLS = [
     name: 'Planetary Gear Sandbox',
     desc: 'Pick the input, held and output members and see the ratio and direction. Follow power flow through a 4L60-E and an 8-speed, then find failed clutches.',
     tags: ['A2', 'Diagnose'], keys: 'planetary gearset sun ring carrier clutch band apply chart 4l60e 8hp automatic' },
+  { id: 'differential', area: 'trans', href: 'differential/', icon: 'diff', c: '#B48CFF',
+    name: 'Differential Visualizer',
+    desc: 'Drive a truck with an open, limited-slip or locking diff, traction control and 4WD on ice, in turns and with a wheel in the air. Look inside in 2D or 3D, read gear patterns, set up a ring and pinion, and diagnose diff noises.',
+    tags: ['A3', 'Diagnose'], keys: 'differential diff ring pinion spider side gear limited slip lsd locker posi traction control awd 4wd transfer case center diff backlash preload crush sleeve contact pattern whine clunk' },
 
   { id: 'ac', area: 'hvac', href: 'ac-cycle/', icon: 'ac', c: '#7FE0E8',
     name: 'A/C Cycle Simulator',

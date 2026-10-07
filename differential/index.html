@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Differential Visualizer</title>
+<meta name="description" content="Drive a truck with an open, limited-slip or locking differential, traction control and AWD or part-time 4WD: in turns, on ice and with a wheel in the air. Look inside in 2D or 3D, read gear contact patterns, practice ring and pinion setup, and diagnose differential noises.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. Colors: ring/carrier amber, pinion orange,
+   side gears/axles blue, spider gears green, clutch packs violet. 2D views; the 3D "look inside" loads only when opened. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --ring:#FFB224; --pin:#FF7A3D; --side:#4FA3E3; --spider:#3DDC97; --clutch:#C77DFF;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button[disabled]{opacity:.35;cursor:not-allowed}
+.seg.mini{padding:2px}.seg.mini button{padding:5px 8px;font-size:10px}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.used{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,390px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-rows:minmax(0,1.1fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vbox{flex:1;min-height:0;padding:0 8px 8px;position:relative}
+.vbox svg{width:100%;height:100%;display:block}
+.vbox canvas{width:100%;height:100%;display:block;border-radius:10px}
+#pMain{grid-row:1/3}
+.svgt{font:600 10.5px var(--f-label);fill:#E6EDF3;letter-spacing:.04em}
+.svgs{font:600 8.5px var(--f-label);fill:#8A98A8;letter-spacing:.08em;text-transform:uppercase}
+.svgv{font:500 10px var(--f-mono);fill:#C5CFD9}
+.chip{padding:3px 8px;border-radius:999px;font:700 10px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--soft)}
+.chip.ok{border-color:rgba(61,220,151,.5);color:#C9F7E2}.chip.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}.chip.warn{border-color:rgba(255,178,36,.55);color:#FFE2A8}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+table.dt{width:100%;border-collapse:collapse;font-size:12px}
+table.dt th{font:600 9.5px/1.15 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:4px 3px;border-bottom:1px solid var(--line);text-align:right}
+table.dt th:first-child,table.dt td:first-child{text-align:left}
+table.dt td{padding:4px 3px;border-bottom:1px solid #151d26;text-align:right;font:500 11.5px/1.2 var(--f-mono);color:var(--soft);white-space:nowrap}
+table.dt td:first-child{font:600 12px/1.2 var(--f-label);color:var(--fg)}
+td.bad{color:#FFC2BC!important}td.warn{color:#FFE2A8!important}td.ok{color:#BFEBD6!important}
+.loading3d{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);font-size:13px;text-align:center;padding:20px}
+/* notebook */
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 62px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.rowb .lbl{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);min-width:74px}
+.tog{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.06em;color:var(--dim);white-space:nowrap}
+.tog[aria-pressed="true"]{color:var(--fg);border-color:#3a4a5c;background:#17222d}
+.tog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cards{display:grid;gap:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.tests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.tests .btn{white-space:normal;text-align:center;line-height:1.2;padding:8px 8px}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f > b{display:block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.find .f .bad{color:#FFC2BC}.find .f .ok{color:#BFEBD6}.find .f .warn{color:#FFE2A8}
+.steps{display:grid;gap:4px;margin:4px 0 8px}
+.steps div{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--dim)}
+.steps div i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:700 10px/1 var(--f-label);background:var(--line-2);color:var(--fg);font-style:normal}
+.steps div.done{color:#C9F7E2}.steps div.done i{background:var(--ok);color:#06140d}
+.steps div.cur{color:var(--fg)}.steps div.cur i{background:var(--accent)}
+.readout{font:600 22px/1.1 var(--f-mono);color:var(--fg);padding:8px 10px;border-radius:10px;background:#0a0f14;border:1px solid var(--line-2);display:inline-block;min-width:140px;text-align:center}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pMain{grid-row:auto;grid-column:1/-1;height:420px}
+  #pDiff,#pData{height:330px}
+  .main>.panel{height:680px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pMain{height:330px} .brand p{display:none} }
+/* back to the tools hub (site root) */
+.hublink{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);color:var(--soft);font:600 12px/1 var(--f-label);letter-spacing:.05em;text-decoration:none;white-space:nowrap;pointer-events:auto}
+.hublink:hover{color:var(--fg);border-color:#3a4a5c}
+.hublink:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:640px){.hublink{padding:0 8px}.hublink span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <a class="hublink" href="../" title="All STECH student tools"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>All tools</span></a>
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6M16 12h6"/><rect x="8" y="7" width="8" height="10" rx="2"/><path d="M12 17v5M10 9.5h4M10 14.5h4"/></svg></div>
+      <div><h1>Differential Visualizer</h1><p>Open · LSD · locker · AWD · setup</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="pattern">Pattern</button><button data-m="setup">Setup</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pMain" aria-label="Main view"><div class="phead"><h2 id="mTitle">Top view</h2><span id="mSub"></span><div class="r" id="mChips"></div></div><div class="vbox"><svg id="svMain" viewBox="0 0 640 400" role="img" aria-label="Top view of the truck showing each wheel's speed, torque and grip"></svg></div></section>
+      <section class="panel" id="pDiff" aria-label="Inside the differential"><div class="phead"><h2>Inside the diff</h2><span id="dSub"></span><div class="r"><span class="seg mini" id="vSeg"><button data-v="2d" aria-pressed="true">2D cutaway</button><button data-v="3d">3D look inside</button></span></div></div><div class="vbox" id="dBox"><svg id="svDiff" viewBox="0 0 300 250" role="img" aria-label="Cutaway of the rear differential: pinion, ring gear, carrier, side gears, spider gears and clutch packs"></svg><canvas id="cv3d" hidden></canvas><div class="loading3d" id="ld3d" hidden>Loading the 3D model…</div></div></section>
+      <section class="panel" id="pData" aria-label="Wheel data"><div class="phead"><h2 id="dtTitle">Wheel data</h2></div><div class="ro" id="data"></div></section>
+    </div>
+    <section class="panel" aria-label="Notebook"><div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div></section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TAU = Math.PI * 2, MPS = 0.44704;
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const f0 = v => Math.round(v).toLocaleString('en-US');
+const WN = ['LF', 'RF', 'LR', 'RR'], WNL = ['Left front', 'Right front', 'Left rear', 'Right rear'];
+
+/* ================= teaching truck (generic pickup; typical values) ================= */
+const MASS = 2000, G = 9.81, RW = 0.36, TW = 1.65, WB = 3.2, HCG = 0.75, IW = 1.5, JC = 25, FD = 3.73, GEAR1 = 3.0, TE = 380, REV = 5800, SIDE_T = 16, SPIDER_T = 10;
+const SITU = {
+  dry:   { n: 'Straight, dry pavement', d: 'All four tires have good grip.', mu: [0.9, 0.9, 0.9, 0.9], lift: [0, 0, 0, 0], R: Infinity },
+  turn:  { n: 'Turning (dry)', d: 'A 15 m (50 ft) curve at a steady 15 mph.', mu: [0.9, 0.9, 0.9, 0.9], lift: [0, 0, 0, 0], R: 15, cruise: 15 },
+  tight: { n: 'Tight parking-lot turn', d: 'Full lock, 6 m (20 ft) circle at 5 mph.', mu: [0.9, 0.9, 0.9, 0.9], lift: [0, 0, 0, 0], R: 6, cruise: 5 },
+  ice:   { n: 'Left rear on ice', d: 'Stopped with the left rear tire on a patch of wet glare ice.', mu: [0.9, 0.9, 0.04, 0.9], lift: [0, 0, 0, 0], R: Infinity },
+  air:   { n: 'Right rear in the air', d: 'Off-road: the right rear tire is lifted off the ground.', mu: [0.9, 0.9, 0.9, 0.9], lift: [0, 0, 0, 1], R: Infinity },
+  cross: { n: 'Cross-axle (LF + RR in the air)', d: 'Diagonal wheels lifted: the classic AWD test.', mu: [0.9, 0.9, 0.9, 0.9], lift: [1, 0, 0, 1], R: Infinity },
+  snow:  { n: 'Packed snow', d: 'Low grip on all four tires.', mu: [0.25, 0.25, 0.25, 0.25], lift: [0, 0, 0, 0], R: Infinity },
+};
+const baseCfg = () => ({ layout: 'RWD', rear: 'open', lockOn: false, center: 'open', tc: false, situ: 'dry', R: Infinity, throttle: 0, cruise: null, mu: [0.9, 0.9, 0.9, 0.9], lift: [0, 0, 0, 0] });
+const fresh = () => ({ v: 0, a: 0, w: [0, 0, 0, 0], th: [0, 0, 0, 0], tb: [0, 0, 0, 0], F: [0, 0, 0, 0], T: [0, 0, 0, 0], Tsh: [0, 0, 0, 0], s: [0, 0, 0, 0], N: [0, 0, 0, 0], vi: [0, 0, 0, 0], biasR: 0, biasF: 0, biasC: 0, erpm: 0, Tin: 0, thr: 0, dist: 0 });
+let C = baseCfg(), X = fresh();
+const S = { mode: 'explore', tab: 'drive', view: '2d', lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('diff.done') || '[]')),
+  pat: null, patScore: { n: 0, first: 0 }, job: null, jobScore: { jobs: 0, clean: 0 }, dx: null, dxScore: { cases: 0, first: 0, tests: 0 } };
+
+/* ================= physics =================
+   4 wheels with tire grip (tanh slip curve), engine inertia reflected to the carrier (mass matrix I + J·c·cᵀ),
+   and differential coupling done with friction impulses: open = tiny internal friction, clutch LSD = preload + ramp
+   (torque-sensitive), locker / locked center = no slip. Traction control brakes a spinning wheel. */
+function coupleImpulse(i, j, cap, dt, w) {   // equal inertias; returns bias torque (slow side − fast side)
+  const need = (w[j] - w[i]) * IW / 2, P = clamp(need, -cap * dt, cap * dt);
+  w[i] += P / IW; w[j] -= P / IW; return 2 * P / dt;
+}
+function step(dt) {
+  const turn = isFinite(C.R), R = C.R;
+  const ri = turn ? [Math.hypot(R - TW / 2, WB), Math.hypot(R + TW / 2, WB), R - TW / 2, R + TW / 2].map(x => x / R) : [1, 1, 1, 1];
+  const vi = ri.map(k => X.v * k);
+  // loads with fore-aft transfer; a lifted wheel's share moves to its axle partner
+  const dN = MASS * X.a * HCG / WB, Nf = (0.55 * MASS * G - dN) / 2, Nr = (0.45 * MASS * G + dN) / 2;
+  const N = [Nf, Nf, Nr, Nr];
+  for (const [a, b] of [[0, 1], [2, 3]]) { if (C.lift[a]) { N[b] += N[a]; N[a] = 0; } if (C.lift[b]) { N[a] += N[b]; N[b] = 0; } }
+  // throttle (cruise holds speed)
+  let thr = C.throttle;
+  if (C.cruise != null) thr = clamp(0.12 + (C.cruise * MPS - X.v) * 0.5, 0, 1);
+  const c = C.layout === 'AWD' ? [0.25, 0.25, 0.25, 0.25] : [0, 0, 0.5, 0.5];
+  const win = c.reduce((s, ci, i) => s + ci * X.w[i], 0), erpm = win * FD * GEAR1 * 60 / TAU;
+  const driven = C.layout === 'AWD' ? [0, 1, 2, 3] : [2, 3];
+  const s = X.w.map((w, i) => (w * RW - vi[i]) / Math.max(Math.abs(vi[i]), 3));   // floor of 3 m/s keeps the tire model stable at a standstill
+  let Te = erpm > REV ? 0 : thr * TE;
+  if (thr < 0.01 && X.v > 0.5) Te = -40;
+  if (C.tc && driven.every(i => s[i] > 0.2) && Te > 0) Te *= 0.5;   // every driven wheel spinning: cut engine power
+  const Tin = Te * GEAR1 * FD * 0.92;
+  // forces on each wheel
+  const f = [0, 0, 0, 0], F = [0, 0, 0, 0];
+  for (let i = 0; i < 4; i++) {
+    F[i] = C.mu[i] * N[i] * Math.tanh(s[i] / 0.08);
+    const roll = 0.012 * N[i] * Math.sign(X.w[i]);
+    f[i] = c[i] * Tin - (F[i] + roll) * RW;
+  }
+  // traction control: brake a driven wheel that spins
+  for (const i of driven) {
+    if (C.tc && s[i] > 0.12 && X.v < 25) X.tb[i] = Math.min(X.tb[i] + 3500 * dt, 1800); else X.tb[i] = Math.max(X.tb[i] - 4000 * dt, 0);
+  }
+  for (const i of [0, 1, 2, 3]) if (!driven.includes(i)) X.tb[i] = 0;
+  // accelerations: M = IW·I + JC·c·cᵀ (Sherman–Morrison)
+  const cf = c.reduce((s2, ci, i) => s2 + ci * f[i], 0), cc = c.reduce((s2, ci) => s2 + ci * ci, 0), k = JC * cf / (IW + JC * cc);
+  const w0 = X.w.slice(), w = X.w.slice();
+  for (let i = 0; i < 4; i++) w[i] += (f[i] - c[i] * k) / IW * dt;
+  // brakes (can't reverse a wheel)
+  for (let i = 0; i < 4; i++) if (X.tb[i] > 0) { const dw = X.tb[i] * dt / IW; w[i] = w[i] > 0 ? Math.max(0, w[i] - dw) : Math.min(0, w[i] + dw); }
+  // differential couplings
+  const axleT = Math.abs(X.Tsh[2]) + Math.abs(X.Tsh[3]);   // ramp LSD: clamping comes from torque actually transmitted
+  const capR = C.rear === 'lsd' ? 90 + 0.3 * axleT : C.rear === 'locker' && C.lockOn ? 1e7 : 15;
+  X.biasR = coupleImpulse(2, 3, capR, dt, w);
+  X.biasF = C.layout === 'AWD' ? coupleImpulse(0, 1, 15, dt, w) : 0;
+  if (C.layout === 'AWD') {   // center: front carrier vs rear carrier
+    const capC = C.center === 'locked' ? 1e7 : 10, fc = (w[0] + w[1]) / 2, rc = (w[2] + w[3]) / 2;
+    const need = (rc - fc) * IW, P = clamp(need, -capC * dt, capC * dt);
+    w[0] += P / (2 * IW); w[1] += P / (2 * IW); w[2] -= P / (2 * IW); w[3] -= P / (2 * IW); X.biasC = P / dt;
+  } else X.biasC = 0;
+  // vehicle
+  const Fx = F.reduce((a, b) => a + b, 0), drag = 0.5 * 1.2 * 2.6 * X.v * X.v + (X.v > 0.05 ? 0.012 * MASS * G : 0);
+  X.a = (Fx - drag) / MASS; X.v = Math.max(0, X.v + X.a * dt); if (X.v === 0 && X.a < 0) X.a = 0;
+  for (let i = 0; i < 4; i++) { if (!C.lift[i] && N[i] > 0 && X.v < 0.02 && Math.abs(w[i]) < 0.05 && Tin <= 1) w[i] = 0; X.th[i] += w[i] * dt; }
+  X.dist += X.v * dt; X.w = w;
+  // outputs
+  X.s = s; X.F = F; X.N = N; X.vi = vi; X.erpm = erpm; X.Tin = Tin; X.thr = thr;
+  // axle-shaft torque actually delivered to each wheel = what accelerates the wheel + what the tire pushes + brake; smoothed for display
+  for (let i = 0; i < 4; i++) {
+    const sh = IW * (w[i] - w0[i]) / dt + (F[i] + 0.012 * N[i] * Math.sign(w0[i])) * RW + (X.tb[i] > 0 ? X.tb[i] * Math.sign(w0[i]) : 0);
+    X.Tsh[i] += (sh - X.Tsh[i]) * Math.min(1, dt / 0.02);
+    X.T[i] += (sh - X.T[i]) * Math.min(1, dt / 0.25);
+  }
+}
+const mphOf = w => w * RW / MPS;
+function status() {
+  const driven = C.layout === 'AWD' ? [0, 1, 2, 3] : [2, 3], out = [];
+  const spin = driven.filter(i => X.s[i] > 0.3 && Math.abs(X.w[i]) * RW > 1.5);
+  if (spin.length && X.v < 1.5 && C.throttle > 0.05) out.push(['STUCK: ' + spin.map(i => WN[i]).join(' + ') + ' spinning', 'bad']);
+  else if (spin.length) out.push([spin.map(i => WN[i]).join(' + ') + ' spinning', 'warn']);
+  const bindR = isFinite(C.R) && ((C.rear === 'locker' && C.lockOn) || C.rear === 'lsd') && Math.abs(X.biasR) > 400 && Math.sign(X.s[2]) !== Math.sign(X.s[3]);
+  const bindC = isFinite(C.R) && C.layout === 'AWD' && C.center === 'locked' && Math.abs(X.biasC) > 400;
+  if (bindR) out.push([C.rear === 'lsd' ? 'LSD resisting the turn' : 'Rear axle binding: tires scrub', C.rear === 'lsd' ? 'warn' : 'bad']);
+  if (bindC) out.push(['Driveline binding (4WD on pavement)', 'bad']);
+  if (X.tb.some(t => t > 100)) out.push(['TC braking ' + X.tb.map((t, i) => t > 100 ? WN[i] : '').filter(Boolean).join(' + '), 'ok']);
+  if (X.erpm > REV - 50) out.push(['Rev limiter', 'warn']);
+  return out;
+}
+
+/* ================= drawing: top view ================= */
+function drawCar() {
+  const cx = 320, ppm = 50, fy = 112, ry = fy + WB * ppm, hx = TW / 2 * ppm;
+  const pos = [[cx - hx, fy], [cx + hx, fy], [cx - hx, ry], [cx + hx, ry]];
+  let h = `<rect width="640" height="400" fill="#0a0f14"/>`;
+  // surface + path
+  if (C.situ === 'snow') h += `<rect width="640" height="400" fill="#C5CFD9" opacity=".07"/>`;
+  if (isFinite(C.R)) {
+    const ox = cx - C.R * ppm;
+    for (const [rr, col] of [[C.R - TW / 2, '#2A3644'], [C.R + TW / 2, '#2A3644'], [Math.hypot(C.R - TW / 2, WB), '#1d2732'], [Math.hypot(C.R + TW / 2, WB), '#1d2732']]) h += `<circle cx="${ox}" cy="${ry}" r="${rr * ppm}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="6 6"/>`;
+    h += `<text x="14" y="388" class="svgs" style="text-transform:none">turning left · ${C.R} m (${Math.round(C.R * 3.281)} ft) radius · each wheel follows its own circle</text>`;
+  } else h += `<line x1="${cx - hx}" y1="0" x2="${cx - hx}" y2="400" stroke="#1d2732" stroke-dasharray="6 6"/><line x1="${cx + hx}" y1="0" x2="${cx + hx}" y2="400" stroke="#1d2732" stroke-dasharray="6 6"/>`;
+  // ice patch
+  C.mu.forEach((m, i) => { if (m < 0.5 && C.situ !== 'snow') h += `<rect x="${pos[i][0] - 34}" y="${pos[i][1] - 40}" width="68" height="80" rx="14" fill="#8fd0ff" opacity=".22"/><text x="${pos[i][0]}" y="${pos[i][1] + 52}" class="svgs" text-anchor="middle" style="fill:#8fd0ff">ice μ ${m}</text>`; });
+  // body + driveline
+  h += `<rect x="${cx - hx - 4}" y="${fy - 48}" width="${2 * hx + 8}" height="${WB * ppm + 96}" rx="22" fill="#141c25" stroke="#2A3644"/>`;
+  h += `<rect x="${cx - 26}" y="${fy - 30}" width="52" height="50" rx="8" fill="#1d2833" stroke="#45566a"/><text x="${cx}" y="${fy - 6}" class="svgs" text-anchor="middle">engine</text><text x="${cx}" y="${fy + 8}" class="svgv" text-anchor="middle">${f0(X.erpm)} rpm</text>`;
+  const ds = (x1, y1, x2, y2, th, col = '#9FB3C8') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2A3644" stroke-width="7"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="3" stroke-dasharray="6 6" stroke-dashoffset="${(-th * 3) % 12}"/>`;
+  const thIn = (X.th[2] + X.th[3]) / 2 * FD;
+  if (C.layout === 'AWD') {
+    h += `<rect x="${cx - 20}" y="${fy + 46}" width="40" height="26" rx="6" fill="#1d2833" stroke="#45566a"/><text x="${cx}" y="${fy + 63}" class="svgs" text-anchor="middle">${C.center === 'locked' ? '4WD lock' : 'center'}</text>`;
+    h += ds(cx, fy + 20, cx, fy + 46, thIn) + ds(cx, fy + 72, cx, ry - 14, thIn) + ds(cx + 8, fy + 46, cx + 8, fy + 8, (X.th[0] + X.th[1]) / 2 * FD);
+    h += `<circle cx="${cx + 8}" cy="${fy}" r="9" fill="#1d2833" stroke="#45566a"/>`;
+    h += ds(cx - hx + 10, fy, cx - 1, fy, X.th[0], '#4FA3E3') + ds(cx + 17, fy, cx + hx - 10, fy, X.th[1], '#4FA3E3');
+  } else h += ds(cx, fy + 20, cx, ry - 14, thIn);
+  h += `<circle cx="${cx}" cy="${ry}" r="15" fill="#1d2833" stroke="${C.rear === 'open' ? '#8A98A8' : C.rear === 'lsd' ? '#C77DFF' : '#FF7A3D'}" stroke-width="2"/><text x="${cx}" y="${ry + 3}" class="svgs" text-anchor="middle" style="fill:#E6EDF3">${C.rear === 'open' ? 'OPEN' : C.rear === 'lsd' ? 'LSD' : C.lockOn ? 'LOCK' : 'UNLK'}</text>`;
+  h += ds(cx - hx + 10, ry, cx - 15, ry, X.th[2], '#4FA3E3') + ds(cx + 15, ry, cx + hx - 10, ry, X.th[3], '#4FA3E3');
+  // wheels
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = pos[i], sl = X.s[i], lifted = C.lift[i];
+    const col = lifted ? '#1d2732' : sl > 0.3 ? '#FF5A4E' : sl > 0.1 ? '#FFB224' : sl < -0.1 ? '#C77DFF' : '#3a4a5c';
+    h += `<g><rect x="${x - 10}" y="${y - 22}" width="20" height="44" rx="5" fill="${col}" stroke="${lifted ? '#5A6773' : '#0b1015'}" ${lifted ? 'stroke-dasharray="3 3"' : ''}/>`;
+    const off = ((X.th[i] * RW * 50 * 0.18) % 11 + 11) % 11;
+    for (let k = -2; k < 3; k++) { const ty = y - 22 + off + k * 11; if (ty > y - 22 && ty < y + 22) h += `<line x1="${x - 9}" y1="${ty}" x2="${x + 9}" y2="${ty}" stroke="#0b1015" stroke-width="2" opacity=".55"/>`; }
+    if (X.tb[i] > 100) h += `<rect x="${x - 14}" y="${y - 8}" width="4" height="16" fill="#3DDC97"/>`;
+    h += `</g>`;
+    if (!lifted && Math.abs(X.F[i]) > 250) { const L = clamp(X.F[i] / 5000 * 40, -60, 60); h += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - L}" stroke="${L > 0 ? '#3DDC97' : '#C77DFF'}" stroke-width="3"/><path d="M${x} ${y - L - (L > 0 ? 6 : -6)} l-5 ${L > 0 ? 7 : -7} h10z" fill="${L > 0 ? '#3DDC97' : '#C77DFF'}"/>`; }
+    const left = i % 2 === 0, tx = left ? x - 22 : x + 22, an = left ? 'end' : 'start';
+    h += `<text x="${tx}" y="${y - 12}" class="svgt" text-anchor="${an}">${WN[i]}${lifted ? ' · in the air' : ''}</text><text x="${tx}" y="${y + 2}" class="svgv" text-anchor="${an}">${mphOf(X.w[i]).toFixed(1)} mph</text><text x="${tx}" y="${y + 15}" class="svgv" text-anchor="${an}" style="fill:${X.T[i] > 5 ? '#FFB224' : '#8A98A8'}">${f0(X.T[i])} Nm</text>`;
+  }
+  h += `<text x="14" y="22" class="svgt" style="font-size:15px">${(X.v / MPS).toFixed(1)} mph</text><text x="14" y="38" class="svgs">truck speed · throttle ${Math.round(X.thr * 100)}%</text>`;
+  h += `<g transform="translate(470 18)"><rect width="10" height="10" fill="#3a4a5c"/><text x="14" y="9" class="svgs">grip</text><rect x="50" width="10" height="10" fill="#FFB224"/><text x="64" y="9" class="svgs">slipping</text><rect x="112" width="10" height="10" fill="#FF5A4E"/><text x="126" y="9" class="svgs">spinning</text></g>`;
+  h += `<text x="626" y="388" class="svgs" text-anchor="end" style="text-transform:none">green arrows = push on the road · Nm = torque delivered to each wheel</text>`;
+  $('#svMain').innerHTML = h;
+  $('#mTitle').textContent = 'Top view'; $('#mSub').textContent = SITU[C.situ].n;
+  $('#mChips').innerHTML = status().map(([t, k]) => `<span class="chip ${k}">${t}</span>`).join('');
+}
+
+/* ================= drawing: 2D cutaway ================= */
+function drawDiff() {
+  const wl = X.w[2], wr = X.w[3], wc = (wl + wr) / 2, rpm = w => w * 60 / TAU, wsp = (wl - wr) / 2 * SIDE_T / SPIDER_T;
+  const thc = (X.th[2] + X.th[3]) / 2, ths = (X.th[2] - X.th[3]) / 2 * SIDE_T / SPIDER_T;
+  const k = 9, off = th => ((-th * k) % 12 + 12) % 12;
+  const lock = C.rear === 'locker' && C.lockOn, lsd = C.rear === 'lsd', clutchGlow = lsd ? clamp(Math.abs(X.biasR) / 900, 0.15, 1) : 0;
+  let h = `<rect width="300" height="250" fill="#0a0f14"/>`;
+  // axle shafts (behind)
+  h += `<line x1="6" y1="120" x2="110" y2="120" stroke="#1d2732" stroke-width="12"/><line x1="6" y1="120" x2="110" y2="120" stroke="var(--side)" stroke-width="6" stroke-dasharray="6 6" stroke-dashoffset="${off(X.th[2])}"/>`;
+  h += `<line x1="190" y1="120" x2="294" y2="120" stroke="#1d2732" stroke-width="12"/><line x1="190" y1="120" x2="294" y2="120" stroke="var(--side)" stroke-width="6" stroke-dasharray="6 6" stroke-dashoffset="${off(X.th[3])}"/>`;
+  // carrier case
+  h += `<rect x="96" y="70" width="108" height="100" rx="14" fill="#FFB224" fill-opacity=".08" stroke="#FFB224" stroke-opacity=".5" stroke-dasharray="5 4" stroke-dashoffset="${off(thc)}"/>`;
+  // ring gear (edge-on) + teeth moving
+  h += `<rect x="204" y="46" width="14" height="148" rx="3" fill="#FFB224" fill-opacity=".85"/>`;
+  for (let i = 0; i < 14; i++) { const y = 46 + ((i * 11 + off(thc) * 0.9) % 148); h += `<line x1="204" y1="${y}" x2="218" y2="${y}" stroke="#0b1015" stroke-width="1.5"/>`; }
+  // pinion + driveshaft (from the front, bottom)
+  h += `<path d="M196 196 L226 196 L220 212 L202 212Z" fill="var(--pin)"/><line x1="211" y1="212" x2="211" y2="248" stroke="#1d2732" stroke-width="10"/><line x1="211" y1="212" x2="211" y2="248" stroke="var(--pin)" stroke-width="5" stroke-dasharray="5 5" stroke-dashoffset="${(((-thc * FD * k) % 10) + 10) % 10}"/>`;
+  // side gears
+  h += `<path d="M112 98 L126 104 L126 136 L112 142Z" fill="var(--side)"/><path d="M188 98 L174 104 L174 136 L188 142Z" fill="var(--side)"/>`;
+  // spider gears + cross shaft
+  h += `<line x1="150" y1="78" x2="150" y2="162" stroke="#5A6773" stroke-width="5"/>`;
+  for (const [y, d] of [[86, 1], [154, -1]]) {
+    h += `<path d="M132 ${y - 7 * d} L168 ${y - 7 * d} L162 ${y + 9 * d} L138 ${y + 9 * d}Z" fill="var(--spider)" opacity=".9"/>`;
+    const sx = 150 + ((ths * 6) % 18 + 18) % 18 - 9; h += `<line x1="${sx}" y1="${y - 6 * d}" x2="${sx}" y2="${y + 8 * d}" stroke="#0b1015" stroke-width="2"/>`;
+  }
+  // clutch packs / locker
+  if (lsd) for (const x of [100, 192]) for (let i = 0; i < 4; i++) h += `<rect x="${x + i * 2}" y="96" width="1.6" height="48" fill="var(--clutch)" opacity="${clutchGlow}"/>`;
+  if (C.rear === 'locker') h += `<rect x="128" y="112" width="44" height="16" rx="3" fill="${lock ? '#FF7A3D' : 'none'}" stroke="#FF7A3D" stroke-dasharray="${lock ? '0' : '3 3'}"/><text x="150" y="123" class="svgs" text-anchor="middle" style="fill:${lock ? '#0b1015' : '#FF7A3D'}">${lock ? 'LOCKED' : 'unlocked'}</text>`;
+  // labels
+  const T = (x, y, s, a = 'middle', st = '') => `<text x="${x}" y="${y}" class="svgs" text-anchor="${a}" style="text-transform:none;${st}">${s}</text>`;
+  h += T(8, 108, `Left axle ${f0(rpm(wl))} rpm`, 'start', 'fill:#8fd0ff') + T(292, 108, `Right axle ${f0(rpm(wr))} rpm`, 'end', 'fill:#8fd0ff');
+  h += T(224, 40, `Ring + carrier ${f0(rpm(wc))} rpm`, 'middle', 'fill:#FFD27A') + T(194, 230, `Pinion / driveshaft ${f0(rpm(wc) * FD)} rpm`, 'end', 'fill:#FFB08A');
+  h += T(150, 64, `Spider gears ${Math.abs(rpm(wsp)) < 1 ? 'not turning' : f0(Math.abs(rpm(wsp))) + ' rpm'}`, 'middle', 'fill:#9FEFC8');
+  if (lsd) h += T(150, 186, `Clutch bias ${f0(Math.abs(X.biasR))} Nm`, 'middle', 'fill:#D9B3FF');
+  h += T(194, 244, `Ring ÷ pinion = ${FD} : 1`, 'end');
+  $('#svDiff').innerHTML = h;
+  $('#dSub').textContent = C.rear === 'open' ? 'open' : C.rear === 'lsd' ? 'clutch-type limited slip' : 'selectable locker';
+}
+
+/* ================= wheel data table ================= */
+function drawData() {
+  if (S.mode === 'pattern' || S.mode === 'setup') { $('#dtTitle').textContent = 'Specs (generic)'; $('#data').innerHTML = specHTML(); return; }
+  $('#dtTitle').textContent = 'Wheel data';
+  let h = `<table class="dt"><tr><th>Wheel</th><th>Speed</th><th>Torque</th><th>Push</th><th>Slip</th></tr>`;
+  for (let i = 0; i < 4; i++) {
+    const sl = C.lift[i] ? null : X.s[i], cl = sl == null ? '' : sl > 0.3 ? 'bad' : sl > 0.1 ? 'warn' : sl < -0.1 ? 'warn' : '';
+    h += `<tr><td>${WN[i]}${X.tb[i] > 100 ? ' <span class="chip ok" style="padding:1px 5px">TC</span>' : ''}</td><td>${mphOf(X.w[i]).toFixed(1)} mph</td><td>${f0(X.T[i])} Nm</td><td>${C.lift[i] ? 'air' : f0(X.F[i]) + ' N'}</td><td class="${cl}">${sl == null ? '—' : Math.round(clamp(sl, -9.99, 9.99) * 100) + '%'}</td></tr>`;
+  }
+  h += `</table><table class="dt" style="margin-top:8px"><tr><td>Truck speed</td><td>${(X.v / MPS).toFixed(1)} mph</td></tr><tr><td>Engine (1st gear)</td><td>${f0(X.erpm)} rpm</td></tr><tr><td>Driveshaft</td><td>${f0((X.w[2] + X.w[3]) / 2 * FD * 60 / TAU)} rpm</td></tr><tr><td>Rear bias (slow − fast side)</td><td>${f0(Math.abs(X.biasR))} Nm</td></tr>${C.layout === 'AWD' ? `<tr><td>Center ${C.center === 'locked' ? '(locked)' : '(open)'} windup</td><td>${f0(Math.abs(X.biasC))} Nm</td></tr>` : ''}</table>`;
+  h += `<p class="dim" style="margin:8px 0 0">Slip = how much faster the tire turns than the road under it. Small slip (a few %) is normal when pushing.</p>`;
+  $('#data').innerHTML = h;
+}
+function specHTML() {
+  return `<table class="dt"><tr><td>Pinion depth</td><td>per gauge, ±0.001 in</td></tr><tr><td>Pinion bearing preload (new)</td><td>15–25 in-lb</td></tr><tr><td>Carrier bearing preload</td><td>+0.008 in over slip fit</td></tr><tr><td>Ring gear backlash</td><td>0.006–0.010 in</td></tr><tr><td>Ring gear runout</td><td>under 0.003 in</td></tr></table><p class="dim" style="margin:8px 0 0">Generic teaching values. Every axle has its own specs and procedure. Use the service information for the axle on your bench.</p>
+  <h4>Tooth names</h4><p class="dim" style="margin:0"><b>Heel</b> = outer (wide) end of the tooth · <b>Toe</b> = inner (narrow) end · <b>Face</b> = top · <b>Flank</b> = bottom, near the root · <b>Drive side</b> = convex side, loaded on acceleration · <b>Coast side</b> = concave side, loaded on deceleration.</p>`;
+}
+
+/* ================= 3D look inside (loaded on demand) ================= */
+let G3 = null, loading3d = false;
+async function open3d() {
+  $('#svDiff').style.display = 'none'; $('#cv3d').hidden = false;   // (SVG elements ignore .hidden)
+  if (G3 || loading3d) return; loading3d = true; $('#ld3d').hidden = false;
+  try {
+    const THREE = await import('three');
+    const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+    const cv = $('#cv3d'), rend = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+    rend.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    cam.position.set(1.2, 2.3, 3.6);
+    const ctl = new OrbitControls(cam, cv); ctl.enableDamping = true; ctl.target.set(0, 0, 0.2); ctl.minDistance = 2; ctl.maxDistance = 9;
+    scene.add(new THREE.HemisphereLight(0xdde8f5, 0x202830, 1.4)); const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(4, 6, 5); scene.add(dl);
+    const mat = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.55, roughness: 0.42 });
+    const teeth = (grp, n, rad, z, len, w, h, mtl, tilt = 0) => { for (let i = 0; i < n; i++) { const a = i / n * TAU, b = new THREE.Mesh(new THREE.BoxGeometry(w, h, len), mtl); b.position.set(Math.cos(a) * rad, Math.sin(a) * rad, z); b.rotation.z = a; b.rotation.x = tilt; grp.add(b); } };
+    const bevel = (r1, r2, hgt, n, mtl) => { const g = new THREE.Group(); const cone = new THREE.Mesh(new THREE.CylinderGeometry(r2, r1, hgt, 32), mtl); cone.rotation.x = Math.PI / 2; g.add(cone); teeth(g, n, (r1 + r2) / 2 + 0.03, 0, hgt * 0.9, 0.07, 0.1, mtl); return g; };
+    // everything spins about the X axis (axle line); groups built along Z then turned
+    const carrier = new THREE.Group(); scene.add(carrier);
+    const ringM = mat(0xffb224), ring = new THREE.Group();
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.24, 64, 1, true), ringM); disc.rotation.x = Math.PI / 2; ring.add(disc);
+    const web = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.3, 48), new THREE.MeshStandardMaterial({ color: 0xc98a1a, side: THREE.DoubleSide, metalness: .5, roughness: .5, transparent: true, opacity: 0.55 })); web.position.z = 0.12; ring.add(web);
+    teeth(ring, 41, 1.2, -0.16, 0.12, 0.09, 0.2, ringM);
+    ring.position.x = 0.95; ring.rotation.y = Math.PI / 2; carrier.add(ring);
+    const caseM = new THREE.MeshStandardMaterial({ color: 0xffd27a, transparent: true, opacity: 0.07, metalness: 0.2, roughness: 0.6, side: THREE.DoubleSide, depthWrite: false });
+    const cse = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.7, 40, 1, true), caseM); cse.rotation.z = Math.PI / 2; carrier.add(cse);
+    const pinM = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.9, 16), mat(0x8a98a8)); carrier.add(pinM);   // cross shaft along Y
+    const spM = mat(0x3ddc97), spiders = [];
+    for (const d of [1, -1]) { const s = bevel(0.38, 0.22, 0.3, 10, spM); const holder = new THREE.Group(); s.rotation.x = d > 0 ? -Math.PI / 2 : Math.PI / 2; s.position.y = 0.5 * d; holder.add(s); carrier.add(holder); spiders.push([s, d]); }
+    const sideM = mat(0x4fa3e3), sides = [];
+    for (const d of [-1, 1]) { const g = new THREE.Group(); const b = bevel(0.5, 0.3, 0.32, 16, sideM); b.rotation.y = d < 0 ? Math.PI / 2 : -Math.PI / 2; b.position.x = 0.52 * d; g.add(b); const ax = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 3.2, 16), mat(0x2a6fa8)); ax.rotation.z = Math.PI / 2; ax.position.x = 2.15 * d; g.add(ax); scene.add(g); sides.push(g); }
+    const pin = new THREE.Group(); const pb = bevel(0.42, 0.24, 0.5, 11, mat(0xff7a3d)); pin.add(pb); const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 16), mat(0xb0562a)); shaft.rotation.x = Math.PI / 2; shaft.position.z = 1.5; pin.add(shaft);
+    pin.position.set(0.55, -0.38, 1.45); scene.add(pin);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.95, 0.95, 1.7, 16, 1, true)), new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.35 })); edges.rotation.z = Math.PI / 2; carrier.add(edges);
+    const resize = () => { const w = cv.clientWidth, hh = cv.clientHeight; if (!w || !hh) return; rend.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); };
+    new ResizeObserver(resize).observe($('#dBox')); resize();
+    G3 = { THREE, rend, scene, cam, ctl, carrier, sides, spiders, pin, resize };
+  } catch (e) { $('#ld3d').textContent = 'The 3D view couldn’t load (no internet or WebGL). The 2D cutaway shows the same thing.'; loading3d = false; return; }
+  $('#ld3d').hidden = true; loading3d = false;
+}
+function draw3d() {
+  if (!G3 || S.view !== '3d') return;
+  const sl = 0.12, thL = X.th[2] * sl, thR = X.th[3] * sl, thc = (thL + thR) / 2, ths = (thL - thR) / 2 * SIDE_T / SPIDER_T;
+  G3.carrier.rotation.x = thc; G3.sides[0].rotation.x = thL; G3.sides[1].rotation.x = thR;
+  for (const [s, d] of G3.spiders) s.rotation.y = ths * d;
+  G3.pin.rotation.z = -thc * FD;
+  G3.ctl.update(); G3.rend.render(G3.scene, G3.cam);
+}
+$('#vSeg').addEventListener('click', e => {
+  const v = e.target.closest('button')?.dataset.v; if (!v) return; S.view = v;
+  $$('#vSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+  if (v === '3d') open3d(); else { $('#svDiff').style.display = ''; $('#cv3d').hidden = true; $('#ld3d').hidden = true; }
+  checkGoal();
+});
+
+/* ================= pattern practice ================= */
+const PATS = {
+  good:  { d: 0, b: 0, a: 'good', n: 'Good pattern' },
+  shallow: { d: 1, b: 0, a: 'deeper', n: 'Pinion too shallow (pattern on the face)' },
+  deep:  { d: -1, b: 0, a: 'shallower', n: 'Pinion too deep (pattern on the flank)' },
+  heel:  { d: 0, b: 1, a: 'lessbl', n: 'Too much backlash (pattern toward the heel)' },
+  toe:   { d: 0, b: -1, a: 'morebl', n: 'Too little backlash (pattern toward the toe)' },
+  shheel: { d: 1, b: 1, a: 'deeper', n: 'Shallow pinion + heel: fix depth first' },
+  dptoe: { d: -1, b: -1, a: 'shallower', n: 'Deep pinion + toe: fix depth first' },
+};
+const PANS = [['good', 'Pattern is good: leave it'], ['deeper', 'Move the pinion deeper (closer to the ring gear centerline)'], ['shallower', 'Move the pinion shallower (away from the ring gear)'], ['lessbl', 'Decrease backlash (move the ring gear toward the pinion)'], ['morebl', 'Increase backlash (move the ring gear away from the pinion)']];
+function patternSVG(d, b, label) {
+  // tooth: x toe(left)→heel(right), y face(top)→flank(bottom). Ideal: centered, slightly toward the toe.
+  const X0 = 90, X1 = 560, Y0 = 90, Y1 = 290, px = 0.45 + b * 0.28, py = 0.5 - d * 0.27;
+  const cx = X0 + px * (X1 - X0), cy = Y0 + py * (Y1 - Y0);
+  let h = `<rect width="640" height="400" fill="#0a0f14"/>`;
+  h += `<path d="M${X0} ${Y0} L${X1} ${Y0 - 30} L${X1} ${Y1 + 30} L${X0} ${Y1}Z" fill="#3a3220" stroke="#FFB224" stroke-opacity=".6"/>`;
+  h += `<path d="M${X0} ${Y0} L${X1} ${Y0 - 30} L${X1} ${Y1 + 30} L${X0} ${Y1}Z" fill="url(#hatch)" opacity=".5"/><defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><line x1="0" y1="0" x2="0" y2="8" stroke="#6b5a2a" stroke-width="2"/></pattern></defs>`;
+  h += `<ellipse cx="${cx}" cy="${cy}" rx="${(X1 - X0) * 0.2}" ry="${(Y1 - Y0) * 0.21}" fill="#0a0f14" opacity=".9"/><ellipse cx="${cx}" cy="${cy}" rx="${(X1 - X0) * 0.2}" ry="${(Y1 - Y0) * 0.21}" fill="none" stroke="#FFE2A8" stroke-dasharray="4 3"/>`;
+  h += `<text x="${X0}" y="${Y1 + 26}" class="svgt">TOE (inner end)</text><text x="${X1}" y="${Y1 + 50}" class="svgt" text-anchor="end">HEEL (outer end)</text><text x="${X0 - 8}" y="${Y0 + 4}" class="svgt" text-anchor="end">FACE</text><text x="${X0 - 8}" y="${Y1}" class="svgt" text-anchor="end">FLANK</text>`;
+  h += `<text x="320" y="36" class="svgt" text-anchor="middle" style="font-size:13px">Ring gear tooth, drive side (convex)</text><text x="320" y="54" class="svgs" text-anchor="middle" style="text-transform:none">Dark area = where the pinion wiped off the marking compound${label ? ' · ' + label : ''}</text>`;
+  h += `<text x="320" y="384" class="svgs" text-anchor="middle" style="text-transform:none">Check the coast side too, and use the chart for your axle: some makers want the pattern placed differently.</text>`;
+  return h;
+}
+const PAT_POOL = Object.keys(PATS);
+function bagFor(key, pool) {
+  let B = null; try { B = JSON.parse(store.get(key)); } catch (e) {}
+  if (!(B && Array.isArray(B.order) && B.order.length === pool.length && pool.every(t => B.order.includes(t)) && B.res && B.i >= 0)) B = { order: shuffled(pool), i: 0, round: 1, res: {} };
+  return B;
+}
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+let PBAG = bagFor('diff-pat-bag-v1', PAT_POOL);
+function newPat() {
+  if (PBAG.i >= PBAG.order.length) PBAG = { order: shuffled(PAT_POOL, PBAG.order[PBAG.order.length - 1]), i: 0, round: PBAG.round + 1, res: {} };
+  store.set('diff-pat-bag-v1', JSON.stringify(PBAG));
+  S.pat = { n: (S.pat?.n || 0) + 1, type: PBAG.order[PBAG.i], pick: null, tries: 0, solved: false, wrong: [] };
+  renderPanel(); renderViews();
+}
+function patHTML() {
+  const p = S.pat; if (!p) return ''; const P = PATS[p.type];
+  let h = `<div class="case"><span class="qk">Pattern ${p.n}</span><h3>Read the pattern</h3><p>Marking compound was painted on several ring gear teeth and the gears were rolled both ways under light load. What’s your <b>next adjustment</b>?</p></div>`;
+  h += `<div class="score"><div><small>Patterns</small><b>${S.patScore.n}</b></div><div><small>First try</small><b>${S.patScore.first}</b></div><div><small>Round</small><b>${PBAG.round} · ${PBAG.i}/${PBAG.order.length}</b></div></div>`;
+  h += `<div class="mc">${PANS.map(([k, n]) => `<button data-act="pans:${k}" class="${p.solved && k === P.a ? 'right' : p.wrong.includes(k) ? 'wrong' : ''}"${p.solved ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+  if (p.solved) h += `<div class="why"><b>${P.n}.</b> ${patWhy(P)}</div><div class="nav"><button class="btn primary" data-act="newpat">Next pattern</button></div>`;
+  h += `<h4>Rules of thumb (hypoid gears)</h4><p class="dim" style="margin:0">Height (face ↔ flank) = <b>pinion depth</b>. Lengthwise (toe ↔ heel) = <b>backlash</b>: more backlash moves the drive pattern toward the heel. <b>Always set pinion depth first</b>, because changing it also changes backlash.</p>`;
+  return h;
+}
+function patWhy(P) {
+  if (P.a === 'good') return 'Centered top to bottom, slightly toward the toe on the drive side (the pattern moves toward the heel under real load). Leave it.';
+  if (P.d > 0) return 'The pattern sits high on the face: the pinion is too far from the ring gear. Move it deeper (in), usually with a thicker pinion-depth shim, then re-check backlash.' + (P.b ? ' The heel position may fix itself once depth is right.' : '');
+  if (P.d < 0) return 'The pattern sits low on the flank: the pinion is in too deep. Move it out (shallower), usually with a thinner pinion-depth shim, then re-check backlash.' + (P.b ? ' Re-check toe/heel after depth is right.' : '');
+  if (P.b > 0) return 'Height is right but the pattern runs toward the heel: too much backlash. Move the ring gear toward the pinion by moving shims/adjusters side to side, keeping carrier preload the same.';
+  return 'Height is right but the pattern runs toward the toe: not enough backlash. Move the ring gear away from the pinion, keeping carrier preload the same.';
+}
+
+/* ================= setup practice ================= */
+const JSTEPS = ['Pinion depth', 'Pinion bearing preload', 'Carrier bearing preload', 'Backlash', 'Check the pattern'];
+function newJob() {
+  const r = a => a[Math.floor(Math.random() * a.length)];
+  S.job = { n: (S.job?.n || 0) + 1, stage: 0, depth: r([-6, -4, -2, 2, 4, 6]) / 1000, nutDeg: 0, crushAt: 60 + Math.floor(Math.random() * 40), sleeves: 1, preload: 0, measured: null, carrier: null, bl: r([0.002, 0.004, 0.013, 0.016]), blRead: null, mistakes: 0, msgs: [], done: false };
+  renderPanel(); renderViews();
+}
+const jPreload = J => J.nutDeg <= J.crushAt ? 0 : (J.nutDeg - J.crushAt) * 0.42;
+function jobAct(a, v) {
+  const J = S.job; J.msgs = []; const err = s => { J.mistakes++; J.msgs.push(['bad', s]); };
+  if (a === 'shim') J.depth = +(J.depth - v / 1000).toFixed(4);   // v = shim change in thousandths (+ thicker = pinion deeper)
+  else if (a === 'depthok') { if (Math.abs(J.depth) <= 0.001) { J.stage = 1; J.msgs.push(['ok', 'Pinion depth on spec.']); } else err(`The gauge still reads ${fmtIn(J.depth)} ${J.depth > 0 ? 'too shallow (out)' : 'too deep (in)'}. Change the shim first.`); }
+  else if (a === 'nut') { J.nutDeg += v; J.measured = null; }
+  else if (a === 'measure') J.measured = jPreload(J);
+  else if (a === 'backoff') err('Never back off a pinion nut on a crush sleeve to lower preload: the sleeve stays crushed and the preload is lost. Install a new crush sleeve and start again.');
+  else if (a === 'sleeve') { J.nutDeg = 0; J.crushAt = 60 + Math.floor(Math.random() * 40); J.sleeves++; J.measured = null; J.msgs.push(['warn', 'New crush sleeve installed. Tighten in small steps and measure often.']); }
+  else if (a === 'preok') { const p = jPreload(J); if (J.measured == null) err('Measure the rotating torque with an inch-pound torque wrench before you move on.'); else if (p < 15) err(`Rotating torque ${p.toFixed(0)} in-lb: below 15. Tighten more (small steps).`); else if (p > 25) err(`Rotating torque ${p.toFixed(0)} in-lb: too high. Over-crushed: replace the crush sleeve.`); else { J.stage = 2; J.msgs.push(['ok', `Pinion preload ${p.toFixed(0)} in-lb: in spec.`]); } }
+  else if (a === 'cpre') { J.carrier = v; if (v === 8) { J.stage = 3; J.msgs.push(['ok', 'Carrier bearing preload set: +0.008 in total, split side to side.']); } else err(v === 0 ? 'Slip fit has no preload: the carrier can move under load and the pattern and backlash wander. Add the specified preload.' : 'That’s more preload than specified: bearings run hot and wear out. Use the spec.'); }
+  else if (a === 'bl') { J.bl = +Math.max(0.0005, J.bl + v / 1000 * 0.7).toFixed(4); J.blRead = null; }
+  else if (a === 'readbl') J.blRead = J.bl;
+  else if (a === 'blok') { if (J.blRead == null) err('Read backlash with the dial indicator first (at several points around the ring gear).'); else if (J.bl < 0.006 || J.bl > 0.010) err(`Backlash ${fmtIn(J.bl)}: outside 0.006–0.010 in.`); else { J.stage = 4; J.msgs.push(['ok', `Backlash ${fmtIn(J.bl)}: in spec.`]); } }
+  else if (a === 'finish') { J.done = true; S.jobScore.jobs++; if (!J.mistakes) S.jobScore.clean++; toast('✓ Ring and pinion set up', 'good'); }
+  renderPanel(); renderViews();
+}
+const fmtIn = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(3) + ' in';
+function jobHTML() {
+  const J = S.job; if (!J) return '';
+  let h = `<div class="case"><span class="qk">Setup job ${J.n}</span><h3>Install a new ring and pinion</h3><p class="dim">Generic axle with a crush sleeve. Real axles differ (solid spacers, threaded adjusters, different specs). Follow the service information.</p></div>`;
+  h += `<div class="score"><div><small>Jobs done</small><b>${S.jobScore.jobs}</b></div><div><small>No mistakes</small><b>${S.jobScore.clean}</b></div><div><small>Mistakes here</small><b>${J.mistakes}</b></div></div>`;
+  h += `<div class="steps">${JSTEPS.map((s, i) => `<div class="${i < J.stage || J.done ? 'done' : i === J.stage ? 'cur' : ''}"><i>${i < J.stage || J.done ? '✓' : i + 1}</i>${s}</div>`).join('')}</div>`;
+  if (J.done) return h + `<div class="msg ok"><b>Done.</b> ${J.mistakes ? J.mistakes + ' mistake(s), ' : 'No mistakes, '}${J.sleeves - 1} extra crush sleeve(s). Fill with the correct fluid (add friction modifier for a clutch LSD) and road test.</div><div class="nav"><button class="btn primary" data-act="newjob">Next job</button></div>`;
+  if (J.stage === 0) h += `<p>The pinion depth gauge compares the pinion head to the carrier bearing bore centerline. Reading: <b>${Math.abs(J.depth) <= 0.0005 ? 'on spec' : fmtIn(Math.abs(J.depth)) + (J.depth > 0 ? ' too shallow (pinion too far out)' : ' too deep (pinion too far in)')}</b>.</p><div class="rowb"><span class="lbl">Shim</span>${[-4, -2, 2, 4].map(t => `<button class="btn small" data-act="shim:${t}">${t > 0 ? 'Thicker +' : 'Thinner −'}${Math.abs(t)}</button>`).join('')}</div><p class="dim">Thicker shim (under the pinion head) = pinion moves deeper. Units are thousandths of an inch.</p><div class="nav"><button class="btn primary" data-act="depthok">Depth set</button></div>`;
+  if (J.stage === 1) h += `<p>Tighten the pinion nut to crush the sleeve, measuring rotating torque (inch-pounds) as you go. Spec: <b>15–25 in-lb</b> (new bearings). Nut turned so far: ${J.nutDeg}°${J.sleeves > 1 ? ` · crush sleeve #${J.sleeves}` : ''}.</p><div class="rowb"><button class="btn small" data-act="nut:5">Tighten 5°</button><button class="btn small" data-act="nut:20">Tighten 20°</button><button class="btn small" data-act="measure">Measure rotating torque</button></div>${J.measured != null ? `<p><span class="readout">${J.measured.toFixed(0)} in-lb</span></p>` : ''}<div class="rowb"><button class="btn small" data-act="backoff">Back off the nut</button><button class="btn small" data-act="sleeve">Replace crush sleeve</button></div><div class="nav"><button class="btn primary" data-act="preok">Preload set</button></div>`;
+  if (J.stage === 2) h += `<p>Carrier bearings: how much extra shim (total, split between both sides) goes in over a slip fit?</p><div class="rowb">${[0, 4, 8, 16].map(v => `<button class="btn small" data-act="cpre:${v}">+0.${String(v).padStart(3, '0')} in</button>`).join('')}</div>`;
+  if (J.stage === 3) h += `<p>Dial indicator on a ring gear tooth. Spec: <b>0.006–0.010 in</b>. Move shims from one side to the other (keeps carrier preload the same).</p><div class="rowb"><button class="btn small" data-act="bl:-2">Ring toward pinion (−)</button><button class="btn small" data-act="bl:2">Ring away from pinion (+)</button><button class="btn small" data-act="readbl">Read dial indicator</button></div>${J.blRead != null ? `<p><span class="readout">${J.blRead.toFixed(3)} in</span></p>` : ''}<div class="nav"><button class="btn primary" data-act="blok">Backlash set</button></div>`;
+  if (J.stage === 4) h += `<p>Paint marking compound on the ring gear, roll the gears both ways under light drag, and read the pattern (main view).</p><div class="nav"><button class="btn primary" data-act="finish">Pattern looks good: finish</button></div>`;
+  if (J.msgs.length) h += J.msgs.map(([k, s]) => `<div class="msg ${k}">${s}</div>`).join('');
+  return h;
+}
+function drawBench() {
+  const J = S.job; let h = `<rect width="640" height="400" fill="#0a0f14"/>`;
+  if (!J) { $('#svMain').innerHTML = h; return; }
+  if (J.stage === 4 || J.done) { $('#svMain').innerHTML = patternSVG(clamp(J.depth * 250, -1, 1), clamp((J.bl - 0.008) * 160, -1, 1), 'your setup'); $('#mTitle').textContent = 'Contact pattern'; $('#mSub').textContent = ''; return; }
+  const T = (x, y, s, a = 'middle', cls = 'svgt') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${a}">${s}</text>`;
+  // carrier housing, pinion, ring gear schematic (side view)
+  h += `<rect x="150" y="90" width="340" height="220" rx="40" fill="#141c25" stroke="#2A3644"/>`;
+  h += `<rect x="300" y="110" width="22" height="180" rx="4" fill="${J.stage >= 2 ? '#FFB224' : '#3a3220'}" opacity="${J.stage >= 2 ? .9 : .4}"/>` + T(311, 104, 'ring gear', 'middle', 'svgs');
+  const pd = clamp(J.depth * 4000, -24, 24);
+  h += `<rect x="${200 - pd}" y="250" width="90" height="26" rx="6" fill="#FF7A3D"/><rect x="${200 - pd - 120}" y="257" width="120" height="12" fill="#b0562a"/>` + T(200 - pd + 45, 296, 'pinion', 'middle', 'svgs');
+  if (J.stage === 0) { h += `<line x1="290" y1="200" x2="290" y2="262" stroke="#E6EDF3" stroke-dasharray="3 3"/><rect x="${200 - pd + 70}" y="228" width="40" height="18" fill="#8A98A8"/>` + T(300, 70, 'Pinion depth gauge across the carrier bearing bores') + T(300, 360, `Gauge: ${Math.abs(J.depth) <= 0.0005 ? 'ON SPEC' : (J.depth > 0 ? 'pinion ' + Math.abs(J.depth).toFixed(3) + ' in too far out' : 'pinion ' + Math.abs(J.depth).toFixed(3) + ' in too far in')}`); }
+  if (J.stage === 1) { h += `<circle cx="70" cy="263" r="26" fill="#1d2833" stroke="#8A98A8"/><path d="M70 263 L${70 + 22 * Math.cos(J.nutDeg / 57)} ${263 + 22 * Math.sin(J.nutDeg / 57)}" stroke="#FFB224" stroke-width="3"/>` + T(70, 310, 'pinion nut', 'middle', 'svgs') + T(300, 70, 'Crush sleeve between the pinion bearings') + T(300, 360, J.measured != null ? `Inch-pound torque wrench: ${J.measured.toFixed(0)} in-lb to keep it turning` : 'Measure rotating torque with an inch-pound torque wrench'); h += `<rect x="225" y="262" width="40" height="4" fill="${jPreload(J) > 0 ? '#C77DFF' : '#5A6773'}"/>`; }
+  if (J.stage === 2) h += T(300, 70, 'Carrier and bearings in the housing, shims both sides') + `<rect x="168" y="150" width="14" height="100" fill="#8A98A8"/><rect x="458" y="150" width="14" height="100" fill="#8A98A8"/>` + T(300, 360, J.carrier == null ? 'Choose the total carrier shim preload' : `+0.${String(J.carrier).padStart(3, '0')} in`);
+  if (J.stage === 3) { h += `<circle cx="380" cy="150" r="30" fill="#0b1015" stroke="#C5CFD9"/><path d="M380 150 L${380 + 24 * Math.sin((J.blRead ?? 0) * 400)} ${150 - 24 * Math.cos((J.blRead ?? 0) * 400)}" stroke="#FF5A4E" stroke-width="2"/><line x1="350" y1="160" x2="322" y2="170" stroke="#C5CFD9" stroke-width="2"/>` + T(380, 200, 'dial indicator', 'middle', 'svgs') + T(300, 70, 'Rock the ring gear against the held pinion') + T(300, 360, J.blRead != null ? `Backlash ${J.blRead.toFixed(3)} in` : 'Read the dial indicator'); }
+  $('#svMain').innerHTML = h; $('#mTitle').textContent = 'Setup bench'; $('#mSub').textContent = JSTEPS[J.stage] || '';
+}
+
+/* ================= diagnose (noise & symptoms) ================= */
+const DTESTS = [['accel', 'Road test: accelerate'], ['coast', 'Road test: coast / decelerate'], ['float', 'Road test: steady cruise'], ['turns', 'Road test: tight turns'], ['takeoff', 'Take off / shift D↔R'], ['xfer', 'Check 4WD / transfer case position'], ['lift', 'On lift: rotate wheels, check play'], ['pinplay', 'Shake the pinion yoke'], ['fluid', 'Drain & inspect fluid'], ['backlash', 'Measure ring gear backlash'], ['pattern', 'Contact pattern check'], ['bearing', 'Spin/inspect wheel bearings'], ['ujoint', 'Inspect U-joints & driveshaft'], ['lsdtest', 'LSD breakaway torque test']];
+const DEF = {
+  accel: ['ok', 'Quiet under acceleration from 20 to 60 mph.'], coast: ['ok', 'Quiet on coast and deceleration.'], float: ['ok', 'Quiet at steady speed.'], turns: ['ok', 'Quiet and smooth in tight turns both ways.'],
+  takeoff: ['ok', 'No clunk on take-off or when shifting D↔R.'], xfer: ['ok', '2H (two-wheel drive). Indicator correct.'], lift: ['ok', 'Normal small rotational play. With one wheel turned by hand, the other turns the opposite way (open diff action).'],
+  pinplay: ['ok', 'No in-and-out play at the pinion yoke.'], fluid: ['ok', 'Level at the fill plug. Clean fluid, light normal sheen on the magnet.'], backlash: ['ok', 'Backlash 0.008 in (spec 0.006–0.010).'],
+  pattern: ['ok', 'Pattern centered, slightly toward the toe on the drive side.'], bearing: ['ok', 'Wheel bearings smooth, no play.'], ujoint: ['ok', 'U-joints tight, no rust dust or play.'], lsdtest: ['', 'Not an LSD axle (open differential tag), so there’s nothing to test.'],
+};
+const CAUSES = {
+  gearwear: { name: 'Worn ring & pinion (whine on acceleration)', concern: 'A whine at 40–55 mph that gets louder when accelerating gently. It goes away when I let off the gas.',
+    t: { accel: ['bad', 'Clear gear whine at 40–55 mph under light acceleration; disappears on coast.'], pattern: ['bad', 'Polished, worn pattern low on the flank toward the toe; teeth show scuffing.'], fluid: ['warn', 'Fine glitter in the fluid; magnet coated with fine paste.'], backlash: ['warn', 'Backlash 0.011 in (slightly over spec from wear).'] } },
+  pinpreload: { name: 'Loose pinion bearing preload (backed-off crush sleeve)', concern: 'A whine when I slow down, like coasting toward a stop. It started after a pinion seal was replaced.',
+    t: { coast: ['bad', 'Whine on deceleration/coast between 45 and 25 mph.'], accel: ['warn', 'Slight whine under load.'], pinplay: ['bad', 'In-and-out play at the pinion yoke; rotating torque near 0 in-lb.'], fluid: ['warn', 'Some fine metal on the magnet.'] } },
+  carrierbrg: { name: 'Worn carrier bearing', concern: 'A steady howl from the rear that rises with speed. It sounds the same whether I’m on the gas or off it.',
+    t: { float: ['bad', 'Constant howl/rumble that rises with speed. Same on accel, coast and float.'], accel: ['warn', 'Same howl, load doesn’t change it.'], coast: ['warn', 'Same howl, load doesn’t change it.'], turns: ['ok', 'Turning doesn’t change the noise.'], fluid: ['warn', 'Fine metal on the magnet.'] } },
+  wheelbrg: { name: 'Worn wheel bearing (not the differential)', concern: 'A growl from the rear that gets louder with speed. The shop down the street said it’s the differential.',
+    t: { float: ['bad', 'Growl that rises with speed.'], turns: ['bad', 'Louder when turning left (loads the right side), quieter turning right.'], bearing: ['bad', 'Right rear bearing feels rough when spun and has slight play.'] } },
+  lsdfluid: { name: 'Wrong fluid in a clutch LSD (missing friction modifier)', concern: 'In parking lots the rear end chatters and clunks in tight turns. It started after a fluid change at a quick-lube.',
+    t: { turns: ['bad', 'Chatter / clunk-clunk in tight, slow turns. Smooth when driving straight.'], fluid: ['bad', 'Plain gear oil. The tag and records say this is a clutch LSD that needs friction modifier (or LS-rated fluid).'], lsdtest: ['ok', 'Breakaway torque within spec.'], lift: ['ok', 'With one wheel turned by hand, the other turns the same way with resistance (LSD action).'] } },
+  spider: { name: 'Worn spider gears / cross shaft', concern: 'A clunk from the rear on take-off and when shifting from Drive to Reverse.',
+    t: { takeoff: ['bad', 'Clunk on take-off and on D↔R shifts.'], lift: ['bad', 'Excess rotational play at the wheels with the driveshaft held: play is inside the case.'], backlash: ['ok', 'Ring gear backlash 0.008 in (in spec): the play isn’t in the ring and pinion.'], fluid: ['warn', 'Small flakes of metal on the magnet.'], ujoint: ['ok', 'U-joints tight.'] } },
+  ujoint: { name: 'Worn U-joint', concern: 'A clunk when pulling away and a squeak at low speed.',
+    t: { takeoff: ['bad', 'Clunk on take-off; squeak at walking speed.'], ujoint: ['bad', 'Rear U-joint has play and orange rust dust around the caps.'], lift: ['warn', 'Play felt at the driveshaft joint, not inside the differential.'] } },
+  lowfluid: { name: 'Low fluid from a leaking pinion seal', concern: 'A whine that gets worse on long highway drives, and oil spots under the rear of the truck.',
+    t: { accel: ['bad', 'Whine under load, worse when hot.'], fluid: ['bad', 'Level about 1 inch below the fill plug. Pinion seal wet; fluid dark and smells burnt.'], pattern: ['warn', 'Some scoring on the teeth.'] } },
+  opennormal: { name: 'Nothing wrong: normal open differential', concern: 'The truck got stuck in mud: one rear wheel spun and the other one didn’t move at all. Is the differential broken?',
+    t: { lift: ['ok', 'Turn one wheel by hand and the other turns the opposite way. Normal open differential.'], lsdtest: ['', 'Axle tag: open differential (no LSD).'] } },
+  lsdworn: { name: 'Worn clutch packs in the LSD', concern: 'This truck has a limited-slip, but now it spins one wheel on ice just like an open differential.',
+    t: { lsdtest: ['bad', 'Breakaway torque 12 ft-lb (spec 35 ft-lb minimum, one wheel off the ground).'], lift: ['warn', 'With one wheel turned by hand, the other turns the opposite way easily: almost no LSD action.'], fluid: ['warn', 'Friction-material dust in the fluid.'] } },
+  fourwd: { name: 'Part-time 4WD left engaged on dry pavement', concern: 'In tight turns the truck hops, the tires chirp and steering feels heavy. On the highway it’s fine.',
+    t: { turns: ['bad', 'Binding and hopping in tight turns on dry pavement.'], xfer: ['bad', 'Transfer case in 4H. The owner leaves it in 4WD all winter.'] } },
+  backlash: { name: 'Excessive ring gear backlash', concern: 'A clunk when getting on and off the gas, plus a light whine.',
+    t: { takeoff: ['bad', 'Clunk on throttle on/off and on take-off.'], backlash: ['bad', 'Backlash 0.018 in (spec 0.006–0.010).'], pattern: ['warn', 'Drive pattern runs toward the heel.'], lift: ['warn', 'More rotational play than normal.'] } },
+};
+const CASE_POOL = Object.keys(CAUSES);
+let BAG = bagFor('diff-dx-bag-v1', CASE_POOL);
+const saveBag = () => store.set('diff-dx-bag-v1', JSON.stringify(BAG));
+function bagNext() { if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} }; saveBag(); return BAG.order[BAG.i]; }
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => { const r = BAG.res[t]; return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`; }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You’ve solved all ${n} cases once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function newCase() { const type = bagNext(); S.dx = { n: (S.dx?.n || 0) + 1, type, tests: {}, log: [], pick: null, tries: 0, solved: false, wrong: null }; S.tab = 'case'; renderPanel(); }
+function runTest(k) { const d = S.dx; if (!d || d.solved || d.tests[k]) return; d.tests[k] = true; const C2 = CAUSES[d.type]; let r = C2.t[k] || DEF[k]; if (k === 'lsdtest' && !C2.t.lsdtest && (d.type === 'lsdfluid' || d.type === 'lsdworn')) r = ['ok', 'Breakaway torque within spec.']; d.log.unshift({ k, l: r }); renderPanel(); }
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return; d.tries++;
+  if (d.pick === d.type) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += Object.keys(d.tests).length; toast('✓ Correct', 'good'); }
+  else d.wrong = 'Not quite. When does the noise happen (load, coast, steady, turns, take-off), and what did the inspections show?';
+  renderPanel();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return ''; const C2 = CAUSES[d.type], sc = S.dxScore;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${C2.concern}</p></div><div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div><div><small>Tests here</small><b>${Object.keys(d.tests).length}</b></div></div>${bagHTML()}`;
+  if (d.solved) h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}:</b> ${C2.name}.</div><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  else h += `<h4>Tests</h4><p class="dim" style="margin:0 0 4px">Start with a road test to learn <b>when</b> the noise happens, then inspect.</p><div class="tests">${DTESTS.map(([k, n]) => `<button class="btn${d.tests[k] ? ' used' : ''}" data-act="test:${k}"${d.tests[k] ? ' disabled' : ''}>${n}</button>`).join('')}</div>`;
+  if (d.log.length) h += `<h4>Findings</h4><div class="find">${d.log.map(e => `<div class="f"><b>${DTESTS.find(t => t[0] === e.k)[1]}</b><div class="${e.l[0]}">${e.l[1]}</div></div>`).join('')}</div>`;
+  if (!d.solved) { h += `<h4>Your diagnosis</h4><div class="cards">${Object.entries(CAUSES).map(([k, c]) => `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${c.name}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`; if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`; }
+  h += `<h4>Noise clues</h4><p class="dim" style="margin:0">Changes with <b>load</b> (accel vs coast) → gears / pinion bearings. Changes with <b>speed only</b> → bearings. Changes in <b>turns</b> → wheel bearings or LSD. <b>Clunk</b> → play somewhere: find where.</p>`;
+  return h;
+}
+
+/* ================= explore ================= */
+function drivetrainHTML(keys) {
+  const has = k => !keys || keys.includes(k); let h = '';
+  if (has('layout')) h += `<div class="rowb"><span class="lbl">Drive</span><span class="seg mini">${[['RWD', 'Rear-wheel'], ['AWD', '4WD / AWD']].map(([k, n]) => `<button data-act="layout:${k}" aria-pressed="${C.layout === k}">${n}</button>`).join('')}</span></div>`;
+  if (has('rear')) h += `<div class="rowb"><span class="lbl">Rear diff</span><span class="seg mini">${[['open', 'Open'], ['lsd', 'Clutch LSD'], ['locker', 'Locker']].map(([k, n]) => `<button data-act="rear:${k}" aria-pressed="${C.rear === k}">${n}</button>`).join('')}</span>${C.rear === 'locker' ? `<button class="tog" data-act="lock" aria-pressed="${C.lockOn}">${C.lockOn ? 'Locked' : 'Unlocked'}</button>` : ''}</div>`;
+  if (has('center') && C.layout === 'AWD') h += `<div class="rowb"><span class="lbl">Center</span><span class="seg mini">${[['open', 'Open (AWD)'], ['locked', 'Locked (4H)']].map(([k, n]) => `<button data-act="center:${k}" aria-pressed="${C.center === k}">${n}</button>`).join('')}</span></div>`;
+  if (has('tc')) h += `<div class="rowb"><span class="lbl">Traction ctl</span><button class="tog" data-act="tc" aria-pressed="${C.tc}">${C.tc ? 'TC on' : 'TC off'}</button></div>`;
+  if (has('throttle')) h += `<div class="sl"><label for="thr">Throttle</label><input type="range" id="thr" data-c="throttle" min="0" max="100" step="5" value="${Math.round(C.throttle * 100)}"${C.cruise != null ? ' disabled' : ''}><output id="o-thr">${C.cruise != null ? 'cruise' : Math.round(C.throttle * 100) + '%'}</output></div>`;
+  if (has('radius') && isFinite(C.R)) h += `<div class="sl"><label for="rad">Turn radius</label><input type="range" id="rad" data-c="R" min="6" max="60" step="1" value="${C.R}"><output id="o-rad">${C.R} m</output></div>`;
+  return h;
+}
+function exploreHTML() {
+  let h = `<p class="dim">Pick a situation, choose the differential, and give it throttle. Watch each wheel’s speed and torque, and look inside the diff.</p><h4>Situation</h4><div class="grid2">${Object.entries(SITU).map(([k, s]) => `<button class="card" data-act="situ:${k}" aria-pressed="${C.situ === k}"><b>${s.n}</b><span>${s.d}</span></button>`).join('')}</div>`;
+  h += `<h4>Drivetrain</h4>${drivetrainHTML()}<div class="rowb"><button class="btn small" data-act="restart">Restart from a stop</button></div>`;
+  h += `<h4>What’s happening</h4><div class="msg" id="whyBox">${whyText()}</div>`;
+  h += `<p class="dim">Generic pickup in 1st gear (${GEAR1}:1, axle ${FD}:1). Typical values for teaching.</p>`;
+  return h;
+}
+function whyText() {
+  const st = status().map(s => s[0]).join(' ');
+  const spinL = X.s[2] > 0.3, spinR = X.s[3] > 0.3, turn = isFinite(C.R);
+  if (C.layout === 'AWD' && C.center === 'open' && /STUCK/.test(st)) return '<b>Open center + open axles:</b> torque goes to the path of least resistance. One wheel in the air (or on ice) can stop the whole AWD truck. Lock the center, lock an axle, or let traction control brake the spinning wheels.';
+  if (/binding/i.test(st) && C.center === 'locked') return '<b>Driveline binding.</b> In a turn the front axle travels farther than the rear. A locked transfer case forces them to turn together, so tires scrub and the driveline winds up (crow-hop). Part-time 4WD is for slippery surfaces only.';
+  if (/binding/i.test(st)) return '<b>Locked axle in a turn.</b> The outside wheel needs to turn faster, but the locker forces both wheels to the same speed. One tire has to scrub: hard steering, tire wear, chirping. That’s why lockers are switched off on pavement.';
+  if (/TC braking/.test(st)) return '<b>Traction control.</b> An open diff always sends equal torque to both sides. By braking the spinning wheel, TC raises the torque the diff can send, so the wheel with grip gets that torque too.';
+  if (/STUCK/.test(st) && C.rear === 'open') return '<b>Open diff, one wheel slipping.</b> An open differential always splits torque equally. The slipping wheel can only hold a little torque, so the good wheel gets the same little bit: not enough to move. The spider gears spin and the slipping wheel turns fast.';
+  if ((spinL || spinR) && C.rear === 'lsd') return '<b>Limited slip.</b> The clutch packs resist the wheels turning at different speeds and send extra torque (the bias) to the slower wheel with grip. On a wheel in the air with a weak LSD it may still not be enough.';
+  if (C.rear === 'locker' && C.lockOn && !turn) return '<b>Locked.</b> Both wheels turn together, so all the torque can go to whichever wheel has grip.';
+  if (turn && C.rear === 'open') return `<b>Open diff in a turn.</b> The outside wheel follows a bigger circle (${((C.R + TW / 2) / (C.R - TW / 2) * 100 - 100).toFixed(0)}% farther), so it turns faster. The spider gears spin on their shaft to let that happen while torque stays equal.`;
+  if (turn && C.rear === 'lsd') return '<b>LSD in a turn.</b> The clutch packs slip to let the wheels differ, adding a little resistance (a push). The wrong fluid makes them stick and slip: chatter.';
+  return '<b>Straight ahead.</b> Both wheels turn at the same speed, so the spider gears don’t spin on their shaft: they just ride around with the carrier, like a solid axle.';
+}
+function situ(k) { const s = SITU[k]; Object.assign(C, { situ: k, mu: s.mu.slice(), lift: s.lift.slice(), R: s.R, cruise: s.cruise ?? null }); if (s.cruise == null && C.throttle === 0) C.throttle = 0; restart(); }
+function restart() { X = fresh(); if (C.cruise != null) { X.v = C.cruise * MPS; const ri = isFinite(C.R) ? [Math.hypot(C.R - TW / 2, WB), Math.hypot(C.R + TW / 2, WB), C.R - TW / 2, C.R + TW / 2].map(x => x / C.R) : [1, 1, 1, 1]; X.w = ri.map(k => X.v * k / RW); } }
+
+/* ================= lessons ================= */
+const mph = () => X.v / MPS;
+const LESSONS = [
+{ id: 'why', title: 'Why a differential?', sub: 'Wheels in a turn', steps: [
+  { body: 'This truck has a <b>locked</b> rear axle (like a solid spool) and is driving around a 15 m curve. Look at the status and the tires.', setup: { situ: 'turn', cfg: { rear: 'locker', lockOn: true } }, goal: { mc: { q: 'What’s going wrong?', opts: ['Both rear wheels are forced to the same speed, but the outside one needs to go farther, so a tire scrubs and the axle winds up', 'Nothing', 'The engine is too weak'], a: 0, why: 'In a turn each wheel follows a different-size circle. Something has to let the wheels turn at different speeds.' } } },
+  { body: 'Switch the rear diff to <b>Open</b>.', ctl: ['rear'], goal: { check: () => C.rear === 'open', hint: 'Rear diff: Open.' } },
+  { body: '', goal: { mc: { q: 'Compare the left rear and right rear speeds now. Why are they different?', opts: ['The outside (right) wheel travels a bigger circle, so it must turn faster; the open diff allows it', 'The right tire is bigger', 'The right wheel is slipping'], a: 0, why: 'At a 15 m radius the outside wheel turns about 11% faster. The average of the two always equals the ring gear speed.' } } },
+] },
+{ id: 'rp', title: 'Ring and pinion', sub: 'Turning the corner, multiplying torque', steps: [
+  { body: 'Driving straight. Look at the cutaway: the pinion (from the driveshaft) turns the ring gear.', setup: { situ: 'dry', cfg: { rear: 'open', throttle: 0.25 } }, goal: { mc: { q: 'This axle is 3.73 : 1. What does that mean?', opts: ['The driveshaft turns 3.73 times for each turn of the ring gear (and the wheels, going straight)', 'The wheels turn 3.73 times per driveshaft turn', 'It’s the fluid capacity'], a: 0, why: 'Count the teeth: ring teeth ÷ pinion teeth. A higher number gives more torque at the wheels and more engine rpm at a given speed.' } } },
+  { body: '', goal: { mc: { q: 'Besides slowing it down, what else does the ring and pinion do?', opts: ['Turns the power 90° from the driveshaft to the axles and multiplies torque by the ratio', 'Only slows it down', 'Lets the wheels turn at different speeds'], a: 0, why: 'Letting the wheels differ is the spider gears’ job. Hypoid gears (pinion below the ring centerline) run quietly but need special hypoid gear oil.' } } },
+] },
+{ id: 'open', title: 'Open diff on ice', sub: 'Equal torque, both sides', steps: [
+  { body: 'The left rear tire is on ice. Give it <b>50% throttle</b>.', setup: { situ: 'ice', cfg: { rear: 'open', throttle: 0 } }, ctl: ['throttle'], goal: { check: () => C.throttle >= 0.45 && X.s[2] > 0.5, hint: 'Throttle ≥ 50%, left rear spinning.' } },
+  { body: '', ctl: ['throttle'], goal: { mc: { q: 'Compare torque at the left rear (ice) and right rear (dry). What do you see?', opts: ['About the same small amount: an open diff always splits torque equally, so the good wheel only gets what the icy wheel can hold', 'The dry wheel gets all the torque', 'The icy wheel gets all the torque'], a: 0, why: 'Equal torque, not equal speed. The icy wheel spins faster and faster (the spider gears let it) while the truck barely moves.' } } },
+] },
+{ id: 'spider', title: 'The spider gears', sub: 'When do they spin?', steps: [
+  { body: 'The right rear is in the air. Set the <b>throttle to about 20%</b> and watch the cutaway.', setup: { situ: 'air', cfg: { rear: 'open', throttle: 0 } }, ctl: ['throttle'], goal: { check: () => C.throttle >= 0.15 && X.w[3] > 1.8 * Math.max(0.5, (X.w[2] + X.w[3]) / 2) * 0.95, hint: 'Throttle ≥ 15%, right rear spinning.' } },
+  { body: '', ctl: ['throttle'], goal: { mc: { q: 'The left wheel is stopped. How fast does the right wheel turn compared to the ring gear?', opts: ['Twice as fast: the spider gears spin on their shaft and roll around the stopped side gear', 'The same speed', 'Half as fast'], a: 0, why: 'The ring speed is always the average of the two wheels. One at 0 means the other is at 2× ring speed. That’s also why the wheel off the ground spins so fast.' } } },
+  { body: 'Open the <b>3D look inside</b> view (top right) and drag to rotate it.', ctl: ['throttle'], goal: { check: () => S.view === '3d', hint: 'Inside the diff: 3D look inside.' } },
+] },
+{ id: 'lsd', title: 'Limited slip (clutch type)', sub: 'Bias torque', steps: [
+  { body: 'Same icy patch, now with a <b>clutch LSD</b>. Give it <b>50% throttle</b> and get the truck moving.', setup: { situ: 'ice', cfg: { rear: 'lsd', throttle: 0 } }, ctl: ['throttle'], goal: { check: () => C.throttle >= 0.45 && mph() > 3, hint: 'Throttle ≥ 50%, truck over 3 mph.' } },
+  { body: '', ctl: ['throttle'], goal: { mc: { q: 'How did the LSD get the truck moving?', opts: ['The clutch packs resist the wheels turning at different speeds and send extra torque (bias) to the slower wheel with grip', 'It locks solid like a spool', 'It sends all torque to the icy wheel'], a: 0, why: 'The bias grows with input torque (ramps) on top of a spring preload. Look at the clutch bias number in the cutaway.' } } },
+  { body: '', goal: { mc: { q: 'Clutch LSDs chatter in tight turns after an oil change. Most likely cause?', opts: ['The wrong fluid: clutch LSDs need friction modifier (or LS-rated gear oil)', 'Low tire pressure', 'Bad U-joint'], a: 0, why: 'Without it the clutches stick and slip instead of sliding smoothly. Try the Diagnose mode for this one.' } } },
+] },
+{ id: 'locker', title: 'Lockers', sub: 'All the torque, but not in turns', steps: [
+  { body: 'Ice again, with a selectable <b>locker</b> that’s still unlocked. <b>Lock it</b> and give it throttle.', setup: { situ: 'ice', cfg: { rear: 'locker', lockOn: false, throttle: 0.5 } }, ctl: ['rear', 'throttle'], goal: { check: () => C.rear === 'locker' && C.lockOn && mph() > 3, hint: 'Locker ON, truck over 3 mph.' } },
+  { body: '', goal: { mc: { q: 'Why does the locker beat the LSD here?', opts: ['Both wheels must turn together, so the dry wheel can take as much torque as its tire can hold', 'It makes more horsepower', 'It brakes the icy wheel'], a: 0, why: 'A locked axle doesn’t care which wheel has grip. Great off-road, but…' } } },
+  { body: 'Now a tight parking-lot turn on dry pavement with the locker <b>still locked</b>. Look at the status and tires.', setup: { situ: 'tight', cfg: { rear: 'locker', lockOn: true } }, goal: { mc: { q: 'Why unlock it on pavement?', opts: ['The wheels can’t turn at different speeds, so a tire scrubs: hard steering, chirping, tire wear and stress on the axle', 'It uses more fuel', 'It doesn’t matter'], a: 0, why: 'Automatic lockers unlock on their own when a wheel needs to overrun; selectable lockers are switched off for pavement.' } } },
+] },
+{ id: 'tc', title: 'Traction control', sub: 'Brakes as a fake LSD', steps: [
+  { body: 'Open diff on ice with 50% throttle: stuck. Turn <b>traction control on</b>.', setup: { situ: 'ice', cfg: { rear: 'open', throttle: 0.5, tc: false } }, ctl: ['tc'], goal: { check: () => C.tc && X.tb[2] > 80 && mph() > 1.5, hint: 'TC on, braking the left rear, truck moving.' } },
+  { body: '', ctl: ['tc'], goal: { mc: { q: 'How does braking the spinning wheel help?', opts: ['The open diff still splits torque equally. Braking the spinning wheel lets it hold more torque, so the wheel with grip gets that much too', 'It cuts the engine', 'It locks the diff'], a: 0, why: 'ABS/TC hardware does this with wheel speed sensors and the hydraulic unit. That’s why a bad wheel speed sensor can disable it.' } } },
+] },
+{ id: 'awd', title: '4WD, AWD and the center diff', sub: 'Three diffs, two axles', steps: [
+  { body: '4WD/AWD truck with an <b>open center</b> and open axles. Two diagonal wheels are in the air. Give it 50% throttle and look.', setup: { situ: 'cross', cfg: { layout: 'AWD', center: 'open', rear: 'open', throttle: 0.5 } }, goal: { mc: { q: 'All four wheels are "driven." Why is it stuck?', opts: ['Every diff is open, so torque goes to the easiest path: the two wheels in the air spin and the others get almost nothing', 'The engine is too small', 'The center diff is broken'], a: 0, why: 'An open center diff is needed on pavement (front and rear axles travel different distances in turns) but it has the same weakness as an open axle.' } } },
+  { body: '<b>Lock the center</b> (4H).', ctl: ['center'], goal: { check: () => C.center === 'locked', hint: 'Center: Locked (4H).' } },
+  { body: '', ctl: ['center'], goal: { mc: { q: 'Still stuck. Why?', opts: ['Each axle still has an open diff with one wheel in the air', 'The transfer case slipped', 'Not enough throttle'], a: 0, why: 'Now turn on traction control (or lock the rear axle) and it will climb out.' } } },
+  { body: 'Turn <b>traction control on</b>.', ctl: ['tc'], goal: { check: () => C.tc && mph() > 1.5, hint: 'TC on, truck moving.' } },
+  { body: 'Now 4H (center locked) in a tight turn on dry pavement.', setup: { situ: 'tight', cfg: { layout: 'AWD', center: 'locked', rear: 'open' } }, goal: { mc: { q: 'Why is part-time 4WD only for slippery surfaces?', opts: ['In turns the front axle needs to turn faster than the rear; locked together, the tires scrub and the driveline binds (crow-hop)', 'It wears out the engine', 'The front wheels can’t steer'], a: 0, why: 'On snow or dirt the tires can slip a little to relieve the windup. On dry pavement they can’t. AWD systems use an open or slipping center to avoid this.' } } },
+] },
+{ id: 'pattern', title: 'Gear contact patterns', sub: 'Read before you set up', steps: [
+  { body: 'Switch to <b>Pattern</b> mode later to practice. First, the rules.', setup: { situ: 'dry', cfg: {} }, goal: { mc: { q: 'The pattern sits high on the face of the drive side. What do you change?', opts: ['Pinion depth: move the pinion deeper (closer to the ring gear)', 'Backlash only', 'Nothing'], a: 0, why: 'Height on the tooth = pinion depth. Face = pinion too shallow; flank = too deep.' } } },
+  { body: '', goal: { mc: { q: 'Depth looks right but the drive pattern runs toward the heel. What now?', opts: ['Too much backlash: move the ring gear toward the pinion', 'Move the pinion deeper', 'Replace the gears'], a: 0, why: 'Lengthwise (toe ↔ heel) = backlash. Always fix depth first, then backlash.' } } },
+] },
+{ id: 'setup', title: 'Setup order', sub: 'Depth → preload → backlash → pattern', steps: [
+  { body: '', setup: { situ: 'dry', cfg: {} }, goal: { mc: { q: 'You overshot pinion bearing preload on a crush sleeve (32 in-lb, spec 15–25). What do you do?', opts: ['Install a new crush sleeve and start over', 'Back the nut off a little', 'Leave it: more preload is fine'], a: 0, why: 'Backing off leaves the sleeve crushed with no real preload: the pinion bearings loosen and you get a whine on coast. Try it in Setup mode.' } } },
+  { body: '', goal: { mc: { q: 'What’s the right order?', opts: ['Pinion depth, pinion bearing preload, carrier bearing preload, backlash, then check the pattern', 'Backlash first, then depth', 'Pattern first, then everything else'], a: 0, why: 'Each step changes the ones after it. Then practice the whole job in Setup mode.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function enterStep() {
+  const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal;
+  if (st.setup) { C = baseCfg(); Object.assign(C, st.setup.cfg || {}); const s = SITU[st.setup.situ]; Object.assign(C, { situ: st.setup.situ, mu: s.mu.slice(), lift: s.lift.slice(), R: s.R, cruise: s.cruise ?? null }); restart(); }
+  renderPanel(); renderViews();
+}
+function checkGoal() { const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return; if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); } }
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up a situation, tells you what to change and watch, and checks your work.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  if (st.ctl) h += `<h4>Controls</h4>` + drivetrainHTML(st.ctl);
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['drive', 'Drive']], guided: [['les', 'Lessons']], pattern: [['pat', 'Pattern']], setup: [['job', 'Setup job']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'drive' ? exploreHTML() : S.tab === 'les' ? lessonsHTML() : S.tab === 'pat' ? patHTML() : S.tab === 'job' ? jobHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function renderViews() {
+  if (S.mode === 'pattern') { const p = S.pat; if (p) { const P = PATS[p.type]; $('#svMain').innerHTML = patternSVG(P.d, P.b); } $('#mTitle').textContent = 'Contact pattern'; $('#mSub').textContent = ''; $('#mChips').innerHTML = ''; }
+  else if (S.mode === 'setup') { drawBench(); $('#mChips').innerHTML = ''; }
+  else drawCar();
+  drawDiff(); drawData();
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m; $$('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore' || m === 'guided') { S.lesson = null; C = baseCfg(); situ('dry'); }
+  if (m === 'diagnose') { C = baseCfg(); situ('dry'); C.throttle = 0; if (!S.dx || S.dx.solved) newCase(); }
+  if (m === 'pattern' && (!S.pat || S.pat.solved)) newPat();
+  if (m === 'setup' && (!S.job || S.job.done)) newJob();
+  renderPanel(); renderViews();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'situ': situ(v); renderPanel(); break;
+    case 'restart': restart(); break;
+    case 'layout': C.layout = v; restart(); renderPanel(); break;
+    case 'rear': C.rear = v; if (v !== 'locker') C.lockOn = false; renderPanel(); checkGoal(); break;
+    case 'lock': C.lockOn = !C.lockOn; renderPanel(); break;
+    case 'center': C.center = v; renderPanel(); checkGoal(); break;
+    case 'tc': C.tc = !C.tc; renderPanel(); break;
+    case 'pans': { const p = S.pat; if (!p || p.solved) break; p.tries++; if (v === PATS[p.type].a) { p.solved = true; S.patScore.n++; if (p.tries === 1) S.patScore.first++; if (PBAG.order[PBAG.i] === p.type && !PBAG.res[p.type]) { PBAG.res[p.type] = p.tries; PBAG.i++; store.set('diff-pat-bag-v1', JSON.stringify(PBAG)); } toast('✓ Correct', 'good'); } else { p.wrong.push(v); toast('Not quite. Height first, then lengthwise.', 'bad'); } renderPanel(); break; }
+    case 'newpat': newPat(); break;
+    case 'newjob': newJob(); break;
+    case 'shim': case 'depthok': case 'nut': case 'measure': case 'backoff': case 'sleeve': case 'preok': case 'cpre': case 'bl': case 'readbl': case 'blok': case 'finish': jobAct(a, +v); break;
+    case 'test': runTest(v); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('diff.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#pbody').addEventListener('input', e => {
+  const k = e.target.dataset.c; if (!k) return;
+  if (k === 'throttle') { C.throttle = +e.target.value / 100; $('#o-thr').textContent = e.target.value + '%'; }
+  if (k === 'R') { C.R = +e.target.value; $('#o-rad').textContent = C.R + ' m'; }
+  checkGoal();
+});
+
+/* ================= loop ================= */
+let last = performance.now(), acc = 0, acc2 = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S.mode !== 'pattern' && S.mode !== 'setup') { let t = dt; while (t > 1e-6) { const h = Math.min(0.0005, t); step(h); t -= h; } }
+  acc += dt; acc2 += dt;
+  if (acc > 0.05) { acc = 0; if (S.mode !== 'pattern' && S.mode !== 'setup') { drawCar(); drawDiff(); } }
+  if (acc2 > 0.25) { acc2 = 0; if (S.mode !== 'pattern' && S.mode !== 'setup') drawData(); const w = $('#whyBox'); if (w) w.innerHTML = whyText(); checkGoal(); }
+  draw3d();
+  requestAnimationFrame(frame);
+}
+situ('dry'); renderPanel(); renderViews();
+requestAnimationFrame(frame);
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__DF = { S, get C() { return C; }, get X() { return X; }, step, situ, restart, setMode, LESSONS, CAUSES, PATS, curStep, newCase, newPat, newJob, jobAct, get BAG() { return BAG; }, get PBAG() { return PBAG; }, status,
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
