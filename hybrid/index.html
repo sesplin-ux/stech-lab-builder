@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hybrid Power-Split</title>
+<meta name="description" content="Drive a Prius-type power-split hybrid and watch MG1, MG2 and the engine share one planetary gearset: EV launch, engine start, cruise, hard acceleration, regen braking, charging at a stop and high-speed behavior. Then diagnose hybrid faults from scan data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same single-theme dark "instrument" look as the other STECH tools. Colors match the Planetary Gear Sandbox:
+   sun/MG1 blue, carrier/engine green, ring/MG2 amber. Mechanical power = amber flow, electrical = blue flow. */
+:root{
+  color-scheme: dark;
+  --bg:#080B0F; --panel:#0E1319; --panel-2:#0B1015; --raise:#131A22; --line:#1D2732; --line-2:#2A3644;
+  --fg:#E6EDF3; --soft:#C5CFD9; --dim:#8A98A8; --faint:#5A6773;
+  --accent:#2F9BE0; --ok:#3DDC97; --warn:#FFB224; --fail:#FF5A4E;
+  --sun:#4FA3E3; --car:#3DDC97; --ring:#FFB224; --pin:#9FB3C8; --mech:#FFB224; --elec:#4FA3E3; --heat:#FF5A4E;
+  --f-ui:"Barlow","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-label:"Barlow Semi Condensed","Barlow","Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+b{font-weight:600}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding:10px 16px 12px;background:radial-gradient(1100px 520px at 18% -12%,rgba(47,155,224,.10),transparent 62%),var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto;min-width:0}
+.mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(150deg,#16222e,#0b1117);border:1px solid var(--line-2);color:var(--accent)}
+.brand h1{margin:0;font:600 19px/1 var(--f-label);letter-spacing:.02em;white-space:nowrap}
+.brand p{margin:4px 0 0;font:600 10.5px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line);flex-wrap:nowrap}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;padding:7px 10px;border-radius:7px;font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.seg.modes button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg.gear button{padding:7px 12px;font-size:13px}
+.seg.gear button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:none}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:#3a4a5c}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.small{padding:6px 9px;font-size:10.5px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.used{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.btn.ready{background:#173a26;border-color:#2b6c50;color:#C9F7E2}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,390px);gap:10px}
+.views{min-height:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(0,.95fr);grid-template-rows:minmax(0,1.15fr) minmax(0,1fr);gap:10px}
+.panel{min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 50px -30px rgba(0,0,0,.8)}
+.phead{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;flex-wrap:wrap}
+.phead h2{margin:0;font:600 12px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase}
+.phead span{font-size:11.5px;color:var(--dim)}
+.phead .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.vbox{flex:1;min-height:0;padding:0 8px 8px}
+.vbox svg{width:100%;height:100%;display:block}
+#pFlow{grid-column:1/3}
+.svgt{font:600 10.5px var(--f-label);fill:#E6EDF3;letter-spacing:.04em}
+.svgs{font:600 8.5px var(--f-label);fill:#8A98A8;letter-spacing:.08em;text-transform:uppercase}
+.svgv{font:500 10px var(--f-mono);fill:#C5CFD9}
+.fl{fill:none;stroke-linecap:round;stroke-dasharray:7 7}
+.fl.on{animation:flow .6s linear infinite}
+.fl.rev{animation-direction:reverse}
+@keyframes flow{to{stroke-dashoffset:-14}}
+@media (prefers-reduced-motion: reduce){.fl.on{animation:none}}
+.modechip{padding:4px 9px;border-radius:999px;font:700 10.5px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line-2);color:var(--fg);background:#13202b}
+.lights{display:flex;gap:5px}
+.lights i{font-style:normal;font:700 9.5px/1 var(--f-label);letter-spacing:.08em;padding:3px 6px;border-radius:5px;background:#3a1717;color:#FFD2CD;border:1px solid #7a2e2e}
+.lights i.y{background:#3a2c10;color:#FFE2A8;border-color:#7a5a1e}
+.ro{flex:1;min-height:0;overflow:auto;padding:0 12px 10px}
+table.dt{width:100%;border-collapse:collapse;font-size:12px}
+table.dt td{padding:3.5px 3px;border-bottom:1px solid #151d26;color:var(--soft)}
+table.dt td:last-child{text-align:right;font:500 11.5px/1.2 var(--f-mono);color:var(--fg);white-space:nowrap}
+table.dt td.bad{color:#FFC2BC!important}table.dt td.warn{color:#FFE2A8!important}
+/* drive strip */
+.drive{padding:10px 12px 8px;border-bottom:1px solid var(--line);display:grid;gap:7px}
+.drow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spd{font:600 26px/1 var(--f-mono);color:var(--fg);min-width:74px}
+.spd small{font:600 10px/1 var(--f-label);letter-spacing:.14em;color:var(--dim);margin-left:4px}
+.pedal{display:grid;grid-template-columns:86px minmax(0,1fr) 44px;gap:8px;align-items:center}
+.pedal label{font:600 10px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.pedal output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+#acc{accent-color:var(--ok)} #brk{accent-color:var(--fail)}
+.tog{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);font:600 11px/1 var(--f-label);letter-spacing:.06em;color:var(--dim);white-space:nowrap}
+.tog[aria-pressed="true"]{color:var(--fg);border-color:#3a4a5c;background:#17222d}
+.tog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* notebook */
+.tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{all:unset;cursor:pointer;padding:8px 11px 9px;font:600 11px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px 16px;font-size:14px;color:var(--soft)}
+.pbody p{margin:0 0 9px}
+.pbody h3{margin:2px 0 8px;font:600 17px/1.2 var(--f-label);color:var(--fg)}
+.pbody h4{margin:14px 0 7px;font:700 10px/1 var(--f-label);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 56px;gap:8px;align-items:center;margin:3px 0}
+.sl label{font-size:12.5px;color:var(--dim)}
+.sl output{font:500 12px/1 var(--f-mono);text-align:right;color:var(--soft)}
+.rowb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.cards{display:grid;gap:6px}
+.card{all:unset;cursor:pointer;display:grid;gap:2px;padding:8px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.card:hover{border-color:#3a4a5c}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,#132433,#101b26)}
+.card b{color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.card span{font-size:12.5px;color:var(--dim)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.msg{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);color:var(--soft);margin:6px 0}
+.msg.ok{border-color:rgba(61,220,151,.45);color:#C9F7E2}
+.msg.bad{border-color:rgba(255,90,78,.45);color:#FFD2CD}
+.msg.warn{border-color:rgba(255,178,36,.45);color:#FFE2A8}
+.lcard{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:var(--raise)}
+.lcard:hover{border-color:#3a4a5c}
+.lcard .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--line-2);font:700 13px/1 var(--f-label);color:var(--fg)}
+.lcard.done .n{background:var(--ok);color:#06140d}
+.lcard b{display:block;color:var(--fg);font:600 14px/1.25 var(--f-label)}
+.lcard span span{font-size:12.5px;color:var(--dim)}
+.lhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lhead .k{font:600 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.dots{display:flex;gap:3px;margin-left:auto}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line-2)}
+.dots i.done{background:#2b6c50}.dots i.on{background:var(--accent)}
+.goal{padding:9px 11px;border-radius:10px;border:1px dashed rgba(47,155,224,.5);background:rgba(47,155,224,.07);color:#CFE8F8;font-size:13.5px;margin:6px 0 10px}
+.goal.ok{border-style:solid;border-color:rgba(61,220,151,.5);background:rgba(61,220,151,.07);color:#C9F7E2}
+.qq{color:var(--fg)}
+.mc{display:grid;gap:6px;margin:6px 0 10px}
+.mc button{all:unset;cursor:pointer;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);font-size:13.5px;color:var(--soft);line-height:1.35}
+.mc button:hover:not([disabled]){border-color:#3a4a5c;color:var(--fg)}
+.mc button.right{border-color:var(--ok);background:rgba(61,220,151,.1);color:#C9F7E2}
+.mc button.wrong{border-color:rgba(255,90,78,.6);background:rgba(255,90,78,.08);color:#FFD2CD}
+.mc button[disabled]{cursor:default}
+.why{padding:9px 11px;border-radius:10px;background:#0b1a14;border:1px solid rgba(61,220,151,.3);color:#BFEBD6;font-size:13.5px;margin:0 0 10px}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.nav .sp{flex:1}
+.case{padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:linear-gradient(180deg,#121b24,#0e151c)}
+.case p{margin:4px 0 0}
+.qk{display:inline-block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.score div{padding:7px 8px;border-radius:9px;background:var(--raise);border:1px solid var(--line)}
+.score small{display:block;font:600 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.score b{font:600 16px/1.3 var(--f-mono);color:var(--fg)}
+.mprog{display:grid;gap:6px;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--raise);border:1px solid var(--line)}
+.mprog>span{font:700 9.5px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mdots{display:flex;gap:4px;flex-wrap:wrap}
+.mdots i{width:16px;height:6px;border-radius:3px;background:var(--line-2)}
+.mdots i.r{background:var(--ok)} .mdots i.t{background:var(--warn)} .mdots i.cur{background:var(--accent)}
+.tests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:6px 0}
+.tests .btn{white-space:normal;text-align:center;line-height:1.2;padding:8px 8px}
+.find{display:grid;gap:6px;margin:6px 0}
+.find .f{padding:8px 10px;border-radius:9px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.find .f > b{display:block;font:700 10px/1 var(--f-label);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.find .f .bad{color:#FFC2BC}.find .f .ok{color:#BFEBD6}
+.find table.dt td{font-size:12px}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:60;padding:9px 14px;border-radius:10px;font:600 13px/1.2 var(--f-ui);background:#13202b;border:1px solid var(--line-2);max-width:min(520px,calc(100% - 32px));text-align:center}
+#toast.good{border-color:rgba(61,220,151,.6);color:#C9F7E2}
+#toast.bad{border-color:rgba(255,90,78,.6);color:#FFD2CD}
+@media (max-width: 1099px){
+  html,body{height:auto}.app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .views{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #pFlow{grid-column:1/-1;height:330px}
+  #pNomo,#pGear,#pChart{height:280px}
+  #pData{height:300px}
+  .main>.panel{height:720px}
+}
+@media (max-width: 640px){ .views{grid-template-columns:minmax(0,1fr)} #pFlow{height:250px} .brand p{display:none} }
+/* back to the tools hub (site root) */
+.hublink{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--raise);color:var(--soft);font:600 12px/1 var(--f-label);letter-spacing:.05em;text-decoration:none;white-space:nowrap;pointer-events:auto}
+.hublink:hover{color:var(--fg);border-color:#3a4a5c}
+.hublink:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:640px){.hublink{padding:0 8px}.hublink span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <a class="hublink" href="../" title="All STECH student tools"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>All tools</span></a>
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="6.5" r="1.3"/><circle cx="16.8" cy="14.8" r="1.3"/><circle cx="7.2" cy="14.8" r="1.3"/><path d="m13.5 1.5-2 4h3l-2 4"/></svg></div>
+      <div><h1>Hybrid Power-Split</h1><p>MG1 · engine · MG2 · one planetary</p></div>
+    </div>
+    <div class="seg modes" id="modes" role="group" aria-label="Mode"><button data-m="explore" aria-pressed="true">Explore</button><button data-m="guided">Guided</button><button data-m="diagnose">Diagnose</button></div>
+  </header>
+  <div class="main">
+    <div class="views">
+      <section class="panel" id="pFlow" aria-label="Power flow"><div class="phead"><h2>Power flow</h2><span class="modechip" id="modeChip">—</span><div class="r"><span class="lights" id="lights"></span></div></div><div class="vbox"><svg id="svFlow" viewBox="0 0 640 280" role="img" aria-label="Power flow between engine, MG1, the planetary gearset, MG2, the HV battery and the wheels"></svg></div></section>
+      <section class="panel" id="pNomo" aria-label="Speed nomograph"><div class="phead"><h2>Nomograph</h2><span>speeds lie on a straight line</span></div><div class="vbox"><svg id="svNomo" viewBox="0 0 300 260" role="img" aria-label="Nomograph: MG1, engine and ring/MG2 speeds on three vertical axes, always connected by a straight line"></svg></div></section>
+      <section class="panel" id="pGear" aria-label="Power-split device"><div class="phead"><h2>Power-split device</h2><span>slow motion</span></div><div class="vbox"><svg id="svGear" viewBox="0 0 300 250" role="img" aria-label="Planetary gearset: sun gear is MG1, carrier is the engine, ring gear goes to MG2 and the wheels"></svg></div></section>
+      <section class="panel" id="pChart" aria-label="Strip chart"><div class="phead"><h2>Last 40 seconds</h2></div><div class="vbox"><svg id="svChart" viewBox="0 0 300 250" role="img" aria-label="Strip chart of speed, engine rpm, MG1 rpm and state of charge"></svg></div></section>
+      <section class="panel" id="pData" aria-label="Live data"><div class="phead"><h2>Live data</h2><span>scan tool</span></div><div class="ro" id="data"></div></section>
+    </div>
+    <section class="panel" aria-label="Drive and notebook">
+      <div class="drive" id="drive">
+        <div class="drow"><div class="spd" id="spd">0<small>MPH</small></div><button class="btn small" id="readyBtn">Ready</button><span class="seg gear" id="gearSeg" aria-label="Shift position"><button data-g="P">P</button><button data-g="R">R</button><button data-g="N">N</button><button data-g="D">D</button></span><button class="tog" id="holdBtn" aria-pressed="false" title="Hold the current speed (cruise control)">Hold speed</button></div>
+        <div class="pedal"><label for="acc">Accelerator</label><input type="range" id="acc" min="0" max="100" step="1" value="0"><output id="oAcc">0%</output></div>
+        <div class="pedal"><label for="brk">Brake</label><input type="range" id="brk" min="0" max="100" step="1" value="0"><output id="oBrk">0%</output></div>
+      </div>
+      <div class="tabs" id="tabs" role="tablist"></div><div class="pbody" id="pbody"></div>
+    </section>
+  </div>
+</div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TAU = Math.PI * 2;
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const f0 = v => Math.round(v).toLocaleString('en-US');
+const kw = w => (Math.abs(w) < 50 ? '0' : (w / 1000).toFixed(Math.abs(w) < 10000 ? 1 : 0)) + ' kW';
+
+/* ================= teaching vehicle (generic Prius-type power split; approximate public specs) ================= */
+const ST = 30, RT = 78, K = (ST + RT) / ST;   // sun (MG1) and ring teeth; MG1 = 3.6·engine − 2.6·ring
+const MG2R = 2.636, FD = 3.267, CIRC = 1.99, RW = CIRC / TAU, MASS = 1450, G = 9.81, CRR = 0.009, CDA = 0.58, RHO = 1.2, MPS = 0.44704;
+const LIM = { mg1: 10000, eMax: 5200, ePow: 73000, eTq: 142, mg2Tq: 207, mg2Pow: 60000, dis: 27000, chg: 25000 };
+const TFAST = 8;   // temperatures run ~8× faster than real life so changes show up during a short drive
+
+/* ================= faults (Diagnose) ================= */
+const FAULTS = {
+  weakblock: { n: 'Weak HV battery block', concern: 'Gas mileage dropped from about 48 to 38 mpg. The engine runs much more than it used to, and the battery gauge swings from full to nearly empty quickly.', dtc: ['P0A80 Replace hybrid/EV battery pack'], ff: 'Freeze frame: 34 mph, accelerating, SOC 51%, battery 118 A.', init: { soc: 55 },
+    see: 'Under load, block 7 sags far below the other 13 blocks (more than 1 V lower at high current). The pack can’t deliver or take power like it should, so the engine runs more. Block voltages only spread apart under load, so you have to drive it hard to see it.' },
+  invpump: { n: 'Inverter coolant pump failed', concern: 'Climbing long hills, the car loses power and a red triangle comes on. It’s fine again after it sits for a while.', dtc: ['P0A93 Inverter cooling system performance'], ff: 'Freeze frame: 52 mph, inverter coolant 88 °C, engine coolant 89 °C.', init: { tinv: 64 },
+    see: 'Inverter coolant temperature climbs fast under load while engine coolant is normal. The inverter has its own cooling loop and electric pump; with no flow, the system limits power to protect the inverter.' },
+  iso: { n: 'HV isolation fault (insulation breakdown)', concern: 'A red triangle came on after the owner drove through deep water. It drives normally.', dtc: ['P0AA6 Hybrid battery voltage system isolation fault'], ff: 'Freeze frame: Ready, stopped, insulation resistance low.', init: {},
+    see: 'Insulation resistance between the HV system and the body is about 0.4 MΩ (normal is well over 10 MΩ). HV is leaking toward the chassis. Driving data looks normal, so only the isolation test shows it. Full PPE and the de-energize procedure before anyone opens anything.' },
+  misfire: { n: 'Engine misfire, cylinder 2 (ignition coil)', concern: 'The car shudders when accelerating hard or climbing hills, and the check engine light flashes. Gentle cruising is smooth.', dtc: ['P0302 Cylinder 2 misfire detected', 'P0300 Random/multiple cylinder misfire'], ff: 'Freeze frame: 47 mph, engine 3,200 rpm, high load.', init: {},
+    see: 'The cylinder 2 misfire counter climbs only when the engine is under heavy load. At light load or with the engine off, nothing shows, so you have to make the engine work. Swap the coil to another cylinder to confirm.' },
+  damper: { n: 'Transaxle input damper slipping (engine can’t be turned)', concern: 'Red triangle and “Check hybrid system.” It drives on the battery for a little while, then barely moves. The engine never starts.', dtc: ['P3191 Engine unable to start (Toyota example code)'], ff: 'Freeze frame: start request, MG1 4,000+ rpm, engine 0 rpm.', init: { soc: 47 },
+    see: 'When the system tries to start the engine, MG1 speeds up but the engine stays at 0 rpm. The speeds no longer fit the planetary formula, so something between the engine and the carrier is slipping (the input damper). The battery slowly runs down because the engine can never charge it.' },
+  dcdc: { n: 'DC-DC converter not charging the 12 V battery', concern: 'After about an hour of driving, warning lights flicker, the radio resets, and then the car shuts down.', dtc: ['P0A94 DC/DC converter performance'], ff: 'Freeze frame: 12 V system 10.9 V, Ready on.', init: { aux: 12.3 },
+    see: 'With Ready on, the 12 V system should sit around 14 V (the DC-DC converter in the inverter steps HV down to charge it). Here it’s about 12.3 V and slowly falling: the 12 V battery is running everything by itself.' },
+  thermostat: { n: 'Thermostat stuck open', concern: 'This winter the engine never seems to shut off, even at stoplights, and mileage dropped. The heater is lukewarm.', dtc: ['P0128 Coolant temperature below thermostat regulating temperature'], ff: 'Freeze frame: engine coolant 54 °C after 20 minutes.', init: { ect: 50 },
+    see: 'Engine coolant never gets past about 55 °C. The hybrid system keeps the engine running until it’s warm (for emissions and heat), so it never shuts off.' },
+  fan: { n: 'Battery cooling intake blocked', concern: 'In summer the car feels sluggish, the engine runs constantly, and a red triangle sometimes appears. A dog rides in the back seat a lot.', dtc: ['P0A7E Hybrid/EV battery pack over temperature'], ff: 'Freeze frame: battery temp 57 °C, intake air 27 °C.', init: { tb: 44 },
+    see: 'Battery temperatures climb far above the intake air temperature, and power is limited once the pack passes about 50 °C. The cooling intake by the rear seat is packed with pet hair.' },
+};
+const DTESTS = [['dtc', 'Scan: DTCs & freeze frame'], ['mg', 'Data: MG1 / engine / MG2 speeds'], ['blocks', 'Data: battery block voltages'], ['temps', 'Data: temperatures'], ['misfire', 'Data: misfire counters'], ['iso', 'Insulation resistance (PPE on)'], ['aux', 'Data: 12 V system / DC-DC'], ['fan', 'Inspect battery cooling intake'], ['pump', 'Inspect inverter coolant pump']];
+
+/* ================= simulation state ================= */
+const fresh = () => ({ ready: true, gear: 'D', v: 0, soc: 60, eState: 'off', eRpm: 0, crankT: 0, failT: 0, offT: 0, mg1Free: 0, ect: 85, tb: 28, tinv: 40, aux: 14.0, iso: 18.5, misf: [0, 0, 0, 0], misAcc: 0, startFails: 0, t: 0,
+  pedal: 0, brake: 0, hold: false, holdV: 0, lock: 'auto', pedalEff: 0,
+  Te: 0, Tg: 0, Tm: 0, wE: 0, wG: 0, wM: 0, wR: 0, Pe: 0, Pg: 0, Pm: 0, Pre: 0, Pb: 0, Pfric: 0, I: 0, V: 201.6, blocks: Array(14).fill(14.4), mode: '', limited: false, hist: [], histT: 0 });
+let X = fresh();
+const S = { mode: 'explore', tab: 'drive', lesson: null, step: 0, stepOk: false, mcPick: [], done: new Set(JSON.parse(store.get('hyb.done') || '[]')), dx: null, dxScore: { cases: 0, first: 0, tests: 0 }, fault: null };
+
+/* ================= the hybrid computer + physics ================= */
+function step(dt) {
+  const F = S.fault; X.t += dt;
+  const v = X.v, av = Math.abs(v), mph = av / MPS, sgn = v > 0.05 ? 1 : v < -0.05 ? -1 : 0;
+  const Froad = sgn * CRR * MASS * G + 0.5 * RHO * CDA * v * av;
+  const Fmax = Math.min(3900, 98000 / Math.max(av, 3));
+  let pedal = X.pedal, brake = X.brake;
+  if (X.hold && X.gear === 'D' && X.ready) { pedal = clamp((Froad + 900 * (X.holdV - v)) / Fmax, 0, 1); brake = 0; }
+  X.pedalEff = pedal;
+  const live = X.ready && X.gear !== 'P';
+  // driver demand at the wheels
+  let Fd = 0;
+  if (live && X.gear === 'D') { Fd = pedal * Fmax; if (pedal < 0.02 && brake < 0.02) Fd = av < 2 ? 300 : -180; }          // creep / light coast regen
+  else if (live && X.gear === 'R') { Fd = v < -4 ? 0 : -(pedal * 3200 + (pedal < 0.02 && brake < 0.02 ? 300 : 0)); }
+  const brakeF = brake * 9000, fade = clamp((av - 1.2) / 2, 0, 1);
+  const regenCap = live && X.gear !== 'N' ? fade * Math.min(5400, LIM.chg / Math.max(av, 0.5)) : 0;
+  const regenF = Math.min(brakeF, regenCap), Fcmd = Fd - (sgn || 1) * regenF;
+  const Pdem = Math.max(0, Fd * v), Preq = X.gear === 'D' ? Math.max(0, Fd) * Math.max(av, 6) : 0;   // Preq: what the driver is asking for (counts a floored pedal at a standstill)
+  // engine on/off decision
+  const warm = X.ect >= 70; let need = false;
+  if (X.ready && (X.gear === 'D' || X.gear === 'P' || X.gear === 'R')) {
+    if (X.lock === 'charge' && X.soc < 79) need = true;
+    if (!warm) need = true;
+    if (X.soc < 45) need = true;
+    let evMax = X.lock === 'ev' ? 20000 : F === 'weakblock' ? 7000 : F === 'fan' && X.tb > 45 ? 6000 : X.soc > 55 ? 16000 : 9000;
+    if (X.lock !== 'ev') evMax = mph > 42 ? Math.min(evMax, 2500) : mph > 25 ? Math.min(evMax, 7000) : evMax;   // at road speed the engine carries the load
+    if (X.gear === 'D' && Preq > evMax) need = true;
+  }
+  if (X.lock === 'ev' && (X.soc < 50 || mph > 25 || Preq > 20000 || !warm)) { X.lock = 'auto'; S.evCancel = true; }
+  const spin = X.ready && X.gear === 'D' && mph > 42;
+  if ((X.eState === 'run') && !need && !spin) { X.offT += dt; if (X.offT < 2 || Preq > 9000) need = true; } else X.offT = 0;
+  if (X.ready && (need || spin)) { if (X.eState === 'off') { X.eState = 'crank'; X.crankT = 0; X.mg1Free = 0; } }
+  else if (X.eState === 'run' || X.eState === 'spin') X.eState = 'off';
+  if (X.eState === 'crank') {
+    X.crankT += dt;
+    if (F === 'damper') { X.eRpm = 0; X.mg1Free = Math.min(4500, X.mg1Free + 6000 * dt); if (X.crankT > 1.0) { X.eState = 'fail'; X.failT = 0; X.startFails++; } }
+    else { X.eRpm = Math.min(1000, X.eRpm + 2400 * dt); if (X.crankT > 0.45) X.eState = need ? 'run' : 'spin'; }
+  }
+  if (X.eState === 'fail') { X.failT += dt; X.eRpm = 0; X.mg1Free = Math.max(0, X.mg1Free - 9000 * dt); if (X.failT > 3) X.eState = 'off'; }
+  if (X.eState === 'run' && !need && spin) X.eState = 'spin';
+  if (X.eState === 'spin' && need) X.eState = 'run';
+  if (!X.ready) X.eState = X.eState === 'fail' ? 'fail' : 'off';
+  // engine operating point
+  let Te = 0, Pe_t = 0;
+  if (X.eState === 'run') {
+    const Pchg = X.soc < 60 ? clamp((60 - X.soc) * 1500, 0, 12000) : (X.lock === 'charge' && X.soc < 79 ? 8000 : 0);
+    const assist = pedal > 0.7 && X.soc > 46 ? Math.min(20000, 0.35 * Pdem) : 0;   // battery helps on hard acceleration
+    Pe_t = X.gear === 'D' ? clamp(Pdem + Pchg - assist, warm ? 4000 : 3000, LIM.ePow) : clamp(Pchg + (warm ? 0 : 2500), 2500, 12000);
+    const wR0 = v / CIRC * 60 * FD, rCap = (LIM.mg1 * 0.97 + (K - 1) * wR0) / K;   // MG1 speed limit caps engine rpm at low road speed
+    const rt = clamp(Math.min(1000 + 55 * Pe_t / 1000, rCap), 1000, LIM.eMax);
+    Pe_t = Math.min(Pe_t, LIM.ePow * clamp(rt / 5000, 0, 1) * 1.02);
+    X.eRpm += clamp(rt - X.eRpm, -2500 * dt, 2500 * dt);
+    Te = Math.min(LIM.eTq, Pe_t / Math.max(X.eRpm * TAU / 60, 50));
+    if (F === 'misfire' && Pe_t > 14000) { X.misAcc += dt * 4; while (X.misAcc >= 1) { X.misAcc--; X.misf[1]++; } Te *= 0.85; }
+  } else if (X.eState === 'spin') { X.eRpm += clamp(1000 - X.eRpm, -2500 * dt, 2500 * dt); Te = -12; }
+  else if (X.eState === 'crank') Te = F === 'damper' ? 0 : -40;
+  else X.eRpm += clamp(-X.eRpm, -3000 * dt, 3000 * dt);
+  // speeds (rpm)
+  const wR = v / CIRC * 60 * FD, wE = X.eRpm, wM = MG2R * wR;
+  let wG = K * wE - (K - 1) * wR;
+  if (F === 'damper' && (X.eState === 'crank' || X.eState === 'fail')) wG = -(K - 1) * wR + X.mg1Free;   // MG1 spins up but the engine doesn't follow
+  // torques
+  const Tre = Te * RT / (ST + RT);
+  let Tg = X.eState === 'crank' ? (F === 'damper' ? 6 : 30) : -Te * ST / (ST + RT);
+  const tinvLim = X.tinv > 85 ? 0.5 : 1;
+  let Tm = clamp((Fcmd * RW / FD - Tre) / MG2R, -200 * tinvLim, LIM.mg2Tq * tinvLim);
+  const wMr = wM * TAU / 60, wGr = wG * TAU / 60;
+  if (Math.abs(Tm * wMr) > LIM.mg2Pow * tinvLim) Tm = Math.sign(Tm) * LIM.mg2Pow * tinvLim / Math.abs(wMr);
+  if (!live || X.gear === 'N') { Tm = 0; if (X.eState !== 'run' && X.eState !== 'crank') Tg = 0; }
+  // battery limits
+  const hot = X.tb > 50 ? 0.4 : 1, low = clamp((X.soc - 35) / 6, 0.05, 1), full = clamp((84 - X.soc) / 4, 0, 1);
+  const disMax = LIM.dis * hot * low * (F === 'weakblock' ? 0.75 : 1), chgMax = LIM.chg * hot * full * (F === 'weakblock' ? 0.75 : 1);
+  X.limited = hot < 1 || low < 0.6 || tinvLim < 1;
+  const el = p => p > 0 ? p / 0.9 : p * 0.9, aux = X.ready ? (F === 'dcdc' ? 0 : 350) : 0;
+  let Pm = Tm * wMr, Pg = Tg * wGr, Pb = el(Pm) + el(Pg) + aux;
+  if (Pb > disMax && Pm > 0) { Pm = Math.max(0, Pm - (Pb - disMax) * 0.9); Tm = Math.abs(wMr) > 1 ? Pm / wMr : Tm; Pb = el(Pm) + el(Pg) + aux; }
+  if (Pb < -chgMax && Pm < 0) { Pm = Math.min(0, Pm + (-chgMax - Pb) / 0.9); Tm = Math.abs(wMr) > 1 ? Pm / wMr : 0; Pb = el(Pm) + el(Pg) + aux; }
+  // forces
+  const Tring = Tre + MG2R * Tm, Fele = Tring * FD / RW;
+  const fric = brake > 0 ? Math.max(0, brakeF - Math.max(0, -sgn * Fele)) : 0;
+  let nv;
+  if (X.gear === 'P') nv = 0;
+  else if (sgn === 0) { const push = Fele - Math.sign(Fele) * Math.min(Math.abs(Fele), brakeF + 120); nv = v + push / MASS * dt; }
+  else { nv = v + (Fele - Froad - sgn * fric) / MASS * dt; if (Math.sign(nv) !== sgn && Math.abs(Fele) < fric + Math.abs(Froad) + 1) nv = 0; }
+  X.v = nv;
+  // battery
+  const Voc = 201.6 + (X.soc - 60) * 0.45, Rint = 0.28 + (F === 'weakblock' ? 0.1 : 0), I = Pb / Voc;
+  X.I = I; X.V = Voc - I * Rint;
+  X.soc = clamp(X.soc - Pb * dt / (1.3 * 3.6e6) * 100, 30, 90);
+  for (let i = 0; i < 14; i++) X.blocks[i] = X.V / 14 + Math.sin(i * 2.3) * 0.015 - (F === 'weakblock' && i === 6 ? 0.3 + I * 0.009 : 0);
+  // temperatures (fast)
+  const r = t => Math.min(1, dt * TFAST / t);
+  X.tb += ((F === 'fan' ? 37 + Math.abs(I) * 0.26 : 27 + Math.abs(I) * 0.05) - X.tb) * r(60);
+  const loss = 0.07 * (Math.abs(Pm) + Math.abs(Pg));
+  X.tinv += ((F === 'invpump' ? Math.min(98, 60 + loss * 0.012) : 38 + loss * 0.003) - X.tinv) * r(40);
+  if (X.eState === 'run') X.ect += ((F === 'thermostat' ? 55 : 89) - X.ect) * r(50); else X.ect += (40 - X.ect) * r(900);
+  if (F === 'dcdc') X.aux = Math.max(10.6, X.aux - (X.ready ? 0.0025 : 0) * dt * TFAST); else X.aux += ((X.ready ? 14.0 : 12.6) - X.aux) * r(10);
+  X.iso = F === 'iso' ? 0.4 : 18.5;
+  // outputs
+  Object.assign(X, { Te, Tg, Tm, wE, wG, wM, wR, Pe: Te * wE * TAU / 60, Pg, Pm, Pre: Tre * wR * TAU / 60, Pb, Pfric: fric * av, Pdem, need });
+  X.mode = modeName();
+}
+function modeName() {
+  const mph = Math.abs(X.v) / MPS;
+  if (!X.ready) return 'System off';
+  if (X.eState === 'crank') return 'Engine starting: MG1 cranks it';
+  if (X.eState === 'fail') return 'Engine start failed';
+  if (X.gear === 'P') return X.eState === 'run' ? 'Park: engine charging' : 'Park (Ready)';
+  if (X.gear === 'N') return 'Neutral: no drive, no charging';
+  if (X.gear === 'R') return 'Reverse: MG2 only';
+  if (mph < 0.5) return X.eState === 'run' ? (X.ect < 70 ? 'Stopped: engine warming up' : 'Stopped: engine charging') : 'Stopped, engine off';
+  if (X.Pm < -1500 && X.eState !== 'run') return X.Pfric > 2000 ? 'Regen + friction braking' : 'Regenerative braking';
+  if (X.eState === 'off') return 'EV drive (MG2 only)';
+  if (X.eState === 'spin') return 'Engine turning, fuel cut';
+  if (X.ect < 70 && X.Pdem < 6000) return 'Engine warm-up';
+  if (X.Pb > 6000) return 'Hard acceleration: engine + battery';
+  if (X.wG < -900 && X.Pg > 800) return 'High speed: MG1 motoring';
+  return X.Pb < -1500 ? 'Hybrid drive + charging' : 'Hybrid drive (power split)';
+}
+
+/* ================= drawing: power flow ================= */
+const FP = {   // flow paths: positive power flows from the first point to the last
+  eng:  { d: 'M130 125 H199', c: 'mech', lx: 165, ly: 116 },
+  mg1m: { d: 'M235 89 V60', c: 'mech', lx: 244, ly: 78, a: 'start' },
+  mg1e: { d: 'M185 34 H165 V205 H250 V220', c: 'elec', lx: 158, ly: 160, a: 'end' },
+  bat:  { d: 'M250 244 H142', c: 'elec', lx: 196, ly: 236 },
+  mg2e: { d: 'M330 244 H382 V202', c: 'elec', lx: 392, ly: 232, a: 'start' },
+  mg2m: { d: 'M382 150 V129', c: 'mech', lx: 392, ly: 143, a: 'start' },
+  ring: { d: 'M271 125 H378', c: 'mech', lx: 322, ly: 116 },
+  whl:  { d: 'M386 125 H546', c: 'mech', lx: 470, ly: 116 },
+  fric: { d: 'M575 156 V206', c: 'heat', lx: 585, ly: 185, a: 'start' },
+};
+function buildFlow() {
+  const box = (x, y, w, h, t, sub, id) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="#131A22" stroke="#2A3644"/><text x="${x + w / 2}" y="${y + 17}" class="svgt" text-anchor="middle">${t}</text><text x="${x + w / 2}" y="${y + 31}" class="svgs" text-anchor="middle">${sub}</text><text id="${id}" x="${x + w / 2}" y="${y + h - 9}" class="svgv" text-anchor="middle"></text>`;
+  let h = `<defs><linearGradient id="socg" x1="0" x2="1"><stop offset="0" stop-color="#3DDC97"/><stop offset="1" stop-color="#3DDC97"/></linearGradient></defs>`;
+  for (const [k, p] of Object.entries(FP)) h += `<path d="${p.d}" stroke="#1d2732" stroke-width="10" fill="none" stroke-linecap="round"/><path id="fl-${k}" class="fl" d="${p.d}" stroke="var(--${p.c})" stroke-width="3"/>`;
+  h += box(20, 95, 110, 62, 'Engine', 'on the carrier', 'tEng');
+  h += box(185, 10, 100, 50, 'MG1', 'on the sun gear', 'tMg1');
+  h += `<circle cx="235" cy="125" r="35" fill="#131A22" stroke="#2A3644"/><circle cx="235" cy="125" r="27" fill="none" stroke="var(--ring)" stroke-width="3" opacity=".7"/><circle cx="235" cy="125" r="9" fill="var(--sun)" opacity=".8"/><circle cx="235" cy="125" r="18" fill="none" stroke="var(--car)" stroke-width="2" stroke-dasharray="3 4"/><text x="235" y="176" class="svgs" text-anchor="middle">power-split device</text>`;
+  h += box(332, 150, 100, 52, 'MG2', 'on the ring (×2.64)', 'tMg2');
+  h += box(250, 220, 80, 46, 'Inverter', 'boost + DC-DC', 'tInv');
+  h += `<rect x="20" y="214" width="122" height="54" rx="9" fill="#131A22" stroke="#2A3644"/><text x="81" y="230" class="svgt" text-anchor="middle">HV battery</text><rect x="30" y="238" width="102" height="9" rx="3" fill="#0b1015" stroke="#2A3644"/><rect id="socBar" x="31" y="239" width="50" height="7" rx="2" fill="#3DDC97"/><text id="tBat" x="81" y="262" class="svgv" text-anchor="middle"></text>`;
+  h += `<circle cx="382" cy="125" r="5" fill="var(--ring)"/><text x="470" y="140" class="svgs" text-anchor="middle">final drive · 3.27</text>`;
+  h += `<circle cx="575" cy="125" r="29" fill="#0b1015" stroke="#5A6773" stroke-width="7"/><circle cx="575" cy="125" r="9" fill="#2A3644"/><g id="wheelSpokes"><path d="M575 108 V142 M558 125 H592" stroke="#5A6773" stroke-width="2"/></g><text x="575" y="72" class="svgs" text-anchor="middle">wheels</text>`;
+  h += `<rect x="530" y="206" width="90" height="38" rx="9" fill="#131A22" stroke="#2A3644"/><text x="575" y="222" class="svgt" text-anchor="middle">Friction brakes</text><text x="575" y="236" class="svgs" text-anchor="middle">heat</text>`;
+  for (const [k, p] of Object.entries(FP)) h += `<text id="k-${k}" x="${p.lx}" y="${p.ly}" class="svgv" text-anchor="${p.a || 'middle'}"></text>`;
+  h += `<g transform="translate(450 18)"><path d="M0 0 h18" stroke="var(--mech)" stroke-width="3"/><text x="23" y="3" class="svgs">mechanical</text><path d="M86 0 h18" stroke="var(--elec)" stroke-width="3"/><text x="109" y="3" class="svgs">electrical</text></g>`;
+  $('#svFlow').innerHTML = h;
+}
+let wheelAng = 0;
+function drawFlow(dt) {
+  const pw = { eng: X.Pe, mg1m: -X.Pg, mg1e: X.Pg < 0 ? -X.Pg * 0.9 : -X.Pg / 0.9, bat: -X.Pb, mg2e: X.Pm > 0 ? X.Pm / 0.9 : X.Pm * 0.9, mg2m: X.Pm, ring: X.Pre, whl: X.Pre + X.Pm, fric: X.Pfric };
+  for (const k in FP) {
+    const p = pw[k] || 0, el = document.getElementById('fl-' + k), on = Math.abs(p) > 300;
+    el.setAttribute('class', 'fl' + (on ? ' on' : '') + (p < 0 ? ' rev' : ''));
+    el.setAttribute('stroke-width', on ? clamp(2 + Math.abs(p) / 6000, 2, 9).toFixed(1) : 2);
+    el.style.opacity = on ? 1 : 0.18;
+    document.getElementById('k-' + k).textContent = on ? kw(Math.abs(p)) : '';
+  }
+  $('#tEng').textContent = X.eState === 'run' ? `${f0(X.wE)} rpm · fuel on` : X.eState === 'spin' ? `${f0(X.wE)} rpm · fuel cut` : X.eState === 'crank' ? 'cranking…' : X.eState === 'fail' ? 'won’t turn!' : 'stopped';
+  $('#tMg1').textContent = `${f0(X.wG)} rpm`;
+  $('#tMg2').textContent = `${f0(X.wM)} rpm`;
+  $('#tInv').textContent = `${Math.round(X.tinv)} °C`;
+  $('#tBat').textContent = `${Math.round(X.soc)}% · ${X.V.toFixed(0)} V · ${X.I >= 0 ? '' : '−'}${Math.abs(X.I).toFixed(0)} A`;
+  const sb = $('#socBar'); sb.setAttribute('width', (100 * clamp((X.soc - 30) / 60, 0, 1)).toFixed(1)); sb.setAttribute('fill', X.soc < 42 ? '#FF5A4E' : X.soc < 50 ? '#FFB224' : '#3DDC97');
+  wheelAng = (wheelAng + X.wR / FD * 6 * dt * 0.08) % 360; $('#wheelSpokes').setAttribute('transform', `rotate(${wheelAng.toFixed(1)} 575 125)`);
+  $('#modeChip').textContent = X.mode;
+  const L = lights(); $('#lights').innerHTML = L.map(([t, y]) => `<i class="${y ? 'y' : ''}">${t}</i>`).join('');
+}
+function lights() {
+  const F = S.fault, out = [];
+  if (['weakblock', 'invpump', 'iso', 'damper', 'dcdc', 'fan'].includes(F) && (F !== 'invpump' || X.tinv > 80 || S.mode === 'diagnose') && (F !== 'fan' || X.tb > 50 || S.mode === 'diagnose')) out.push(['▲ HYBRID', 0]);
+  if (F === 'misfire' || F === 'thermostat') out.push(['CHECK ENGINE', 1]);
+  if (X.limited) out.push(['🐢 POWER LIMIT', 1]);
+  if (X.soc < 40) out.push(['LOW HV BATT', 1]);
+  return out;
+}
+
+/* ================= nomograph ================= */
+function drawNomo() {
+  const xs = 34, xc = 34 + 230 * RT / (ST + RT), xr = 264, y0 = 128, sc = 105 / 10000, Y = r => y0 - clamp(r, -11000, 11000) * sc;
+  let h = `<line x1="20" y1="${y0}" x2="280" y2="${y0}" stroke="#2A3644"/><text x="282" y="${y0 + 3}" class="svgs">0</text>`;
+  h += `<rect x="${xs - 10}" y="${Y(10000) - 6}" width="20" height="6" fill="#FF5A4E" opacity=".35"/><rect x="${xs - 10}" y="${Y(-10000)}" width="20" height="6" fill="#FF5A4E" opacity=".35"/>`;
+  const ax = [[xs, 'MG1', 'sun', '#4FA3E3', X.wG, X.Tg], [xc, 'Engine', 'carrier', '#3DDC97', X.wE, X.Te], [xr, 'Ring', 'MG2 · wheels', '#FFB224', X.wR, X.Tm * MG2R + X.Te * RT / (ST + RT)]];
+  for (const [x, n, s, c] of ax) h += `<line x1="${x}" y1="${Y(10500)}" x2="${x}" y2="${Y(-10500)}" stroke="${c}" stroke-width="2" opacity=".55"/><text x="${x}" y="13" class="svgt" text-anchor="middle" style="fill:${c}">${n}</text><text x="${x}" y="246" class="svgs" text-anchor="middle">${s}</text>`;
+  h += `<line x1="${xs}" y1="${Y(X.wG)}" x2="${xr}" y2="${Y(X.wR)}" stroke="#E6EDF3" stroke-width="1.6"/>`;
+  for (const [x, , , c, r, tq] of ax) {
+    h += `<circle cx="${x}" cy="${Y(r)}" r="5" fill="${c}" stroke="#0b1015"/>`;
+    if (Math.abs(tq) > 3) { const L = clamp(Math.abs(tq) / 4, 8, 34) * Math.sign(tq), yy = Y(r); h += `<path d="M${x + 9} ${yy} v${-L}" stroke="${c}" stroke-width="2"/><path d="M${x + 9} ${yy - L} l-4 ${L > 0 ? 6 : -6} h8z" fill="${c}"/>`; }
+    h += `<text x="${x - 8}" y="${Y(r) + (r >= 0 ? -8 : 15)}" class="svgv" text-anchor="end">${f0(r)}</text>`;
+  }
+  h += `<text x="${xr - 8}" y="232" class="svgs" text-anchor="end" style="text-transform:none">MG2 = ring × 2.64 = ${f0(X.wM)} rpm</text><text x="${xs + 12}" y="${Y(10000) + 3}" class="svgs" style="text-transform:none;fill:#FF8A80">MG1 limit</text>`;
+  h += `<text x="${xs + 12}" y="232" class="svgs" style="text-transform:none">rpm · arrows = torque</text>`;
+  $('#svNomo').innerHTML = h;
+}
+
+/* ================= gearset face view (geometry from the Planetary Gear Sandbox) ================= */
+function gearPath(N, rp, internal) {
+  const m = 2 * rp / N, add = m * 0.95, ded = m * 1.15, ro = internal ? rp - add : rp + add, rr = internal ? rp + ded : rp - ded, pa = TAU / N;
+  let d = '';
+  for (let i = 0; i < N; i++) { const a = i * pa, pts = [[rr, a - pa * 0.27], [ro, a - pa * 0.13], [ro, a + pa * 0.13], [rr, a + pa * 0.27], [rr, a + pa * 0.73]]; pts.forEach(([r, t], j) => { d += (i === 0 && j === 0 ? 'M' : 'L') + (r * Math.cos(t)).toFixed(2) + ' ' + (r * Math.sin(t)).toFixed(2); }); }
+  return d + 'Z';
+}
+function buildGear() {
+  const Rp = 84, P = (RT - ST) / 2, m = 2 * Rp / RT, rs = m * ST / 2, rpn = m * P / 2, a = m * (ST + P) / 2;
+  let h = `<g transform="translate(150 110)">`;
+  h += `<g id="gr"><path d="M${Rp + m * 3.2} 0 A${Rp + m * 3.2} ${Rp + m * 3.2} 0 1 0 ${-(Rp + m * 3.2)} 0 A${Rp + m * 3.2} ${Rp + m * 3.2} 0 1 0 ${Rp + m * 3.2} 0 ${gearPath(RT, Rp, true)}" fill="var(--ring)" fill-opacity=".75" fill-rule="evenodd"/><circle cx="${Rp + m * 2.2}" cy="0" r="2.5" fill="#0b1015"/></g>`;
+  let tri = ''; for (let i = 0; i < 4; i++) { const t = i * TAU / 4; tri += (i ? 'L' : 'M') + (a * Math.cos(t)).toFixed(1) + ' ' + (a * Math.sin(t)).toFixed(1); }
+  h += `<g id="gc"><path d="${tri}Z" fill="var(--car)" fill-opacity=".2" stroke="var(--car)" stroke-width="4" stroke-linejoin="round" stroke-opacity=".8"/>`;
+  for (let i = 0; i < 4; i++) { const t = i * TAU / 4; h += `<g transform="translate(${(a * Math.cos(t)).toFixed(1)} ${(a * Math.sin(t)).toFixed(1)})"><g class="gp"><path d="${gearPath(P, rpn, false)}" fill="var(--pin)" fill-opacity=".9" stroke="#0b1015" stroke-width=".6"/><circle r="3" fill="var(--car)"/><circle cx="${rpn * 0.6}" r="1.5" fill="#0b1015"/></g></g>`; }
+  h += `</g><g id="gs"><path d="${gearPath(ST, rs, false)}" fill="var(--sun)"/><circle r="5" fill="#0b1015"/><circle cx="${rs * 0.6}" r="2" fill="#0b1015"/></g></g>`;
+  h += `<text x="150" y="226" class="svgs" text-anchor="middle"><tspan style="fill:#4FA3E3">● Sun = MG1</tspan>   <tspan style="fill:#3DDC97">● Carrier = engine</tspan></text><text x="150" y="240" class="svgs" text-anchor="middle" style="fill:#FFB224">● Ring = MG2 + wheels</text>`;
+  $('#svGear').innerHTML = h;
+}
+const ang = { s: 0, c: 0, r: 0, p: 0 };
+function drawGear(dt) {
+  const k = 6 * 0.012 * dt, P = (RT - ST) / 2, wp = X.wE - (X.wG - X.wE) * ST / P;   // deg per rpm·s, slowed down
+  ang.s += X.wG * k; ang.c += X.wE * k; ang.r += X.wR * k; ang.p += (wp - X.wE) * k;
+  $('#gs').setAttribute('transform', `rotate(${(ang.s % 360).toFixed(2)})`); $('#gc').setAttribute('transform', `rotate(${(ang.c % 360).toFixed(2)})`); $('#gr').setAttribute('transform', `rotate(${(ang.r % 360).toFixed(2)})`);
+  $$('.gp').forEach(g => g.setAttribute('transform', `rotate(${(ang.p % 360).toFixed(2)})`));
+}
+
+/* ================= strip chart + live data ================= */
+function drawChart() {
+  const H = X.hist, W = 300, lanes = [['Speed', 'mph', 0, 100, h => h.mph, '#E6EDF3'], ['Engine', 'rpm', 0, 5500, h => h.e, '#3DDC97'], ['MG1', 'rpm', -10000, 10000, h => h.g, '#4FA3E3'], ['SOC', '%', 30, 90, h => h.soc, '#FFB224']];
+  const lh = 56; let s = '';
+  lanes.forEach(([n, u, lo, hi, f, c], i) => {
+    const y0 = 8 + i * (lh + 4), Y = v => y0 + lh - (clamp(v, lo, hi) - lo) / (hi - lo) * lh;
+    s += `<rect x="40" y="${y0}" width="${W - 44}" height="${lh}" fill="#0a0f14" stroke="#16202a"/>`;
+    if (lo < 0) s += `<line x1="40" x2="${W - 4}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2A3644"/>`;
+    s += `<text x="36" y="${y0 + 12}" class="svgs" text-anchor="end" style="fill:${c}">${n}</text><text x="36" y="${y0 + lh - 3}" class="svgs" text-anchor="end" style="text-transform:none">${u}</text>`;
+    if (H.length > 1) s += `<polyline fill="none" stroke="${c}" stroke-width="1.4" points="${H.map((h, j) => `${(40 + (W - 44) * (1 - (H.length - 1 - j) / 199)).toFixed(1)},${Y(f(h)).toFixed(1)}`).join(' ')}"/>`;
+    const last = H.length ? f(H[H.length - 1]) : 0; s += `<text x="${W - 7}" y="${y0 + 12}" class="svgv" text-anchor="end">${f0(last)}</text>`;
+  });
+  $('#svChart').innerHTML = s;
+}
+function drawData() {
+  const r = (n, v, c = '') => `<tr><td>${n}</td><td class="${c}">${v}</td></tr>`;
+  $('#data').innerHTML = `<table class="dt">${r('Mode', X.mode)}${r('Vehicle speed', `${Math.abs(X.v / MPS).toFixed(0)} mph`)}${r('Engine', `${f0(X.wE)} rpm · ${X.Te.toFixed(0)} Nm`)}${r('MG1', `${f0(X.wG)} rpm · ${X.Tg.toFixed(0)} Nm`)}${r('MG2', `${f0(X.wM)} rpm · ${X.Tm.toFixed(0)} Nm`)}${r('HV battery', `${X.V.toFixed(0)} V · ${X.I.toFixed(0)} A`)}${r('Battery power', `${(X.Pb / 1000).toFixed(1)} kW ${X.Pb < -300 ? '(charging)' : X.Pb > 300 ? '(discharging)' : ''}`)}${r('State of charge', `${X.soc.toFixed(0)}%`, X.soc < 42 ? 'bad' : '')}${r('Friction brakes', kw(X.Pfric))}${r('Engine coolant', `${Math.round(X.ect)} °C`, X.ect < 70 ? 'warn' : '')}${r('Shift / Ready', `${X.gear} · ${X.ready ? 'Ready' : 'off'}`)}</table>`;
+}
+
+/* ================= drive controls ================= */
+function syncDrive() {
+  $('#spd').innerHTML = `${Math.abs(X.v / MPS).toFixed(0)}<small>MPH</small>`;
+  $('#readyBtn').textContent = X.ready ? 'Ready ●' : 'Power';
+  $('#readyBtn').classList.toggle('ready', X.ready);
+  $$('#gearSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.g === X.gear));
+  $('#holdBtn').setAttribute('aria-pressed', X.hold); $('#holdBtn').textContent = X.hold ? `Holding ${Math.round(X.holdV / MPS)} mph` : 'Hold speed';
+  if (document.activeElement !== $('#acc')) $('#acc').value = Math.round((X.hold ? X.pedalEff : X.pedal) * 100);
+  $('#oAcc').textContent = Math.round((X.hold ? X.pedalEff : X.pedal) * 100) + '%';
+  $('#brk').value = Math.round(X.brake * 100); $('#oBrk').textContent = Math.round(X.brake * 100) + '%';
+}
+$('#acc').addEventListener('input', e => { X.pedal = +e.target.value / 100; if (X.hold) X.hold = false; if (X.pedal > 0) { X.brake = 0; } syncDrive(); });
+$('#brk').addEventListener('input', e => { X.brake = +e.target.value / 100; if (X.brake > 0) { X.pedal = 0; X.hold = false; } syncDrive(); });
+$('#readyBtn').addEventListener('click', () => { if (X.ready && Math.abs(X.v) > 0.5) { toast('Stop the car before switching off', 'bad'); return; } X.ready = !X.ready; if (X.ready) X.gear = 'P'; syncDrive(); });
+$('#gearSeg').addEventListener('click', e => { const g = e.target.closest('button')?.dataset.g; if (!g) return; if (g === 'P' && Math.abs(X.v) > 0.5) { toast('Stop before shifting to Park', 'bad'); return; } if ((g === 'R' && X.v > 0.5) || (g === 'D' && X.v < -0.5)) { toast('Stop before changing direction', 'bad'); return; } X.gear = g; X.hold = false; syncDrive(); });
+$('#holdBtn').addEventListener('click', () => { if (!X.hold && (X.gear !== 'D' || X.v < 4)) { toast('Hold speed works in D above about 10 mph', 'bad'); return; } X.hold = !X.hold; X.holdV = X.v; if (X.hold) X.brake = 0; else X.pedal = X.pedalEff; syncDrive(); });
+
+const SCEN = {
+  launch: { n: 'Pull away gently', d: 'Stopped, warm, battery 62%. Accelerator 20%.', set: { v: 0, soc: 62, ect: 85, pedal: 0.2 } },
+  hard: { n: 'Floor it', d: 'Stopped, then accelerator 100%.', set: { v: 0, soc: 60, ect: 85, pedal: 1 } },
+  c45: { n: 'Cruise 45 mph', d: 'Holding 45 mph on a level road.', set: { v: 45 * MPS, soc: 60, ect: 88, hold: true, holdV: 45 * MPS, eState: 'run', eRpm: 1300 } },
+  c70: { n: 'Cruise 70 mph', d: 'Holding 70 mph on the highway.', set: { v: 70 * MPS, soc: 60, ect: 88, hold: true, holdV: 70 * MPS, eState: 'run', eRpm: 1900 } },
+  accel: { n: 'Accelerate at 30 mph', d: 'Moderate acceleration (accelerator 40%).', set: { v: 30 * MPS, soc: 60, ect: 88, pedal: 0.4, eState: 'run', eRpm: 1800 } },
+  brake: { n: 'Brake from 40 mph', d: 'Foot off the gas, brake 35%.', set: { v: 40 * MPS, soc: 58, ect: 88, brake: 0.35 } },
+  lowsoc: { n: 'Stopped, low battery', d: 'Waiting at a light with the battery at 42%.', set: { v: 0, soc: 42, ect: 85, brake: 0.3 } },
+  cold: { n: 'Cold start', d: 'Engine coolant 15 °C, stopped in D.', set: { v: 0, soc: 60, ect: 15, brake: 0.3 } },
+  rev: { n: 'Back up', d: 'R, accelerator 15%.', set: { v: 0, soc: 60, ect: 85, gear: 'R', pedal: 0.15 } },
+};
+function scenario(k, keepFault) {
+  const s = SCEN[k].set, keep = { tb: X.tb, tinv: X.tinv, aux: X.aux, misf: X.misf, startFails: X.startFails };
+  X = Object.assign(fresh(), keepFault ? keep : {}, { gear: 'D' }, s);
+  if (X.eState === 'run' && (S.fault === 'damper')) { X.eState = 'off'; X.eRpm = 0; }
+  if (keepFault && S.fault === 'thermostat') X.ect = Math.min(X.ect, 52);
+  X.hist = []; syncDrive();
+}
+
+/* ================= explore ================= */
+function exploreHTML() {
+  let h = `<p class="dim">Drive with the accelerator and brake above, or pick a situation. The hybrid computer decides when the engine runs, just like the real car. Watch the three speeds on the nomograph always stay on one straight line.</p><h4>Situations</h4><div class="grid2">${Object.entries(SCEN).map(([k, s]) => `<button class="card" data-act="scen:${k}"><b>${s.n}</b><span>${s.d}</span></button>`).join('')}</div>`;
+  h += `<h4>Driver buttons</h4><div class="rowb"><span class="seg" id="lockSeg">${[['auto', 'Normal'], ['ev', 'EV mode'], ['charge', 'Force charge']].map(([k, n]) => `<button data-act="lock:${k}" aria-pressed="${X.lock === k}">${n}</button>`).join('')}</span></div><p class="dim" style="margin:0">EV mode keeps the engine off below about 25 mph at light throttle while the battery is above 50% and the engine is warm. It cancels itself otherwise, like the real button.</p>`;
+  h += `<h4>Set conditions</h4><div class="sl"><label for="xSoc">Battery SOC</label><input type="range" id="xSoc" data-x="soc" min="38" max="80" step="1" value="${Math.round(X.soc)}"><output id="o-soc">${Math.round(X.soc)}%</output></div><div class="sl"><label for="xEct">Engine coolant</label><input type="range" id="xEct" data-x="ect" min="10" max="90" step="1" value="${Math.round(X.ect)}"><output id="o-ect">${Math.round(X.ect)} °C</output></div>`;
+  h += `<h4>What’s happening</h4><div class="msg" id="whyBox">${whyText()}</div>`;
+  h += `<p class="dim">Generic Prius-type teaching model (sun 30 T, ring 78 T, MG2 reduction 2.64, final drive 3.27). Temperatures change about 8× faster than real life. Real behavior varies by model year; follow service information.</p>`;
+  return h;
+}
+function whyText() {
+  const m = X.mode;
+  if (m.startsWith('EV')) return '<b>EV drive.</b> Only MG2 pushes the car, using battery power. The engine (carrier) is stopped, so MG1 (sun) just spins backward with no load.';
+  if (m.startsWith('Engine starting')) return '<b>Engine start.</b> There’s no starter motor. MG1 spins forward and the planetary turns the engine up to about 1,000 rpm in under half a second, then fuel and spark are turned on. MG2 adds torque so you don’t feel it.';
+  if (m.startsWith('Hybrid drive')) return `<b>Power split.</b> About 72% of engine torque goes straight to the ring and wheels (mechanical path). The rest turns MG1, which generates electricity for MG2 (electrical path)${X.Pb < -1500 ? ' and charges the battery' : ''}. Changing MG1’s speed changes engine rpm without changing road speed: an electronic CVT.`;
+  if (m.startsWith('Hard')) return '<b>Hard acceleration.</b> The engine runs near full power, MG1’s electricity goes to MG2, and the battery adds more power to MG2 on top. Maximum combined power.';
+  if (m.startsWith('High speed')) return '<b>High speed.</b> To keep engine rpm low at high road speed, MG1 runs backward and has to use power (motoring) to hold the engine back. MG2 generates some of that power: power circulates. That’s less efficient, which is why hybrids get their best mpg in town.';
+  if (m.startsWith('Engine turning')) return '<b>Fuel cut above about 42 mph.</b> The engine isn’t needed, but it’s kept turning (no fuel) so MG1 and the pinion gears don’t spin backward too fast.';
+  if (m.startsWith('Regen')) return '<b>Regenerative braking.</b> MG2 becomes a generator: the wheels drive it, it makes electricity, and the battery charges (battery current goes negative). The friction brakes add the rest, and finish the stop below about 7 mph.';
+  if (m.startsWith('Stopped: engine charging') || m.startsWith('Park: engine')) return '<b>Charging at a stop.</b> The ring is stopped, so all engine power goes into MG1, which generates electricity for the battery. MG2 (or Park) holds the ring still.';
+  if (m.startsWith('Stopped: engine warming') || m.startsWith('Engine warm')) return '<b>Warm-up.</b> A cold engine runs (and charges a little) until the coolant reaches about 70 °C, for emissions and cabin heat. A stuck-open thermostat keeps it from ever shutting off.';
+  if (m.startsWith('Neutral')) return '<b>Neutral.</b> The motors are switched off: no drive and no charging. Leave a hybrid in N and the battery can run down.';
+  if (m.startsWith('Reverse')) return '<b>Reverse.</b> There’s no reverse gear: MG2 simply spins backward. The engine can run to charge the battery, but only MG2 drives the wheels.';
+  return '<b>Ready.</b> The HV system is on (the contactors have closed). The engine only runs when it’s needed.';
+}
+
+/* ================= diagnose ================= */
+const CASE_POOL = Object.keys(FAULTS);
+/* Shuffle bag: every fault comes up once per round, in a random order, before any repeat.
+   A case counts once it's solved. A new round reshuffles and never opens with the case that closed
+   the last one. Saved per browser. */
+const BAG_KEY = 'hyb-dx-bag-v1';
+let BAG = null;
+try { BAG = JSON.parse(store.get(BAG_KEY)); } catch (e) {}
+if (!(BAG && Array.isArray(BAG.order) && BAG.order.length === CASE_POOL.length && CASE_POOL.every(t => BAG.order.includes(t)) && BAG.res && BAG.i >= 0)) BAG = { order: shuffled(CASE_POOL), i: 0, round: 1, res: {} };
+const saveBag = () => store.set(BAG_KEY, JSON.stringify(BAG));
+function shuffled(ids, avoidFirst) {
+  const a = ids.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  if (avoidFirst && a.length > 1 && a[0] === avoidFirst) { const j = 1 + Math.floor(Math.random() * (a.length - 1)); [a[0], a[j]] = [a[j], a[0]]; }
+  return a;
+}
+function bagNext() {
+  if (BAG.i >= BAG.order.length) BAG = { order: shuffled(CASE_POOL, BAG.order[BAG.order.length - 1]), i: 0, round: BAG.round + 1, res: {} };
+  saveBag(); return BAG.order[BAG.i];
+}
+function bagSolved(type, tries) { if (BAG.order[BAG.i] === type && !BAG.res[type]) { BAG.res[type] = tries; BAG.i++; saveBag(); } }
+function bagHTML() {
+  const n = BAG.order.length, first = Object.values(BAG.res).filter(r => r === 1).length;
+  return `<div class="mprog"><span>Round ${BAG.round} · ${BAG.i} of ${n} cases solved</span><div class="mdots" aria-label="Round progress">${BAG.order.map((t, k) => {
+    const r = BAG.res[t];
+    return `<i class="${r ? (r === 1 ? 'r' : 't') : k === BAG.i ? 'cur' : ''}" title="Case ${k + 1} of ${n}${r ? (r === 1 ? ': correct, first try' : `: correct in ${r} tries`) : ''}"></i>`;
+  }).join('')}</div></div>${BAG.i >= n ? `<div class="msg ok" style="margin-top:8px"><b>Set complete!</b> You’ve solved all ${n} cases once. Correct on the first try: ${first} of ${n}. The next round uses a new shuffled order.</div>` : ''}`;
+}
+function newCase() {
+  const type = bagNext();
+  S.fault = type; X = Object.assign(fresh(), { gear: 'P' }, FAULTS[type].init);
+  S.dx = { n: (S.dx?.n || 0) + 1, type, tests: {}, order: [], pick: null, tries: 0, solved: false, wrong: null };
+  S.tab = 'case'; syncDrive(); renderPanel();
+}
+function testHTML(k) {
+  const F = S.fault, r = (n, v, c = '') => `<tr><td>${n}</td><td class="${c}">${v}</td></tr>`;
+  switch (k) {
+    case 'dtc': return `<div class="bad">${FAULTS[F].dtc.join('<br>')}</div><div class="dim" style="margin-top:4px">${FAULTS[F].ff}</div>`;
+    case 'mg': { const calc = (X.wG + (K - 1) * X.wR) / K, diff = calc - X.wE; return `<table class="dt">${r('Engine speed (crank sensor)', f0(X.wE) + ' rpm')}${r('MG1 speed (resolver)', f0(X.wG) + ' rpm')}${r('MG2 speed (resolver)', f0(X.wM) + ' rpm')}${r('Engine speed calculated from MG1 + MG2', f0(calc) + ' rpm', Math.abs(diff) > 300 ? 'bad' : '')}${r('Engine state', X.eState === 'fail' ? 'start failed' : X.eState)}${r('Start attempts that failed', X.startFails, X.startFails ? 'bad' : '')}</table><div class="dim">Calculated = (MG1 + 2.6 × ring) ÷ 3.6. Ring = MG2 ÷ 2.64. They should match whenever the engine turns.</div>`; }
+    case 'blocks': { const b = X.blocks, mx = Math.max(...b), mn = Math.min(...b); return `<table class="dt">${b.map((v, i) => r('Block ' + (i + 1), v.toFixed(2) + ' V', mx - v > 0.5 ? 'bad' : '')).join('')}${r('Max − min', (mx - mn).toFixed(2) + ' V', mx - mn > 0.5 ? 'bad' : '')}${r('Battery current now', X.I.toFixed(0) + ' A')}</table><div class="dim">Blocks should stay within a few tenths of a volt of each other, <b>especially under load</b>. Drive hard while you watch.</div>`; }
+    case 'temps': return `<table class="dt">${r('Battery temp 1', X.tb.toFixed(0) + ' °C', X.tb > 48 ? 'bad' : '')}${r('Battery temp 2', (X.tb - 1.5).toFixed(0) + ' °C', X.tb > 49 ? 'bad' : '')}${r('Battery temp 3', (X.tb + 1.2).toFixed(0) + ' °C', X.tb > 47 ? 'bad' : '')}${r('Battery intake air', (F === 'fan' ? 27 : 25) + ' °C')}${r('Inverter coolant', X.tinv.toFixed(0) + ' °C', X.tinv > 70 ? 'bad' : '')}${r('MG1 temp', (X.tinv + 6).toFixed(0) + ' °C')}${r('MG2 temp', (X.tinv + 9).toFixed(0) + ' °C')}${r('Engine coolant', X.ect.toFixed(0) + ' °C', X.ect < 70 ? 'bad' : '')}</table><div class="dim">Temperatures change about 8× faster than real life here.</div>`;
+    case 'misfire': return `<table class="dt">${X.misf.map((m, i) => r('Cylinder ' + (i + 1), m, m > 0 ? 'bad' : '')).join('')}${r('Engine load now', X.eState === 'run' ? kw(X.Pe) : 'engine not running')}</table><div class="dim">Counters only move while the engine runs. Make it work hard.</div>`;
+    case 'iso': return `<table class="dt">${r('Insulation resistance, HV to body', X.iso >= 10 ? '> 10 MΩ (18.5)' : X.iso.toFixed(1) + ' MΩ', X.iso < 10 ? 'bad' : '')}</table><div class="dim">Ready off, service plug out, wait time done, CAT 0 gloves inspected, HV verified dead, megohmmeter at the specified test voltage. (Practice the full procedure in the HV Safety Trainer.)</div>`;
+    case 'aux': return `<table class="dt">${r('12 V system voltage', X.aux.toFixed(1) + ' V', X.ready && X.aux < 13.2 ? 'bad' : '')}${r('DC-DC converter output', X.ready ? (F === 'dcdc' ? '0 A' : '28 A') : 'off (not Ready)', F === 'dcdc' && X.ready ? 'bad' : '')}${r('Ready', X.ready ? 'on' : 'off')}</table><div class="dim">With Ready on, the DC-DC converter charges the 12 V battery at about 14 V.</div>`;
+    case 'fan': return F === 'fan' ? `<div class="bad">The battery cooling intake grille beside the rear seat and the fan filter are packed with pet hair. The fan runs at high speed but barely moves air.</div>` : `<div class="ok">Intake grille and filter clean. The fan runs and moves air when commanded.</div>`;
+    case 'pump': return F === 'invpump' ? `<div class="bad">With Ready on, the coolant in the inverter reservoir doesn’t move. The pump connector has power and ground: the pump is seized.</div>` : `<div class="ok">Coolant visibly circulates in the inverter reservoir with Ready on. Level OK.</div>`;
+  }
+  return '';
+}
+function runTest(k) { const d = S.dx; if (!d || d.solved) return; if (!d.tests[k]) { d.tests[k] = true; d.order.unshift(k); } renderPanel(); }
+function submitDx() {
+  const d = S.dx; if (!d || d.solved || !d.pick) return; d.tries++;
+  if (d.pick === d.type) { bagSolved(d.type, d.tries); d.solved = true; S.dxScore.cases++; if (d.tries === 1) S.dxScore.first++; S.dxScore.tests += Object.keys(d.tests).length; toast('✓ Correct', 'good'); }
+  else d.wrong = 'Not quite. Which data actually looked wrong, and under what driving conditions?';
+  renderPanel();
+}
+function caseHTML() {
+  const d = S.dx; if (!d) return ''; const Fx = FAULTS[d.type], sc = S.dxScore;
+  let h = `<div class="case"><span class="qk">Case ${d.n}</span><h3>Customer concern</h3><p>${Fx.concern}</p></div>
+    <div class="score"><div><small>First try</small><b>${sc.first} / ${sc.cases}</b></div><div><small>Avg tests</small><b>${sc.cases ? (sc.tests / sc.cases).toFixed(1) : '–'}</b></div><div><small>Tests here</small><b>${Object.keys(d.tests).length}</b></div></div>${bagHTML()}`;
+  if (d.solved) h += `<div class="msg ok"><b>${d.tries === 1 ? 'Correct on the first try' : `Correct after ${d.tries} tries`}:</b> ${Fx.n}.<br>${Fx.see}</div><div class="nav"><button class="btn primary" data-act="newcase">${BAG.i >= BAG.order.length ? `Start round ${BAG.round + 1}` : 'Next case'}</button></div>`;
+  else {
+    h += `<p class="dim" style="margin-top:10px">The car is in your bay with Ready on. Drive it with the controls above (or a quick situation below) while you watch the data. Some faults only show under load, at engine start, or after a few minutes.</p><div class="rowb">${['launch', 'hard', 'c45', 'lowsoc'].map(k => `<button class="btn small" data-act="dscen:${k}">${SCEN[k].n}</button>`).join('')}</div>`;
+    h += `<h4>Tests</h4><div class="tests">${DTESTS.map(([k, n]) => `<button class="btn${d.tests[k] ? ' used' : ''}" data-act="test:${k}">${n}</button>`).join('')}</div>`;
+  }
+  if (d.order.length) h += `<h4>Findings <span style="text-transform:none;letter-spacing:0;font-weight:500">(data lists update live)</span></h4><div class="find" id="dxFind">${findHTML()}</div>`;
+  if (!d.solved) { h += `<h4>Your diagnosis</h4><div class="cards">${Object.entries(FAULTS).map(([k, f]) => `<button class="card" data-act="dx:${k}" aria-pressed="${d.pick === k}"><b>${f.n}</b></button>`).join('')}</div><div class="nav"><button class="btn primary" data-act="dxsubmit"${d.pick ? '' : ' disabled'}>Submit diagnosis</button></div>`; if (d.wrong) h += `<div class="msg bad">${d.wrong}</div>`; }
+  return h;
+}
+const findHTML = () => S.dx.order.map(k => `<div class="f"><b>${DTESTS.find(t => t[0] === k)[1]}</b>${testHTML(k)}</div>`).join('');
+
+/* ================= lessons ================= */
+const mph = () => Math.abs(X.v) / MPS;
+const LESSONS = [
+{ id: 'parts', title: 'Meet the power-split device', sub: 'One planetary, two motors, no gears', steps: [
+  { body: 'A Prius-type hybrid has one planetary gearset (the <b>power-split device</b>) connecting three things. Look at the gearset and the power-flow diagram.', setup: { scen: 'accel' }, goal: { mc: { q: 'What’s on the sun gear?', opts: ['MG1, the smaller motor-generator', 'The engine', 'The wheels'], a: 0, why: 'Sun = MG1 (mostly a generator and the engine’s starter). Carrier = engine. Ring = MG2 and the wheels.' } } },
+  { body: '', goal: { mc: { q: 'What turns with the ring gear?', opts: ['MG2 (through a reduction gear) and the wheels (through the final drive)', 'Only the engine', 'MG1'], a: 0, why: 'Ring speed is road speed. MG2 is the main drive motor and the regen generator.' } } },
+  { body: '', goal: { mc: { q: 'Where are the starter motor and the transmission gears?', opts: ['There aren’t any: MG1 starts the engine, and varying MG1’s speed works like a CVT (an “eCVT”)', 'Under the engine', 'In the rear axle'], a: 0, why: 'No starter, no alternator, no clutches, no shifting: the motors and the planetary do it all.' } } },
+] },
+{ id: 'ev', title: 'EV launch', sub: 'Engine off, MG2 only', steps: [
+  { body: 'Ready is on and you’re in D. Set the <b>accelerator to about 20%</b> and pull away. Get to 10 mph with the engine still off.', setup: { scen: 'launch', set() { X.pedal = 0; } }, goal: { check: () => mph() >= 10 && X.eState === 'off', hint: '10 mph or more, engine stopped (keep the accelerator light).' } },
+  { body: '', goal: { mc: { q: 'Look at the nomograph. The engine sits at 0 and the ring turns forward. What is MG1 doing?', opts: ['Spinning backward with no load: it just follows along', 'Driving the car', 'Charging the battery hard'], a: 0, why: 'Speeds always lie on a straight line. With the carrier (engine) stopped, the sun (MG1) has to spin backward as the ring spins forward.' } } },
+] },
+{ id: 'start', title: 'Starting the engine', sub: 'MG1 is the starter', steps: [
+  { body: 'Keep driving and push the <b>accelerator to 60% or more</b>. Watch MG1 and the engine on the nomograph.', setup: { scen: 'launch', set() { X.v = 15 * MPS; X.pedal = 0.2; } }, goal: { check: () => X.eState === 'run', hint: 'Engine running (accelerator ≥ 60%).' } },
+  { body: '', goal: { mc: { q: 'Who started the engine?', opts: ['MG1 spun forward and turned the engine up to about 1,000 rpm, while MG2 kept the wheels steady', 'A 12 V starter motor', 'The wheels pushed it'], a: 0, why: 'That’s why the engine starts so smoothly and quickly. If the engine can’t turn (for example, a seized engine or a slipping input damper), MG1 can’t start it.' } } },
+] },
+{ id: 'split', title: 'The power split', sub: 'Two paths to the wheels', steps: [
+  { body: 'Accelerating moderately at 30 mph. Look at the power flow: amber arrows are mechanical power, blue are electrical.', setup: { scen: 'accel' }, goal: { mc: { q: 'MG1 is generating. Where does that electricity go?', opts: ['Mostly to MG2, which helps drive the wheels (the electrical path)', 'Straight to the 12 V battery', 'Nowhere'], a: 0, why: 'About 72% of engine torque reaches the ring mechanically. The rest goes through MG1 → inverter → MG2. The battery only covers the difference.' } } },
+  { body: '', goal: { mc: { q: 'Why split the power at all?', opts: ['So the engine can run at its most efficient rpm no matter the road speed: MG1’s speed sets the engine rpm', 'To make it louder', 'Because there’s no transmission oil'], a: 0, why: 'That’s the electronic CVT: engine speed and road speed are independent, connected only through MG1.' } } },
+] },
+{ id: 'hard', title: 'Hard acceleration', sub: 'Engine + battery', steps: [
+  { body: 'From a stop, <b>floor it</b>: accelerator 100%.', setup: { scen: 'launch', set() { X.pedal = 0; } }, goal: { check: () => X.pedal >= 0.95 && X.eState === 'run' && X.Pb > 8000, hint: 'Accelerator 100%, engine running, battery discharging.' } },
+  { body: '', goal: { mc: { q: 'Where does the power come from now?', opts: ['Both: the engine near full power plus the battery feeding MG2', 'Only the battery', 'Only the engine'], a: 0, why: 'Maximum system power needs both. A weak battery (or one that’s hot and limited) makes the car feel sluggish.' } } },
+] },
+{ id: 'regen', title: 'Regenerative braking', sub: 'MG2 as a generator', steps: [
+  { body: 'You’re rolling at 40 mph. Apply the <b>brake about 30–40%</b>.', setup: { scen: 'brake', set() { X.brake = 0; } }, goal: { check: () => X.brake >= 0.25 && X.Pm < -3000, hint: 'Brake ≥ 25%, MG2 regenerating.' } },
+  { body: '', goal: { mc: { q: 'Look at the battery current. What’s happening?', opts: ['It’s negative: MG2 is generating and charging the battery', 'It’s discharging faster', 'Nothing'], a: 0, why: 'The wheels drive MG2 as a generator. Energy that would have been brake heat goes back into the battery.' } } },
+  { body: '', goal: { mc: { q: 'Why do the friction brakes take over at the end of the stop?', opts: ['Below about 7 mph MG2 makes too little power to brake well, so the friction brakes finish the stop (and help in hard stops)', 'The battery is full', 'They don’t'], a: 0, why: 'The brake ECU blends regen and friction so the pedal feels normal. Hybrid brakes often last a very long time, and can rust from lack of use.' } } },
+] },
+{ id: 'charge', title: 'Charging at a stop', sub: 'Engine → MG1 → battery', steps: [
+  { body: 'Stopped at a light with the battery low. Watch what the computer does.', setup: { scen: 'lowsoc' }, goal: { check: () => X.eState === 'run' && mph() < 0.5 && X.Pb < -1000, hint: 'Engine running while stopped, battery charging (wait a moment).' } },
+  { body: '', goal: { mc: { q: 'The car isn’t moving, so the ring is stopped. How is the battery charging?', opts: ['All engine power goes into MG1, which spins forward as a generator', 'MG2 is generating', 'The 12 V battery charges it'], a: 0, why: 'On the nomograph: ring at 0, engine at about 1,500 rpm, so MG1 spins forward fast (3.6 × engine speed) and generates.' } } },
+  { body: 'Now shift to <b>N</b>.', goal: { check: () => X.gear === 'N', hint: 'Shift to N.' } },
+  { body: '', goal: { mc: { q: 'What happened to charging?', opts: ['It stopped: in N the motors are switched off, so the battery can’t charge', 'It charges faster', 'Nothing changed'], a: 0, why: 'Leave a hybrid in N for a long time (or tow it wrong) and the HV battery can run down.' } } },
+] },
+{ id: 'speed', title: 'High speed', sub: 'MG1 backward, fuel cut', steps: [
+  { body: 'Cruising at 70 mph. Look at MG1 on the nomograph.', setup: { scen: 'c70' }, goal: { mc: { q: 'MG1 spins backward now. Is it generating?', opts: ['No: it’s motoring (using power) to hold engine rpm down, and MG2 generates some of that power. Power circulates', 'Yes, more than ever', 'It’s disconnected'], a: 0, why: 'This “negative split” is less efficient, which is why power-split hybrids shine in town more than on the highway.' } } },
+  { body: 'Take your foot off: turn <b>Hold speed off</b> and leave the accelerator at 0. Stay above 42 mph.', goal: { check: () => !X.hold && X.pedal === 0 && X.eState === 'spin' && mph() > 42, hint: 'Hold off, accelerator 0, still above 42 mph (engine “fuel cut”).' } },
+  { body: '', goal: { mc: { q: 'The engine isn’t needed, but it keeps turning with the fuel cut off. Why?', opts: ['To keep MG1 and the planetary pinions from spinning backward too fast at high road speed', 'To charge the 12 V battery', 'It’s a fault'], a: 0, why: 'Below about 42 mph the engine can stop completely and the car can run in EV.' } } },
+] },
+{ id: 'rev', title: 'Reverse', sub: 'No reverse gear', steps: [
+  { body: 'Shift to <b>R</b> and set the accelerator to about 15%.', setup: { scen: 'launch', set() { X.pedal = 0; X.gear = 'D'; } }, goal: { check: () => X.v < -0.5, hint: 'Moving backward.' } },
+  { body: '', goal: { mc: { q: 'What drives the car backward?', opts: ['MG2 alone, spinning backward', 'The engine through a reverse gear', 'MG1'], a: 0, why: 'The engine can still run to charge the battery, but only MG2 can drive the wheels in reverse.' } } },
+] },
+];
+function curStep() { return S.lesson ? S.lesson.steps[S.step] : null; }
+function enterStep() { const st = curStep(); if (!st) return; S.mcPick = []; S.stepOk = !st.goal; if (st.setup) { S.fault = null; scenario(st.setup.scen); if (st.setup.set) st.setup.set(); syncDrive(); } renderPanel(); }
+function checkGoal() { const g = curStep()?.goal; if (S.mode !== 'guided' || !g || S.stepOk || !g.check) return; if (g.check()) { S.stepOk = true; toast('✓ Nice', 'good'); renderPanel(); } }
+function lessonsHTML() {
+  if (!S.lesson) {
+    let h = `<p>Short guided lessons. Each one sets up a driving situation, tells you what to do and watch, and checks your work.</p><div class="cards">`;
+    LESSONS.forEach((l, i) => { h += `<button class="lcard${S.done.has(l.id) ? ' done' : ''}" data-act="les:${l.id}"><span class="n">${S.done.has(l.id) ? '✓' : i + 1}</span><span><b>${l.title}</b><span>${l.sub} · ${l.steps.length} steps</span></span></button>`; });
+    return h + '</div>';
+  }
+  const L = S.lesson, st = curStep(), g = st.goal;
+  let h = `<div class="lhead"><span class="k">Lesson ${LESSONS.indexOf(L) + 1} · Step ${S.step + 1} of ${L.steps.length}</span><span class="dots">${L.steps.map((_, i) => `<i class="${i === S.step ? 'on' : i < S.step ? 'done' : ''}"></i>`).join('')}</span></div><h3>${L.title}</h3>`;
+  if (st.body) h += `<p>${st.body}</p>`;
+  if (g) {
+    if (g.mc) h += `<p class="qq">${g.mc.q}</p><div class="mc">${g.mc.opts.map((o, i) => `<button data-act="mc:${i}" class="${S.stepOk && i === g.mc.a ? 'right' : S.mcPick.includes(i) ? 'wrong' : ''}"${S.stepOk ? ' disabled' : ''}>${o}</button>`).join('')}</div>${S.stepOk ? `<div class="why">${g.mc.why}</div>` : ''}`;
+    else h += `<div class="goal${S.stepOk ? ' ok' : ''}">${S.stepOk ? '✓ Done.' : '◎ ' + g.hint}</div>`;
+  }
+  h += `<div class="nav"><button class="btn small" data-act="nav:back"${S.step ? '' : ' disabled'}>Back</button><button class="btn small" data-act="nav:list">All lessons</button><span class="sp"></span><button class="btn small primary" data-act="nav:next"${S.stepOk ? '' : ' disabled'}>${S.step === L.steps.length - 1 ? 'Finish' : 'Next'}</button></div>`;
+  return h;
+}
+
+/* ================= notebook / modes ================= */
+const TABS = { explore: [['drive', 'Drive']], guided: [['les', 'Lessons']], diagnose: [['case', 'Case']] };
+function renderPanel() {
+  const list = TABS[S.mode]; if (!list.some(t => t[0] === S.tab)) S.tab = list[0][0];
+  $('#tabs').innerHTML = list.map(([k, n]) => `<button role="tab" data-act="tab:${k}" aria-selected="${S.tab === k}">${n}</button>`).join('');
+  const b = $('#pbody'), keep = b.scrollTop;
+  b.innerHTML = S.tab === 'drive' ? exploreHTML() : S.tab === 'les' ? lessonsHTML() : caseHTML();
+  b.scrollTop = keep;
+}
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m; $$('#modes button').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === m));
+  if (m === 'explore') { S.fault = null; S.lesson = null; scenario('launch'); X.pedal = 0; }
+  if (m === 'guided') { S.fault = null; S.lesson = null; scenario('launch'); X.pedal = 0; }
+  if (m === 'diagnose') { if (!S.dx || S.dx.solved) newCase(); else { S.fault = S.dx.type; X = Object.assign(fresh(), { gear: 'P' }, FAULTS[S.dx.type].init); } }
+  syncDrive(); renderPanel();
+}
+let toastT;
+function toast(msg, kind) { const t = $('#toast'); t.textContent = msg; t.className = kind || ''; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function onAct(e) {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const [a, v] = b.dataset.act.split(':');
+  switch (a) {
+    case 'tab': S.tab = v; renderPanel(); break;
+    case 'scen': scenario(v); renderPanel(); break;
+    case 'dscen': { const s = SCEN[v].set; X.ready = true; X.gear = 'D'; X.brake = s.brake || 0; X.pedal = s.pedal || 0; X.hold = false; if (v === 'c45') { X.v = 45 * MPS; X.hold = true; X.holdV = X.v; } if (v === 'lowsoc') { X.v = 0; X.soc = Math.min(X.soc, 42); } if (v === 'launch' || v === 'hard') X.v = Math.max(0, Math.min(X.v, 0.1)); syncDrive(); break; }
+    case 'lock': X.lock = v; if (v === 'ev' && (X.soc < 50 || mph() > 25 || X.ect < 70)) { toast('EV mode not available right now (battery, speed or a cold engine)', 'bad'); X.lock = 'auto'; } renderPanel(); break;
+    case 'test': runTest(v); break;
+    case 'dx': S.dx.pick = v; S.dx.wrong = null; renderPanel(); break;
+    case 'dxsubmit': submitDx(); break;
+    case 'newcase': newCase(); break;
+    case 'les': S.lesson = LESSONS.find(l => l.id === v); S.step = 0; enterStep(); break;
+    case 'nav':
+      if (v === 'list') { S.lesson = null; renderPanel(); }
+      else if (v === 'back' && S.step > 0) { S.step--; enterStep(); }
+      else if (v === 'next' && S.stepOk) {
+        if (S.step < S.lesson.steps.length - 1) { S.step++; enterStep(); }
+        else { S.done.add(S.lesson.id); store.set('hyb.done', JSON.stringify([...S.done])); toast(`✓ Lesson complete: ${S.lesson.title}`, 'good'); S.lesson = null; renderPanel(); }
+      }
+      break;
+    case 'mc': { const g = curStep()?.goal?.mc; if (!g || S.stepOk) break; const n = +v; if (n === g.a) S.stepOk = true; else { if (!S.mcPick.includes(n)) S.mcPick.push(n); toast('Not quite. Try another answer.', 'bad'); } renderPanel(); break; }
+  }
+}
+$('#modes').addEventListener('click', e => { const m = e.target.closest('button')?.dataset.m; if (m) setMode(m); });
+$('#pbody').addEventListener('click', onAct);
+$('#tabs').addEventListener('click', onAct);
+$('#pbody').addEventListener('input', e => { const k = e.target.dataset.x; if (!k) return; X[k] = +e.target.value; const o = $('#o-' + k); if (o) o.textContent = e.target.value + (k === 'soc' ? '%' : ' °C'); });
+
+/* ================= loop ================= */
+let last = performance.now(), acc = 0, slow = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  let t = dt; while (t > 1e-6) { const h = Math.min(0.02, t); step(h); t -= h; }
+  X.histT += dt; if (X.histT >= 0.2) { X.histT = 0; X.hist.push({ mph: Math.abs(X.v / MPS), e: X.wE, g: X.wG, soc: X.soc }); if (X.hist.length > 200) X.hist.shift(); }
+  drawFlow(dt); drawGear(dt);
+  acc += dt;
+  if (acc > 0.15) {
+    acc = 0; drawNomo(); drawData(); syncDrive(); slow++;
+    if (slow % 2 === 0) { drawChart(); const w = $('#whyBox'); if (w) w.innerHTML = whyText(); const fd = $('#dxFind'); if (fd && S.dx) fd.innerHTML = findHTML(); checkGoal(); }
+    if (S.evCancel) { S.evCancel = false; toast('EV mode canceled (speed, power, battery or engine temperature)', 'bad'); if (S.tab === 'drive') renderPanel(); }
+  }
+  requestAnimationFrame(frame);
+}
+buildFlow(); buildGear(); scenario('launch'); X.pedal = 0; X.brake = 0.3; renderPanel(); syncDrive();
+requestAnimationFrame(frame);
+const hm = location.hash.slice(1); if (TABS[hm]) setMode(hm);
+window.__HY = { S, get X() { return X; }, step, scenario, setMode, newCase, runTest, testHTML, FAULTS, LESSONS, curStep, CASE_POOL, get BAG() { return BAG; },
+  act(a) { const b = [...document.querySelectorAll('#pbody [data-act], #tabs [data-act]')].find(x => x.dataset.act === a); if (!b) return false; b.click(); return true; } };
+})();
+</script>
+</body>
+</html>
