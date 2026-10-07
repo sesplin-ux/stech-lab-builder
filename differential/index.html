@@ -370,7 +370,7 @@ function drawDiff() {
   h += `<rect x="204" y="46" width="14" height="148" rx="3" fill="#FFB224" fill-opacity=".85"/>`;
   for (let i = 0; i < 14; i++) { const y = 46 + ((i * 11 + off(thc) * 0.9) % 148); h += `<line x1="204" y1="${y}" x2="218" y2="${y}" stroke="#0b1015" stroke-width="1.5"/>`; }
   // pinion + driveshaft (from the front, bottom)
-  h += `<path d="M196 196 L226 196 L220 212 L202 212Z" fill="var(--pin)"/><line x1="211" y1="212" x2="211" y2="248" stroke="#1d2732" stroke-width="10"/><line x1="211" y1="212" x2="211" y2="248" stroke="var(--pin)" stroke-width="5" stroke-dasharray="5 5" stroke-dashoffset="${(((-thc * FD * k) % 10) + 10) % 10}"/>`;
+  h += `<path d="M202 196 L220 196 L226 212 L196 212Z" fill="var(--pin)"/><line x1="211" y1="212" x2="211" y2="248" stroke="#1d2732" stroke-width="10"/><line x1="211" y1="212" x2="211" y2="248" stroke="var(--pin)" stroke-width="5" stroke-dasharray="5 5" stroke-dashoffset="${(((-thc * FD * k) % 10) + 10) % 10}"/>`;
   // side gears
   h += `<path d="M112 98 L126 104 L126 136 L112 142Z" fill="var(--side)"/><path d="M188 98 L174 104 L174 136 L188 142Z" fill="var(--side)"/>`;
   // spider gears + cross shaft
